@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785181450.585287,
-    "ast_hash": "fb3d5b738e2dcdd887b4d8d9e74231df",
+    "mtime": 1785181795.7262883,
+    "ast_hash": "50e18212330c399d3033baba61dfc526",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -310,8 +310,8 @@
     "semantic_hash": "896450ad36a9a70488a82a611d319da1"
   },
   "core/execution/feedback_loop.py": {
-    "mtime": 1785181406.2425284,
-    "ast_hash": "fddbb08697417c3937771e9b49fd0051",
+    "mtime": 1785181763.6196625,
+    "ast_hash": "c0be5694ee10eeeb27ebbb9751a12a94",
     "semantic_hash": ""
   },
   "core/execution/run_harness.py": {
@@ -330,8 +330,8 @@
     "semantic_hash": "09574588768e55cd60539f5de1bca50b"
   },
   "core/flashlight/beam.py": {
-    "mtime": 1785181399.152524,
-    "ast_hash": "3d8e86c1cd17c20f1333559c7a7faca5",
+    "mtime": 1785181748.573112,
+    "ast_hash": "c2a60f32f4a4eabee8f15b8186bf0c32",
     "semantic_hash": ""
   },
   "core/flashlight/indexer.py": {
@@ -530,9 +530,9 @@
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
-    "mtime": 1785147501.3897345,
-    "ast_hash": "90c7e36fb04dc9bc721dc66c787a1bd3",
-    "semantic_hash": "90c7e36fb04dc9bc721dc66c787a1bd3"
+    "mtime": 1785181776.3535893,
+    "ast_hash": "7773ed5031ba7c66d3c1d7d8a6b31f68",
+    "semantic_hash": ""
   },
   "core/tools/schemas.py": {
     "mtime": 1785181391.1789546,
@@ -665,8 +665,8 @@
     "semantic_hash": ""
   },
   "core/flashlight/graph_engine.py": {
-    "mtime": 1785181374.6171257,
-    "ast_hash": "24a35f9da95cad8dc7f04057eace28f9",
+    "mtime": 1785181706.9276378,
+    "ast_hash": "c200bc2cafa8e19e6d1fe9324ed3f893",
     "semantic_hash": ""
   },
   "core/tests/test_graph_engine.py": {
@@ -690,18 +690,18 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785095985.937442,
-    "ast_hash": "384e000014b95e3be87c7a900ac87719",
+    "mtime": 1785182283.5500758,
+    "ast_hash": "47f72bdac45cb01cb7b5eef260a08491",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785148477.1943653,
-    "ast_hash": "f1ad28809ca68d3563ddb5f70dc39c90",
+    "mtime": 1785182087.2350757,
+    "ast_hash": "73d136a79c4412659712b967ab07ad32",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
-    "mtime": 1785148464.439067,
-    "ast_hash": "ca64371a262c5a0336aa6c4a94010a62",
+    "mtime": 1785182057.1082432,
+    "ast_hash": "ee7012bb16eec11418ad42b58693efaa",
     "semantic_hash": ""
   },
   "README.md": {
@@ -780,8 +780,8 @@
     "semantic_hash": ""
   },
   "superpowers.md": {
-    "mtime": 1785095864.6682951,
-    "ast_hash": "f45825a558cc6b5fbdd429433a9222bc",
+    "mtime": 1785182223.4164588,
+    "ast_hash": "03874be4e0e4d4883ee7e8702cc0f38d",
     "semantic_hash": ""
   },
   "rlm_architecture.svg": {
