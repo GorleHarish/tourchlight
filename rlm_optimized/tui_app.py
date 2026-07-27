@@ -505,17 +505,19 @@ class AgentStatusModal(ModalScreen[None]):
                         tot = len(tasks)
                         ver = sum(1 for t in tasks if t.get("status") == "verified")
                         pct = (ver / tot * 100) if tot > 0 else 0
-                        yield Static(f"🎯 Autonomous Goal: [bold cyan]{title}[/] ({pct:.0f}% - {ver}/{tot} Verified)", classes="status-log-entry")
+                        from rich.markup import escape
+                        yield Static(f"🎯 Autonomous Goal: [bold cyan]{escape(title)}[/] ({pct:.0f}% - {ver}/{tot} Verified)", classes="status-log-entry")
                         for t in tasks:
                             st = t.get("status", "pending")
                             badge = "[bold green]✓ VERIFIED[/]" if st == "verified" else "[bold cyan]● RUNNING[/]" if st == "in_progress" else "[bold red]✗ FAILED[/]" if st == "failed" else "[yellow]⏳ PENDING[/]"
-                            yield Static(f"  {badge} [bold]{t.get('id')}[/bold]: {t.get('description')} (Attempts: {t.get('attempts',0)}/{t.get('max_attempts',3)})", classes="status-log-entry")
+                            yield Static(f"  {badge} [bold]{escape(str(t.get('id')))}[/bold]: {escape(str(t.get('description')))} (Attempts: {t.get('attempts',0)}/{t.get('max_attempts',3)})", classes="status-log-entry")
                 except Exception:
                     pass
 
                 if not self.events:
                     yield Static("[dim italic]No agent background activity recorded yet.[/]")
                 else:
+                    from rich.markup import escape
                     for ev in reversed(self.events):
                         ts = ev.get("time", "")
                         state = ev.get("state", "INFO")
@@ -525,7 +527,7 @@ class AgentStatusModal(ModalScreen[None]):
                         badge_style = "bold green" if state in ("IDLE", "TOOL_DONE") else "bold cyan" if "TOOL" in state else "bold yellow"
                         yield Static(
                             f"[{ts}] [{badge_style}]{state}[/]\n"
-                            f"[dim]{det}[/]",
+                            f"[dim]{escape(det)}[/]",
                             classes="status-log-entry"
                         )
             with Horizontal(id="status-buttons"):
@@ -658,12 +660,13 @@ class TorchlightApp(App):
         if state == "REFINED":
             flaws = details.get("flaws", [])
             tool_name = details.get("tool_name", "")
-            target = f" for {tool_name}" if tool_name else ""
-            flaw_str = f" [dim](Fixed: {', '.join(flaws)})[/dim]" if flaws else ""
+            from rich.markup import escape
+            target = f" for {escape(tool_name)}" if tool_name else ""
+            escaped_flaws = [escape(f) for f in flaws]
+            flaw_str = f" [dim](Fixed: {', '.join(escaped_flaws)})[/dim]" if flaws else ""
             try:
                 container = self.query_one("#chat-container")
-                container.mount(Static(f" [bold green]✨ Refined proposal{target}[/bold green]{flaw_str}"))
-                container.scroll_end(animate=False)
+                self._safe_mount(container, Static(f" [bold green]✨ Refined proposal{target}[/bold green]{flaw_str}"))
             except Exception:
                 pass
 
@@ -867,12 +870,12 @@ class TorchlightApp(App):
         # Show user message
         self._chat_history.append({"role": "user", "content": user_text})
         container = self.query_one("#chat-container")
-        container.mount(Static(Panel(
-            user_text,
+        from rich.markup import escape
+        self._safe_mount(container, Static(Panel(
+            escape(user_text),
             title="You",
             border_style="bright_blue",
         )))
-        container.scroll_end(animate=False)
 
         # Run agent
         self._run_agent(user_text)
@@ -891,12 +894,12 @@ class TorchlightApp(App):
 
         self._chat_history.append({"role": "user", "content": text})
         container = self.query_one("#chat-container")
-        container.mount(Static(Panel(
-            text,
+        from rich.markup import escape
+        self._safe_mount(container, Static(Panel(
+            escape(text),
             title="You",
             border_style="bright_blue",
         )))
-        container.scroll_end(animate=False)
         self._run_agent(text)
 
     def _set_input_enabled(self, enabled: bool) -> None:
@@ -1152,136 +1155,144 @@ class TorchlightApp(App):
     def _handle_step(self, step: Step) -> None:
         container = self.query_one("#chat-container")
         self._remove_streaming()
+        from rich.markup import escape
 
-        # Thinking / reasoning
-        if step.thinking and step.thinking not in ("(forced)", ""):
-            if Collapsible is not None:
-                trimmed = step.thinking[:15000] + "\n... [Reasoning Truncated]" if len(step.thinking) > 15000 else step.thinking
-                container.mount(Collapsible(Static(trimmed, classes="stream-text"), title="💭 Reasoning", collapsed=True))
-            else:
-                trimmed = step.thinking[:600] + "..." if len(step.thinking) > 600 else step.thinking
-                container.mount(Static(Panel(
-                    trimmed,
-                    title="💭 Reasoning",
-                    border_style="dim magenta",
-                )))
-
-        # Tool execution
-        if step.action == "tool":
-            label = step.tool_name or "TOOL"
-            display_args = dict(step.tool_args) if step.tool_args else {}
-            if label == "WRITE_FILE" and "content" in display_args:
-                display_args["content"] = f"... [{len(str(display_args['content']))} chars of code hidden]"
-            elif label == "EDIT_FILE":
-                if "old_text" in display_args:
-                    display_args["old_text"] = f"... [{len(str(display_args['old_text']))} chars hidden]"
-                if "new_text" in display_args:
-                    display_args["new_text"] = f"... [{len(str(display_args['new_text']))} chars hidden]"
-            
-            args_str = json.dumps(display_args, indent=2) if display_args else ""
-            if len(args_str) > 4000:
-                args_str = args_str[:4000] + "\n... [Arguments Truncated for UI Performance]"
-            
-            if Collapsible is not None:
-                container.mount(Collapsible(
-                    Static(f"[dim]{args_str}[/]", classes="stream-text"),
-                    title=f"🔧 {label}",
-                    collapsed=True
-                ))
-            else:
-                container.mount(Static(Panel(
-                    f"[bold]{label}[/]\n[dim]{args_str}[/]",
-                    title=f"🔧 {label}",
-                    border_style="bright_blue",
-                )))
-            if step.tool_name in ("WRITE_FILE", "EDIT_FILE") and step.result and not ("error" in step.result.lower() or "denied" in step.result.lower()):
-                try:
-                    tree = self.query_one("#file-tree", DirectoryTree)
-                    tree.reload()
-                except Exception:
-                    pass
-                self._start_ast_indexing()
-            if step.result:
-                display_result = step.result
-                if len(display_result) > 15000:
-                    display_result = display_result[:15000] + "\n... [Output Truncated for UI Performance]"
-                denied = "denied" in (step.result or "").lower()
-                is_err = (step.result or "").startswith("Error") or (step.result or "").startswith("❌")
-                if denied:
-                    style, icon = "yellow", "⚠"
-                elif is_err:
-                    style, icon = "red", "❌"
+        try:
+            # Thinking / reasoning
+            if step.thinking and step.thinking not in ("(forced)", ""):
+                if Collapsible is not None:
+                    trimmed = step.thinking[:15000] + "\n... [Reasoning Truncated]" if len(step.thinking) > 15000 else step.thinking
+                    self._safe_mount(container, Collapsible(Static(escape(trimmed), classes="stream-text"), title="💭 Reasoning", collapsed=True))
                 else:
-                    style, icon = "green", "📤"
+                    trimmed = step.thinking[:600] + "..." if len(step.thinking) > 600 else step.thinking
+                    self._safe_mount(container, Static(Panel(
+                        escape(trimmed),
+                        title="💭 Reasoning",
+                        border_style="dim magenta",
+                    )))
+
+            # Tool execution
+            if step.action == "tool":
+                label = step.tool_name or "TOOL"
+                display_args = dict(step.tool_args) if step.tool_args else {}
+                if label == "WRITE_FILE" and "content" in display_args:
+                    display_args["content"] = f"... [{len(str(display_args['content']))} chars of code hidden]"
+                elif label == "EDIT_FILE":
+                    if "old_text" in display_args:
+                        display_args["old_text"] = f"... [{len(str(display_args['old_text']))} chars hidden]"
+                    if "new_text" in display_args:
+                        display_args["new_text"] = f"... [{len(str(display_args['new_text']))} chars hidden]"
                 
-                if Collapsible is not None and not is_err and not denied:
-                    container.mount(Collapsible(
-                        Static(display_result, classes="stream-text"), 
-                        title=f"{icon} Result", 
+                args_str = json.dumps(display_args, indent=2) if display_args else ""
+                if len(args_str) > 4000:
+                    args_str = args_str[:4000] + "\n... [Arguments Truncated for UI Performance]"
+                
+                escaped_args = escape(args_str)
+                escaped_label = escape(label)
+                if Collapsible is not None:
+                    self._safe_mount(container, Collapsible(
+                        Static(f"[dim]{escaped_args}[/]", classes="stream-text"),
+                        title=f"🔧 {escaped_label}",
                         collapsed=True
                     ))
                 else:
-                    container.mount(Static(Panel(
-                        display_result,
-                        title=f"{icon} Result",
+                    self._safe_mount(container, Static(Panel(
+                        f"[bold]{escaped_label}[/]\n[dim]{escaped_args}[/]",
+                        title=f"🔧 {escaped_label}",
+                        border_style="bright_blue",
+                    )))
+                if step.tool_name in ("WRITE_FILE", "EDIT_FILE") and step.result and not ("error" in step.result.lower() or "denied" in step.result.lower()):
+                    try:
+                        tree = self.query_one("#file-tree", DirectoryTree)
+                        tree.reload()
+                    except Exception:
+                        pass
+                    self._start_ast_indexing()
+                if step.result:
+                    display_result = step.result
+                    if len(display_result) > 15000:
+                        display_result = display_result[:15000] + "\n... [Output Truncated for UI Performance]"
+                    denied = "denied" in (step.result or "").lower()
+                    is_err = (step.result or "").startswith("Error") or (step.result or "").startswith("❌")
+                    if denied:
+                        style, icon = "yellow", "⚠"
+                    elif is_err:
+                        style, icon = "red", "❌"
+                    else:
+                        style, icon = "green", "📤"
+                    
+                    escaped_res = escape(display_result)
+                    if Collapsible is not None and not is_err and not denied:
+                        self._safe_mount(container, Collapsible(
+                            Static(escaped_res, classes="stream-text"), 
+                            title=f"{icon} Result", 
+                            collapsed=True
+                        ))
+                    else:
+                        self._safe_mount(container, Static(Panel(
+                            escaped_res,
+                            title=f"{icon} Result",
+                            border_style=style,
+                        )))
+
+            # Code execution
+            elif step.action == "code":
+                display_content = step.content
+                if len(display_content) > 10000:
+                    display_content = display_content[:10000] + "\n\n... [Output Truncated for UI Performance]"
+                self._safe_mount(container, Static(Panel(
+                    Syntax(display_content, "python", theme="monokai", line_numbers=True),
+                    title="⚡ Code Execution",
+                    border_style="cyan",
+                )))
+                if step.result:
+                    display_result = step.result
+                    if len(display_result) > 10000:
+                        display_result = display_result[:10000] + "\n... [Truncated]"
+                    style = "red" if step.result.startswith("ERROR") else "green"
+                    self._safe_mount(container, Static(Panel(
+                        Text(display_result),
+                        title="📤 Output",
                         border_style=style,
                     )))
 
-        # Code execution
-        elif step.action == "code":
-            display_content = step.content
-            if len(display_content) > 10000:
-                display_content = display_content[:10000] + "\n\n... [Output Truncated for UI Performance]"
-            container.mount(Static(Panel(
-                Syntax(display_content, "python", theme="monokai", line_numbers=True),
-                title="⚡ Code Execution",
-                border_style="cyan",
-            )))
-            if step.result:
-                display_result = step.result
-                if len(display_result) > 10000:
-                    display_result = display_result[:10000] + "\n... [Truncated]"
-                style = "red" if step.result.startswith("ERROR") else "green"
-                container.mount(Static(Panel(
-                    Text(display_result),
-                    title="📤 Output",
-                    border_style=style,
+            # Final answer
+            elif step.action == "final_answer":
+                display_content = step.content
+                if len(display_content) > 15000:
+                    display_content = display_content[:15000] + "\n\n... [Output Truncated for UI Performance]"
+                try:
+                    content = Markdown(display_content)
+                except Exception:
+                    content = Text(display_content)
+                self._safe_mount(container, Static(Panel(
+                    content,
+                    title="✅ Final Answer",
+                    border_style="bold green",
                 )))
+                self._chat_history.append({"role": "assistant", "content": step.content})
 
-        # Final answer
-        elif step.action == "final_answer":
-            display_content = step.content
-            if len(display_content) > 15000:
-                display_content = display_content[:15000] + "\n\n... [Output Truncated for UI Performance]"
-            try:
-                content = Markdown(display_content)
-            except Exception:
-                content = Text(display_content)
-            container.mount(Static(Panel(
-                content,
-                title="✅ Final Answer",
-                border_style="bold green",
-            )))
-            self._chat_history.append({"role": "assistant", "content": step.content})
-
-        # Sub-queries
-        elif step.action == "sub_queries":
-            display_content = step.content
-            if len(display_content) > 10000:
-                display_content = display_content[:10000] + "\n... [Truncated]"
-            container.mount(Static(Panel(
-                display_content,
-                title="🔄 Sub-Queries",
-                border_style="yellow",
-            )))
-            if step.result and step.result != "DEPTH LIMIT REACHED":
-                container.mount(Static(Panel(
-                    step.result[:2000],
-                    title="📥 Sub-Query Results",
-                    border_style="dim green",
+            # Sub-queries
+            elif step.action == "sub_queries":
+                display_content = step.content
+                if len(display_content) > 10000:
+                    display_content = display_content[:10000] + "\n... [Truncated]"
+                self._safe_mount(container, Static(Panel(
+                    escape(display_content),
+                    title="🔄 Sub-Queries",
+                    border_style="yellow",
                 )))
+                if step.result and step.result != "DEPTH LIMIT REACHED":
+                    self._safe_mount(container, Static(Panel(
+                        escape(step.result[:2000]),
+                        title="📥 Sub-Query Results",
+                        border_style="dim green",
+                    )))
+        except Exception:
+            pass
 
-        self._ensure_streaming_widget()
+        if step.action != "final_answer":
+            self._ensure_streaming_widget()
 
     def action_copy_chat(self) -> None:
         if not self._chat_history:

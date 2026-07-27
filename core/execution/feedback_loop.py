@@ -59,14 +59,15 @@ class TestRunResult:
 
 
 class ExecutionFeedbackLoop:
-    """Auto-run tests after code changes and inject feedback into context."""
+    """Auto-run tests and web outcome inspection after code changes and inject feedback into context."""
 
     def __init__(self, project_root: Path, enabled: bool = True, auto_run: bool = True, timeout: int = 60):
-        self.project_root = project_root
+        self.project_root = Path(project_root).resolve()
         self.enabled = enabled
         self.auto_run = auto_run
         self.timeout = timeout
         self._last_test_result: Optional[TestRunResult] = None
+        self._last_web_result: Optional[Any] = None
         self._files_modified_since_test: set[str] = set()
 
     def on_tool_executed(self, tool_name: str, params: dict, output: str) -> Optional[TestRunResult]:
@@ -78,6 +79,11 @@ class ExecutionFeedbackLoop:
             path = params.get("path", "")
             if path:
                 self._files_modified_since_test.add(path)
+                try:
+                    from core.flashlight.graph_engine import get_project_graph
+                    get_project_graph(str(self.project_root)).build()
+                except Exception:
+                    pass
 
         if self._should_run_tests(tool_name):
             return self._run_tests()
@@ -86,14 +92,43 @@ class ExecutionFeedbackLoop:
     def _should_run_tests(self, tool_name: str) -> bool:
         if not self._files_modified_since_test:
             return False
-        if tool_name == "RUN_COMMAND":
+        if tool_name in ("RUN_COMMAND", "WRITE_FILE", "EDIT_FILE"):
             return True
         return False
 
     def _run_tests(self) -> TestRunResult:
-        """Detect and run the project's test suite."""
+        """Detect and run the project's test suite or web inspector."""
         test_cmd = self._detect_test_command()
         if not test_cmd:
+            # Check if any modified file is a web file (.html, .js, .css)
+            html_files = [f for f in self._files_modified_since_test if f.endswith(".html")]
+            if not html_files:
+                # Find any index.html or main html in project root
+                root_htmls = list(self.project_root.glob("*.html"))
+                if root_htmls:
+                    html_files = [str(root_htmls[0])]
+
+            if html_files:
+                try:
+                    from core.execution.web_inspector import WebOutcomeInspector
+                    inspector = WebOutcomeInspector(output_dir=self.project_root / ".torchlight" / "screenshots")
+                    target_file = Path(html_files[0]) if Path(html_files[0]).is_absolute() else self.project_root / html_files[0]
+                    res = inspector.inspect(file_path=str(target_file), wait_ms=1000)
+                    self._last_web_result = res
+                    self._files_modified_since_test.clear()
+                    
+                    status = TestResultStatus.PASS if res.is_passed else TestResultStatus.FAIL
+                    tr = TestResult(name=html_files[0], status=status, error_message="\n".join(res.console_errors))
+                    return TestRunResult(
+                        command=f"INSPECT_WEB {html_files[0]}",
+                        return_code=0 if res.is_passed else 1,
+                        duration_ms=res.duration_ms,
+                        results=[tr],
+                        stdout=res.to_markdown()
+                    )
+                except Exception as e:
+                    logger.warning(f"Auto Web Outcome Inspection failed: {e}")
+
             return TestRunResult(command="", return_code=-1, duration_ms=0, results=[])
 
         try:
@@ -137,12 +172,20 @@ class ExecutionFeedbackLoop:
 
     def build_feedback_context(self) -> str:
         """Build feedback context string for the LLM."""
-        if not self._last_test_result:
-            return ""
-        r = self._last_test_result
-        if r.all_passed:
-            return f"Tests: {r.passed} passed ({r.command})"
-        return (
-            f"Tests: {r.passed} passed, {r.failed} failed ({r.command})\n"
-            f"{r.stdout[-500:] if r.stdout else ''}"
-        )
+        feedback_parts = []
+        if self._last_test_result:
+            r = self._last_test_result
+            if r.all_passed:
+                feedback_parts.append(f"Tests: {r.passed} passed ({r.command})")
+            else:
+                feedback_parts.append(
+                    f"Tests: {r.passed} passed, {r.failed} failed ({r.command})\n"
+                    f"{r.stdout[-500:] if r.stdout else ''}"
+                )
+        if self._last_web_result:
+            feedback_parts.append(self._last_web_result.to_markdown())
+            self._last_web_result = None  # Consume to prevent repeating stale feedback across turns
+
+        return "\n\n".join(feedback_parts)
+
+

@@ -234,9 +234,16 @@ class StreamingChatSession:
         _bm.MAX_BEAM_FILES     = self._beam_files
         _bm.MAX_LINES_PER_FILE = self._beam_lines
         total_syms = sum(len(e.symbols) for e in self._index.files.values())
+        graph_info = ""
+        try:
+            from core.flashlight.graph_engine import get_project_graph
+            graph = get_project_graph(str(self._project_dir))
+            graph_info = f", graph: {len(graph.nodes)} nodes"
+        except Exception:
+            pass
         console.print(
-            f"[dim]{len(self._index.files)} files, {total_syms} symbols "
-            f"(beam: {self._beam_files}×{self._beam_lines}L)[/dim]"
+            f"[dim]{len(self._index.files)} files, {total_syms} symbols"
+            f"{graph_info} (beam: {self._beam_files}×{self._beam_lines}L)[/dim]"
         )
 
     def _rebuild_index(self) -> None:
@@ -770,7 +777,8 @@ class StreamingChatSession:
         if tokens_per_sec > 0:
             content += f" | [cyan]Speed[/cyan]: {tokens_per_sec:.1f} tok/s"
         if preview:
-            content += f"\n[dim]Streaming:[/dim] {preview}"
+            from rich.markup import escape
+            content += f"\n[dim]Streaming:[/dim] {escape(preview)}"
 
         return Panel(content, title="[bold]Live Stats[/bold]", border_style="blue")
 

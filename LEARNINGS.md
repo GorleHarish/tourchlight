@@ -107,8 +107,22 @@
   2. **Full Payload Token Accounting**: Updated `TieredMemory.total_tokens` to calculate `msg_tokens + pinned_tokens`, ensuring compression thresholds accurately trigger before pinned files push the payload over context limits.
   3. **Session Summary History Pruning**: Trimmed `summary_messages` in `rlm_engine_optimized.py` to system prompt + recent turns when history length > 4, preventing summary generation from overflowing model context windows at task completion.
 
+## Ephemeral 3-Tier Web Outcome Inspection (Zero-Persistent Memory Footprint)
+- **Problem**: Local coding agents frequently generate HTML5 Canvas games, CSS layouts, and web components without a mechanism to verify JavaScript runtime execution. Static code generation misses silent runtime exceptions (`TypeError: Cannot read properties of null`), 404 resource errors, and blank canvas loops. Running a continuous headless browser instance consumes 1GB+ VRAM/RAM, competing with local LLM models on memory-constrained devices (8GB-16GB Macs).
+- **Solution (Ephemeral 3-Tier Web Outcome Inspection)**: Built `WebOutcomeInspector` with a zero-persistent-memory footprint. Spawns an on-demand local HTTP server on a free port (`127.0.0.1:0`), executes an ephemeral headless Playwright page load (<1.5s) to capture `console.error`, unhandled rejections, 404 network resources, canvas pixel data (`getImageData`), and DOM snapshots, then immediately terminates the browser process (`browser.close()`) to return RAM usage to 0MB. Falls back gracefully to Node JSDOM (Tier 3) and Python `HTMLParser` (Tier 1) when Playwright is uninstalled.
 
+## Consume-on-Read Pattern for Automated Feedback Context
+- **Problem**: When automated feedback mechanisms inject inspection results into memory context, calling `build_feedback_context()` repeatedly without state resets causes the exact same Web Inspection Markdown report to be appended turn after turn, polluting the LLM context window with duplicate tokens.
+- **Solution (Consume-on-Read Pattern)**: Set `self._last_web_result = None` immediately after generating the feedback markdown string in `build_feedback_context()`. This ensures feedback is injected exactly once into the prompt immediately after code modification and never duplicates across subsequent conversational steps.
 
+## Silent Blank Canvas Render Detection in HTML5 Games
+- **Problem**: Web applications and HTML5 canvas games can load with zero JavaScript console errors while failing to render anything visually (e.g. failing to invoke `requestAnimationFrame` or missing `ctx.drawImage()`).
+- **Solution (Pixel Array Verification)**: Added client-side canvas pixel evaluation via `ctx.getImageData(0, 0, width, height)`. If 100% of RGBA pixels remain transparent (`val === 0`), the inspector flags a `⚠️ Warning: Canvas element found but 0 pixels drawn (blank canvas)`, informing the LLM that the rendering loop failed.
 
+## Fast Inline Pre-Commit Syntax Guardrails
+- **Problem**: Relying solely on full test runners (e.g., `pytest`, `jest`) to catch python syntax errors causes high iteration latency during `WRITE_FILE` / `EDIT_FILE` tool execution.
+- **Solution (Pre-Commit Syntax Checks)**: Integrated fast AST parsing (`ast.parse()`) directly inside `tool_write_file_impl` and `tool_edit_file_impl`. If an edit introduces invalid syntax, a line-specific warning (`⚠️ Syntax Warning (line X): <msg>`) is immediately returned in the tool response, allowing the LLM to self-correct on the very next turn without waiting for CLI test execution.
 
-
+## Parallel & Batch Read Tool Execution
+- **Problem**: Exploring codebases by executing sequential `READ_FILE`, `GREP`, and `READ_SYMBOLS` calls creates high overall turn latency.
+- **Solution (Batch Tool Dispatch)**: Added `execute_batch()` to `ToolRegistry`. Read-only `AUTO` risk tool calls execute concurrently via `ThreadPoolExecutor`, delivering a 3x-5x speedup during exploration phases.

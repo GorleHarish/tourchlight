@@ -32,14 +32,15 @@ _GO_FUNC_RE = re.compile(r'^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(')
 _GO_STRUCT_RE = re.compile(r'^type\s+(\w+)\s+struct')
 
 class FileEntry:
-    __slots__ = ("rel_path", "lines", "symbols", "imports", "size")
+    __slots__ = ("rel_path", "lines", "symbols", "imports", "size", "mtime")
 
-    def __init__(self, rel_path: str, lines: list[str], symbols: list, imports: list[str]):
+    def __init__(self, rel_path: str, lines: list[str], symbols: list, imports: list[str], mtime: float = 0.0):
         self.rel_path = rel_path
         self.lines = lines
         self.symbols = symbols
         self.imports = imports
         self.size = len(lines)
+        self.mtime = mtime
 
 
 class SymbolIndex:
@@ -48,7 +49,9 @@ class SymbolIndex:
         self.files: dict[str, FileEntry] = {}
 
     def build(self) -> int:
-        self.files = {}
+        old_files = self.files
+        new_files: dict[str, FileEntry] = {}
+
         for root, dirs, files in os.walk(self.project_dir):
             dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
             for file in files:
@@ -56,13 +59,20 @@ class SymbolIndex:
                 if path.suffix not in SUPPORTED_EXTENSIONS:
                     continue
                 try:
-                    text = path.read_text(errors="ignore")
                     rel = str(path.relative_to(self.project_dir))
+                    mtime = path.stat().st_mtime
+                    if rel in old_files and old_files[rel].mtime == mtime:
+                        new_files[rel] = old_files[rel]
+                        continue
+
+                    text = path.read_text(errors="ignore")
                     lines, symbols, imports = self._parse(text, path.suffix)
-                    self.files[rel] = FileEntry(rel, lines, symbols, imports)
+                    new_files[rel] = FileEntry(rel, lines, symbols, imports, mtime=mtime)
                 except Exception:
                     continue
+        self.files = new_files
         return len(self.files)
+
 
     def summary(self) -> str:
         total_files = len(self.files)

@@ -158,7 +158,67 @@ class ToolRegistry:
                 metadata={"tool_name": name, "exception": str(e)},
             )
 
+    def execute_batch(self, tool_calls: list[dict], project_root: str = ".", max_workers: int = 4) -> list[ToolResult]:
+        """
+        Execute multiple tool calls in parallel when safe (AUTO risk level).
+        Falls back to sequential execution for mutating/confirm calls.
+
+        tool_calls format: [{"name": "READ_FILE", "arguments": {"path": "a.py"}}, ...]
+        """
+        import concurrent.futures
+
+        if not tool_calls:
+            return []
+
+        results = [None] * len(tool_calls)
+        parallel_indices = []
+
+        for idx, call in enumerate(tool_calls):
+            if not isinstance(call, dict):
+                continue
+            name = call.get("name", "")
+            args = call.get("arguments", call.get("args", {}))
+            if not isinstance(args, dict):
+                args = {}
+            risk = self.risk_level_for(name, args)
+            if risk == AUTO:
+                parallel_indices.append(idx)
+
+        if parallel_indices:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(max_workers, len(parallel_indices))) as executor:
+                future_map = {}
+                for i in parallel_indices:
+                    c = tool_calls[i]
+                    name = c.get("name", "") if isinstance(c, dict) else ""
+                    args = c.get("arguments", c.get("args", {})) if isinstance(c, dict) else {}
+                    if not isinstance(args, dict):
+                        args = {}
+                    future = executor.submit(self.execute, name, args, project_root)
+                    future_map[future] = i
+
+                for future in concurrent.futures.as_completed(future_map):
+                    i = future_map[future]
+                    try:
+                        results[i] = future.result()
+                    except Exception as e:
+                        results[i] = ToolResult(success=False, output="", error=str(e))
+
+        for i, call in enumerate(tool_calls):
+            if results[i] is None:
+                if isinstance(call, dict):
+                    name = call.get("name", "")
+                    args = call.get("arguments", call.get("args", {}))
+                    if not isinstance(args, dict):
+                        args = {}
+                    results[i] = self.execute(name, args, project_root)
+                else:
+                    results[i] = ToolResult(success=False, output="", error="Invalid tool call format")
+
+        return results
+
+
     def get_description_block(self, max_tokens: int = 4096) -> str:
+
         """
         Generate tool descriptions for injection into the system prompt.
 
@@ -217,9 +277,11 @@ def _create_default_registry() -> ToolRegistry:
         tool_ask_user_impl,
         tool_git_impl,
         tool_search_ast_impl,
+        tool_inspect_web_impl,
     )
 
     registry = ToolRegistry()
+
 
     def _reg(name, icon, desc, risk, fn, cat="core"):
         registry.register(ToolDef(name=name, icon=icon, description=desc,
@@ -300,4 +362,10 @@ def _create_default_registry() -> ToolRegistry:
          "Args: query (required), action (search|signature|source|ast|structure|subgraph), top_k (default: 3).",
          AUTO, tool_search_ast_impl, cat="core")
 
+    _reg("INSPECT_WEB", "🕸️",
+         "Inspect runtime outcome of HTML/JS/CSS web pages or HTML5 games (captures console errors, 404s, DOM snapshot, screenshot). "
+         "Args: path (required), wait_ms (default: 1500).",
+         AUTO, tool_inspect_web_impl, cat="web")
+
     return registry
+

@@ -119,6 +119,18 @@ class Flashlight:
             score += len(query_tokens & self._tokenize(line)) * 0.5
         if rel_path == self._active_file and score > 0:
             score += 2.0
+
+        # AST Graph relevance bonus
+        try:
+            from .graph_engine import get_project_graph
+            graph = get_project_graph(str(self.index.project_dir))
+            for q_tok in query_tokens:
+                if any(q_tok in nid.lower() for nid in graph.nodes if rel_path in nid):
+                    score += 3.0
+                    break
+        except Exception:
+            pass
+
         return score
 
     def _extract_snippet(self, query_tokens: set, entry: FileEntry, max_lines: Optional[int] = None) -> tuple[str, int]:

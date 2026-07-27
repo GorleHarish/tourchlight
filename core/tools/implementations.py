@@ -371,6 +371,23 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         return f"Error reading file: {e}"
 
 
+def _check_syntax(content: str, filename: str) -> Optional[str]:
+    """Perform fast inline syntax validation for edited/written files."""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext == ".py":
+        import ast
+        try:
+            ast.parse(content, filename=filename)
+        except SyntaxError as se:
+            line_no = getattr(se, "lineno", "?")
+            msg = getattr(se, "msg", str(se))
+            return f"\n⚠️ Syntax Warning (line {line_no}): {msg}"
+        except Exception as e:
+            return f"\n⚠️ Syntax Warning: {e}"
+    return None
+
+
+
 def tool_write_file_impl(args: dict, project_root: str) -> str:
     """WRITE_FILE — create or overwrite a file."""
     if not isinstance(args, dict):
@@ -411,9 +428,11 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
         line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
-        return f"Written {line_count} lines to {p}"
+        syntax_note = _check_syntax(content, p) or ""
+        return f"Written {line_count} lines to {p}{syntax_note}"
     except Exception as e:
         return f"Error writing {p}: {e}"
+
 
 
 def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
@@ -503,7 +522,9 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
 
-            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars)."
+            syntax_note = _check_syntax(new_content, p) or ""
+            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{syntax_note}"
+
 
         # Helper: Normalize lines for line-based matching
         def normalize_line(l):
@@ -1315,35 +1336,61 @@ def tool_git_impl(args: dict, project_root: str) -> str:
 
 
 def tool_search_ast_impl(args: dict, project_root: str) -> str:
-    """Query Kùzu AST graph (semantic search, signature, source, structure, subgraph)."""
+    """Query AST Knowledge Graph (search, path, subgraph, structure, update, summary)."""
     query = str(args.get("query", "")).strip()
     action = str(args.get("action", "search")).strip().lower()
-    top_k = int(args.get("top_k", 3))
+    top_k = int(args.get("top_k", 5))
+
+    from core.flashlight.graph_engine import get_project_graph
+    graph = get_project_graph(project_root)
+
+    if action in ("update", "reindex", "build"):
+        gdict = graph.build()
+        return f"✅ AST Graph re-indexed successfully: {gdict['node_count']} nodes, {gdict['edge_count']} edges saved to `.torchlight/graph.json`."
+    elif action in ("search", "query", "semantic"):
+        if not query:
+            return graph.get_structure()
+        res = graph.query(query, top_k=top_k)
+        if "No AST graph nodes found" in res:
+            try:
+                from rlm_optimized.repl_sandbox import semantic_search
+                return semantic_search(query, top_k=top_k, project_root=project_root)
+            except ImportError:
+                pass
+        return res
+    elif action in ("path", "find_path"):
+        target = str(args.get("target", args.get("to", ""))).strip()
+        if not target and "," in query:
+            parts = query.split(",", 1)
+            query, target = parts[0].strip(), parts[1].strip()
+        return graph.find_path(query, target)
+    elif action == "subgraph":
+        return graph.get_subgraph(query)
+    elif action in ("structure", "project"):
+        return graph.get_structure()
+    elif action in ("summary", "info"):
+        return f"Project AST Graph: {graph.graph_file}\nNodes: {len(graph.nodes)} | Edges: {len(graph.edges)}"
+    else:
+        return graph.query(query, top_k=top_k)
+
+
+def tool_inspect_web_impl(args: dict, project_root: str) -> str:
+    """Inspect runtime outcome of HTML/JS/CSS web pages or Canvas games."""
+    path = str(args.get("path", "")).strip()
+    wait_ms = int(args.get("wait_ms", 1500))
+
+    if not path:
+        return "INSPECT_WEB requires 'path' parameter."
+
+    from pathlib import Path
+    full_path = Path(project_root) / path if not Path(path).is_absolute() else Path(path)
 
     try:
-        from rlm_optimized.repl_sandbox import (
-            semantic_search,
-            get_class_signature,
-            get_function_source,
-            get_function_ast,
-            get_project_structure,
-            get_local_subgraph,
-        )
-    except ImportError:
-        return "⚠️ AST Graph indexing tools unavailable (rlm_optimized module not found)."
+        from core.execution.web_inspector import WebOutcomeInspector
+        inspector = WebOutcomeInspector(output_dir=Path(project_root) / ".torchlight" / "screenshots")
+        res = inspector.inspect(file_path=str(full_path), wait_ms=wait_ms)
+        return res.to_markdown()
+    except Exception as e:
+        return f"Error during web outcome inspection: {e}"
 
-    if action in ("search", "semantic"):
-        return semantic_search(query, top_k=top_k, project_root=project_root)
-    elif action == "signature":
-        return get_class_signature(query, project_root=project_root)
-    elif action == "source":
-        return get_function_source(query, project_root=project_root)
-    elif action == "ast":
-        return get_function_ast(query, project_root=project_root)
-    elif action in ("structure", "project"):
-        return get_project_structure(project_root=project_root)
-    elif action == "subgraph":
-        return get_local_subgraph(query, project_root=project_root)
-    else:
-        return semantic_search(query, top_k=top_k, project_root=project_root)
 

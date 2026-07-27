@@ -173,24 +173,31 @@ class ContextDashboard:
         self.console.print(Panel(summary, style="cyan"))
 
     def print_error(self, error: str) -> None:
-        self.console.print(f"[bold red]Error:[/bold red] {error}")
+        from rich.markup import escape
+        self.console.print(f"[bold red]Error:[/bold red] {escape(error)}")
 
     def print_success(self, message: str) -> None:
-        self.console.print(f"[bold green]✓[/bold green] {message}")
+        from rich.markup import escape
+        self.console.print(f"[bold green]✓[/bold green] {escape(message)}")
 
     def print_warning(self, message: str) -> None:
-        self.console.print(f"[bold yellow]⚠[/bold yellow] {message}")
+        from rich.markup import escape
+        self.console.print(f"[bold yellow]⚠[/bold yellow] {escape(message)}")
 
     def print_info(self, message: str) -> None:
-        self.console.print(f"[cyan]ℹ[/cyan] {message}")
+        from rich.markup import escape
+        self.console.print(f"[cyan]ℹ[/cyan] {escape(message)}")
 
     def print_critique_start(self, tool_name: Optional[str] = None) -> None:
-        label = f" for {tool_name}" if tool_name else ""
+        from rich.markup import escape
+        label = f" for {escape(tool_name)}" if tool_name else ""
         self.console.print(f"[bold yellow]🔍 Critic Pass:[/bold yellow] Evaluating proposal{label}...")
 
     def print_refined(self, flaws: list[str], tool_name: Optional[str] = None) -> None:
-        target = f" ({tool_name})" if tool_name else ""
-        flaw_str = f" [dim](Fixed: {', '.join(flaws)})[/dim]" if flaws else ""
+        from rich.markup import escape
+        target = f" ({escape(tool_name)})" if tool_name else ""
+        escaped_flaws = [escape(f) for f in flaws]
+        flaw_str = f" [dim](Fixed: {', '.join(escaped_flaws)})[/dim]" if flaws else ""
         self.console.print(f"[bold green]✨ Refined Proposal{target}[/bold green]{flaw_str}")
 
 
@@ -213,7 +220,8 @@ class ContextDashboard:
         self.console.print(Panel(response, style="green"))
 
     def print_user_input(self, user_input: str) -> None:
-        self.console.print(f"\n[bold blue]You:[/bold blue] {user_input}")
+        from rich.markup import escape
+        self.console.print(f"\n[bold blue]You:[/bold blue] {escape(user_input)}")
 
     def spinner(self, text: str) -> Progress:
         progress = Progress(
@@ -301,9 +309,11 @@ class ActionEntry:
 
         elapsed = f"[dim]{self.elapsed_ms}ms[/dim]" if self.ended_at else ""
         label   = self.label[:60] + "…" if len(self.label) > 60 else self.label
+        from rich.markup import escape
+        escaped_label = escape(label)
 
         line = Text.from_markup(
-            f"  {status_mark} {icon}  {label_style}{label}[/]  {elapsed}"
+            f"  {status_mark} {icon}  {label_style}{escaped_label}[/]  {elapsed}"
         )
         return line
 
@@ -389,8 +399,10 @@ class ActionTracker:
         """
         icon  = _ACTION_ICONS.get(kind, _ACTION_ICONS["default"])
         color = _ACTION_COLORS.get(kind, _ACTION_COLORS["default"])
+        from rich.markup import escape
+        escaped_label = escape(label)
         self._console.print(
-            f"  [green]✓[/green] {icon}  [{color}]{label}[/{color}]"
+            f"  [green]✓[/green] {icon}  [{color}]{escaped_label}[/{color}]"
         )
 
     def action(self, kind: str, label: str) -> "_ActionContext":

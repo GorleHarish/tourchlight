@@ -4,7 +4,9 @@
     "Session on 2026-07-26: Summary text",
     "Session on 2026-07-26: Summary",
     "Session on 2026-07-27: Summary text",
-    "Session on 2026-07-27: Summary"
+    "Session on 2026-07-27: Summary",
+    "Session on 2026-07-28: Summary text",
+    "Session on 2026-07-28: Summary"
   ],
   "arch_decisions": [
     "The README file you've shared describes Torchlight's capabilities - a private, offline agent designed for context-starved developers"
@@ -12,7 +14,7 @@
   "tried_and_failed": [],
   "tech_stack": [],
   "created": "2026-03-24T22:07:51.903882",
-  "last_updated": "2026-07-27T15:18:07.819003",
+  "last_updated": "2026-07-28T01:14:10.584811",
   "needle_ledger": [],
   "memory_objects": []
 }

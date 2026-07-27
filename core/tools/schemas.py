@@ -202,17 +202,32 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Natural language or symbol query for AST graph search"},
-            "action": {"type": "string", "description": "Query action: search (semantic), structure, signature, source, ast, subgraph"},
-            "top_k": {"type": "integer", "description": "Number of semantic search results (default: 3)"},
+            "action": {"type": "string", "description": "Query action: search, path, subgraph, structure, update, summary"},
+            "target": {"type": "string", "description": "Target symbol for pathfinding (when action is 'path')"},
+            "top_k": {"type": "integer", "description": "Number of search results (default: 5)"},
         },
-        "required": ["query"],
+        "required": [],
         "aliases": {
-            "query": ["q", "name", "symbol", "search_text", "pattern"],
+            "query": ["q", "name", "symbol", "search_text", "pattern", "source", "from"],
             "action": ["cmd", "type", "mode"],
+            "target": ["to", "dest", "end"],
             "top_k": ["limit", "k", "count"],
         },
     },
+    "INSPECT_WEB": {
+        "type": "object",
+        "properties": {
+            "path": {"type": "string", "description": "Target HTML or JS file relative path"},
+            "wait_ms": {"type": "integer", "description": "Wait time in ms for page load / game loop (default: 1500)"},
+        },
+        "required": ["path"],
+        "aliases": {
+            "path": ["file", "filename", "filepath", "target", "url", "p"],
+            "wait_ms": ["wait", "timeout", "delay"],
+        },
+    },
 }
+
 
 
 # ── Validation ─────────────────────────────────────────────────────────────
