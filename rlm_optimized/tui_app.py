@@ -26,6 +26,7 @@ from rich.text import Text
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.markdown import Markdown
+from rich.markup import escape
 
 import sys
 import subprocess
@@ -162,7 +163,7 @@ class ApprovalModal(ModalScreen[bool]):
 
         with Vertical(id="approval-dialog"):
             yield Static(f"{risk_icon} {risk_label}", id="approval-title")
-            yield Static(f"Action: [bold bright_blue]{self.tool_name}[/]", id="approval-tool")
+            yield Static(f"Action: [bold bright_blue]{escape(self.tool_name)}[/]", id="approval-tool")
             
             display_args = dict(self.tool_args) if self.tool_args else {}
             if self.tool_name == "WRITE_FILE" and "content" in display_args:
@@ -176,7 +177,7 @@ class ApprovalModal(ModalScreen[bool]):
             args_str = json.dumps(display_args, indent=2)
             if len(args_str) > 4000:
                 args_str = args_str[:4000] + "\n... [Arguments Truncated]"
-            yield Static(args_str, id="approval-args")
+            yield Static(escape(args_str), id="approval-args")
             with Horizontal(id="approval-buttons"):
                 yield Button("✅ Allow (Y)", variant="success", id="allow-btn")
                 yield Button("❌ Deny (N)", variant="error", id="deny-btn")
@@ -256,7 +257,7 @@ class FolderPickerModal(ModalScreen[Optional[str]]):
                 yield Button("🖥️ Desktop", variant="default", id="jump-desktop")
                 yield Button("📁 Current", variant="default", id="jump-current")
             yield Input(placeholder="Or type/paste path directly...", value=self.selected_path, id="picker-input")
-            yield Static(f"Selected: {self.selected_path}", id="picker-path")
+            yield Static(f"Selected: {escape(self.selected_path)}", id="picker-path")
             yield DirectoryTree(self.root_path, id="picker-tree")
             with Horizontal(id="picker-buttons"):
                 yield Button("✅ Select This Folder", variant="success", id="select-folder-btn")
@@ -267,20 +268,20 @@ class FolderPickerModal(ModalScreen[Optional[str]]):
         target = os.path.abspath(os.path.expanduser(event.value.strip()))
         if os.path.isdir(target):
             self.selected_path = target
-            self.query_one("#picker-path", Static).update(f"Selected: [bold green]{self.selected_path}[/]")
+            self.query_one("#picker-path", Static).update(f"Selected: [bold green]{escape(self.selected_path)}[/]")
             try:
                 tree = self.query_one("#picker-tree", DirectoryTree)
                 tree.path = target
             except Exception:
                 pass
         else:
-            self.query_one("#picker-path", Static).update(f"[bold red]Invalid directory:[/] {target}")
+            self.query_one("#picker-path", Static).update(f"[bold red]Invalid directory:[/] {escape(target)}")
 
     @on(DirectoryTree.DirectorySelected, "#picker-tree")
     def on_directory_selected(self, event: DirectoryTree.DirectorySelected) -> None:
         self.selected_path = str(event.path)
         try:
-            self.query_one("#picker-path", Static).update(f"Selected: [bold green]{self.selected_path}[/]")
+            self.query_one("#picker-path", Static).update(f"Selected: [bold green]{escape(self.selected_path)}[/]")
             self.query_one("#picker-input", Input).value = self.selected_path
         except Exception:
             pass
@@ -306,7 +307,7 @@ class FolderPickerModal(ModalScreen[Optional[str]]):
         if os.path.exists(target):
             self.selected_path = target
             try:
-                self.query_one("#picker-path", Static).update(f"Selected: [bold green]{self.selected_path}[/]")
+                self.query_one("#picker-path", Static).update(f"Selected: [bold green]{escape(self.selected_path)}[/]")
                 self.query_one("#picker-input", Input).value = self.selected_path
                 tree = self.query_one("#picker-tree", DirectoryTree)
                 tree.path = target
@@ -373,8 +374,8 @@ class ModelPickerModal(ModalScreen[Optional[dict]]):
                 for idx, m in enumerate(self.models):
                     btn_id = f"model-select-{idx}"
                     yield Static(
-                        f"[bold text-white]{m['name']}[/]\n"
-                        f"[dim]ID:[/] [cyan]{m['id']}[/]  │  [dim]Provider:[/] [yellow]{m['provider']}[/]",
+                        f"[bold text-white]{escape(m['name'])}[/]\n"
+                        f"[dim]ID:[/] [cyan]{escape(m['id'])}[/]  │  [dim]Provider:[/] [yellow]{escape(m['provider'])}[/]",
                         classes="model-card"
                     )
                     yield Button(f"Use {m['name']}", id=btn_id, variant="primary")
@@ -426,7 +427,7 @@ class CopySelectionModal(ModalScreen[Optional[str]]):
                         btn_id = f"copy-turn-{idx}"
                         yield Static(
                             f"[bold text-white]{role_icon}[/]\n"
-                            f"[dim]{snippet}[/]",
+                            f"[dim]{escape(snippet)}[/]",
                             classes="copy-item-card"
                         )
                         yield Button(f"Copy {role_icon} Turn #{len(self.history) - idx}", id=btn_id, variant="primary")
@@ -489,9 +490,9 @@ class AgentStatusModal(ModalScreen[None]):
         with Vertical(id="status-dialog"):
             yield Static("📡 Background Agent Action Telemetry & Live Inspector", id="status-title")
             with Horizontal(id="status-metrics-row"):
-                yield Static(f"Current State:\n[bold cyan]{self.current_state}[/]", classes="metric-badge")
+                yield Static(f"Current State:\n[bold cyan]{escape(self.current_state)}[/]", classes="metric-badge")
                 yield Static(f"Total Events Logged:\n[bold yellow]{len(self.events)}[/]", classes="metric-badge")
-                yield Static(f"System Context:\n[dim]{self.meta_summary.splitlines()[0] if self.meta_summary else ''}[/]", classes="metric-badge")
+                yield Static(f"System Context:\n[dim]{escape(self.meta_summary.splitlines()[0]) if self.meta_summary else ''}[/]", classes="metric-badge")
             yield Static("📜 Real-Time Agent Action Log:", classes="sidebar-section-title")
             with VerticalScroll(id="status-log-scroll"):
                 # Autonomous Sub-agent Goal Telemetry if goal_spec exists
@@ -748,8 +749,8 @@ class TorchlightApp(App):
             f"{chip_line}\n"
             f"{ram_line}\n"
             f"[bold]Engine Server:[/] {server_status_str}\n"
-            f"[bold]Provider:[/] [cyan]{self.provider_name}[/]\n"
-            f"[bold]Model:[/] [magenta]{self.model_name}[/]\n"
+            f"[bold]Provider:[/] [cyan]{escape(self.provider_name)}[/]\n"
+            f"[bold]Model:[/] [magenta]{escape(self.model_name)}[/]\n"
             f"[bold]Context:[/] {CTX_SIZE:,} tokens\n"
             f"[bold]LLM Calls:[/] {self.engine._total_llm_calls}\n"
             f"[bold]Est Tokens:[/] {tokens_est:,} / {CTX_SIZE:,}\n"
@@ -780,15 +781,15 @@ class TorchlightApp(App):
             if hasattr(self, "_conn_banner_widget") and self._conn_banner_widget:
                 if is_online:
                     self._conn_banner_widget.update(
-                        f"  [bold green]Connected to {self.provider_name} ({self.model_name}) on port {self.engine_port}[/]\n"
+                        f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {self.engine_port}[/]\n"
                     )
                 elif self.externally_managed:
                     self._conn_banner_widget.update(
-                        f"  [bold red]Cannot connect to {self.provider_name}![/] Nothing on port {self.engine_port}.\n"
+                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/] Nothing on port {self.engine_port}.\n"
                     )
                 else:
                     self._conn_banner_widget.update(
-                        f"  [bold red]Cannot connect to {self.provider_name}![/] Server offline on port {self.engine_port}.\n"
+                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/] Server offline on port {self.engine_port}.\n"
                     )
 
     def on_mount(self) -> None:
@@ -811,20 +812,20 @@ class TorchlightApp(App):
         if self.engine_port <= 0:
             is_online = True
             self._last_server_online = True
-            banner_text = f"  [bold green]Using {self.provider_name} ({self.model_name})[/]\n"
+            banner_text = f"  [bold green]Using {escape(self.provider_name)} ({escape(self.model_name)})[/]\n"
         else:
             is_online = is_port_in_use(self.engine_port)
             self._last_server_online = is_online
             if is_online:
-                banner_text = f"  [bold green]Connected to {self.provider_name} ({self.model_name}) on port {self.engine_port}[/]\n"
+                banner_text = f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {self.engine_port}[/]\n"
             elif self.externally_managed:
                 banner_text = (
-                    f"  [bold red]Cannot connect to {self.provider_name}![/]\n"
+                    f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
                     f"    [dim]Nothing on port {self.engine_port}. Start it yourself, then click Start to re-check.[/]\n"
                 )
             else:
                 banner_text = (
-                    f"  [bold red]Cannot connect to {self.provider_name}![/]\n"
+                    f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
                     f"    [dim]Server offline on port {self.engine_port}. Click Start or Restart.[/]\n"
                 )
 
@@ -981,15 +982,15 @@ class TorchlightApp(App):
 
         elif cmd == "/model":
             if not arg:
-                self.notify(f"Current model: {self.model_name}. Usage: /model <name>", severity="information", timeout=3)
-                return
-            normalized = normalize_model_name(arg)
-            self.model_name = normalized
-            if hasattr(self.engine.client, "model"):
-                self.engine.client.model = normalized
-            self.update_status_bar()
-            self.update_sidebar_meta()
-            self.notify(f"Switched model to {normalized}", severity="information", timeout=2)
+                self.notify(f"Current model: {escape(self.model_name)}. Usage: /model <name>", severity="information", timeout=3)
+            else:
+                normalized = normalize_model_name(arg)
+                self.model_name = normalized
+                if hasattr(self.engine.client, "model"):
+                    self.engine.client.model = normalized
+                self.update_status_bar()
+                self.update_sidebar_meta()
+                self.notify(f"Switched model to {escape(normalized)}", severity="information", timeout=2)
 
         elif cmd in ("/clear", "/cls"):
             self.action_clear()
@@ -1099,10 +1100,10 @@ class TorchlightApp(App):
             self._safe_mount(container, Static("[yellow]  ⚠ Agent task cancelled[/]"))
         except Exception as e:
             self._remove_streaming()
-            from rich.markup import escape
-            err_str = escape(str(e))
-            if len(err_str) > 500:
-                err_str = err_str[:500] + "... [truncated]"
+            raw_err = str(e)
+            if len(raw_err) > 500:
+                raw_err = raw_err[:500] + "... [truncated]"
+            err_str = escape(raw_err)
             self._safe_mount(container, Static(f"  [bold red]Error:[/] {err_str}"))
         finally:
             self._is_running = False
@@ -1615,9 +1616,9 @@ class TorchlightApp(App):
                 )
             sl.update(f" {badge} | {srv_badge}")
             sr.update(
-                f"[bold cyan]{self.model_name}[/] | "
+                f"[bold cyan]{escape(self.model_name)}[/] | "
                 f"[dim]{CTX_SIZE:,} ctx[/] | "
-                f"[yellow]{os.path.basename(self.engine.project_root)}[/] "
+                f"[yellow]{escape(os.path.basename(self.engine.project_root))}[/] "
             )
         except Exception:
             pass
@@ -1637,7 +1638,7 @@ class TorchlightApp(App):
                 self.update_status_bar()
                 tree = self.query_one("#file-tree", DirectoryTree)
                 tree.path = chosen_dir
-                self.notify(f"Working directory set to {chosen_dir}", severity="information", timeout=2)
+                self.notify(f"Working directory set to {escape(str(chosen_dir))}", severity="information", timeout=2)
 
         self.push_screen(FolderPickerModal(self.engine.project_root), _on_picker_result)
 

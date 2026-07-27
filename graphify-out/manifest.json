@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785181795.7262883,
-    "ast_hash": "50e18212330c399d3033baba61dfc526",
+    "mtime": 1785183742.156707,
+    "ast_hash": "e2b4cab7348c59ec8d9462aa459b6840",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -460,9 +460,9 @@
     "semantic_hash": "12dbdb531975a67f4a6d1cd52d4328b1"
   },
   "core/tests/test_markup_escaping.py": {
-    "mtime": 1785145950.1103013,
-    "ast_hash": "fe9b484f75bb371e49b4e006ccc5c426",
-    "semantic_hash": "fe9b484f75bb371e49b4e006ccc5c426"
+    "mtime": 1785183730.3706744,
+    "ast_hash": "2d1f415bdc7c2e60b477a1fe91f693cc",
+    "semantic_hash": ""
   },
   "core/tests/test_models.py": {
     "mtime": 1785009968.358202,
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "rlm_optimized/ast_indexer.py": {
-    "mtime": 1784902042.137659,
-    "ast_hash": "8db705f26c4a86c6cd26ebda80b50d71",
-    "semantic_hash": "8db705f26c4a86c6cd26ebda80b50d71"
+    "mtime": 1785183064.2828813,
+    "ast_hash": "df6d5bde50f64df6db15fa8d90128ce6",
+    "semantic_hash": ""
   },
   "rlm_optimized/cloud_client.py": {
     "mtime": 1784931411.9900315,
@@ -570,9 +570,9 @@
     "semantic_hash": "c4e0e06e1e46f7e6ec0a54d059218a04"
   },
   "rlm_optimized/llamacpp_client.py": {
-    "mtime": 1784932130.640984,
-    "ast_hash": "1a8aa5640822951b52e2efefe92d8937",
-    "semantic_hash": "1a8aa5640822951b52e2efefe92d8937"
+    "mtime": 1785183123.0453084,
+    "ast_hash": "5cd263f16c02c62c4b1026ce1acc31ff",
+    "semantic_hash": ""
   },
   "rlm_optimized/main.py": {
     "mtime": 1783634776.8996797,
@@ -640,9 +640,9 @@
     "semantic_hash": "b1e6a896c2c08a849387079fcbc4e560"
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785145821.06771,
-    "ast_hash": "20ab9c4904ba0e9a6591cb25325961bf",
-    "semantic_hash": "20ab9c4904ba0e9a6591cb25325961bf"
+    "mtime": 1785183713.9777427,
+    "ast_hash": "d095beb5b420e90c8e3947dca4051f6e",
+    "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
     "mtime": 1784585819.6474826,
@@ -695,13 +695,13 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785182087.2350757,
-    "ast_hash": "73d136a79c4412659712b967ab07ad32",
+    "mtime": 1785183105.5902188,
+    "ast_hash": "fda0b6c9dbf304512319ab6808333b0d",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
-    "mtime": 1785182057.1082432,
-    "ast_hash": "ee7012bb16eec11418ad42b58693efaa",
+    "mtime": 1785183115.842685,
+    "ast_hash": "70be0f455c519b3ae9c108b1c6c34035",
     "semantic_hash": ""
   },
   "README.md": {

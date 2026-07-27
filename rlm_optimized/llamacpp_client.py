@@ -65,37 +65,58 @@ class LlamaCppClient:
 
         cleaned_messages = _sanitize_messages(messages)
 
-        payload = {
-            "model": self.model,
-            "messages": cleaned_messages,
-            "temperature": TEMPERATURE,
-            "top_p": TOP_P,
-            "max_tokens": NUM_PREDICT,
-            "repeat_penalty": 1.1,
-            "presence_penalty": 0.1,
-            "stop": ["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],
-        }
+        def _make_payload(include_extra=True):
+            p = {
+                "model": self.model,
+                "messages": cleaned_messages,
+                "temperature": TEMPERATURE,
+                "top_p": TOP_P,
+                "max_tokens": NUM_PREDICT,
+                "presence_penalty": 0.1,
+                "stop": ["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],
+            }
+            if include_extra:
+                p["repeat_penalty"] = 1.1
+                if use_grammar and self._grammar_content:
+                    p["grammar"] = self._grammar_content
+            return p
 
-        if use_grammar and self._grammar_content:
-            payload["grammar"] = self._grammar_content
-
-        data = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
 
         for attempt in range(max_retries):
+            # First try full payload, on attempt > 0 or HTTP 400 try standard payload
+            fallback = attempt > 0
+            payload = _make_payload(include_extra=not fallback)
+            data = json.dumps(payload).encode("utf-8")
             try:
                 req = urllib.request.Request(url, data=data, headers=headers, method="POST")
                 with urllib.request.urlopen(req, timeout=60) as response:
                     res_body = json.loads(response.read().decode("utf-8"))
                     return res_body["choices"][0]["message"]["content"]
             except urllib.error.HTTPError as e:
+                err_body = ""
+                try:
+                    err_body = e.read().decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
                 if e.code == 404 and "/v1" in url:
                     url = url.replace("/v1", "")
                     continue
+                if e.code == 400 and not fallback:
+                    # Retry immediately with standard payload (stripping grammar & repeat_penalty)
+                    try:
+                        std_data = json.dumps(_make_payload(include_extra=False)).encode("utf-8")
+                        req_std = urllib.request.Request(url, data=std_data, headers=headers, method="POST")
+                        with urllib.request.urlopen(req_std, timeout=60) as response:
+                            res_body = json.loads(response.read().decode("utf-8"))
+                            return res_body["choices"][0]["message"]["content"]
+                    except Exception as fallback_err:
+                        err_body += f" | Fallback error: {fallback_err}"
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
                 else:
-                    raise ConnectionError(f"llama-server connection error: {e}") from e
+                    msg = f"llama-server connection error: {e} ({err_body})" if err_body else f"llama-server connection error: {e}"
+                    raise ConnectionError(msg) from e
             except urllib.error.URLError as e:
                 if attempt < max_retries - 1:
                     time.sleep(1)

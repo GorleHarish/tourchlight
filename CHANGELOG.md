@@ -12,6 +12,12 @@
 - **CLI Startup Initialization**: Added graph initialization to `context-manager-cli` startup in `main.py`.
 - **System Prompt Update**: Updated `core/prompts/system.py` to prioritize graph-based `SEARCH_AST` navigation workflow.
 
+### Kuzu AST Indexer Resilience & NumPy Compatibility Fixes (`ast_indexer.py` & `llamacpp_client.py`)
+
+- **Catalog Binder Exception Fix**: Updated `init_db()` in `rlm_optimized/ast_indexer.py` to use `CREATE NODE TABLE IF NOT EXISTS` and `CREATE REL TABLE IF NOT EXISTS` combined with `MATCH (n) DETACH DELETE n` graph resets. Prevents `Binder exception: File already exists in catalog` when re-indexing existing project directories.
+- **NumPy 2.0 PyTorch Compatibility**: Downgraded `numpy` from 2.0.2 to 1.26.4 (`numpy<2`) in `rlm_optimized/venv`, eliminating PyTorch `_ARRAY_API` initialization warnings and restoring `SentenceTransformer` vector embedding generation.
+- **LLM Client HTTP 400 Error Body Extraction & Fallback**: Updated `LlamaCppClient` (`rlm_optimized/llamacpp_client.py`) to read and log response bodies on `HTTPError` exceptions, and auto-fallback to standard OpenAI schema payloads (stripping non-standard `grammar` and `repeat_penalty` fields) when `llama-server` returns HTTP 400 Bad Request.
+
 ### Bug Audit & Context Overflow Hardening (6 Issues Fixed)
 
 - **Critical Fix: Beam Scoring O(n²) Rebuild**: `_score()` called `get_project_graph()` on every file scored, triggering full AST rebuilds per file. Fixed with instance-level `_graph_nodes` cache.

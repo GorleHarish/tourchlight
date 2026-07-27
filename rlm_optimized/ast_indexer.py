@@ -10,22 +10,30 @@ from rlm_optimized.config import AST_DB_DIRNAME
 def init_db(db_path):
     """Initialize the Kuzu graph database with the AST schema and vector embeddings."""
     if os.path.exists(db_path):
-        if os.path.isdir(db_path):
-            shutil.rmtree(db_path)
-        else:
-            os.remove(db_path)
+        try:
+            if os.path.isdir(db_path):
+                shutil.rmtree(db_path, ignore_errors=True)
+            else:
+                os.remove(db_path)
+        except Exception as e:
+            print(f"[init_db] Warning deleting existing DB at {db_path}: {e}")
         
     db = kuzu.Database(db_path, buffer_pool_size=268435456)
     conn = kuzu.Connection(db)
     
-    conn.execute("CREATE NODE TABLE File(filepath STRING, PRIMARY KEY (filepath))")
-    conn.execute("CREATE NODE TABLE ClassDef(id STRING, name STRING, docstring STRING, line_start INT64, line_end INT64, embedding FLOAT[384], PRIMARY KEY (id))")
-    conn.execute("CREATE NODE TABLE FunctionDef(id STRING, name STRING, args STRING, docstring STRING, source_code STRING, ast_dump STRING, embedding FLOAT[384], PRIMARY KEY (id))")
+    conn.execute("CREATE NODE TABLE IF NOT EXISTS File(filepath STRING, PRIMARY KEY (filepath))")
+    conn.execute("CREATE NODE TABLE IF NOT EXISTS ClassDef(id STRING, name STRING, docstring STRING, line_start INT64, line_end INT64, embedding FLOAT[384], PRIMARY KEY (id))")
+    conn.execute("CREATE NODE TABLE IF NOT EXISTS FunctionDef(id STRING, name STRING, args STRING, docstring STRING, source_code STRING, ast_dump STRING, embedding FLOAT[384], PRIMARY KEY (id))")
     
-    conn.execute("CREATE REL TABLE File_HAS_CLASS(FROM File TO ClassDef)")
-    conn.execute("CREATE REL TABLE File_HAS_FUNCTION(FROM File TO FunctionDef)")
-    conn.execute("CREATE REL TABLE Class_HAS_FUNCTION(FROM ClassDef TO FunctionDef)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS File_HAS_CLASS(FROM File TO ClassDef)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS File_HAS_FUNCTION(FROM File TO FunctionDef)")
+    conn.execute("CREATE REL TABLE IF NOT EXISTS Class_HAS_FUNCTION(FROM ClassDef TO FunctionDef)")
     
+    try:
+        conn.execute("MATCH (n) DETACH DELETE n")
+    except Exception:
+        pass
+        
     return conn
 
 class IndexVisitor(ast.NodeVisitor):

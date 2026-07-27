@@ -31,3 +31,25 @@ def test_action_tracker_print_action_safety():
     tracker = ActionTracker(console)
     # Should execute without throwing StyleSyntaxError on unescaped brackets
     tracker.print_action("edit_file", "Editing file [core/memory/manager.py] with replacement [1, 2]")
+
+
+def test_tui_markup_escaping_safety():
+    console = Console(quiet=True)
+    # Test model name with GGUF quantization brackets
+    model_name = "llama-3.2-1b-instruct[q4_k_m]"
+    panel1 = Panel(f"[bold cyan]{escape(model_name)}[/]", title="Model Test")
+    console.print(panel1)
+
+    # Test error message with truncation tag
+    raw_err = "[context_length_exceeded] error in model evaluation"
+    if len(raw_err) > 20:
+        raw_err = raw_err[:20] + "... [truncated]"
+    err_str = escape(raw_err)
+    panel2 = Panel(f"[bold red]Error:[/] {err_str}", title="Error Test")
+    console.print(panel2)
+
+    # Test path with brackets
+    path_str = "/Users/user/project[v1]/src"
+    panel3 = Panel(f"Selected: [bold green]{escape(path_str)}[/]", title="Path Test")
+    console.print(panel3)
+
