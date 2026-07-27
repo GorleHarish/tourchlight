@@ -358,8 +358,8 @@ def _create_default_registry() -> ToolRegistry:
          CONFIRM, tool_git_impl, cat="vcs")
 
     _reg("SEARCH_AST", "🗺️",
-         "Search AST Knowledge Graph (semantic vector search, class signatures, function source/AST, subgraphs). "
-         "Args: query (required), action (search|signature|source|ast|structure|subgraph), top_k (default: 3).",
+         "Query AST Knowledge Graph: search symbols, find relationship paths, get subgraphs, view structure, or reindex. "
+         "Args: query, action (search|path|subgraph|structure|update|summary), target (for path), top_k (default: 5).",
          AUTO, tool_search_ast_impl, cat="core")
 
     _reg("INSPECT_WEB", "🕸️",

@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-07-28
+
+### Native AST Knowledge Graph Engine (`graph_engine.py` & `SEARCH_AST`)
+
+- **Pure-Python AST Graph Engine**: Implemented `core/flashlight/graph_engine.py` — a zero-dependency knowledge graph engine replacing the Kùzu embedded database. Uses Python's `ast` module for Python files and regex fallback for JS/TS/Go/Rust/Java/C/C++/Ruby/C#/Kotlin. Stores graph at `.torchlight/graph.json` and generates `GRAPH_REPORT.md`.
+- **Graph Traversal API**: `ProjectGraph` class provides `query()` (substring search), `find_path()` (BFS shortest path with depth limit), `get_subgraph()` (1-hop neighbor extraction), and `get_structure()` (project overview) — all with hard output caps to prevent context overflow.
+- **SEARCH_AST Tool Integration**: Rewired `tool_search_ast_impl` to use native graph engine with actions: `search|path|subgraph|structure|update|summary`. Falls back to `rlm_optimized.repl_sandbox.semantic_search` when native search returns no results.
+- **Flashlight Beam AST Relevance**: Added graph-aware relevance scoring in `beam.py` `_score()` with lazy-loaded read-only graph node cache (`_graph_nodes`). Graph is loaded once per `Flashlight` instance, never triggers `build()` during scoring.
+- **Lazy Graph Invalidation**: Updated `feedback_loop.py` to invalidate cached graph via `_graphs.pop()` on file edits instead of eagerly rebuilding, deferring re-indexing to next query.
+- **CLI Startup Initialization**: Added graph initialization to `context-manager-cli` startup in `main.py`.
+- **System Prompt Update**: Updated `core/prompts/system.py` to prioritize graph-based `SEARCH_AST` navigation workflow.
+
+### Bug Audit & Context Overflow Hardening (6 Issues Fixed)
+
+- **Critical Fix: Beam Scoring O(n²) Rebuild**: `_score()` called `get_project_graph()` on every file scored, triggering full AST rebuilds per file. Fixed with instance-level `_graph_nodes` cache.
+- **Critical Fix: Eager Rebuild on Every Edit**: `feedback_loop.py` called `graph.build()` on every `WRITE_FILE`/`EDIT_FILE`. Changed to lazy cache invalidation.
+- **Bug Fix: Unbounded BFS**: `find_path()` had no depth limit and used `list.pop(0)` (O(n)). Added `max_depth=10` and switched to `collections.deque.popleft()`.
+- **Bug Fix: Empty Target Crash**: `find_path("name", "")` matched every node. Added explicit empty-string guard.
+- **Context Overflow Fix: Unbounded Output**: `get_subgraph()`, `get_structure()`, and `query()` could produce massive outputs. Added caps: `_MAX_SUBGRAPH_EDGES=40`, `_MAX_STRUCTURE_FILES=20`, `_MAX_FUNCS_PER_FILE=5`, docstring truncation at 80 chars.
+- **Minor Fix: Short-Circuit Logic**: Replaced fragile `self.load() or self.build()` with explicit `if not self.load(): self.build()`.
+- **Automated Tests**: Added `core/tests/test_graph_engine.py` (3 test cases). All 148 core unit tests pass cleanly.
+
 ## 2026-07-27
 
 ### Ephemeral Web Outcome Inspection Subsystem (`WebOutcomeInspector` & `INSPECT_WEB`)

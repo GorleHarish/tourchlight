@@ -56,6 +56,7 @@ class Flashlight:
         self._max_files = _DEFAULT_MAX_FILES
         self._max_lines = _DEFAULT_MAX_LINES
         self._anchor_pre = _DEFAULT_ANCHOR_PRE
+        self._graph_nodes = None  # Lazy-loaded AST graph node cache
 
     def configure(self, max_context_tokens: int) -> None:
         self._max_files, self._max_lines, self._anchor_pre = _beam_config_for_context(max_context_tokens)
@@ -120,16 +121,23 @@ class Flashlight:
         if rel_path == self._active_file and score > 0:
             score += 2.0
 
-        # AST Graph relevance bonus
-        try:
-            from .graph_engine import get_project_graph
-            graph = get_project_graph(str(self.index.project_dir))
+        # AST Graph relevance bonus (cached, never triggers build inside scoring)
+        if self._graph_nodes is None:
+            try:
+                from .graph_engine import ProjectGraph
+                pg = ProjectGraph(self.index.project_dir)
+                if pg.load():
+                    self._graph_nodes = pg.nodes
+                else:
+                    self._graph_nodes = {}
+            except Exception:
+                self._graph_nodes = {}
+
+        if self._graph_nodes:
             for q_tok in query_tokens:
-                if any(q_tok in nid.lower() for nid in graph.nodes if rel_path in nid):
+                if any(q_tok in nid.lower() for nid in self._graph_nodes if rel_path in nid):
                     score += 3.0
                     break
-        except Exception:
-            pass
 
         return score
 

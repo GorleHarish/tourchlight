@@ -2,16 +2,17 @@
 
 Imagine having a super-smart robot assistant living inside your computer that helps you write code. But wait, this robot is running on a normal everyday laptop with only 8GB of memory (RAM)! Usually, these AI robots are so big they need giant, expensive supercomputers to work. 
 
-How does Torchlight do it? It uses **five amazing superpowers**!
+How does Torchlight do it? It uses **eight amazing superpowers**!
 
 ---
 
-## 🗺️ Superpower 1: The Magic Code Map (AST Graph & Kùzu DB)
+## 🗺️ Superpower 1: The Magic Code Map (Native AST Graph Engine)
 
 Normally, if you tell a robot to fix a typo in a giant book, it has to read the *entire book* from page 1 to the very end just to find it. That takes way too much time and brainpower.
 
-Instead, Torchlight builds a magic map of your code powered by an embedded graph database (**Kùzu DB**). 
-If you ask the robot to fix a specific button on your website, it looks at its magic map, teleports *exactly* to where that button is, and only reads those 30 lines of code instead of 10,000 lines. It can also see how that button connects to other parts of your code instantly with zero latency!
+Instead, Torchlight builds a magic map of your code using a **native AST graph engine** — built entirely in pure Python with zero external dependencies. It parses your code into a knowledge graph stored at `.torchlight/graph.json`, mapping every class, function, import, and call relationship.
+
+If you ask the robot to fix a specific button on your website, it looks at its magic map, teleports *exactly* to where that button is, and only reads those 30 lines of code instead of 10,000 lines. It can trace how any symbol connects to others — who calls it, who imports it, and what it depends on — all with zero latency!
 
 ---
 
@@ -72,11 +73,22 @@ What if you want Torchlight to refactor an entire application or write 50 unit t
 
 ---
 
+## 🧬 Superpower 8: The Portable Capability Improver (Self-Contained AST Graph)
+
+What if you build a project using Torchlight's coding agent, but then want to use it outside of the IDE? Torchlight's AST graph engine is **self-contained and portable**.
+
+*   **Zero External Dependencies:** Unlike other tools that need Kùzu, Neo4j, or vector databases, Torchlight's graph engine uses only Python's built-in `ast`, `json`, and `re` modules. It works everywhere Python runs — no `pip install` of C extensions needed.
+*   **Any Language, Any Project:** It parses Python files with a full AST visitor, and uses regex fallback for JavaScript, TypeScript, Go, Rust, Java, C/C++, Ruby, C#, and Kotlin.
+*   **Context-Safe Output Caps:** Every query method has built-in hard limits (`_MAX_SUBGRAPH_EDGES=40`, `_MAX_STRUCTURE_FILES=20`) so the output never overflows a small model's context window.
+*   **Lazy & Incremental:** The graph only rebuilds when actually queried after a file change — never eagerly during editing. This keeps coding sessions fast and responsive.
+
+---
+
 ## 📊 Summary Table of Superpowers
 
 | Superpower | What is the Fancy Name? | What does it do? (In Simple Words) | Why is it awesome for an 8GB Laptop? |
 | :--- | :--- | :--- | :--- |
-| **Magic Code Map** | AST Graph Indexing | Creates a map to jump straight to the exact lines of code needed. | Saves the robot from reading 10,000 lines, saving huge amounts of memory and time. |
+| **Magic Code Map** | Native AST Graph Engine | Creates a zero-dependency code graph to jump straight to exact lines needed. | Saves the robot from reading 10,000 lines, with zero RAM overhead (no Kùzu DB). |
 | **Squishing Memories** | TurboQuant KV Compression | Compresses the robot's short-term memory into tiny puzzle pieces. | Prevents the laptop from running out of RAM when working on large projects. |
 | **Summarizing the Past**| Selective Compression | Keeps new memories perfect, but turns old memories into short summaries. | Keeps the "Context Window" small so the robot doesn't crash the computer. |
 | **Flashlight Beam** | Token Budgeting | Limits the robot to only "seeing" 50 lines of code at a time. | Prevents the robot from flooding the computer's memory with huge files. |
@@ -86,5 +98,4 @@ What if you want Torchlight to refactor an entire application or write 50 unit t
 | **Persistent Memory** | Project State Persistence | The agent saves important project details to a `.torchlight_memory.md` file. | Avoids re-learning project context on every restart, saving token usage and time. |
 | **Invisible Devil's Advocate** | Out-of-Band Debate Verifier | Audits and fixes code proposals in an isolated scratchpad before execution. | Catches subtle bugs while using **0 tokens** of main context memory. |
 | **Marathon Engine** | Autonomous Goal Harness | Runs sub-tasks in micro-epochs, resetting conversation memory and local Git checkpointing. | Enables 24-hour non-stop goal execution without context window overflow or code degradation! |
-
-
+| **Portable Capability Improver** | Self-Contained AST Graph | Zero-dependency graph engine with context-safe output caps and lazy re-indexing. | Works on any Python install, any language, with zero RAM overhead and no C extensions! |

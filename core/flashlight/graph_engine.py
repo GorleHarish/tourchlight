@@ -274,7 +274,8 @@ class ProjectGraph:
     def query(self, search_term: str, top_k: int = 5) -> str:
         """Search nodes matching search_term."""
         if not self.nodes:
-            self.load() or self.build()
+            if not self.load():
+                self.build()
 
         term = search_term.lower()
         matches = []
@@ -288,18 +289,24 @@ class ProjectGraph:
         if not matches:
             return f"No AST graph nodes found matching '{search_term}'."
 
-        lines = [f"Found {len(matches)} matching AST nodes for '{search_term}':"]
-        for m in matches[:top_k]:
+        # Cap at top_k to prevent context overflow
+        capped = matches[:top_k]
+        lines = [f"Found {len(matches)} matching AST nodes for '{search_term}' (showing {len(capped)}):"]
+        for m in capped:
             ntype = m.get("type", "node").upper()
             file_loc = f"{m.get('file', m.get('id'))}:L{m.get('line_start', 1)}"
-            doc_str = f" - {m['docstring']}" if m.get("docstring") else ""
+            doc_str = f" - {m['docstring'][:80]}" if m.get("docstring") else ""
             lines.append(f"  [{ntype}] {m.get('name')} ({file_loc}){doc_str}")
         return "\n".join(lines)
 
-    def find_path(self, source_name: str, target_name: str) -> str:
+    def find_path(self, source_name: str, target_name: str, max_depth: int = 10) -> str:
         """Find relationship path between source and target symbols."""
+        if not source_name or not target_name:
+            return "Path search requires both source and target names."
+
         if not self.nodes:
-            self.load() or self.build()
+            if not self.load():
+                self.build()
 
         src_nodes = [nid for nid, n in self.nodes.items() if source_name.lower() in n.get("name", "").lower()]
         tgt_nodes = [nid for nid, n in self.nodes.items() if target_name.lower() in n.get("name", "").lower()]
@@ -312,26 +319,33 @@ class ProjectGraph:
             f, t, etype = edge["from"], edge["to"], edge["type"]
             adj.setdefault(f, []).append((t, etype))
 
-        # BFS for shortest path
-        queue = [(src_nodes[0], [src_nodes[0]])]
+        # BFS for shortest path with depth limit to prevent runaway traversal
+        from collections import deque
+        queue: deque = deque()
+        queue.append((src_nodes[0], [src_nodes[0]], 0))
         visited = {src_nodes[0]}
         target_set = set(tgt_nodes)
 
         while queue:
-            curr, path = queue.pop(0)
+            curr, path, depth = queue.popleft()
             if curr in target_set:
                 return f"Path found ({len(path)-1} hops):\n" + " -> ".join(path)
+            if depth >= max_depth:
+                continue
             for nxt, etype in adj.get(curr, []):
                 if nxt not in visited:
                     visited.add(nxt)
-                    queue.append((nxt, path + [f"[{etype}]-> {nxt}"]))
+                    queue.append((nxt, path + [f"[{etype}]-> {nxt}"], depth + 1))
 
         return f"No direct graph relationship path found between '{source_name}' and '{target_name}'."
+
+    _MAX_SUBGRAPH_EDGES = 40
 
     def get_subgraph(self, symbol_or_path: str, max_depth: int = 2) -> str:
         """Extract connected subgraph centered at symbol or file path."""
         if not self.nodes:
-            self.load() or self.build()
+            if not self.load():
+                self.build()
 
         matched_id = None
         for nid, n in self.nodes.items():
@@ -347,17 +361,24 @@ class ProjectGraph:
             if e["from"] == matched_id or e["to"] == matched_id:
                 connected_edges.append(e)
 
-        lines = [f"Subgraph for `{matched_id}` ({len(connected_edges)} connections):"]
-        for e in connected_edges:
+        capped = connected_edges[:self._MAX_SUBGRAPH_EDGES]
+        lines = [f"Subgraph for `{matched_id}` ({len(connected_edges)} connections, showing {len(capped)}):"]
+        for e in capped:
             direction = f"{e['from']} --[{e['type']}]--> {e['to']}"
             lines.append(f"  • {direction}")
+        if len(connected_edges) > self._MAX_SUBGRAPH_EDGES:
+            lines.append(f"  ... and {len(connected_edges) - self._MAX_SUBGRAPH_EDGES} more connections")
 
         return "\n".join(lines)
+
+    _MAX_STRUCTURE_FILES = 20
+    _MAX_FUNCS_PER_FILE = 5
 
     def get_structure(self) -> str:
         """Return structured summary of files, classes, and function signatures."""
         if not self.nodes:
-            self.load() or self.build()
+            if not self.load():
+                self.build()
 
         files = [n for n in self.nodes.values() if n["type"] == "file"]
         classes = [n for n in self.nodes.values() if n["type"] == "class"]
@@ -366,15 +387,17 @@ class ProjectGraph:
         lines = [
             f"Project Structure ({len(files)} files, {len(classes)} classes, {len(funcs)} functions):",
         ]
-        for f in files[:20]:
+        for f in files[:self._MAX_STRUCTURE_FILES]:
             f_funcs = [fn for fn in funcs if fn.get("file") == f["id"]]
             f_classes = [cl for cl in classes if cl.get("file") == f["id"]]
             lines.append(f"\n📂 {f['id']} ({len(f_classes)} classes, {len(f_funcs)} funcs)")
             for cl in f_classes:
                 lines.append(f"   └─ class {cl['name']} (L{cl['line_start']})")
-            for fn in f_funcs[:5]:
+            for fn in f_funcs[:self._MAX_FUNCS_PER_FILE]:
                 args_str = ", ".join(fn.get("args", []))
                 lines.append(f"   └─ def {fn['name']}({args_str}) (L{fn['line_start']})")
+        if len(files) > self._MAX_STRUCTURE_FILES:
+            lines.append(f"\n... and {len(files) - self._MAX_STRUCTURE_FILES} more files")
 
         return "\n".join(lines)
 

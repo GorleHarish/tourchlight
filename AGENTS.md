@@ -19,7 +19,7 @@ core/                          # Shared library (standalone package)
 │   ├── factory.py           # create_client() for 8+ backends
 │   └── lmstudio.py          # LM Studio REST client
 ├── tools/
-│   ├── registry.py          # Unified ToolRegistry (17 tools)
+│   ├── registry.py          # Unified ToolRegistry (18 tools)
 │   ├── schemas.py           # TOOL_SCHEMAS, validate_tool_call()
 │   ├── classification.py    # AUTO/CONFIRM/REVIEW risk tiers
 │   └── implementations.py   # All tool implementations
@@ -39,16 +39,17 @@ core/                          # Shared library (standalone package)
 │   └── summarizer.py        # ConversationSummarizer
 ├── flashlight/
 │   ├── index.py             # SymbolIndex (Python/JS/TS/Go/Rust)
-│   └── beam.py              # Flashlight beam retrieval
+│   ├── beam.py              # Flashlight beam retrieval (+ AST graph scoring)
+│   └── graph_engine.py      # Native AST Knowledge Graph (pure Python)
 ├── execution/
-│   ├── feedback_loop.py     # Auto-run tests after code changes
+│   ├── feedback_loop.py     # Auto-run tests + lazy graph invalidation
 │   ├── autonomous_harness.py # 24h continuous goal harness & micro-epoch runner
 │   └── run_harness.py       # CLI entry point for continuous runner
 └── prompts/
     └── system.py            # Unified system prompt
 
 context-manager-cli/src/context_manager/   # CLI frontend
-├── cli/main.py              # Typer + Rich CLI, phase detection
+├── cli/main.py              # Typer + Rich CLI, phase detection, graph init
 ├── cli/dashboard.py         # Live stats + ActionTracker
 ├── skills/                  # Skill system (TDD, custom skills)
 │   ├── unified.py, base.py, discovery.py, tdd.py
@@ -81,23 +82,24 @@ rlm_optimized/                              # TUI frontend
 
 ### Key Design Decisions
 - **Shared core library**: `core/` is standalone with `pyproject.toml`, both frontends import from it
+- **Native AST Graph Engine**: Zero-dependency `graph_engine.py` replaces Kùzu DB. Stores graph at `.torchlight/graph.json` (never loaded into LLM context). Provides `query()`, `find_path()`, `get_subgraph()`, `get_structure()` with hard output caps to prevent context overflow
+- **Lazy graph invalidation**: File edits invalidate the graph cache (`_graphs.pop()`), rebuilding only on next `SEARCH_AST` query — never eagerly during editing
 - **24-Hour Autonomous Harness**: Continuous micro-epoch runner (`AutonomousHarness`) driving file-backed goal specs (`.torchlight/goal_spec.json` & `.torchlight/tasks.md`), resetting conversation context (`L0`) between sub-tasks, and applying test-driven local Git checkpoints & auto-reverts (`git checkout -- .` + `git clean -fd`)
 - **Zero-Config Local Git Provisioning**: `AutonomousHarness` checks target project roots and automatically executes `git init` locally if missing
 - **Tiered memory**: Recent 3 messages full detail, older summarized
-
 - **Active file pinning**: Recently-read files pinned in separate FIFO buffer (max 2), survives compression
 - **12k context (8GB)**: Default CTX_SIZE=12288, KV cache ~0.3GB, override via `RLM_CTX_SIZE`
 - **85% context budget**: Headroom for system/tools/beam
 - **Phase-based inference**: code (temp=0.1), troubleshoot (temp=0.3), chat (temp=0.7)
-- **Surgical file reading**: GREP → READ_SYMBOLS → READ_FILE(range/symbol)
+- **Surgical file reading**: SEARCH_AST → GREP → READ_SYMBOLS → READ_FILE(range/symbol)
 - **Inline code interception**: Code in chat → auto-WRITE_FILE
 - **Lazy skill loading**: AST scan at startup, import on first execute
-- **Context-scaled tool output**: READ_FILE caps at ~20% of window
+- **Context-scaled tool output**: READ_FILE caps at ~20% of window; SEARCH_AST caps subgraph at 40 edges, structure at 20 files
 - **Structured errors**: 7 types with `RecoveryEngine` escalation ladder
 - **Fallback imports**: Frontends use `try/except ImportError` for backward compat
 
 ### Tool Risk Tiers
-- **AUTO**: READ_FILE, GREP (ripgrep-powered), WEB_*, DOC_*, SAVE_MEMORY, GIT (read ops: status/diff/log/show/branch/blame), safe shell commands
+- **AUTO**: READ_FILE, GREP (ripgrep-powered), SEARCH_AST, WEB_*, DOC_*, SAVE_MEMORY, GIT (read ops: status/diff/log/show/branch/blame), safe shell commands
 - **CONFIRM**: WRITE_FILE, EDIT_FILE, GIT (write ops: commit/add/restore/stash), pip/npm install, scripts
 - **REVIEW**: rm, git push/reset/rebase/merge/clean, sudo, destructive ops
 
@@ -119,3 +121,5 @@ ruff check core/ context-manager-cli/src/
 ## Memory Files
 - Sessions: `~/.context-manager/sessions/<name>.json`
 - Project memory: `<project>/.context-memory.json`
+- AST graph: `<project>/.torchlight/graph.json`
+- Graph report: `<project>/.torchlight/GRAPH_REPORT.md`

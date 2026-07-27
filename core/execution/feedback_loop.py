@@ -80,8 +80,10 @@ class ExecutionFeedbackLoop:
             if path:
                 self._files_modified_since_test.add(path)
                 try:
-                    from core.flashlight.graph_engine import get_project_graph
-                    get_project_graph(str(self.project_root)).build()
+                    from core.flashlight.graph_engine import _graphs
+                    # Invalidate cached graph so it rebuilds lazily on next query
+                    root_key = str(self.project_root)
+                    _graphs.pop(root_key, None)
                 except Exception:
                     pass
 
