@@ -1,0 +1,367 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Torchlight TUI — Main Stylesheet
+   All colors reference theme variables. Zero hardcoded #hex values.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+
+Screen {
+    background: $background;
+    color: $foreground;
+}
+
+Static {
+    color: $foreground;
+}
+
+Label {
+    color: $foreground;
+}
+
+/* ── Header & Footer ──────────────────────────────────────────────────── */
+
+Header {
+    background: $surface;
+    color: $foreground;
+    dock: top;
+    height: 1;
+}
+
+Footer {
+    background: $surface;
+    color: $foreground;
+}
+
+/* ── Body Layout ──────────────────────────────────────────────────────── */
+
+#body-container {
+    height: 1fr;
+    width: 1fr;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+
+#sidebar {
+    width: 34;
+    background: $surface;
+    border-right: solid $panel;
+    padding: 0 1;
+}
+
+.sidebar-section-title {
+    text-style: bold;
+    color: $primary;
+    margin-top: 0;
+    margin-bottom: 0;
+    height: 1;
+    content-align: left middle;
+}
+
+/* Sidebar dividers between sections */
+.sidebar-divider {
+    height: 1;
+    border-bottom: solid $panel;
+    margin: 0;
+}
+
+/* ── Engine Buttons ───────────────────────────────────────────────────── */
+
+#engine-btn-bar-1,
+#engine-btn-bar-2 {
+    height: 2;
+    align: center middle;
+    margin-bottom: 0;
+}
+
+#engine-btn-bar-1 Button,
+#engine-btn-bar-2 Button {
+    margin: 0 1;
+    min-width: 7;
+    height: 1;
+}
+
+/* ── File Tree ────────────────────────────────────────────────────────── */
+
+#file-tree {
+    height: 1fr;
+    background: $background;
+    border: solid $panel;
+    color: $foreground;
+    margin-bottom: 1;
+}
+
+#file-tree:focus {
+    border: tall $accent;
+}
+
+Tree {
+    background: $background;
+    color: $foreground;
+}
+
+Tree:hover {
+    background: $surface;
+}
+
+Tree:focus {
+    border: tall $accent;
+}
+
+/* ── Meta Panel (System Status) ───────────────────────────────────────── */
+
+#meta-panel {
+    height: auto;
+    background: $background;
+    border: solid $panel;
+    padding: 0 1;
+    margin-bottom: 0;
+    color: $foreground;
+}
+
+/* ── Shortcuts Panel ──────────────────────────────────────────────────── */
+
+#shortcuts-panel {
+    height: auto;
+    color: $foreground-muted;
+    padding: 0 0;
+}
+
+/* ── Chat Pane ────────────────────────────────────────────────────────── */
+
+#chat-pane {
+    width: 1fr;
+    height: 1fr;
+}
+
+/* ── Input Base ───────────────────────────────────────────────────────── */
+
+Input {
+    color: $foreground !important;
+    background: $background;
+    border: solid $primary;
+}
+
+Input:focus {
+    color: $foreground;
+    background: $surface;
+    border: tall $accent;
+}
+
+Input:disabled {
+    border: solid $panel;
+    color: $foreground-muted;
+    background: $background;
+}
+
+Input > .input--value {
+    color: $foreground;
+}
+
+Input > .input--placeholder {
+    color: $foreground-muted;
+    text-style: italic;
+}
+
+Input > .input--cursor {
+    background: $primary;
+    color: $background;
+}
+
+/* ── Status Bar ───────────────────────────────────────────────────────── */
+
+#status-bar {
+    height: 1;
+    background: $surface;
+    padding: 0 0;
+    border-bottom: solid $panel;
+}
+
+#status-left {
+    width: 1fr;
+    min-width: 20;
+    padding: 0 1;
+    color: $primary;
+    text-style: bold;
+}
+
+#status-right {
+    width: auto;
+    min-width: 20;
+    padding: 0 1;
+    color: $foreground-muted;
+    text-align: right;
+}
+
+/* ── Chat Container ───────────────────────────────────────────────────── */
+
+#chat-container {
+    height: 1fr;
+    padding: 0 1;
+    background: $background;
+    color: $foreground;
+}
+
+/* ── Input Area ───────────────────────────────────────────────────────── */
+
+#input-area {
+    dock: bottom;
+    height: auto;
+    min-height: 3;
+    max-height: 7;
+    background: $surface;
+    border-top: solid $panel;
+    padding: 0 1;
+}
+
+#user-input {
+    width: 1fr;
+    height: auto;
+    min-height: 3;
+    background: $background;
+    color: $foreground;
+    border: tall $primary;
+}
+
+#user-input:focus {
+    background: $surface;
+    border: tall $accent;
+    color: $foreground;
+}
+
+#send-btn {
+    min-width: 8;
+    margin: 0 0 0 1;
+    dock: right;
+}
+
+#send-btn:disabled {
+    background: $surface;
+    color: $foreground-muted;
+}
+
+#input-spinner {
+    width: 3;
+    dock: right;
+    color: $primary;
+    content-align: center middle;
+}
+
+.stream-text {
+    color: $foreground;
+    margin: 0 0 0 2;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive Design (classes toggled by Resize handler in Python)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.narrow-terminal #sidebar {
+    display: none;
+}
+.narrow-terminal #chat-pane {
+    width: 1fr;
+}
+
+.very-narrow-terminal #input-area {
+    height: 5;
+}
+.very-narrow-terminal #user-input {
+    height: 3;
+}
+
+.short-terminal #status-bar {
+    display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Modal Base Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* All modals share these base properties */
+ModalScreen {
+    background: $background 80%;
+}
+
+/* Shared dialog container for all modals */
+#approval-dialog,
+#picker-dialog,
+#model-dialog,
+#copy-dialog,
+#status-dialog {
+    background: $surface;
+    border: heavy $primary;
+    padding: 1 2;
+}
+
+/* Shared dialog titles */
+#approval-title,
+#picker-title,
+#model-title,
+#copy-title,
+#status-title {
+    text-align: center;
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+/* Shared button bar layout */
+#approval-buttons,
+#picker-buttons,
+#status-buttons {
+    height: 3;
+    align: center middle;
+}
+
+#approval-buttons Button,
+#picker-buttons Button,
+#status-buttons Button {
+    margin: 0 2;
+    min-width: 16;
+}
+
+#approval-buttons Button:hover,
+#picker-buttons Button:hover,
+#status-buttons Button:hover {
+    text-style: bold;
+}
+
+#approval-buttons Button:focus,
+#picker-buttons Button:focus,
+#status-buttons Button:focus {
+    outline: solid $accent;
+}
+
+/* Shared content areas */
+#approval-args,
+#picker-path,
+#picker-tree,
+#status-log-scroll {
+    background: $background;
+    border: solid $panel;
+    padding: 1;
+    color: $foreground;
+}
+
+/* Shared card styles */
+.model-card,
+.copy-item-card {
+    background: $background;
+    border: solid $panel;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+.model-card:hover,
+.copy-item-card:hover {
+    border: solid $accent;
+}
+
+/* Approval modal - danger border */
+#approval-dialog {
+    border: heavy $error;
+}
+
+#approval-title {
+    color: $error;
+}

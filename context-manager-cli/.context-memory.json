@@ -1,0 +1,33 @@
+{
+  "facts": [
+    {
+      "text": "you have tool capabilities to search web, read, write and run command on this machine.",
+      "embedding": [],
+      "timestamp": "2026-03-21T15:05:55.465632"
+    },
+    {
+      "text": "don't ask me to execute command instead ask for approval",
+      "embedding": [],
+      "timestamp": "2026-03-21T15:08:27.156970"
+    },
+    {
+      "text": "you have access to computer please execute tools",
+      "embedding": [],
+      "timestamp": "2026-03-21T15:21:44.684668"
+    },
+    {
+      "text": "files are accessible from current working directory",
+      "embedding": [],
+      "timestamp": "2026-03-21T15:30:36.655505"
+    },
+    {
+      "text": "android studio is already available in system.",
+      "embedding": [],
+      "timestamp": "2026-03-22T19:40:47.989114"
+    }
+  ],
+  "decisions": [],
+  "files": [],
+  "tech_stack": [],
+  "created": "2026-03-21T15:05:55.465618"
+}

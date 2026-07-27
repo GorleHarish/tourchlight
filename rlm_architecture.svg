@@ -1,0 +1,385 @@
+<svg width="100%" height="100%" viewBox="0 0 1100 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Background grid pattern -->
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnOn">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" stroke-width="0.6"/>
+    </pattern>
+
+    <!-- Glowing gradients for background aesthetics -->
+    <radialGradient id="glow-orange" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ff7a45" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0b0f19" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-blue" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0b0f19" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-green" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#0b0f19" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Component background gradients -->
+    <linearGradient id="core-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="cli-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="tui-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#6b21a8" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="tool-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#047857" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="memory-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#dc2626" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="error-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#ea580c" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="api-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#6d28d9" stop-opacity="0.04"/>
+    </linearGradient>
+
+    <!-- Arrow head markers -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#3b82f6"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#10b981"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f59e0b"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#a855f7"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ef4444"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 24px; font-weight: 700; fill: #f8fafc; letter-spacing: -0.025em; }
+    .subtitle { font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; fill: #94a3b8; font-weight: 400; }
+    .section-title { font-family: 'Inter', -apple-system, sans-serif; font-size: 16px; font-weight: 600; fill: #f8fafc; }
+    .box-title { font-family: 'Inter', -apple-system, sans-serif; font-size: 13px; font-weight: 600; }
+    .box-desc { font-family: 'Inter', -apple-system, sans-serif; font-size: 11px; fill: #cbd5e1; }
+    .box-desc-muted { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #64748b; }
+    .box-code { font-family: 'Fira Code', 'Courier New', monospace; font-size: 10px; }
+    .arrow-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #94a3b8; font-weight: 500; }
+    .arrow-text-blue { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #60a5fa; font-weight: 500; }
+    .arrow-text-green { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #34d399; font-weight: 500; }
+    .arrow-text-amber { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #fbbf24; font-weight: 500; }
+    .arrow-text-purple { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #c4b5fd; font-weight: 500; }
+    .arrow-text-red { font-family: 'Inter', -apple-system, sans-serif; font-size: 10px; fill: #fca5a5; font-weight: 500; }
+    .badge { font-family: 'Inter', -apple-system, sans-serif; font-size: 9px; font-weight: 600; }
+    
+    @keyframes flow {
+      to { stroke-dashoffset: -20; }
+    }
+    .flowing-line {
+      stroke-dasharray: 6 4;
+      animation: flow 1.2s linear infinite;
+    }
+  </style>
+
+  <!-- Deep Slate Background -->
+  <rect width="100%" height="100%" fill="#0b0f19"/>
+  
+  <!-- Subtle grid overlay -->
+  <rect width="100%" height="100%" fill="url(#grid)" opacity="0.4"/>
+
+  <!-- Glow backdrops -->
+  <circle cx="550" cy="400" r="350" fill="url(#glow-orange)" pointer-events="none"/>
+  <circle cx="200" cy="500" r="250" fill="url(#glow-blue)" pointer-events="none"/>
+  <circle cx="900" cy="300" r="200" fill="url(#glow-green)" pointer-events="none"/>
+
+  <!-- ==================== HEADER ==================== -->
+  <g transform="translate(40, 20)">
+    <text x="0" y="28" class="title">Torchlight Unified Agent Architecture</text>
+    <text x="0" y="48" class="subtitle">Shared core library with CLI and TUI frontends — tools, memory, error handling, and API clients</text>
+  </g>
+
+  <!-- ==================== SECTION: CORE LIBRARY ==================== -->
+  <g transform="translate(40, 80)">
+    <text x="0" y="16" class="section-title" fill="#fbbf24">core/ — Shared Library</text>
+    <line x1="0" y1="24" x2="1020" y2="24" stroke="#f59e0b" stroke-opacity="0.3" stroke-width="1"/>
+  </g>
+
+  <!-- ==================== CORE: TOOLS ==================== -->
+  <g transform="translate(40, 120)">
+    <rect width="240" height="180" rx="10" fill="url(#tool-grad)" stroke="#10b981" stroke-width="1.5"/>
+    <text x="18" y="24" class="box-title" fill="#34d399">Tools</text>
+    <text x="18" y="38" class="box-desc-muted">core/tools/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#10b981" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• Unified ToolRegistry (16 tools)</text>
+    <text x="18" y="78" class="box-desc">• Schema validation + alias resolution</text>
+    <text x="18" y="94" class="box-desc">• AUTO/CONFIRM/REVIEW risk tiers</text>
+    <text x="18" y="110" class="box-desc">• READ_FILE with symbol extraction</text>
+    <text x="18" y="126" class="box-desc">• Context-budget-aware output</text>
+    <text x="18" y="142" class="box-desc">• Web search, docs, verification</text>
+    <rect x="18" y="152" width="60" height="18" rx="4" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="0.8"/>
+    <text x="48" y="164" text-anchor="middle" class="badge" fill="#34d399">16 TOOLS</text>
+  </g>
+
+  <!-- ==================== CORE: API ==================== -->
+  <g transform="translate(300, 120)">
+    <rect width="240" height="180" rx="10" fill="url(#api-grad)" stroke="#8b5cf6" stroke-width="1.5"/>
+    <text x="18" y="24" class="box-title" fill="#c4b5fd">API Clients</text>
+    <text x="18" y="38" class="box-desc-muted">core/api/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#8b5cf6" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• LLMClient protocol (async/sync)</text>
+    <text x="18" y="78" class="box-desc">• create_client() factory</text>
+    <text x="18" y="94" class="box-desc">• LM Studio, llama.cpp, Ollama</text>
+    <text x="18" y="110" class="box-desc">• Cloud: Groq, Together, OpenAI</text>
+    <text x="18" y="126" class="box-desc">• InferenceParams with presets</text>
+    <text x="18" y="142" class="box-desc">• Phase-based sampling</text>
+    <rect x="18" y="152" width="80" height="18" rx="4" fill="#8b5cf6" fill-opacity="0.2" stroke="#8b5cf6" stroke-width="0.8"/>
+    <text x="58" y="164" text-anchor="middle" class="badge" fill="#c4b5fd">7 BACKENDS</text>
+  </g>
+
+  <!-- ==================== CORE: MEMORY ==================== -->
+  <g transform="translate(560, 120)">
+    <rect width="240" height="180" rx="10" fill="url(#memory-grad)" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="18" y="24" class="box-title" fill="#fca5a5">Memory</text>
+    <text x="18" y="38" class="box-desc-muted">core/memory/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#ef4444" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• TieredMemory (L0-L3 hierarchy)</text>
+    <text x="18" y="78" class="box-desc">• SelectiveCompressor (4 levels)</text>
+    <text x="18" y="94" class="box-desc">• Session + Project persistence</text>
+    <text x="18" y="110" class="box-desc">• Token counter (tiktoken + fallback)</text>
+    <text x="18" y="126" class="box-desc">• Hybrid embeddings</text>
+    <text x="18" y="142" class="box-desc">• LLM state extraction</text>
+    <rect x="18" y="152" width="60" height="18" rx="4" fill="#ef4444" fill-opacity="0.2" stroke="#ef4444" stroke-width="0.8"/>
+    <text x="48" y="164" text-anchor="middle" class="badge" fill="#fca5a5">L0-L3</text>
+  </g>
+
+  <!-- ==================== CORE: ERRORS ==================== -->
+  <g transform="translate(820, 120)">
+    <rect width="240" height="180" rx="10" fill="url(#error-grad)" stroke="#f97316" stroke-width="1.5"/>
+    <text x="18" y="24" class="box-title" fill="#fdba74">Errors</text>
+    <text x="18" y="38" class="box-desc-muted">core/errors/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#f97316" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• 7 structured error types</text>
+    <text x="18" y="78" class="box-desc">• RecoveryEngine with escalation</text>
+    <text x="18" y="94" class="box-desc">• ToolError, ParseError, etc.</text>
+    <text x="18" y="110" class="box-desc">• Context-aware recovery hints</text>
+    <text x="18" y="126" class="box-desc">• RETRY → COMPRESS → SKIP → ABORT</text>
+    <text x="18" y="142" class="box-desc">• Security error detection</text>
+    <rect x="18" y="152" width="50" height="18" rx="4" fill="#f97316" fill-opacity="0.2" stroke="#f97316" stroke-width="0.8"/>
+    <text x="43" y="164" text-anchor="middle" class="badge" fill="#fdba74">7 TYPES</text>
+  </g>
+
+  <!-- ==================== CORE: COMPRESSION ==================== -->
+  <g transform="translate(40, 320)">
+    <rect width="240" height="120" rx="10" fill="url(#memory-grad)" stroke="#ef4444" stroke-width="1.2"/>
+    <text x="18" y="24" class="box-title" fill="#fca5a5">Compression</text>
+    <text x="18" y="38" class="box-desc-muted">core/compression/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#ef4444" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• VerbatimCompactor</text>
+    <text x="18" y="78" class="box-desc">• ConversationSummarizer</text>
+    <text x="18" y="94" class="box-desc">• Code-aware compression</text>
+  </g>
+
+  <!-- ==================== CORE: FLASHLIGHT ==================== -->
+  <g transform="translate(300, 320)">
+    <rect width="240" height="120" rx="10" fill="url(#tool-grad)" stroke="#10b981" stroke-width="1.2"/>
+    <text x="18" y="24" class="box-title" fill="#34d399">Flashlight</text>
+    <text x="18" y="38" class="box-desc-muted">core/flashlight/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#10b981" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• SymbolIndex (AST scanning)</text>
+    <text x="18" y="78" class="box-desc">• Flashlight beam retrieval</text>
+    <text x="18" y="94" class="box-desc">• Context-scaled beam size</text>
+  </g>
+
+  <!-- ==================== CORE: EXECUTION ==================== -->
+  <g transform="translate(560, 320)">
+    <rect width="240" height="120" rx="10" fill="url(#cli-grad)" stroke="#3b82f6" stroke-width="1.2"/>
+    <text x="18" y="24" class="box-title" fill="#60a5fa">Execution</text>
+    <text x="18" y="38" class="box-desc-muted">core/execution/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#3b82f6" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• ExecutionFeedbackLoop</text>
+    <text x="18" y="78" class="box-desc">• Auto-run tests after edits</text>
+    <text x="18" y="94" class="box-desc">• Test result parsing</text>
+  </g>
+
+  <!-- ==================== CORE: PROMPTS ==================== -->
+  <g transform="translate(820, 320)">
+    <rect width="240" height="120" rx="10" fill="url(#tui-grad)" stroke="#a855f7" stroke-width="1.2"/>
+    <text x="18" y="24" class="box-title" fill="#c4b5fd">Prompts</text>
+    <text x="18" y="38" class="box-desc-muted">core/prompts/</text>
+    <line x1="18" y1="46" x2="222" y2="46" stroke="#a855f7" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="18" y="62" class="box-desc">• Unified system prompt</text>
+    <text x="18" y="78" class="box-desc">• Context-aware tool syntax</text>
+    <text x="18" y="94" class="box-desc">• Phase-based instructions</text>
+  </g>
+
+  <!-- ==================== SECTION: FRONTENDS ==================== -->
+  <g transform="translate(40, 460)">
+    <text x="0" y="16" class="section-title" fill="#60a5fa">Frontends (import from core/)</text>
+    <line x1="0" y1="24" x2="1020" y2="24" stroke="#3b82f6" stroke-opacity="0.3" stroke-width="1"/>
+  </g>
+
+  <!-- ==================== CLI FRONTEND ==================== -->
+  <g transform="translate(40, 500)">
+    <rect width="490" height="160" rx="12" fill="url(#cli-grad)" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="18" y="26" class="box-title" fill="#60a5fa">CLI Frontend</text>
+    <text x="18" y="42" class="box-desc-muted">context-manager-cli/src/context_manager/</text>
+    <line x1="18" y1="52" x2="472" y2="52" stroke="#3b82f6" stroke-opacity="0.3" stroke-width="1"/>
+    
+    <rect x="18" y="60" width="140" height="85" rx="6" fill="#0c1a2e" stroke="#3b82f6" stroke-opacity="0.4" stroke-width="1"/>
+    <text x="28" y="76" class="box-desc" fill="#93c5fd">cli/main.py</text>
+    <text x="28" y="92" class="box-desc-muted">Typer app + Rich panels</text>
+    <text x="28" y="108" class="box-desc-muted">Streaming + phase detection</text>
+    <text x="28" y="124" class="box-desc-muted">Flashlight beam integration</text>
+    <text x="28" y="140" class="box-desc-muted">Tool approval pipeline</text>
+
+    <rect x="170" y="60" width="140" height="85" rx="6" fill="#0c1a2e" stroke="#3b82f6" stroke-opacity="0.4" stroke-width="1"/>
+    <text x="180" y="76" class="box-desc" fill="#93c5fd">cli/dashboard.py</text>
+    <text x="180" y="92" class="box-desc-muted">Live stats panel</text>
+    <text x="180" y="108" class="box-desc-muted">ActionTracker</text>
+    <text x="180" y="124" class="box-desc-muted">Context usage bar</text>
+    <text x="180" y="140" class="box-desc-muted">Token speed display</text>
+
+    <rect x="322" y="60" width="150" height="85" rx="6" fill="#0c1a2e" stroke="#3b82f6" stroke-opacity="0.4" stroke-width="1"/>
+    <text x="332" y="76" class="box-desc" fill="#93c5fd">skills/unified.py</text>
+    <text x="332" y="92" class="box-desc-muted">Skill registry bridge</text>
+    <text x="332" y="108" class="box-desc-muted">TDD workflow skill</text>
+    <text x="332" y="124" class="box-desc-muted">Custom skill loading</text>
+    <text x="332" y="140" class="box-desc-muted">AST scan at startup</text>
+  </g>
+
+  <!-- ==================== TUI FRONTEND ==================== -->
+  <g transform="translate(560, 500)">
+    <rect width="500" height="160" rx="12" fill="url(#tui-grad)" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="18" y="26" class="box-title" fill="#c4b5fd">TUI Frontend</text>
+    <text x="18" y="42" class="box-desc-muted">rlm_optimized/</text>
+    <line x1="18" y1="52" x2="482" y2="52" stroke="#a855f7" stroke-opacity="0.3" stroke-width="1"/>
+    
+    <rect x="18" y="60" width="150" height="85" rx="6" fill="#1a0c2e" stroke="#a855f7" stroke-opacity="0.4" stroke-width="1"/>
+    <text x="28" y="76" class="box-desc" fill="#c4b5fd">tui_app.py</text>
+    <text x="28" y="92" class="box-desc-muted">Textual IDE TUI</text>
+    <text x="28" y="108" class="box-desc-muted">Sidebar + file tree</text>
+    <text x="28" y="124" class="box-desc-muted">Modal approvals</text>
+    <text x="28" y="140" class="box-desc-muted">Memory meters</text>
+
+    <rect x="180" y="60" width="150" height="85" rx="6" fill="#1a0c2e" stroke="#a855f7" stroke-opacity="0.4" stroke-width="1"/>
+    <text x="190" y="76" class="box-desc" fill="#c4b5fd">rlm_engine_optimized.py</text>
+    <text x="190" y="92" class="box-desc-muted">Async agentic engine</text>
+    <text x="190" y="108" class="box-desc-muted">Recursive self-reasoning</text>
+    <text x="190" y="124" class="box-desc-muted">Streaming + stop repair</text>
+    <text x="190" y="140" class="box-desc-muted">GBNF grammar constraints</text>
+
+    <rect x="342" y="60" width="140" height="85" rx="6" fill="#1a0c2e" stroke="#a855f7" stroke-opacity="0.4" stroke-width="1"/>
+    <text x="352" y="76" class="box-desc" fill="#c4b5fd">repl_sandbox.py</text>
+    <text x="352" y="92" class="box-desc-muted">Sandboxed Python exec</text>
+    <text x="352" y="108" class="box-desc-muted">Module whitelist</text>
+    <text x="352" y="124" class="box-desc-muted">Graph RAG integration</text>
+    <text x="352" y="140" class="box-desc-muted">Variable persistence</text>
+  </g>
+
+  <!-- ==================== SECTION: AGENTIC LOOP ==================== -->
+  <g transform="translate(40, 680)">
+    <text x="0" y="16" class="section-title" fill="#34d399">Agentic Loop</text>
+    <line x1="0" y1="24" x2="1020" y2="24" stroke="#10b981" stroke-opacity="0.3" stroke-width="1"/>
+  </g>
+
+  <!-- ==================== AGENTIC LOOP BOX ==================== -->
+  <g transform="translate(40, 710)">
+    <rect width="1020" height="140" rx="10" fill="#0c1420" stroke="#1e293b" stroke-width="1.5"/>
+    
+    <!-- Loop steps -->
+    <rect x="18" y="18" width="130" height="100" rx="6" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+    <text x="83" y="36" text-anchor="middle" class="box-title" fill="#60a5fa">1. User Input</text>
+    <text x="83" y="52" text-anchor="middle" class="box-desc-muted">Parse + phase detect</text>
+    <text x="83" y="68" text-anchor="middle" class="box-desc-muted">Load inference params</text>
+    <text x="83" y="84" text-anchor="middle" class="box-desc-muted">Init recovery engine</text>
+
+    <line x1="148" y1="68" x2="178" y2="68" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+
+    <rect x="178" y="18" width="130" height="100" rx="6" fill="#1e293b" stroke="#a855f7" stroke-width="1"/>
+    <text x="243" y="36" text-anchor="middle" class="box-title" fill="#c4b5fd">2. Build Context</text>
+    <text x="243" y="52" text-anchor="middle" class="box-desc-muted">TieredMemory L0-L3</text>
+    <text x="243" y="68" text-anchor="middle" class="box-desc-muted">Flashlight beam</text>
+    <text x="243" y="84" text-anchor="middle" class="box-desc-muted">Budget allocation</text>
+
+    <line x1="308" y1="68" x2="338" y2="68" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arrow-purple)"/>
+
+    <rect x="338" y="18" width="130" height="100" rx="6" fill="#1e293b" stroke="#f59e0b" stroke-width="1"/>
+    <text x="403" y="36" text-anchor="middle" class="box-title" fill="#fbbf24">3. LLM Generate</text>
+    <text x="403" y="52" text-anchor="middle" class="box-desc-muted">Stream response</text>
+    <text x="403" y="68" text-anchor="middle" class="box-desc-muted">Phase-based sampling</text>
+    <text x="403" y="84" text-anchor="middle" class="box-desc-muted">Token counting</text>
+
+    <line x1="468" y1="68" x2="498" y2="68" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+    <rect x="498" y="18" width="130" height="100" rx="6" fill="#1e293b" stroke="#10b981" stroke-width="1"/>
+    <text x="563" y="36" text-anchor="middle" class="box-title" fill="#34d399">4. Parse Response</text>
+    <text x="563" y="52" text-anchor="middle" class="box-desc-muted">Extract tool calls</text>
+    <text x="563" y="68" text-anchor="middle" class="box-desc-muted">Stop token repair</text>
+    <text x="563" y="84" text-anchor="middle" class="box-desc-muted">ParseError recovery</text>
+
+    <line x1="628" y1="68" x2="658" y2="68" stroke="#10b981" stroke-width="1.5" marker-end="url(#arrow-green)"/>
+
+    <rect x="658" y="18" width="130" height="100" rx="6" fill="#1e293b" stroke="#ef4444" stroke-width="1"/>
+    <text x="723" y="36" text-anchor="middle" class="box-title" fill="#fca5a5">5. Execute Tool</text>
+    <text x="723" y="52" text-anchor="middle" class="box-desc-muted">Validate + classify risk</text>
+    <text x="723" y="68" text-anchor="middle" class="box-desc-muted">Approval pipeline</text>
+    <text x="723" y="84" text-anchor="middle" class="box-desc-muted">ToolError recovery</text>
+
+    <line x1="788" y1="68" x2="818" y2="68" stroke="#ef4444" stroke-width="1.5" marker-end="url(#arrow-red)"/>
+
+    <rect x="818" y="18" width="180" height="100" rx="6" fill="#1e293b" stroke="#f97316" stroke-width="1"/>
+    <text x="908" y="36" text-anchor="middle" class="box-title" fill="#fdba74">6. Feedback + Loop</text>
+    <text x="908" y="52" text-anchor="middle" class="box-desc-muted">Add result to memory</text>
+    <text x="908" y="68" text-anchor="middle" class="box-desc-muted">Auto-run tests (if code)</text>
+    <text x="908" y="84" text-anchor="middle" class="box-desc-muted">Check context budget</text>
+    <text x="908" y="100" text-anchor="middle" class="box-desc-muted">Compress if needed</text>
+
+    <!-- Loop-back arrow -->
+    <path d="M 908 128 C 908 145, 83 145, 83 128" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#arrow-orange)" class="flowing-line"/>
+    <text x="495" y="140" text-anchor="middle" class="arrow-text-amber">Repeat until task complete or chain limit (max 10)</text>
+  </g>
+
+  <!-- ==================== FLOW ARROWS: CORE <-> FRONTENDS ==================== -->
+  
+  <!-- CLI -> Core Tools -->
+  <line x1="285" y1="500" x2="160" y2="300" stroke="#10b981" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-green)"/>
+  <text x="210" y="400" class="arrow-text-green" text-anchor="end" transform="rotate(-50, 210, 400)">imports</text>
+
+  <!-- CLI -> Core Memory -->
+  <line x1="400" y1="500" x2="680" y2="300" stroke="#ef4444" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-red)"/>
+  <text x="550" y="400" class="arrow-text-red" text-anchor="start" transform="rotate(50, 550, 400)">imports</text>
+
+  <!-- TUI -> Core API -->
+  <line x1="700" y1="500" x2="420" y2="300" stroke="#8b5cf6" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-purple)"/>
+  <text x="560" y="400" class="arrow-text-purple" text-anchor="start" transform="rotate(50, 560, 400)">imports</text>
+
+  <!-- TUI -> Core Errors -->
+  <line x1="900" y1="500" x2="940" y2="300" stroke="#f97316" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arrow-orange)"/>
+  <text x="925" y="400" class="arrow-text-amber" text-anchor="start">imports</text>
+
+  <!-- ==================== LEGEND ==================== -->
+  <g transform="translate(40, 870)">
+    <text x="0" y="0" class="box-desc-muted">
+      <tspan fill="#fbbf24">■</tspan> core/ (shared)  
+      <tspan fill="#3b82f6" dx="20">■</tspan> CLI frontend  
+      <tspan fill="#a855f7" dx="20">■</tspan> TUI frontend  
+      <tspan fill="#10b981" dx="20">—</tspan> imports from core/  
+      <tspan fill="#f97316" dx="20">---</tspan> async flow
+    </text>
+  </g>
+
+</svg>

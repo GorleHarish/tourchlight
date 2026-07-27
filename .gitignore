@@ -1,0 +1,14 @@
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local env files
+.env
+
+# Python virtualenvs
+venv/
+.venv/
+
+# Python build artifacts
+*.egg-info/

@@ -1,0 +1,41 @@
+# Comprehensive RLM GBNF Grammar Schema for SLM Output Control
+# Enforces model output to follow valid reasoning followed by exactly one structured action block.
+
+root ::= reasoning (tool-call-tag | tool-xml-tag | write-file-tag | code-tag | subquery-tag | final-tag)
+
+reasoning ::= [^<]*
+
+# 1. <tool_call> {"name": "...", "arguments": {...}} </tool_call>
+tool-call-tag ::= "<tool_call>" ws tool-call-json ws "</tool_call>"
+tool-call-json ::= "{" ws "\"name\"" ws ":" ws tool-name-val ws "," ws "\"arguments\"" ws ":" ws tool-args-obj ws "}"
+tool-name-val ::= "\"WRITE_FILE\"" | "\"EDIT_FILE\"" | "\"READ_FILE\"" | "\"LIST_DIR\"" | "\"GREP\"" | "\"RUN_COMMAND\""
+
+# 2. <TOOL name="..."> JSON </TOOL>
+tool-xml-tag ::= "<TOOL name=\"" tool-name-str "\">" ws tool-args-obj ws "</TOOL>"
+tool-name-str ::= "WRITE_FILE" | "EDIT_FILE" | "READ_FILE" | "LIST_DIR" | "GREP" | "RUN_COMMAND"
+
+# 3. <WRITE_FILE path="..."> content </WRITE_FILE>
+write-file-tag ::= "<WRITE_FILE path=\"" file-path-val "\">" file-content "</WRITE_FILE>"
+file-path-val ::= [^"\r\n]+
+file-content ::= [^<]*
+
+# 4. Other action tags
+code-tag ::= "<CODE>" code-content "</CODE>"
+subquery-tag ::= "<SUB_QUERY>" query-content "</SUB_QUERY>"
+final-tag ::= "<FINAL_ANSWER>" answer-content "</FINAL_ANSWER>"
+
+# Tool arguments JSON object
+tool-args-obj ::= "{" ws (json-pair (ws "," ws json-pair)*)? ws "}"
+json-pair ::= string-val ws ":" ws json-val
+json-val ::= string-val | number-val | bool-val | tool-args-obj | json-array
+json-array ::= "[" ws (json-val (ws "," ws json-val)*)? ws "]"
+
+# Primitive types
+string-val ::= "\"" ([^"\\] | "\\" .)* "\""
+number-val ::= "-"? [0-9]+ ("." [0-9]+)?
+bool-val ::= "true" | "false" | "null"
+ws ::= [ \t\n\r]*
+
+code-content ::= [^<]*
+query-content ::= [^<]*
+answer-content ::= [^<]*
