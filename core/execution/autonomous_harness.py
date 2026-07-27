@@ -18,6 +18,7 @@ import subprocess
 from core.memory.manager import TieredMemory
 from core.memory.persistence import ensure_project_initialized, ensure_git_repository
 from core.execution.feedback_loop import ExecutionFeedbackLoop, TestRunResult
+from core.tools.implementations import set_ctx_window
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +36,8 @@ class TaskSpec:
     id: str
     description: str
     target_files: list[str] = field(default_factory=list)
+    depends_on: list[str] = field(default_factory=list)
+    outputs_summary: Optional[str] = None
     status: TaskStatus = TaskStatus.PENDING
     attempts: int = 0
     max_attempts: int = 3
@@ -88,11 +91,12 @@ class AutonomousHarness:
 
         self.goal_spec: Optional[GoalSpec] = None
         self._ensure_local_git()
+        if self.memory and hasattr(self.memory, "config") and self.memory.config:
+            set_ctx_window(self.memory.config.max_tokens)
 
     def _ensure_local_git(self) -> None:
         """Ensure target project has local git repository and persistent memory initialized."""
         ensure_project_initialized(self.project_root, create_git=True)
-
 
     def initialize_goal(self, goal_id: str, title: str, description: str, tasks: list[dict]) -> GoalSpec:
         task_specs = []
@@ -100,8 +104,17 @@ class AutonomousHarness:
             t_id = t.get("id", f"task_{i+1:02d}")
             desc = t.get("description", "")
             files = t.get("target_files", [])
+            deps = t.get("depends_on", [])
+            outputs = t.get("outputs_summary")
             max_att = t.get("max_attempts", self.config.max_task_attempts)
-            task_specs.append(TaskSpec(id=t_id, description=desc, target_files=files, max_attempts=max_att))
+            task_specs.append(TaskSpec(
+                id=t_id,
+                description=desc,
+                target_files=files,
+                depends_on=deps,
+                outputs_summary=outputs,
+                max_attempts=max_att,
+            ))
 
         self.goal_spec = GoalSpec(
             goal_id=goal_id,
@@ -129,6 +142,8 @@ class AutonomousHarness:
                     id=t["id"],
                     description=t["description"],
                     target_files=t.get("target_files") or [],
+                    depends_on=t.get("depends_on") or [],
+                    outputs_summary=t.get("outputs_summary"),
                     status=status,
                     attempts=t.get("attempts", 0),
                     max_attempts=t.get("max_attempts", 3),
@@ -165,6 +180,8 @@ class AutonomousHarness:
                     "id": t.id,
                     "description": t.description,
                     "target_files": t.target_files,
+                    "depends_on": t.depends_on,
+                    "outputs_summary": t.outputs_summary,
                     "status": t.status.value,
                     "attempts": t.attempts,
                     "max_attempts": t.max_attempts,
@@ -195,9 +212,59 @@ class AutonomousHarness:
         with open(self.tasks_md_path, "w", encoding="utf-8") as f:
             f.write("\n".join(md_lines) + "\n")
 
+    def _get_runnable_pending_tasks(self) -> list[TaskSpec]:
+        """Return pending tasks whose dependencies are all VERIFIED."""
+        if not self.goal_spec:
+            return []
+        verified_ids = {t.id for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED}
+        runnable = []
+        for t in self.goal_spec.tasks:
+            if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS):
+                # Dependencies met if all depends_on IDs are in verified_ids
+                if all(dep_id in verified_ids for dep_id in t.depends_on):
+                    runnable.append(t)
+        return runnable
+
+    def _validate_file_collisions(self, task: TaskSpec) -> list[str]:
+        """Return list of target files that collide with active or failed tasks."""
+        if not self.goal_spec or not task.target_files:
+            return []
+        target_set = set(task.target_files)
+        collisions = []
+        for other in self.goal_spec.tasks:
+            if other.id != task.id and other.status == TaskStatus.IN_PROGRESS:
+                overlap = target_set.intersection(set(other.target_files))
+                if overlap:
+                    collisions.extend(list(overlap))
+        return sorted(list(set(collisions)))
+
+    def _get_prior_verified_summaries(self, task: TaskSpec) -> str:
+        """Construct inter-task memory prompt summarizing prior verified tasks and dependencies."""
+        if not self.goal_spec:
+            return ""
+        verified_tasks = [t for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED]
+        if not verified_tasks:
+            return ""
+
+        summary_lines = ["Prior Completed Sub-Tasks Context:"]
+        for t in verified_tasks:
+            dep_tag = " (Direct Dependency)" if t.id in task.depends_on else ""
+            out = f" - {t.id}{dep_tag}: {t.description}"
+            if t.outputs_summary:
+                out += f" | Output: {t.outputs_summary}"
+            summary_lines.append(out)
+
+        return "\n".join(summary_lines)
+
     def run_micro_epoch(self, task: TaskSpec) -> bool:
         """Run a single micro-epoch for a target task."""
         logger.info(f"Starting micro-epoch for task: {task.id}")
+        
+        # Check for file collisions
+        collisions = self._validate_file_collisions(task)
+        if collisions:
+            logger.warning(f"File collisions detected for task {task.id}: {collisions}")
+
         task.status = TaskStatus.IN_PROGRESS
         task.attempts += 1
         self.save_goal_spec()
@@ -205,14 +272,21 @@ class AutonomousHarness:
         # Step 1: Flush L0 message memory to keep context budget under control
         self.memory.clear()
 
-        # Step 2: Inject system context + task prompt
-        prompt = (
-            f"GOAL: {self.goal_spec.title}\n"
-            f"SUB-TASK ({task.id}): {task.description}\n"
-            f"Target Files: {', '.join(task.target_files)}\n"
-        )
+        # Step 2: Inject system context + task prompt + inter-task pipeline memory
+        prior_context = self._get_prior_verified_summaries(task)
+        prompt_parts = [
+            f"GOAL: {self.goal_spec.title}",
+            f"SUB-TASK ({task.id}): {task.description}",
+            f"Target Files: {', '.join(task.target_files)}",
+        ]
+        if task.depends_on:
+            prompt_parts.append(f"Dependencies: {', '.join(task.depends_on)}")
+        if prior_context:
+            prompt_parts.append(prior_context)
         if task.failure_reasons:
-            prompt += f"Previous Failure Note: {task.failure_reasons[-1]}\n"
+            prompt_parts.append(f"Previous Failure Note: {task.failure_reasons[-1]}")
+
+        prompt = "\n".join(prompt_parts) + "\n"
 
         self.memory.add_system_message("You are Torchlight continuous autonomous agent.")
         self.memory.add_user_message(prompt)
@@ -242,6 +316,7 @@ class AutonomousHarness:
         if success:
             task.status = TaskStatus.VERIFIED
             task.completed_at = datetime.now().isoformat()
+            task.outputs_summary = f"Successfully completed '{task.description}' targeting {task.target_files}"
             if self.config.auto_git_commit:
                 self._git_commit(f"feat(torchlight-auto): pass task {task.id} - {task.description}")
         else:
@@ -270,12 +345,16 @@ class AutonomousHarness:
                 logger.info("Daemon reached max_duration_seconds limit.")
                 break
 
-            pending_tasks = [t for t in self.goal_spec.tasks if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS)]
-            if not pending_tasks:
-                logger.info("All tasks completed or processed.")
+            runnable_tasks = self._get_runnable_pending_tasks()
+            if not runnable_tasks:
+                pending_any = any(t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS) for t in self.goal_spec.tasks)
+                if pending_any:
+                    logger.warning("Pending tasks exist but their dependencies are not verified. Stopping daemon.")
+                else:
+                    logger.info("All tasks completed or processed.")
                 break
 
-            task = pending_tasks[0]
+            task = runnable_tasks[0]
             try:
                 success = self.run_micro_epoch(task)
                 if success:

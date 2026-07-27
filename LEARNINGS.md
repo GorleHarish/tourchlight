@@ -93,6 +93,21 @@
   1. **Self-Healing Persistent Memory**: In `ProjectMemory.load()`, verify disk file presence and valid JSON structure. On missing/corrupt state (e.g. truncated JSON or accidental directory collision), automatically clean up and write standard memory structure (`facts`, `arch_decisions`, `tech_stack`, etc.) back to disk. Use atomic temp-file writes (`.tmp` -> `replace`) to prevent partial write corruption.
   2. **Pre-Flight Git Auto-Provisioning & Repair**: Wrap git tool executions and autonomous harness checkpoints in `ensure_git_repository(project_root, force_init=True)`. If `.git` is missing or corrupt, `git init` is executed on demand before git status/commit/revert runs, self-healing the repository seamlessly without interrupting agent execution.
 
+## Inter-Task Context Pipelines & Target File Collision Guards in Autonomous Swarms
+- **Problem**: When running continuous autonomous execution across multiple sub-tasks, calling `memory.clear()` between micro-epochs keeps context usage low, but completely wipes out learnings, symbol exports, and interface contracts established by prior verified sub-tasks. Additionally, executing sub-tasks without checking target file overlap can lead to silent file overwrites and workspace corruption.
+- **Solution (Task Dependency Graph & Summary Injection)**:
+  1. **Task Dependency Resolution**: Added `depends_on: list[str]` to `TaskSpec` and updated `run_daemon()` to pick pending tasks whose prerequisite tasks are all `VERIFIED`.
+  2. **Inter-Task Memory Pipeline**: Preserved compact `outputs_summary` records from verified tasks and injected them into downstream task prompts, giving sub-tasks full visibility of prior interface changes without blowing context budgets.
+  3. **File Collision Guard**: Added `_validate_file_collisions()` to check target file sets across active tasks, preventing concurrent or unverified file collision overwrites.
+
+## Strict Context Budget Scaling & Pinned File Accounting
+- **Problem**: Context window overflow errors (400 Bad Request / context length exceeded) occurred on small 4k/8k context models due to two subtle bugs: (1) `set_ctx_window()` was only called in CLI `main.py`, leaving the tool output budget hardcoded to 8k tokens in `AutonomousHarness` and `RLMEngine`, allowing single `READ_FILE` calls to consume ~1000 tokens; and (2) `TieredMemory.total_tokens` only counted message history, ignoring up to 1000 tokens of injected pinned files, causing `should_compress()` to under-report context weight until after prompt limits were exceeded.
+- **Solution (Global Budget Scaling & Full Payload Accounting)**:
+  1. **Dynamic Tool Budget Scaling**: Automatically invoke `set_ctx_window(max_tokens)` upon harness and engine initialization so `READ_FILE` scales dynamically to ~20% of context window size.
+  2. **Full Payload Token Accounting**: Updated `TieredMemory.total_tokens` to calculate `msg_tokens + pinned_tokens`, ensuring compression thresholds accurately trigger before pinned files push the payload over context limits.
+  3. **Session Summary History Pruning**: Trimmed `summary_messages` in `rlm_engine_optimized.py` to system prompt + recent turns when history length > 4, preventing summary generation from overflowing model context windows at task completion.
+
+
 
 
 

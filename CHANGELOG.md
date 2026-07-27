@@ -2,6 +2,20 @@
 
 ## 2026-07-27
 
+### Inter-Task Context Pipeline & File Collision Guard (`AutonomousHarness`)
+
+- **Task Dependency Graph & Execution Resolution**: Added `depends_on: list[str]` and `outputs_summary: Optional[str]` to `TaskSpec` and `GoalSpec`. Enforced task dependency order in `_get_runnable_pending_tasks()`, keeping tasks in queue until prerequisite tasks reach `TaskStatus.VERIFIED`.
+- **Inter-Task Memory Pipeline**: Added `_get_prior_verified_summaries()` to summarize prior task outputs (`outputs_summary`) and inject them into downstream micro-epoch prompts, preserving key symbol exports and interface contracts across `memory.clear()` resets.
+- **Target File Collision Guard**: Added `_validate_file_collisions()` to detect overlapping target files across active/failed sub-tasks, preventing accidental file overwrites.
+- **Automated Tests**: Added `core/tests/test_autonomous_harness_pipeline.py`.
+
+### Strict Context Budget Scaling & Pinned File Accounting
+
+- **Dynamic Tool Output Scaling**: Automatically invoke `set_ctx_window(max_tokens)` upon `AutonomousHarness` and `RLMEngine` initialization so `READ_FILE` tool output budgets scale dynamically to ~20% of context window size.
+- **Pinned File Token Accounting**: Updated `TieredMemory.total_tokens` in `core/memory/manager.py` to count `msg_tokens + pinned_tokens`, ensuring compression thresholds accurately trigger before pinned files push the payload over context limits.
+- **Session Summary Overflow Protection**: Pruned `summary_messages` in `rlm_engine_optimized.py` to system prompt + recent turns when history length > 4, preventing session summary generation from overflowing context limits at task completion.
+- **Automated Tests**: Added `core/tests/test_context_budget_overflow.py`. All 135 core unit tests pass cleanly across `core/tests/`.
+
 ### Automatic Project & Persistent Memory File Initialization
 
 - **Automatic Persistent Memory Provisioning & Edge-Case Self-Healing**: Enhanced `ensure_project_initialized()` and `ProjectMemory` in `core/memory/persistence.py` and CLI persistence to automatically create `.context-memory.json` on project load, and self-heal on disk if deleted manually, corrupted (invalid JSON), or created as a directory.

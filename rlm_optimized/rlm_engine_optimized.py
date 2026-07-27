@@ -321,6 +321,8 @@ class RLMEngineOptimized:
                     summary_prompt = "Summarize the key actions taken and findings discovered during this task execution in exactly 3 concise bullet points. Focus on what was modified and what was learned."
                     
                     summary_messages = memory.get_context_for_llm() if use_memory else messages.copy()
+                    if len(summary_messages) > 4:
+                        summary_messages = [summary_messages[0]] + summary_messages[-3:]
                     summary_messages.append({"role": "assistant", "content": f"<FINAL_ANSWER>{content}</FINAL_ANSWER>"})
                     summary_messages.append({"role": "user", "content": summary_prompt})
                     

@@ -116,7 +116,9 @@ class TieredMemory:
 
     @property
     def total_tokens(self) -> int:
-        return sum(self.tokenizer.count(m.content) for m in self.messages)
+        msg_tokens = sum(self.tokenizer.count(m.content) for m in self.messages)
+        pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
+        return msg_tokens + pinned_tokens
 
     def add_system_message(self, content: str) -> None:
         msg = Message(role=MessageRole.SYSTEM, content=content, token_count=self.tokenizer.count(content))
