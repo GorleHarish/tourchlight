@@ -1445,14 +1445,25 @@ class TorchlightApp(App):
             widget = self._ensure_streaming_widget()
             from rich.markup import escape
             display_text = self._streaming_text
+            is_preparing = False
+
             if "<TOOL" in display_text:
-                display_text = display_text.split("<TOOL")[0].strip() + "\n\n[dim cyan]⚡ Preparing tool action...[/dim cyan]"
+                display_text = display_text.split("<TOOL")[0].strip()
+                is_preparing = True
             elif "<tool_call>" in display_text:
-                display_text = display_text.split("<tool_call>")[0].strip() + "\n\n[dim cyan]⚡ Preparing tool action...[/dim cyan]"
+                display_text = display_text.split("<tool_call>")[0].strip()
+                is_preparing = True
 
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
-            widget.update(escape(display_text))
+
+            escaped = escape(display_text)
+            if is_preparing:
+                if escaped:
+                    escaped += "\n\n"
+                escaped += "[dim cyan]⚡ Preparing tool action...[/dim cyan]"
+
+            widget.update(escaped)
             self.call_after_refresh(self._scroll_chat_to_end)
         except Exception:
             pass
