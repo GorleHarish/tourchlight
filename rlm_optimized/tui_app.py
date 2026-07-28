@@ -735,7 +735,7 @@ class TorchlightApp(App):
                     with Horizontal(id="input-header-bar"):
                         from rich.markup import escape
                         yield Static(
-                            f"🤖 [cyan]{escape(self.model_name)}[/cyan] [dim]({escape(self.provider_name)})[/dim]",
+                            f"🤖 [cyan bold]{escape(self.model_name)}[/cyan bold] [dim]({escape(self.provider_name)})[/dim] [yellow]▾[/yellow]",
                             id="input-model-badge"
                         )
                         yield Static(
@@ -902,9 +902,93 @@ class TorchlightApp(App):
         try:
             mb = self.query_one("#input-model-badge")
             from rich.markup import escape
-            mb.update(f"🤖 [cyan]{escape(self.model_name)}[/cyan] [dim]({escape(self.provider_name)})[/dim]")
+            mb.update(f"🤖 [cyan bold]{escape(self.model_name)}[/cyan bold] [dim]({escape(self.provider_name)})[/dim] [yellow]▾[/yellow]")
         except Exception:
             pass
+
+    @on(Static.Clicked, "#input-model-badge")
+    def on_input_model_badge_clicked(self) -> None:
+        self.action_select_model()
+
+    @on(Input.Submitted, "#user-input")
+    async def handle_input(self, event: Input.Submitted) -> None:
+        user_text = event.value.strip()
+        if not user_text or self._is_running:
+            return
+
+        event.input.value = ""
+
+        if user_text.startswith("/"):
+            await self._handle_slash_command(user_text)
+            return
+
+        self._chat_history.append({"role": "user", "content": user_text})
+        container = self.query_one("#chat-container")
+        from rich.markup import escape
+        self._safe_mount(container, Static(Panel(
+            escape(user_text),
+            title="You",
+            border_style="bright_blue",
+        )))
+
+        self._run_agent(user_text)
+
+    @on(Button.Pressed, "#send-btn")
+    async def on_send_button(self) -> None:
+        if self._is_running:
+            self.stop_current_agent()
+            return
+
+        inp = self.query_one("#user-input")
+        text = inp.value.strip()
+        if not text:
+            return
+        inp.value = ""
+
+        if text.startswith("/"):
+            await self._handle_slash_command(text)
+            return
+
+        self._chat_history.append({"role": "user", "content": text})
+        container = self.query_one("#chat-container")
+        from rich.markup import escape
+        self._safe_mount(container, Static(Panel(
+            escape(text),
+            title="You",
+            border_style="bright_blue",
+        )))
+        self._run_agent(text)
+
+    def stop_current_agent(self) -> None:
+        if not self._is_running:
+            return
+        try:
+            self.workers.cancel_group(self, "agent")
+        except Exception:
+            pass
+        self._is_running = False
+        self._set_input_enabled(True)
+        self.notify("Agent execution stopped by user", severity="warning", timeout=2)
+
+    def _set_input_enabled(self, enabled: bool) -> None:
+        try:
+            inp = self.query_one("#user-input")
+            btn = self.query_one("#send-btn", Button)
+            spinner = self.query_one("#input-spinner")
+            inp.disabled = not enabled
+            if not enabled:
+                btn.label = "⏹ Stop"
+                btn.variant = "error"
+                btn.disabled = False
+                spinner.update("[bold cyan]●[/]")
+            else:
+                btn.label = "Send"
+                btn.variant = "primary"
+                btn.disabled = False
+                spinner.update("")
+        except Exception:
+            pass
+
 
     def _auto_refresh_engine_status(self) -> None:
         self.update_status_bar()
@@ -1201,7 +1285,7 @@ class TorchlightApp(App):
         except Exception:
             pass
 
-    @work(exclusive=True)
+    @work(exclusive=True, group="agent")
     async def _run_agent(self, task: str) -> None:
         self._is_running = True
         self._set_input_enabled(False)

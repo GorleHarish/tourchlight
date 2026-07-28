@@ -237,6 +237,11 @@ Input > .input--cursor {
     color: $foreground;
 }
 
+#input-model-badge:hover {
+    color: $accent;
+    text-style: underline bold;
+}
+
 #context-progress-badge {
     width: 1fr;
     color: $foreground;
