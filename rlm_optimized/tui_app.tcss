@@ -118,6 +118,19 @@ Tree:focus {
     color: $foreground;
 }
 
+/* ── Implementation Plan Panel ────────────────────────────────────────── */
+
+#plan-panel {
+    height: auto;
+    max-height: 14;
+    background: $background;
+    border: solid $panel;
+    padding: 0 1;
+    margin-bottom: 0;
+    color: $foreground;
+    overflow-y: auto;
+}
+
 /* ── Shortcuts Panel ──────────────────────────────────────────────────── */
 
 #shortcuts-panel {

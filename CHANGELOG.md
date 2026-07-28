@@ -2,6 +2,14 @@
 
 ## 2026-07-28
 
+### Real-Time Implementation Plan TUI Sidebar Panel (`tui_app.py`, `tui_app.tcss`)
+
+- **Live Implementation Plan Panel**: Added a dedicated `📋 Implementation Plan` sidebar section to the Textual TUI (`rlm_optimized/tui_app.py`) positioned directly below the System Status panel.
+- **Progress Bar & Checklist Rendering**: Implemented `_build_plan_text()` to parse `implementation_plan.md` from the active project root, render visual progress bars (`Progress: [██████████░░░░] 60%`), section headers (`📌 Section`), and task checklist items (`✅ Completed`, `⏳ Pending`).
+- **Real-Time Sidebar Sync**: Updated `update_sidebar_meta()` to refresh `#plan-panel` automatically as the agent updates implementation tasks during workflow execution.
+- **Sidebar Styling**: Added CSS rules for `#plan-panel` in `rlm_optimized/tui_app.tcss` with height constraints and scrolling support.
+- **Automated Test Suite**: Added `core/tests/test_tui_plan_panel.py` unit tests for plan parsing and rendering. Verified full test suite passing (153/153 tests).
+
 ### Native AST Knowledge Graph Engine (`graph_engine.py` & `SEARCH_AST`)
 
 - **Pure-Python AST Graph Engine**: Implemented `core/flashlight/graph_engine.py` — a zero-dependency knowledge graph engine replacing the Kùzu embedded database. Uses Python's `ast` module for Python files and regex fallback for JS/TS/Go/Rust/Java/C/C++/Ruby/C#/Kotlin. Stores graph at `.torchlight/graph.json` and generates `GRAPH_REPORT.md`.
