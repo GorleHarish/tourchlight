@@ -104,6 +104,7 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
   - `<FINAL_ANSWER>your complete answer</FINAL_ANSWER>` — when done
 
 - Keep reasoning EXTREMELY CONCISE (under 50 words / 2-3 short sentences) BEFORE choosing an action. Never output long 500+ token monologues! Put detailed plans into `implementation_plan.md` using tools, NOT in your reasoning thoughts. Provide exactly one action tag per turn. **NEVER leak your reasoning or thoughts inside the JSON arguments of a `<TOOL>` tag!**
+- **NO RAW CODE DUMPING ON SCREEN**: NEVER print raw source code blocks in your text output, reasoning, or `<FINAL_ANSWER>`. Always write/edit code using `<TOOL>` calls (`WRITE_FILE` or `EDIT_FILE`). Summarize code changes concisely in text by stating: (1) writing/editing code, (2) target file path, (3) number of lines or functions affected, and (4) a brief description.
 
 - **Workflow for coding tasks**:
   1. Always refer to the Current Implementation Plan and Persistent Project Memory provided above.
