@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785226562.7413397,
-    "ast_hash": "f33a1de0e746d153b0232df44fbfc3cf",
+    "mtime": 1785226903.7091765,
+    "ast_hash": "ffe82f18f7d3d4b8161a075697b448d4",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -690,18 +690,18 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785226481.0549352,
-    "ast_hash": "4304c5c6c9771688f3dd24dbfb42b6a9",
+    "mtime": 1785226880.4465244,
+    "ast_hash": "286f137e241ac6eb5283e0af9ddd7a4d",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785219144.0247002,
-    "ast_hash": "3d997dd0b8307738417b3c65668b9342",
+    "mtime": 1785226865.3394406,
+    "ast_hash": "c788603c3211614447e4a62676022107",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
-    "mtime": 1785220905.9749963,
-    "ast_hash": "6a656d64288638be7d84a4df46b94614",
+    "mtime": 1785226870.9298575,
+    "ast_hash": "7339c13bfd437d003de66bc27e46a037",
     "semantic_hash": ""
   },
   "README.md": {
@@ -750,8 +750,8 @@
     "semantic_hash": ""
   },
   "context-manager-cli/documentation/architecture.md": {
-    "mtime": 1784750575.5841532,
-    "ast_hash": "bb4002c677b0f8ea63a6a7da244d0af0",
+    "mtime": 1785226892.0519269,
+    "ast_hash": "bce74428f1d6d25d041c8447299ae7d9",
     "semantic_hash": ""
   },
   "context-manager-cli/documentation/excellence-roadmap.md": {

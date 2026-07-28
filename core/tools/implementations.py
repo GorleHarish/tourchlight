@@ -437,42 +437,71 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
 
 
 def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
-    """Parse Aider-style <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block into (old_text, new_text)."""
+    """Parse Aider-style <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block into (old_text, new_text).
+    Supports flexible variations produced by LLMs (e.g., missing 'REPLACE' label, '>>>>>>>' used as divider).
+    """
     if not text:
         return None, None
+
+    def _clean_segment(s: str) -> str:
+        if s.startswith("\r\n"):
+            s = s[2:]
+        elif s.startswith("\n"):
+            s = s[1:]
+        if s.endswith("\r\n"):
+            s = s[:-2]
+        elif s.endswith("\n"):
+            s = s[:-1]
+        return s
+
+    # 1. Flexible regex-based parsing for Search/Replace blocks
+    search_match = re.search(r'<<<<<<<(?:[ \t]*SEARCH)?\r?\n', text)
+    if search_match:
+        after_search = text[search_match.end():]
+        # Option A: Standard divider =======
+        div_match = re.search(r'\r?\n=======\r?\n', after_search)
+        if div_match:
+            search_part = after_search[:div_match.start()]
+            after_div = after_search[div_match.end():]
+            end_match = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?(?:$|\r?\n)', after_div)
+            if end_match:
+                replace_part = after_div[:end_match.start()]
+                return _clean_segment(search_part), _clean_segment(replace_part)
+            else:
+                end_match2 = re.search(r'>>>>>>>(?:[ \t]*REPLACE)?', after_div)
+                if end_match2:
+                    replace_part = after_div[:end_match2.start()]
+                    return _clean_segment(search_part), _clean_segment(replace_part)
+
+        # Option B: Model used >>>>>>> as divider between SEARCH block and REPLACE block
+        div_alt = re.search(r'\r?\n>>>>>>>(?:[ \t]*SEARCH)?\r?\n', after_search)
+        if div_alt:
+            search_part = after_search[:div_alt.start()]
+            after_div = after_search[div_alt.end():]
+            end_match = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?', after_div)
+            if end_match:
+                replace_part = after_div[:end_match.start()]
+                return _clean_segment(search_part), _clean_segment(replace_part)
+
+    # 2. String splitting fallback (legacy logic)
     search_marker = "<<<<<<< SEARCH"
     divide_marker = "======="
     replace_marker = ">>>>>>> REPLACE"
 
-    if search_marker in text and divide_marker in text and replace_marker in text:
+    if search_marker in text and divide_marker in text:
         try:
             after_search = text.split(search_marker, 1)[1]
-            between, _ = after_search.split(replace_marker, 1)
+            if replace_marker in after_search:
+                between, _ = after_search.split(replace_marker, 1)
+            elif ">>>>>>>" in after_search:
+                between, _ = after_search.split(">>>>>>>", 1)
+            else:
+                between = after_search
             search_part, replace_part = between.split(divide_marker, 1)
-
-            if search_part.startswith("\r\n"):
-                search_part = search_part[2:]
-            elif search_part.startswith("\n"):
-                search_part = search_part[1:]
-
-            if search_part.endswith("\r\n"):
-                search_part = search_part[:-2]
-            elif search_part.endswith("\n"):
-                search_part = search_part[:-1]
-
-            if replace_part.startswith("\r\n"):
-                replace_part = replace_part[2:]
-            elif replace_part.startswith("\n"):
-                replace_part = replace_part[1:]
-
-            if replace_part.endswith("\r\n"):
-                replace_part = replace_part[:-2]
-            elif replace_part.endswith("\n"):
-                replace_part = replace_part[:-1]
-
-            return search_part, replace_part
+            return _clean_segment(search_part), _clean_segment(replace_part)
         except Exception:
             pass
+
     return None, None
 
 
@@ -592,6 +621,23 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 pass
 
         if not old_text:
+            diff_attempted = any(
+                marker in str(candidate)
+                for candidate in [diff_text, args.get("old_text", ""), args.get("content", ""), args.get("raw", "")]
+                for marker in ["<<<<<<<", "SEARCH", "=======", ">>>>>>>"]
+                if candidate
+            )
+            if diff_attempted:
+                return (
+                    "Edit failed: Malformed diff block syntax in 'diff'. Could not locate valid SEARCH block, '=======' divider, and '>>>>>>> REPLACE' footer.\n"
+                    "Ensure your diff block follows this exact format:\n"
+                    "<<<<<<< SEARCH\n"
+                    "<exact text to replace>\n"
+                    "=======\n"
+                    "<new replacement text>\n"
+                    ">>>>>>> REPLACE\n\n"
+                    "Or use exact JSON arguments: {\"path\": \"file.py\", \"old_text\": \"...\", \"new_text\": \"...\"}"
+                )
             return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find, or line range (start_line/end_line). To overwrite full file, use WRITE_FILE."
         if new_text == old_text:
             return "No change: old_text and new_text are identical."

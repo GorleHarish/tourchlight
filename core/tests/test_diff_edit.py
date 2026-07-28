@@ -30,6 +30,33 @@ def test_parse_diff_block_invalid():
     assert new_text is None
 
 
+def test_parse_diff_block_llm_variations():
+    # Model using >>>>>>> as divider instead of ======= and omitting REPLACE
+    text = """<<<<<<< SEARCH
+def check_solution(self):
+    print("Checking solution...")
+>>>>>>>
+def check_solution(self):
+    print("Fixed solution...")
+>>>>>>>"""
+    old_text, new_text = _parse_diff_block(text)
+    assert old_text == 'def check_solution(self):\n    print("Checking solution...")'
+    assert new_text == 'def check_solution(self):\n    print("Fixed solution...")'
+
+
+def test_edit_file_malformed_diff_diagnostic():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "main.py")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("def foo(): return 1\n")
+
+        # Completely broken diff marker that cannot be split into 2 parts
+        broken_diff = "<<<<<<< SEARCH only one block here"
+        res = tool_edit_file_impl({"path": "main.py", "diff": broken_diff}, project_root=tmpdir)
+        assert "Malformed diff block syntax" in res
+        assert "Ensure your diff block follows this exact format" in res
+
+
 def test_edit_file_with_diff_block():
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "test.py")
