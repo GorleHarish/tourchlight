@@ -693,8 +693,16 @@ class TorchlightApp(App):
                 yield Static("Workspace Explorer", classes="sidebar-section-title")
                 yield DirectoryTree(self.engine.project_root, id="file-tree")
                 yield Static(classes="sidebar-divider")
-                yield Static("System Status", classes="sidebar-section-title")
-                yield Static(self._build_meta_text(), id="meta-panel")
+                if Collapsible is not None:
+                    yield Collapsible(
+                        Static(self._build_meta_text(), id="meta-panel"),
+                        title="⚙️ System Status",
+                        collapsed=True,
+                        id="meta-collapsible"
+                    )
+                else:
+                    yield Static("System Status", classes="sidebar-section-title")
+                    yield Static(self._build_meta_text(), id="meta-panel")
                 yield Static(classes="sidebar-divider")
                 yield Static("📋 Implementation Plan", classes="sidebar-section-title")
                 yield Static(self._build_plan_text(), id="plan-panel")
@@ -723,13 +731,24 @@ class TorchlightApp(App):
                     id="status-bar",
                 )
                 yield VerticalScroll(id="chat-container")
-                with Horizontal(id="input-area"):
-                    yield Input(
-                        placeholder="Type prompt or /help... (Ctrl+B sidebar, Ctrl+C quit)",
-                        id="user-input",
-                    )
-                    yield Button("Send", id="send-btn", variant="primary")
-                    yield Static("", id="input-spinner")
+                with Vertical(id="input-area"):
+                    with Horizontal(id="input-header-bar"):
+                        from rich.markup import escape
+                        yield Static(
+                            f"🤖 [cyan]{escape(self.model_name)}[/cyan] [dim]({escape(self.provider_name)})[/dim]",
+                            id="input-model-badge"
+                        )
+                        yield Static(
+                            self._build_context_progress_text(),
+                            id="context-progress-badge"
+                        )
+                    with Horizontal(id="input-row"):
+                        yield Input(
+                            placeholder="Type prompt or /help... (Ctrl+B sidebar, Ctrl+C quit)",
+                            id="user-input",
+                        )
+                        yield Button("Send", id="send-btn", variant="primary")
+                        yield Static("", id="input-spinner")
         yield Footer()
 
     def _build_plan_text(self) -> str:
@@ -818,6 +837,23 @@ class TorchlightApp(App):
         except Exception:
             return "[dim red]Error reading plan file[/dim red]"
 
+    def _build_context_progress_text(self) -> str:
+        tokens_est = self.engine._total_llm_calls * 450
+        ctx_max = CTX_SIZE
+        pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
+        bar_width = 10
+        filled = min(bar_width, int(round((pct / 100.0) * bar_width)))
+        bar = "█" * filled + "░" * (bar_width - filled)
+
+        if pct < 50:
+            color = "green"
+        elif pct < 75:
+            color = "yellow"
+        else:
+            color = "red"
+
+        return f"[dim]Context:[/] [{color}]{bar}[/{color}] [bold {color}]{pct}%[/bold {color}] [dim]({tokens_est:,}/{ctx_max:,})[/dim]"
+
     def _build_meta_text(self) -> str:
         tokens_est = self.engine._total_llm_calls * 450
         mem_line = format_memory_status()
@@ -856,6 +892,17 @@ class TorchlightApp(App):
         try:
             pp = self.query_one("#plan-panel")
             pp.update(self._build_plan_text())
+        except Exception:
+            pass
+        try:
+            cp = self.query_one("#context-progress-badge")
+            cp.update(self._build_context_progress_text())
+        except Exception:
+            pass
+        try:
+            mb = self.query_one("#input-model-badge")
+            from rich.markup import escape
+            mb.update(f"🤖 [cyan]{escape(self.model_name)}[/cyan] [dim]({escape(self.provider_name)})[/dim]")
         except Exception:
             pass
 

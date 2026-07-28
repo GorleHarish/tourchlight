@@ -219,17 +219,40 @@ Input > .input--cursor {
 #input-area {
     dock: bottom;
     height: auto;
-    min-height: 3;
-    max-height: 7;
+    min-height: 4;
+    max-height: 8;
     background: $surface;
     border-top: solid $panel;
     padding: 0 1;
 }
 
+#input-header-bar {
+    height: 1;
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 0 0;
+    align: space-between middle;
+}
+
+#input-model-badge {
+    width: auto;
+    color: $foreground;
+}
+
+#context-progress-badge {
+    width: auto;
+    color: $foreground;
+    text-align: right;
+}
+
+#input-row {
+    height: 3;
+    align: center middle;
+}
+
 #user-input {
     width: 1fr;
-    height: auto;
-    min-height: 3;
+    height: 3;
     background: $background;
     color: $foreground;
     border: tall $primary;
