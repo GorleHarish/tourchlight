@@ -1,7 +1,7 @@
 # Graph Report - tourchlight v1_i6  (2026-07-28)
 
 ## Corpus Check
-- 161 files · ~244,887 words
+- 161 files · ~245,021 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `442cce4e`
+- Built from commit: `30e53063`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -711,11 +711,11 @@ Nodes (4): _grep_python(), _grep_rg(), Search using ripgrep for maximum speed an
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `TieredMemory` connect `TieredMemory` to `TokenCounter`, `cli/main.py`, `context_manager/memory/manager.py`, `_EvictingDeque`, `context_manager/memory/persistence.py`, `LLMStateExtractor`, `MemoryConfig`, `.refresh_pin`, `build_embedder`, `autonomous_harness.py`, `ProjectMemory`, `AutonomousHarness`, `StreamingChatSession`, `.__init__`, `RLMEngine`, `RLMEngineOptimized`?**
-  _High betweenness centrality (0.074) - this node is a cross-community bridge._
+  _High betweenness centrality (0.069) - this node is a cross-community bridge._
 - **Why does `StreamingChatSession` connect `StreamingChatSession` to `context_manager/compression/summarizer.py`, `cli/main.py`, `context_manager/memory/manager.py`, `LMStudioClient`, `TieredMemory`, `test_phase_detection.py`, `ExecutionFeedbackLoop`, `MemoryConfig`, `ActionTracker`, `VerbatimCompactor`, `._execute_tool_with_approval`, `ProjectMemory`, `AutonomousHarness`, `ContextDashboard`, `DebateVerifier`, `.__init__`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
 - **Why does `SkillResult` connect `SkillResult` to `ProjectSnapshot`, `BaseSkill`, `TDDSkill`, `MyCustomSkill`, `PlanningSkill`, `discovery.py`, `TDDSkill`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
 - **Are the 25 inferred relationships involving `TieredMemory` (e.g. with `sessions()` and `StreamingChatSession`) actually correct?**
   _`TieredMemory` has 25 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 11 inferred relationships involving `TieredMemory` (e.g. with `ContextSnapshot` and `MemoryNeedle`) actually correct?**
