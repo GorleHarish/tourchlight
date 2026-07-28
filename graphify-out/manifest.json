@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785222117.141367,
-    "ast_hash": "f038ec50066daac09c8d059f86b9fb75",
+    "mtime": 1785223887.4258246,
+    "ast_hash": "f6438f3c68caaeb912b08c593a2a40f1",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1785181426.644631,
-    "ast_hash": "0fca720b0d70883323f4959b8f61b11f",
+    "mtime": 1785223766.4470208,
+    "ast_hash": "d6990d83c7eabf0df74ef2457f3cb0eb",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -140,9 +140,9 @@
     "semantic_hash": "9f176db23d1c89bb49a3adf241047ded"
   },
   "context-manager-cli/src/context_manager/memory/manager.py": {
-    "mtime": 1784893611.3172345,
-    "ast_hash": "2d73d294fac7c302c82cb5aca3c46562",
-    "semantic_hash": "2d73d294fac7c302c82cb5aca3c46562"
+    "mtime": 1785223760.4463475,
+    "ast_hash": "8acfcdc27c93e2067f92696337c22cd1",
+    "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/memory/models.py": {
     "mtime": 1774448164.7559862,
@@ -350,9 +350,9 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785144067.3600848,
-    "ast_hash": "9a9f1a12954e58b259e614e81fb2dca5",
-    "semantic_hash": "9a9f1a12954e58b259e614e81fb2dca5"
+    "mtime": 1785223754.4923446,
+    "ast_hash": "cf56353f95d37743d1905251c8ff532e",
+    "semantic_hash": ""
   },
   "core/memory/models.py": {
     "mtime": 1784761245.4668689,
@@ -525,7 +525,7 @@
     "semantic_hash": "e67c18b62ba4922e6367840ed2043c18"
   },
   "core/tools/implementations.py": {
-    "mtime": 1785220498.7224343,
+    "mtime": 1785223807.1290689,
     "ast_hash": "fb612cb43ee4b00b99095c770f5f3a91",
     "semantic_hash": ""
   },
@@ -610,9 +610,9 @@
     "semantic_hash": "23ae1792e4c1d67058f0e6efb649a4f8"
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785144086.2500129,
-    "ast_hash": "7b9dd60fb9b43ed97de2a82906f52ccd",
-    "semantic_hash": "7b9dd60fb9b43ed97de2a82906f52ccd"
+    "mtime": 1785223772.6939201,
+    "ast_hash": "4e602f8326cba84c313b951987fec554",
+    "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
     "mtime": 1783634919.4409606,
@@ -792,6 +792,11 @@
   "core/tests/test_tui_plan_panel.py": {
     "mtime": 1785218639.2675142,
     "ast_hash": "90117fea3623a978e2841b9378697de3",
+    "semantic_hash": ""
+  },
+  "core/tests/test_memory_sync.py": {
+    "mtime": 1785223787.5948975,
+    "ast_hash": "7343cbd5e205079e18094ecca1ddcc21",
     "semantic_hash": ""
   }
 }
