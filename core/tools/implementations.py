@@ -567,17 +567,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 syntax_note = _check_syntax(new_content, p) or ""
                 return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{syntax_note}"
 
-        if not old_text:
-            return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find."
-        if new_text == old_text:
-            return "No change: old_text and new_text are identical."
-
-        # Handle unescaped literal \\n and \\t from raw JSON outputs
-        if "\\n" in old_text and "\n" not in old_text:
-            old_text = old_text.replace("\\n", "\n").replace("\\t", "\t")
-        if "\\n" in new_text and "\n" not in new_text:
-            new_text = new_text.replace("\\n", "\n").replace("\\t", "\t")
-
         # Line-bounded search window handling
         if start_line is not None and end_line is not None:
             try:
@@ -587,15 +576,31 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 s_idx = s_l - 1
                 e_idx = min(len(lines), e_l)
                 target_slice = "".join(lines[s_idx:e_idx])
-                if old_text in target_slice:
+                if old_text and old_text in target_slice:
                     new_slice = target_slice.replace(old_text, new_text, 1)
                     new_content = "".join(lines[:s_idx]) + new_slice + "".join(lines[e_idx:])
-                    with open(p, "w", encoding="utf-8") as f:
-                        f.write(new_content)
-                    syntax_note = _check_syntax(new_content, p) or ""
-                    return f"Surgically edited {path} within line range {s_l}-{e_l}.{syntax_note}"
+                else:
+                    new_content = "".join(lines[:s_idx]) + new_text
+                    if new_text and not new_text.endswith("\n") and e_idx < len(lines):
+                        new_content += "\n"
+                    new_content += "".join(lines[e_idx:])
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+                syntax_note = _check_syntax(new_content, p) or ""
+                return f"Surgically edited {path} within line range {s_l}-{e_l}.{syntax_note}"
             except ValueError:
                 pass
+
+        if not old_text:
+            return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find, or line range (start_line/end_line). To overwrite full file, use WRITE_FILE."
+        if new_text == old_text:
+            return "No change: old_text and new_text are identical."
+
+        # Handle unescaped literal \\n and \\t from raw JSON outputs
+        if "\\n" in old_text and "\n" not in old_text:
+            old_text = old_text.replace("\\n", "\n").replace("\\t", "\t")
+        if "\\n" in new_text and "\n" not in new_text:
+            new_text = new_text.replace("\\n", "\n").replace("\\t", "\t")
 
         # Tier 1: Exact string match
         if old_text in content:

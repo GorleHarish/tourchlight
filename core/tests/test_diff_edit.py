@@ -117,6 +117,24 @@ def test_edit_file_line_bounded():
         assert lines[2] == "val = 1"
 
 
+def test_edit_file_line_bounded_without_old_text():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "sample.py")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("val = 1\nval = 2\nval = 3\n")
+
+        res = tool_edit_file_impl({"path": "sample.py", "new_text": "val = 999", "start_line": 2, "end_line": 2}, project_root=tmpdir)
+        assert "Surgically edited" in res
+
+        with open(test_file, "r", encoding="utf-8") as f:
+            lines = f.read().splitlines()
+
+        assert lines[0] == "val = 1"
+        assert lines[1] == "val = 999"
+        assert lines[2] == "val = 3"
+
+
+
 def test_edit_file_symbol_anchored():
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "code.py")
