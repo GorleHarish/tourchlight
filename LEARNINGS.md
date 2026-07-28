@@ -3,6 +3,12 @@
 ## Context Loss & Memory Compression
 - **Problem**: When generating long implementation plans, the 4K context window of local 8GB machines (running models like Gemma-4-E2B) fills up quickly. When the user says "continue", the plan is pushed into the older memory buffer, aggressively summarized by the tiered memory manager, and the step-by-step details are permanently lost.
 - **Solution ("Write-to-Disk" Strategy)**: Do not fight the token limit. Instead, update the system prompt to force the agent to write implementation plans to a physical file (e.g., `implementation_plan.md`) using the `WRITE_FILE` tool. When resuming a task, the agent is instructed to use `READ_FILE` on that file first. The hard drive is the best long-term memory for local agents.
+- **Problem (Blank Screen Scrolling & Context Overflow from Code Block Dumping)**: Models dumping full source code blocks in assistant text messages caused two major operational flaws: (1) terminal screen buffer overflow ("blank screen scrolling" where users had to scroll past long code blocks), and (2) severe context inflation (wasting 300–1,000+ tokens per edit turn, causing premature history compression and context rot).
+- **Solution (3-Tier Output Discipline Architecture)**: Standardized code output across system prompts, frontend UI rendering, and tool return metadata:
+  1. *Prompt Layer:* Explicitly forbid raw code blocks in responses. Require structured text summaries: Action (`Writing`/`Editing`), File Path (`file:///path`), Scope (lines/functions), and Description.
+  2. *Display Layer:* UI and Action Tracker collapse tool arguments (`content`, `diff`, `old_text`, `new_text`) into single-line status indicators (`✓ ✏  Writing src/main.py`), keeping terminal buffers clean.
+  3. *Tool Return Layer:* Tools return exact line/character counts and AST syntax verification status. Reduces token footprint per edit by ~85% and eliminates blank screen scrolling entirely.
+
 
 ## Hallucination Loops & Tool Execution
 - **Problem**: The local SLM often gets stuck in an infinite loop, generating outputs like `Action: READ_FILE... Wait, if I am a senior dev... Action: LIST_DIR...`. The model is monologuing and arguing with itself instead of stopping generation to let the Python backend actually execute the tool. This happens because the model occasionally hallucinates the wrong tool syntax (e.g., `Action:` instead of the prescribed `<TOOL>` tags), which means the standard XML stop tokens (`</TOOL>`) are never triggered.

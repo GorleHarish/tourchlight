@@ -24,6 +24,7 @@ The project is not just "chat over an LLM." Its defining ideas are:
 - tiered memory instead of a flat transcript
 - surgical file reading instead of blindly loading large files
 - flashlight retrieval for symbol-aware code context
+- 3-tier output discipline (non-verbose code summaries in chat + UI tool payload collapse + rich tool metadata) to prevent screen buffer overflow & context rot
 - deterministic routing for obvious commands
 - visible activity and approval flows
 - local-first provider support through LM Studio and Ollama-style endpoints

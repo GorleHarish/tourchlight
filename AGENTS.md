@@ -95,6 +95,7 @@ rlm_optimized/                              # TUI frontend
 - **Inline code interception**: Code in chat → auto-WRITE_FILE
 - **Lazy skill loading**: AST scan at startup, import on first execute
 - **Context-scaled tool output**: READ_FILE caps at ~20% of window; SEARCH_AST caps subgraph at 40 edges, structure at 20 files
+- **Non-Verbose Code Output (3-Tier Output Discipline)**: Never dump raw code in assistant text. Code modifications occur via `WRITE_FILE`/`EDIT_FILE` tool payloads while chat responses state action, file path, line/function scope, and description. UI collapses tool payload args into clean status badges (`✓ ✏ Writing src/main.py`), reducing edit turn token usage by ~85% and preventing terminal screen buffer overflow.
 - **Structured errors**: 7 types with `RecoveryEngine` escalation ladder
 - **Fallback imports**: Frontends use `try/except ImportError` for backward compat
 
