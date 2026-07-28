@@ -558,6 +558,72 @@ class AgentStatusModal(ModalScreen[None]):
 
 # ── Main Codex IDE App ──────────────────────────────────────────────────
 
+# ── Shortcuts & Help Modal ──────────────────────────────────────────────────
+
+class ShortcutsHelpModal(ModalScreen[None]):
+    """Modal dialog displaying keyboard shortcuts and slash commands."""
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+    ]
+
+    DEFAULT_CSS = """
+    ShortcutsHelpModal {
+        align: center middle;
+    }
+    #help-dialog {
+        width: 76;
+        height: auto;
+        max-height: 85%;
+        background: $surface;
+        border: thick $primary;
+        padding: 1 2;
+    }
+    #help-title {
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+    }
+    #help-close-btn {
+        margin-top: 1;
+        width: 1fr;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="help-dialog"):
+            yield Static("⌨️ Torchlight Codex - Shortcuts & Slash Commands", id="help-title")
+            help_md = """
+### ⌨️ Keyboard Shortcuts
+- **Ctrl+B** — Toggle Sidebar
+- **Ctrl+T** — Cycle Theme
+- **Ctrl+M** — Select Active Model
+- **Ctrl+O** — Change Working Directory (Computer Wide)
+- **Ctrl+H** — Open Shortcuts & Help Modal
+- **Ctrl+A** — Open Telemetry & Status
+- **Ctrl+X** — Copy Selection
+- **Ctrl+Y** — Copy Entire Chat History
+- **Ctrl+K** — Copy Last Response
+- **Ctrl+L** — Clear Chat Screen
+- **Ctrl+C** — Quit Application
+
+### 🛠️ Slash Commands
+- `/start` / `/restart` / `/stop` — Engine server control
+- `/model <name>` — Switch active model
+- `/cd <path>` — Change directory
+- `/index` — Build AST Knowledge Graph
+- `/status` — Open telemetry modal
+- `/clear` — Clear chat history
+- `/help` — Show shortcuts guide
+"""
+            yield Static(Markdown(help_md))
+            yield Button("Close (Esc)", variant="primary", id="help-close-btn")
+
+    @on(Button.Pressed, "#help-close-btn")
+    def on_close(self) -> None:
+        self.dismiss()
+
+
 _TORCHLIGHT_THEME = Theme(
     name="torchlight",
     primary="#58a6ff",
@@ -613,6 +679,7 @@ class TorchlightApp(App):
     CSS_PATH = "tui_app.tcss"
 
     BINDINGS = [
+        Binding("ctrl+h", "show_help", "Shortcuts & Help", show=True),
         Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=True),
         Binding("ctrl+x", "copy_selection", "Copy Selection", show=True),
         Binding("ctrl+y", "copy_chat", "Copy Chat", show=True),
@@ -681,14 +748,13 @@ class TorchlightApp(App):
         yield Header(show_clock=True)
         with Horizontal(id="body-container"):
             with Vertical(id="sidebar"):
-                yield Static("Engine & Model Control", classes="sidebar-section-title")
+                yield Static("Engine Control", classes="sidebar-section-title")
                 with Horizontal(id="engine-btn-bar-1"):
                     yield Button("Start", id="start-engine-btn", variant="success")
                     yield Button("Restart", id="restart-engine-btn", variant="warning")
                     yield Button("Stop", id="stop-engine-btn", variant="error")
                 with Horizontal(id="engine-btn-bar-2"):
                     yield Button("Kill Session", id="kill-session-btn", variant="error")
-                    yield Button("Model", id="select-model-btn", variant="primary")
                 yield Static(classes="sidebar-divider")
                 yield Static("Workspace Explorer", classes="sidebar-section-title")
                 yield DirectoryTree(self.engine.project_root, id="file-tree")
@@ -706,37 +772,20 @@ class TorchlightApp(App):
                 yield Static(classes="sidebar-divider")
                 yield Static("📋 Implementation Plan", classes="sidebar-section-title")
                 yield Static(self._build_plan_text(), id="plan-panel")
-                yield Static(classes="sidebar-divider")
-                yield Static("Shortcuts", classes="sidebar-section-title")
-                yield Static(
-                    "[dim]"
-                    "Ctrl+B  Toggle Sidebar\n"
-                    "Ctrl+T  Cycle Theme\n"
-                    "Ctrl+M  Select Model\n"
-                    "Ctrl+O  Change Folder\n"
-                    "Ctrl+A  Telemetry\n"
-                    "Ctrl+X  Copy Selection\n"
-                    "Ctrl+Y  Copy Chat\n"
-                    "Ctrl+K  Copy Last\n"
-                    "Ctrl+L  Clear Chat\n"
-                    "/help   All Commands"
-                    "[/]",
-                    id="shortcuts-panel"
-                )
-
             with Vertical(id="chat-pane"):
                 yield Horizontal(
                     Static("", id="status-left"),
-                    Static("", id="status-right"),
+                    Button("⌨️ Shortcuts & Help", id="help-btn", variant="default"),
                     id="status-bar",
                 )
                 yield VerticalScroll(id="chat-container")
                 with Vertical(id="input-area"):
                     with Horizontal(id="input-header-bar"):
                         from rich.markup import escape
-                        yield Static(
-                            f"🤖 [cyan bold]{escape(self.model_name)}[/cyan bold] [dim]({escape(self.provider_name)})[/dim] [yellow]▾[/yellow]",
-                            id="input-model-badge"
+                        yield Button(
+                            f"🤖 {escape(self.model_name)} ▾",
+                            id="input-model-badge",
+                            variant="default"
                         )
                         yield Static(
                             self._build_context_progress_text(),
@@ -900,13 +949,19 @@ class TorchlightApp(App):
         except Exception:
             pass
         try:
-            mb = self.query_one("#input-model-badge")
-            from rich.markup import escape
-            mb.update(f"🤖 [cyan bold]{escape(self.model_name)}[/cyan bold] [dim]({escape(self.provider_name)})[/dim] [yellow]▾[/yellow]")
+            mb = self.query_one("#input-model-badge", Button)
+            mb.label = f"🤖 {self.model_name} ▾"
         except Exception:
             pass
 
-    @on(Static.Clicked, "#input-model-badge")
+    def action_show_help(self) -> None:
+        self.push_screen(ShortcutsHelpModal())
+
+    @on(Button.Pressed, "#help-btn")
+    def on_help_btn_pressed(self) -> None:
+        self.action_show_help()
+
+    @on(Button.Pressed, "#input-model-badge")
     def on_input_model_badge_clicked(self) -> None:
         self.action_select_model()
 

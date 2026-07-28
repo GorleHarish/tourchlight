@@ -68,16 +68,25 @@ Footer {
 
 #engine-btn-bar-1,
 #engine-btn-bar-2 {
-    height: 2;
+    height: 3;
     align: center middle;
     margin-bottom: 0;
 }
 
-#engine-btn-bar-1 Button,
+#engine-btn-bar-1 Button {
+    margin: 0 1;
+    min-width: 8;
+    height: 3;
+    content-align: center middle;
+    text-style: bold;
+}
+
 #engine-btn-bar-2 Button {
     margin: 0 1;
-    min-width: 7;
-    height: 1;
+    width: 1fr;
+    height: 3;
+    content-align: center middle;
+    text-style: bold;
 }
 
 /* ── File Tree ────────────────────────────────────────────────────────── */
@@ -197,12 +206,26 @@ Input > .input--cursor {
     text-style: bold;
 }
 
-#status-right {
+#help-btn {
     width: auto;
-    min-width: 20;
+    height: 1;
+    min-width: 14;
     padding: 0 1;
-    color: $foreground-muted;
-    text-align: right;
+    border: none;
+    background: transparent;
+    color: $accent;
+    text-style: bold;
+}
+
+#help-btn:hover {
+    background: $panel;
+    color: $primary;
+}
+
+#help-btn:focus {
+    border: none;
+    background: $panel;
+    color: $primary;
 }
 
 /* ── Chat Container ───────────────────────────────────────────────────── */
@@ -233,13 +256,25 @@ Input > .input--cursor {
 }
 
 #input-model-badge {
-    width: 1fr;
-    color: $foreground;
+    width: auto;
+    height: 1;
+    min-width: 12;
+    padding: 0 1;
+    border: none;
+    background: transparent;
+    color: $accent;
+    text-style: bold;
 }
 
 #input-model-badge:hover {
-    color: $accent;
-    text-style: underline bold;
+    background: $panel;
+    color: $primary;
+}
+
+#input-model-badge:focus {
+    border: none;
+    background: $panel;
+    color: $primary;
 }
 
 #context-progress-badge {

@@ -150,3 +150,12 @@ def test_tui_app_tcss_valid_syntax():
         parse("tui_app.tcss", content)
     except ImportError:
         pytest.skip("textual not installed in test environment")
+
+def test_shortcuts_help_modal_composes():
+    try:
+        from rlm_optimized.tui_app import ShortcutsHelpModal
+        modal = ShortcutsHelpModal()
+        children = list(modal.compose())
+        assert len(children) > 0
+    except ImportError:
+        pytest.skip("textual not installed in test environment")
