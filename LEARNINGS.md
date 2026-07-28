@@ -149,6 +149,14 @@
 - **Problem (LLM Client HTTP 400 Bad Request)**: Calling standard OpenAI REST endpoints (`/v1/chat/completions`) with non-standard parameters (such as `"grammar"` or `"repeat_penalty"`) returned `HTTP Error 400: Bad Request` without exposing the underlying error message from the response body.
 - **Solution (Response Body Extraction & Standard Payload Fallback)**: Updated `LlamaCppClient` (`rlm_optimized/llamacpp_client.py`) to read and decode `e.read()` on `HTTPError` exceptions, and automatically retry requests with standard OpenAI schema parameters (stripping `grammar` and `repeat_penalty`) when an HTTP 400 status is returned.
 
+## Bounded Line Ranges, AST Symbol Targeting & Multi-Chunk Batch Editing
+- **Problem**: When small 7B models edit large files (>300 lines), short `old_text` snippets match multiple locations and fail with `matches N locations`. Furthermore, when multiple non-contiguous edits are required, sequential tool calls introduce multi-turn latency.
+- **Solution (Line Bounding, Symbol Anchoring, Multi-Chunking & Diagnostic Nudges)**:
+  1. **Line-Bounded Search (`start_line`, `end_line`)**: Restricts search scope to `[start_line:end_line]` (or `path:20-45`), eliminating multi-match ambiguity on short snippets.
+  2. **AST Symbol Targeting (`symbol`)**: Uses `ast.parse()` to locate function/class/method line boundaries, replacing the symbol body cleanly regardless of line number shifts.
+  3. **Multi-Chunk Batching (`chunks`)**: Accepts an array of edits (`chunks: [{"old_text": "...", "new_text": "..."}, ...]`) in a single tool call turn.
+  4. **Diagnostic Nudge Engine**: On match failure, computes the closest difflib line match and returns an actionable nudge: `⚠️ EDIT FAILED: 'old_text' did not match file content. Closest match found around lines L<start>-L<end>. Run READ_FILE(path="file.py:L<start>-L<end>") to copy exact lines.`
+
 ## TurboQuant 12k Context Standardization & Server Overflow Diagnostics
 - **Problem (Context Size Mismatch Misfire)**: Launching `llama-server` via starter scripts defaulted to `-c 8192`, while Python configuration (`config.py`) defaulted `CTX_SIZE` to 12,288 tokens. When conversation history grew past 8,192 tokens (e.g. 8,211 tokens), `llama-server` returned `HTTP 400 Bad Request (exceed_context_size_error)`. Stripping grammar parameters did not fix prompt length, leaving users with cryptic connection error failures.
 - **Solution (Standardized Base & Diagnostic Escalation)**:

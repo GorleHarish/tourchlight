@@ -36,10 +36,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "EDIT_FILE": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "File to edit"},
+            "path": {"type": "string", "description": "File to edit (supports path:N-M range)"},
             "old_text": {"type": "string", "description": "Exact text to find and replace"},
             "new_text": {"type": "string", "description": "Replacement text"},
             "diff": {"type": "string", "description": "Aider-style <<<<<<< SEARCH \\n old \\n ======= \\n new \\n >>>>>>> REPLACE block"},
+            "start_line": {"type": "integer", "description": "Optional starting line number to constrain edit search scope"},
+            "end_line": {"type": "integer", "description": "Optional ending line number to constrain edit search scope"},
+            "symbol": {"type": "string", "description": "Optional AST symbol name (function/class/method) to target for replacement"},
+            "chunks": {"type": "array", "description": "Optional list of multiple replacements: [{'old_text': '...', 'new_text': '...'}]"},
         },
         "required": ["path"],
         "aliases": {
@@ -47,6 +51,10 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
             "old_text": ["old", "find", "search", "target", "original", "search_text", "old_code", "existing", "source", "before"],
             "new_text": ["new", "replace", "replacement", "new_code", "replacement_text", "updated", "code", "text", "after"],
             "diff": ["block", "diff_block", "search_replace"],
+            "start_line": ["start", "line_start", "from_line", "start_l"],
+            "end_line": ["end", "line_end", "to_line", "end_l"],
+            "symbol": ["symbol_name", "function", "method", "class_name"],
+            "chunks": ["replacements", "diff_chunks", "edits"],
         },
     },
     "READ_SYMBOLS": {

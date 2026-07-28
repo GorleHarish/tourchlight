@@ -9,9 +9,10 @@ import os
 import re
 import json
 import subprocess
+import ast
 import difflib
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import httpx
 
@@ -475,13 +476,62 @@ def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
     return None, None
 
 
+def _get_symbol_bounds_ast(content: str, symbol_name: str) -> Optional[Tuple[int, int]]:
+    """Helper to locate exact start and end line bounds for an AST symbol in Python source code."""
+    try:
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                name = node.name
+                if name == symbol_name or symbol_name.endswith(f".{name}") or f".{name}" in symbol_name:
+                    start = getattr(node, "lineno", None)
+                    end = getattr(node, "end_lineno", None)
+                    if start and end:
+                        return start, end
+    except Exception:
+        pass
+    return None
+
+
 def tool_edit_file_impl(args: dict, project_root: str) -> str:
     """EDIT_FILE — surgically replace a block of text in a file with multi-tiered resilient matching."""
     try:
+        # Multi-chunk batch edit processing
+        chunks = args.get("chunks") or args.get("replacements") or args.get("edits")
+        if chunks and isinstance(chunks, list) and len(chunks) > 0:
+            results = []
+            for idx, chunk in enumerate(chunks):
+                if isinstance(chunk, dict):
+                    chunk_args = dict(args)
+                    chunk_args.pop("chunks", None)
+                    chunk_args.pop("replacements", None)
+                    chunk_args.pop("edits", None)
+                    chunk_args.update(chunk)
+                    res = tool_edit_file_impl(chunk_args, project_root)
+                    results.append(f"Chunk {idx+1}: {res}")
+            return "\n".join(results)
+
         path = args.get("path", "")
         old_text = args.get("old_text", "")
         new_text = args.get("new_text", "")
         diff_text = args.get("diff") or args.get("block") or args.get("diff_block") or ""
+        start_line = args.get("start_line") or args.get("start")
+        end_line = args.get("end_line") or args.get("end")
+        symbol_name = args.get("symbol") or args.get("symbol_name") or args.get("function")
+
+        # Parse line range suffix from path (e.g. "path/to/file.py:20-45")
+        if ":" in path and not os.path.exists(os.path.join(project_root, path) if not os.path.isabs(path) else path):
+            parts = path.rsplit(":", 1)
+            possible_path = parts[0]
+            range_part = parts[1]
+            if "-" in range_part and range_part.replace("-", "").isdigit():
+                try:
+                    s_str, e_str = range_part.split("-", 1)
+                    start_line = start_line or int(s_str)
+                    end_line = end_line or int(e_str)
+                    path = possible_path
+                except ValueError:
+                    pass
 
         # Check for Aider-style Search/Replace blocks in diff, old_text, or raw inputs
         for candidate in [diff_text, old_text, args.get("content", ""), args.get("raw", "")]:
@@ -494,6 +544,29 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         if not path:
             return "EDIT_FILE requires a file path."
+
+        p = os.path.join(project_root, path) if not os.path.isabs(path) else path
+        if not os.path.exists(p):
+            return f"File not found: {path}"
+
+        with open(p, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # AST Symbol-anchored replacement mode
+        if symbol_name:
+            bounds = _get_symbol_bounds_ast(content, str(symbol_name))
+            if bounds:
+                s_l, e_l = bounds
+                lines = content.splitlines(keepends=True)
+                new_content = "".join(lines[:s_l-1]) + new_text
+                if new_text and not new_text.endswith("\n") and e_l < len(lines):
+                    new_content += "\n"
+                new_content += "".join(lines[e_l:])
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+                syntax_note = _check_syntax(new_content, p) or ""
+                return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{syntax_note}"
+
         if not old_text:
             return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find."
         if new_text == old_text:
@@ -505,18 +578,30 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         if "\\n" in new_text and "\n" not in new_text:
             new_text = new_text.replace("\\n", "\n").replace("\\t", "\t")
 
-        p = os.path.join(project_root, path) if not os.path.isabs(path) else path
-        if not os.path.exists(p):
-            return f"File not found: {path}"
-
-        with open(p, "r", encoding="utf-8") as f:
-            content = f.read()
+        # Line-bounded search window handling
+        if start_line is not None and end_line is not None:
+            try:
+                s_l = max(1, int(start_line))
+                e_l = int(end_line)
+                lines = content.splitlines(keepends=True)
+                s_idx = s_l - 1
+                e_idx = min(len(lines), e_l)
+                target_slice = "".join(lines[s_idx:e_idx])
+                if old_text in target_slice:
+                    new_slice = target_slice.replace(old_text, new_text, 1)
+                    new_content = "".join(lines[:s_idx]) + new_slice + "".join(lines[e_idx:])
+                    with open(p, "w", encoding="utf-8") as f:
+                        f.write(new_content)
+                    syntax_note = _check_syntax(new_content, p) or ""
+                    return f"Surgically edited {path} within line range {s_l}-{e_l}.{syntax_note}"
+            except ValueError:
+                pass
 
         # Tier 1: Exact string match
         if old_text in content:
             count = content.count(old_text)
             if count > 1:
-                return f"Edit failed: 'old_text' matches {count} locations. Provide more context to make it unique."
+                return f"Edit failed: 'old_text' matches {count} locations. Provide line numbers (start_line/end_line) or more context to make it unique."
 
             new_content = content.replace(old_text, new_text)
             with open(p, "w", encoding="utf-8") as f:
@@ -560,7 +645,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 best_end = j
 
         if matches_found > 1:
-            return f"Edit failed: 'old_text' fuzzy-matches {matches_found} locations. Provide more context."
+            return f"Edit failed: 'old_text' fuzzy-matches {matches_found} locations. Provide line numbers (start_line/end_line) or more context."
 
         if best_start != -1:
             new_content = "".join(content_lines[:best_start]) + new_text
@@ -655,8 +740,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             return f"Surgically edited {path} (similarity replaced block with {int(best_ratio*100)}% match at lines {best_diff_start+1}-{best_diff_end})."
 
         # Tier 6: Character-level subsequence matching for typo-ridden input
-        # Finds the longest contiguous block of old_text present in file content
-        # Catches cases where model changes 1-3 chars (e.g., "def move_ snake" → "def move_snake")
         best_subseq_len = 0
         best_subseq_start = -1
         old_stripped = old_text.strip()
@@ -665,14 +748,12 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 end = min(i + len(old_stripped) + len(old_stripped) // 3, len(content))
                 candidate = content[i:end]
                 sm = difflib.SequenceMatcher(None, old_stripped, candidate)
-                # Find the longest matching block
                 for bloc in sm.get_matching_blocks():
                     if bloc.size > best_subseq_len:
                         best_subseq_len = bloc.size
                         best_subseq_start = i + bloc.a
 
         if best_subseq_len >= len(old_stripped) * 0.65 and best_subseq_start != -1:
-            # Find the line boundaries around the match
             match_start = content.rfind("\n", 0, best_subseq_start) + 1
             remaining = content[best_subseq_start:]
             match_end = remaining.find("\n")
@@ -680,7 +761,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 match_end = len(remaining)
             match_end += best_subseq_start
 
-            # Expand to full lines
             line_start = content.rfind("\n", 0, match_start)
             line_start = 0 if line_start == -1 else line_start + 1
             line_end = content.find("\n", match_end)
@@ -701,9 +781,9 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         # All tiers failed — provide closest match as diagnostic
         closest_block = ""
         closest_ratio = 0.0
-        closest_line = 0
-        for i in range(max(1, len(content_lines) - 20)):
-            block = "".join(content_lines[i:min(i+8, len(content_lines))])
+        closest_line = 1
+        for i in range(max(1, len(content_lines) - 10)):
+            block = "".join(content_lines[i:min(i+10, len(content_lines))])
             ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
             if ratio > closest_ratio:
                 closest_ratio = ratio
@@ -711,18 +791,17 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 closest_line = i + 1
 
         hint = ""
-        if closest_ratio > 0.3:
-            snippet = closest_block.strip()[:200]
+        if closest_ratio > 0.25:
+            snippet = closest_block.strip()[:250]
             hint = (
-                f"\nClosest match found ({int(closest_ratio*100)}% similar, line {closest_line}):\n"
+                f"\n⚠️ Closest match found ({int(closest_ratio*100)}% similar, around line {closest_line}):\n"
                 f"```\n{snippet}\n```\n"
-                f"Use this as your old_text (copy it exactly) and retry."
+                f"ACTION REQUIRED: Call READ_FILE(path='{path}:{closest_line}-{closest_line+15}') to copy the exact lines before retrying your edit."
             )
 
         return (
             f"Edit failed: Could not find a matching block for 'old_text' in {path}.\n"
-            f"HINT: You MUST read the file first with READ_FILE('{path}') to get the exact text, "
-            f"then copy the relevant lines exactly as they appear.{hint}"
+            f"HINT: Always call READ_FILE first to view current line numbers and exact indentation.{hint}"
         )
     except Exception as e:
         return f"Error editing file: {e}"
