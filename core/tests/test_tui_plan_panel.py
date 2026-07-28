@@ -159,3 +159,19 @@ def test_shortcuts_help_modal_composes():
         assert len(children) > 0
     except ImportError:
         pytest.skip("textual not installed in test environment")
+
+@pytest.mark.anyio
+async def test_torchlight_app_headless_run():
+    try:
+        from rlm_optimized.tui_app import TorchlightApp
+        from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+        engine = MagicMock(spec=RLMEngineOptimized)
+        engine.project_root = tempfile.gettempdir()
+        engine._total_llm_calls = 0
+        engine.max_depth = 10
+        app = TorchlightApp(engine=engine, model_name="qwen2.5-coder-7b-instruct", provider_name="llama-cpp")
+        async with app.run_test() as pilot:
+            assert app.model_name == "qwen2.5-coder-7b-instruct"
+            await pilot.pause()
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")

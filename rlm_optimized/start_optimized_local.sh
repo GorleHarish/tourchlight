@@ -24,6 +24,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Redirect output to log file if attached to an interactive terminal to protect TUI
+mkdir -p "$PROJECT_ROOT/.torchlight"
+if [ -t 1 ]; then
+    exec >> "$PROJECT_ROOT/.torchlight/llama_server.log" 2>&1
+fi
+
 # Default configuration
 PORT=${PORT:-8080}
 KV_CACHE_COMPRESSION=${KV_CACHE_COMPRESSION:-q4_0} # q4_0, q8_0, or f16

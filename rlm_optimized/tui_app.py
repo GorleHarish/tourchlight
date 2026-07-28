@@ -855,6 +855,8 @@ class TorchlightApp(App):
                     m = chk_regex.match(stripped)
                     if m:
                         state, task_raw = m.group(1), m.group(2).strip()
+                        if task_raw.lower().startswith("progress:"):
+                            continue
                         total += 1
                         task_text = escape(task_raw)
                         if state in ("x", "X"):
@@ -1443,6 +1445,11 @@ class TorchlightApp(App):
             widget = self._ensure_streaming_widget()
             from rich.markup import escape
             display_text = self._streaming_text
+            if "<TOOL" in display_text:
+                display_text = display_text.split("<TOOL")[0].strip() + "\n\n[dim cyan]⚡ Preparing tool action...[/dim cyan]"
+            elif "<tool_call>" in display_text:
+                display_text = display_text.split("<tool_call>")[0].strip() + "\n\n[dim cyan]⚡ Preparing tool action...[/dim cyan]"
+
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
             widget.update(escape(display_text))
@@ -1852,7 +1859,17 @@ class TorchlightApp(App):
 
         if os.path.exists(target_script):
             try:
-                subprocess.Popen([target_script], cwd=os.path.dirname(target_script))
+                log_dir = os.path.join(self.engine.project_root, ".torchlight")
+                os.makedirs(log_dir, exist_ok=True)
+                server_log_path = os.path.join(log_dir, "llama_server.log")
+                server_log_file = open(server_log_path, "a", encoding="utf-8")
+                subprocess.Popen(
+                    [target_script],
+                    cwd=os.path.dirname(target_script),
+                    stdout=server_log_file,
+                    stderr=server_log_file,
+                    start_new_session=True
+                )
                 self._poll_server_launch()
             except Exception as e:
                 self._server_starting = False
