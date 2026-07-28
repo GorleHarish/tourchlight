@@ -6,13 +6,20 @@ cd "$(dirname "$0")"
 # BUG FIX: check that the venv exists before trying to activate it,
 # otherwise the script silently runs with the system Python which may
 # not have any of the required packages installed.
-if [ ! -f "venv/bin/activate" ]; then
+if [ -f "venv/bin/activate" ]; then
+    source venv/bin/activate
+elif [ -f "../rlm_optimized/venv/bin/activate" ]; then
+    source ../rlm_optimized/venv/bin/activate
+elif [ -f "../venv/bin/activate" ]; then
+    source ../venv/bin/activate
+else
     echo "❌ Virtual environment not found. Run the following to set it up:"
     echo "   python3 -m venv venv && source venv/bin/activate && pip install -e ."
     exit 1
 fi
 
-source venv/bin/activate
+export COLORTERM="${COLORTERM:-truecolor}"
+export TERM="${TERM:-xterm-256color}"
 export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
 
 # Load .env if it exists (dotenv inside the app does this too, but exporting

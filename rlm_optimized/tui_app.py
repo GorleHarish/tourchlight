@@ -844,48 +844,71 @@ class TorchlightApp(App):
                     )
 
     def on_mount(self) -> None:
-        self.register_theme(_TORCHLIGHT_THEME)
-        self.theme = "torchlight"
+        try:
+            self.register_theme(_TORCHLIGHT_THEME)
+            self.theme = "torchlight"
+        except Exception:
+            try:
+                self.theme = "textual-dark"
+            except Exception:
+                pass
 
-        container = self.query_one("#chat-container")
+        try:
+            container = self.query_one("#chat-container")
 
-        # Welcome banner - 3-step quick start
-        container.mount(Static(Panel(
-            "[bold cyan]Torchlight Codex IDE[/]\n\n"
-            "[bold white]1.[/] Check engine status in sidebar (green = ready)\n"
-            "[bold white]2.[/] Pick a model with [bold yellow]Ctrl+M[/] or use the default\n"
-            "[bold white]3.[/] Type your task below and press [bold yellow]Send[/] or Enter\n\n"
-            "[dim]Press Ctrl+B for sidebar | Ctrl+T for theme | /help for commands[/]",
-            title="Welcome",
-            border_style="cyan",
-        )))
+            # Welcome banner - 3-step quick start
+            container.mount(Static(Panel(
+                "[bold cyan]Torchlight Codex IDE[/]\n\n"
+                "[bold white]1.[/] Check engine status in sidebar (green = ready)\n"
+                "[bold white]2.[/] Pick a model with [bold yellow]Ctrl+M[/] or use the default\n"
+                "[bold white]3.[/] Type your task below and press [bold yellow]Send[/] or Enter\n\n"
+                "[dim]Press Ctrl+B for sidebar | Ctrl+T for theme | /help for commands[/]",
+                title="Welcome",
+                border_style="cyan",
+            )))
 
-        if self.engine_port <= 0:
-            is_online = True
-            self._last_server_online = True
-            banner_text = f"  [bold green]Using {escape(self.provider_name)} ({escape(self.model_name)})[/]\n"
-        else:
-            is_online = is_port_in_use(self.engine_port)
-            self._last_server_online = is_online
-            if is_online:
-                banner_text = f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {self.engine_port}[/]\n"
-            elif self.externally_managed:
-                banner_text = (
-                    f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
-                    f"    [dim]Nothing on port {self.engine_port}. Start it yourself, then click Start to re-check.[/]\n"
-                )
+            if self.engine_port <= 0:
+                is_online = True
+                self._last_server_online = True
+                banner_text = f"  [bold green]Using {escape(self.provider_name)} ({escape(self.model_name)})[/]\n"
             else:
-                banner_text = (
-                    f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
-                    f"    [dim]Server offline on port {self.engine_port}. Click Start or Restart.[/]\n"
-                )
+                is_online = is_port_in_use(self.engine_port)
+                self._last_server_online = is_online
+                if is_online:
+                    banner_text = f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {self.engine_port}[/]\n"
+                elif self.externally_managed:
+                    banner_text = (
+                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
+                        f"    [dim]Nothing on port {self.engine_port}. Start it yourself, then click Start to re-check.[/]\n"
+                    )
+                else:
+                    banner_text = (
+                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
+                        f"    [dim]Server offline on port {self.engine_port}. Click Start or Restart.[/]\n"
+                    )
 
-        self._conn_banner_widget = Static(banner_text, id="conn-banner")
-        container.mount(self._conn_banner_widget)
+            self._conn_banner_widget = Static(banner_text, id="conn-banner")
+            container.mount(self._conn_banner_widget)
+        except Exception as e:
+            try:
+                self.notify(f"UI initialization warning: {e}", severity="warning")
+            except Exception:
+                pass
 
-        self.set_interval(3.0, self._auto_refresh_engine_status)
-        self.set_focus(self.query_one("#user-input"))
-        self.call_after_refresh(self._apply_responsive_layout)
+        try:
+            self.set_interval(3.0, self._auto_refresh_engine_status)
+        except Exception:
+            pass
+
+        try:
+            self.set_focus(self.query_one("#user-input"))
+        except Exception:
+            pass
+
+        try:
+            self.call_after_refresh(self._apply_responsive_layout)
+        except Exception:
+            pass
 
     def _apply_responsive_layout(self) -> None:
         try:
@@ -1064,21 +1087,26 @@ class TorchlightApp(App):
     # ── Agent Worker ────────────────────────────────────────────────────
 
     def _safe_mount(self, container, widget) -> None:
-        """Mount a widget defensively.
-
-        A widget reference captured before an `await` (e.g. `container` at
-        the top of `_run_agent`) is not guaranteed to still be attached to
-        the app by the time control resumes — cancellation, a screen
-        switch, or app shutdown can unmount it in the meantime. Mounting
-        into a detached widget raises MountError, which previously crashed
-        the worker instead of just skipping the UI update. Re-query as a
-        fallback, and swallow the error if the container is genuinely gone.
-        """
+        """Mount a widget defensively and scroll safely after layout pass."""
         try:
             if not container.is_attached:
                 container = self.query_one("#chat-container")
             if container.is_attached:
                 container.mount(widget)
+                # Keep maximum 120 elements in chat container to prevent scroll overflow & DOM memory bloat
+                if len(container.children) > 120:
+                    try:
+                        container.children[0].remove()
+                    except Exception:
+                        pass
+                self.call_after_refresh(self._scroll_chat_to_end)
+        except Exception:
+            pass
+
+    def _scroll_chat_to_end(self) -> None:
+        try:
+            container = self.query_one("#chat-container")
+            if container.is_attached:
                 container.scroll_end(animate=False)
         except Exception:
             pass
@@ -1144,7 +1172,7 @@ class TorchlightApp(App):
                 f"{len(result.steps)} step(s) ──[/]",
                 classes="step-status",
             ))
-            container.scroll_end(animate=False)
+            self.call_after_refresh(self._scroll_chat_to_end)
 
         except asyncio.CancelledError:
             self._remove_streaming()
@@ -1175,8 +1203,9 @@ class TorchlightApp(App):
                 self._streaming_widget = Collapsible(self._streaming_text_widget, title="💭 Thinking...", collapsed=False)
             else:
                 self._streaming_widget = self._streaming_text_widget
-            self.query_one("#chat-container").mount(self._streaming_widget)
-            self.query_one("#chat-container").scroll_end(animate=False)
+            container = self.query_one("#chat-container")
+            container.mount(self._streaming_widget)
+            self.call_after_refresh(self._scroll_chat_to_end)
         return getattr(self, "_streaming_text_widget", self._streaming_widget)
 
     def _append_token(self, chunk: str) -> None:
@@ -1188,7 +1217,7 @@ class TorchlightApp(App):
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
             widget.update(escape(display_text))
-            self.query_one("#chat-container").scroll_end(animate=False)
+            self.call_after_refresh(self._scroll_chat_to_end)
         except Exception:
             pass
 

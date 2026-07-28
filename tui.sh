@@ -10,11 +10,15 @@ if [ -f "rlm_optimized/venv/bin/activate" ]; then
     source rlm_optimized/venv/bin/activate
 elif [ -f "context-manager-cli/venv/bin/activate" ]; then
     source context-manager-cli/venv/bin/activate
+elif [ -f "venv/bin/activate" ]; then
+    source venv/bin/activate
 else
     echo "❌ Virtual environment not found. Please set up venv in rlm_optimized or context-manager-cli."
     exit 1
 fi
 
+export COLORTERM="${COLORTERM:-truecolor}"
+export TERM="${TERM:-xterm-256color}"
 export PYTHONPATH="$SCRIPT_DIR:${PYTHONPATH:-}"
 
 if [[ $# -gt 0 && "$1" != -* ]]; then
@@ -25,3 +29,4 @@ else
 fi
 
 exec python3 -m rlm_optimized.tui_app --provider "$PROVIDER" "$@"
+
