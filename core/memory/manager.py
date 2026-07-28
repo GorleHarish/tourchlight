@@ -281,18 +281,34 @@ class TieredMemory:
 
         return context
 
+    def format_l0_scratchpad(self) -> str:
+        """Format current SessionState into a dynamic L0 working memory scratchpad for system context."""
+        parts = ["[L0 WORKING MEMORY SCRATCHPAD]"]
+        if self.state.current_task:
+            parts.append(f"- Active Goal: {self.state.current_task}")
+        if self.state.active_file:
+            parts.append(f"- Active File: {self.state.active_file}")
+        if self.state.files_modified:
+            parts.append(f"- Modified Files: {', '.join(self.state.files_modified[-5:])}")
+        if self.state.failing_tests:
+            parts.append(f"- Failing Tests: {', '.join(self.state.failing_tests[:3])}")
+        if self.state.errors_seen:
+            parts.append(f"- Active Errors: {'; '.join(self.state.errors_seen[-3:])}")
+        if self.state.decisions:
+            parts.append(f"- Key Decisions: {'; '.join(self.state.decisions[-3:])}")
+        
+        if len(parts) == 1:
+            return ""
+        return "\n".join(parts)
+
+    def get_available_headroom(self) -> int:
+        """Calculate remaining token budget headroom before reaching max_tokens threshold."""
+        used = self.total_tokens
+        return max(0, self.config.max_tokens - used)
+
     def build_critical_context(self) -> str:
         """Build critical context block from session state."""
-        parts = []
-        if self.state.active_file:
-            parts.append(f"Active file: {self.state.active_file}")
-        if self.state.current_task:
-            parts.append(f"Current task: {self.state.current_task}")
-        if self.state.errors_seen:
-            parts.append(f"Recent errors: {'; '.join(self.state.errors_seen[-3:])}")
-        if self.state.failing_tests:
-            parts.append(f"Failing tests: {'; '.join(self.state.failing_tests[:3])}")
-        return "\n".join(parts)
+        return self.format_l0_scratchpad()
 
     def predict_next_tools(self) -> list[str]:
         """Predict likely next tools based on current state."""

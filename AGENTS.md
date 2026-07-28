@@ -62,17 +62,27 @@ rlm_optimized/                              # TUI frontend
 └── [re-exports from core/]
 ```
 
-### Context Budget (4k model)
+### Context Budget Breakdown
+
+#### 1. 12k Context (TurboQuant Base — 12,288 Tokens)
+- System prompt + Phase instructions: ~300 tokens
+- Dynamic L0 Working Memory Scratchpad: ~200 tokens
+- Tool syntax & skill schemas: ~300 tokens
+- Flashlight beam (3 files × 120 lines AST): ~1,500 tokens
+- Feedback loop & test traceback: ~400 tokens
+- **Available for conversation & active file pins: ~9,588 tokens (~78% headroom)**
+
+#### 2. 4k Model Fallback (4,096 Tokens)
 - System prompt: ~250 tokens
 - Tool syntax suffix: ~80 tokens
-- Flashlight beam (1 file × 50L): ~500 tokens
-- State summary: ~200 tokens
-- **Available for conversation: ~2846 tokens**
+- Flashlight beam (1 file × 50 lines AST): ~500 tokens
+- Dynamic L0 Scratchpad: ~200 tokens
+- **Available for conversation: ~3,066 tokens**
 
 ### Agentic Loop
 1. `_detect_phase()` → plan|code|troubleshoot|chat
-2. Load `InferenceParams` preset per phase
-3. Build messages (system + beam + context)
+2. Load `InferenceParams` preset & inject phase-tailored system prompt (`get_phase_system_prompt(phase)`)
+3. Inject dynamic L0 Working Memory Scratchpad (`format_l0_scratchpad()`) into system context
 4. Stream response via LM Studio
 5. Parse tool calls (`<tool_call>` tags)
 6. Execute with tiered approval (AUTO/CONFIRM/REVIEW)
@@ -82,6 +92,9 @@ rlm_optimized/                              # TUI frontend
 
 ### Key Design Decisions
 - **Shared core library**: `core/` is standalone with `pyproject.toml`, both frontends import from it
+- **Phase-Tailored System Prompting**: Dynamically injects phase-specific instructions for `plan`, `code`, `troubleshoot`, and `chat` alongside temperature presets.
+- **Dynamic L0 Working Memory Scratchpad**: Renders active goal, modified files, active errors, failing tests, and key decisions into system context on every turn.
+- **Anti-Symptom-Patching Directives**: Hardcoded directives in `SYSTEM_PROMPT` forbidding masking symptoms, swallowing exceptions, returning dummy fallbacks, or deleting assertions.
 - **Native AST Graph Engine**: Zero-dependency `graph_engine.py` replaces Kùzu DB. Stores graph at `.torchlight/graph.json` (never loaded into LLM context). Provides `query()`, `find_path()`, `get_subgraph()`, `get_structure()` with hard output caps to prevent context overflow
 - **Lazy graph invalidation**: File edits invalidate the graph cache (`_graphs.pop()`), rebuilding only on next `SEARCH_AST` query — never eagerly during editing
 - **24-Hour Autonomous Harness**: Continuous micro-epoch runner (`AutonomousHarness`) driving file-backed goal specs (`.torchlight/goal_spec.json` & `.torchlight/tasks.md`), resetting conversation context (`L0`) between sub-tasks, and applying test-driven local Git checkpoints & auto-reverts (`git checkout -- .` + `git clean -fd`)

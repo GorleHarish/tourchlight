@@ -22,7 +22,7 @@ try:
     from core.execution.feedback_loop import ExecutionFeedbackLoop
     from core.tools.classification import AUTO, CONFIRM, REVIEW, classify_command
     from core.tools.implementations import set_ctx_window as _set_ctx_window
-    from core.prompts.system import DEFAULT_SYSTEM_PROMPT
+    from core.prompts.system import DEFAULT_SYSTEM_PROMPT, get_phase_system_prompt
     from core.debate.verifier import DebateVerifier
     from core.execution.autonomous_harness import AutonomousHarness
 except ImportError:
@@ -36,7 +36,11 @@ except ImportError:
     from ..flashlight import SymbolIndex, Flashlight
     from ..execution.feedback_loop import ExecutionFeedbackLoop
     from ..tools.core import AUTO, CONFIRM, REVIEW, classify_command, set_ctx_window as _set_ctx_window
-    from ..prompts import DEFAULT_SYSTEM_PROMPT
+    try:
+        from core.prompts.system import DEFAULT_SYSTEM_PROMPT, get_phase_system_prompt
+    except ImportError:
+        from ..prompts import DEFAULT_SYSTEM_PROMPT
+        def get_phase_system_prompt(phase="code"): return DEFAULT_SYSTEM_PROMPT
     try:
         from core.debate.verifier import DebateVerifier
     except ImportError:
@@ -659,6 +663,8 @@ class StreamingChatSession:
         """
         context = self.memory.get_context_for_llm(user_query)
         small   = self.max_tokens <= _SMALL_CTX
+        phase   = self._detect_phase(user_query)
+        base_prompt = get_phase_system_prompt(phase)
 
         # ── System message — base prompt + optional tool syntax ───────────────
         if small:
@@ -667,7 +673,7 @@ class StreamingChatSession:
                 "\nTool syntax: bare call at end of response, e.g.  READ_FILE(\"path\")\n"
                 "Only ONE tool per response. Never put tools in backticks."
             )
-            system_content = DEFAULT_SYSTEM_PROMPT + cli_suffix
+            system_content = base_prompt + cli_suffix
         else:
             tool_instruct = (
                 f"\n\n{self.skills.get_all_prompts(max_tokens=self.max_tokens)}\n"
@@ -682,7 +688,7 @@ class StreamingChatSession:
                 "</tool_call>\n"
                 "Tool calls MUST be last. Only ONE tool call per turn.\n"
             )
-            system_content = DEFAULT_SYSTEM_PROMPT + cli_suffix + tool_instruct
+            system_content = base_prompt + cli_suffix + tool_instruct
 
         critical = self.memory.build_critical_context()
         if critical:

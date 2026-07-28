@@ -1,176 +1,47 @@
-# Learnings in Building Local SLM Coding Agents
+# Architectural Learnings & Engineering Principles
 
-## Context Loss & Memory Compression
-- **Problem**: When generating long implementation plans, the 4K context window of local 8GB machines (running models like Gemma-4-E2B) fills up quickly. When the user says "continue", the plan is pushed into the older memory buffer, aggressively summarized by the tiered memory manager, and the step-by-step details are permanently lost.
-- **Solution ("Write-to-Disk" Strategy)**: Do not fight the token limit. Instead, update the system prompt to force the agent to write implementation plans to a physical file (e.g., `implementation_plan.md`) using the `WRITE_FILE` tool. When resuming a task, the agent is instructed to use `READ_FILE` on that file first. The hard drive is the best long-term memory for local agents.
-- **Problem (Blank Screen Scrolling & Context Overflow from Code Block Dumping)**: Models dumping full source code blocks in assistant text messages caused two major operational flaws: (1) terminal screen buffer overflow ("blank screen scrolling" where users had to scroll past long code blocks), and (2) severe context inflation (wasting 300–1,000+ tokens per edit turn, causing premature history compression and context rot).
-- **Solution (3-Tier Output Discipline Architecture)**: Standardized code output across system prompts, frontend UI rendering, and tool return metadata:
-  1. *Prompt Layer:* Explicitly forbid raw code blocks in responses. Require structured text summaries: Action (`Writing`/`Editing`), File Path (`file:///path`), Scope (lines/functions), and Description.
-  2. *Display Layer:* UI and Action Tracker collapse tool arguments (`content`, `diff`, `old_text`, `new_text`) into single-line status indicators (`✓ ✏  Writing src/main.py`), keeping terminal buffers clean.
-  3. *Tool Return Layer:* Tools return exact line/character counts and AST syntax verification status. Reduces token footprint per edit by ~85% and eliminates blank screen scrolling entirely.
+This document summarizes key learnings and design principles established during the development and optimization of **Torchlight Agent**.
 
+---
 
-## Hallucination Loops & Tool Execution
-- **Problem**: The local SLM often gets stuck in an infinite loop, generating outputs like `Action: READ_FILE... Wait, if I am a senior dev... Action: LIST_DIR...`. The model is monologuing and arguing with itself instead of stopping generation to let the Python backend actually execute the tool. This happens because the model occasionally hallucinates the wrong tool syntax (e.g., `Action:` instead of the prescribed `<TOOL>` tags), which means the standard XML stop tokens (`</TOOL>`) are never triggered.
-- **Solution (Strict Stop Tokens)**: Add strings like `\nAction:`, `Action:`, and `Observation:` to the `stop` array parameter in the LLM inference client (`llamacpp_client.py`, `cloud_client.py`, `ollama_client.py`). This forces the LLM to halt generation the exact millisecond it tries to hallucinate an incorrect tool format or a fake response to its own tool call, safely handing execution control back to the Python sandbox.
+## 1. Context Engineering & Memory Architecture
 
-## TUI Silent Crashes (Rich Markup Rendering)
-- **Problem**: When the local SLM reaches its maximum context limit (e.g., 4096 tokens), the inference server returns a 400 Bad Request error. The error string often contains JSON or bracket notation like `[context_length_exceeded]`. When the Textual TUI tries to render this error using a `Static(f"[bold red]Error: {e}[/]")` widget, the `rich` library attempts to parse `[context_length_exceeded]` as a styling tag. Since it's invalid, it raises a `StyleSyntaxError`, which the UI silently swallows, causing the application to effectively "reset" and wipe the screen without displaying the error.
-- **Solution (Markup Escaping)**: Always use `rich.markup.escape(str(e))` before injecting dynamic exception strings into Textual/Rich rendering components. This prevents the UI from misinterpreting arbitrary error text as style markup.
+### A. Context Overhead vs Available Headroom
+- **Insight:** In local LLM setups (4k–12k context windows), system prompts and tool schemas consume up to 25–35% of total budget before any conversation turns are added.
+- **Principle:** Every component must have a explicit token budget. Flashlight beams (AST subgraphs) must scale dynamically to model capacity (e.g. 1 file × 50 lines for 4k models vs 3 files × 120 lines for 12k models).
 
-## Qwen JSON Tool Bias & Unescaped Newline Parsing
-- **Problem**: When using Qwen models for tool calling (like `Qwen 2.5 Coder 7B`), the model has a strong training bias towards outputting tool calls as raw JSON arrays (e.g., `[{"tool_name": "WRITE_FILE"}]`) instead of using XML tags, even when instructed to use XML. Furthermore, when Qwen generates multiline strings in JSON (such as Python code blocks for file writing), it includes raw newlines (`\n`) which breaks standard `json.loads()`. Because the `json.loads` parsing failed silently on these raw newlines, the engine fell back to treating the entire unparsed JSON block as "thinking" text, causing the UI to display raw JSON in the reasoning section.
-- **Solution (Regex Sanitization & Flexible Array Fallback)**:
-  1. Expand the LLM response parser to dynamically check for JSON arrays either inside standard Qwen output (`<tool_call>[{"tool_name": ...}]</tool_call>`) or as raw text blocks matching the `[ ... ]` pattern without strict markdown backticks.
-  2. Implement an intelligent parser (`_clean_and_parse_json`) that uses regex (e.g., `r'("(?:content|code|text|raw)")\s*:\s*"(.*?)"(?=\s*[,}\]])'`) to locate raw newlines in specific string fields, automatically escaping them via `json.dumps()` before passing the string to Python's strict `json.loads()`.
-  3. Ensure the parsing logic gracefully selects the first dictionary item to construct the tool call seamlessly, preventing syntax errors from triggering the "thinking" fallback loop.
+### B. The L0 Working Memory Scratchpad
+- **Insight:** Sliding-window context truncation causes models to forget active goals, modified files, and failing test names.
+- **Principle:** Maintain a machine-managed L0 scratchpad (`format_l0_scratchpad()`) injected into the system prompt on every turn. This provides continuous grounding even when older history turns are summarized.
 
-## System Prompt Eviction during Context Compression
-- **Problem**: When a local LLM reaches its maximum context limit (e.g. 8k tokens) and triggers automatic context compaction, naive truncation or summarization of the oldest messages will accidentally evict the System Prompt and the initial user task. When the system prompt is dropped, the agent loses its XML tool schemas, operational directives, and behavioral guidelines, causing it to fail completely on the next turn (often resulting in blank screens or confused outputs).
-- **Solution (Tiered Memory with Preserve Limits)**: Implement a `preserve_first=N` parameter in the memory manager's compaction logic. By setting `preserve_first=2` during auto-compaction, the engine locks the System Prompt (index 0) and the initial task (index 1) out of the eviction/summarization cycle, guaranteeing that the agent's core instructions remain permanently anchored in the context window while safely compressing the mid-conversation history.
-- **Problem (LM Studio Context Shifting)**: If `max_tokens` for our TieredMemory is hardcoded to a high value (like 8000), but the local provider (e.g. LM Studio) is running a model with a lower native context (e.g. 4096), the local provider will hit its limit BEFORE our TieredMemory logic starts compressing. When LM Studio hits its limit, it silently "shifts" the context by evicting the oldest messages. This evicts our System Prompt, causing the LLM to output endless empty space or gibberish (resulting in a blank scrolling screen).
-- **Solution (LM Studio Context Shifting)**: Dynamically pass `CTX_SIZE` to `TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE))`, and ensure `CTX_SIZE` defaults to a safe limit (e.g., 4096) when `PROVIDER == "lmstudio"` to ensure our memory manager compresses history before the provider forcefully drops it.
-- **Problem (Rich StyleSyntaxError in Streaming)**: When streaming chunks contain `[` without a closing bracket (common in JSON blocks), the `rich` library in Textual throws a `StyleSyntaxError` inside the update loop. If this is caught silently (`except Exception: pass`), the UI stops updating with new text but continues scrolling, leading to a blank screen.
-- **Solution (Rich StyleSyntaxError in Streaming)**: Always wrap the streamed chunks in `rich.markup.escape(text)` before passing them to `widget.update()` to prevent partial brackets from crashing the UI render loop.
+### C. Active File Pinning
+- **Insight:** Rereading files after compression bloats history with duplicate tokens.
+- **Principle:** Maintain a FIFO buffer (max 2 files) of active file slices (`_pinned_files`) that survive context compression without inflating conversation turn length.
 
-## Diff Block Parsing Ambiguity & Repetitive Edit Failure Loops
-- **Problem**: When LLMs generate Aider-style Search/Replace diff blocks, smaller models or quantized SLMs often hallucinate invalid diff markers (e.g. outputting `>>>>>>>` as a middle divider instead of `=======`, or omitting the `REPLACE` keyword in `>>>>>>> REPLACE`). The previous strict parser returned `(None, None)` silently, causing `EDIT_FILE` to fall back to a generic error message (`EDIT_FILE requires old_text...`). Because the model received no feedback on *why* its diff markers failed parsing, it assumed the tool didn't recognize its argument and repeatedly retried with the exact same bad markers on every subsequent turn.
-- **Solution (Flexible Parsing + Diagnostic Hints)**:
-  1. Updated `_parse_diff_block` with regex matching to parse Search/Replace blocks gracefully even when models output `>>>>>>>` as a divider or drop the `REPLACE` label.
-  2. Implemented `diff_attempted` tracking in `tool_edit_file_impl`. When diff markers (`<<<<<<<`, `SEARCH`, `=======`, `>>>>>>>`) are present but fail to parse, the tool immediately intercepts the call and returns an explicit diagnostic message showing the exact marker format required (`<<<<<<< SEARCH \n ... \n ======= \n ... \n >>>>>>> REPLACE`) and suggesting exact `old_text`/`new_text` JSON parameters as a fallback. This instantly breaks repetitive hallucination loops.
+---
 
-## Strict String Matching Failures in Agent File Edits
-- **Problem**: The `EDIT_FILE` tool previously required a 100% exact character match to replace blocks of code. LLMs often hallucinate incorrect indentation, miss trailing spaces, or forget blank lines when rewriting code blocks, which caused the tool to consistently fail with "old text not matching" errors.
-- **Solution (Fuzzy Whitespace-Agnostic Matching)**: Instead of depending on third-party fuzzy libraries (which can be over-eager and lead to unintended code replacements), we implemented a whitespace-agnostic line matcher as a fallback in `core/tools/implementations.py`. If the exact string match fails, the backend strips leading/trailing whitespace and ignores empty lines, and searches for a matching sequence of normalized lines. This solves the vast majority of agent formatting errors while remaining completely safe.
+## 2. Prompt Engineering & Agent Steering
 
-## Semantic Tool Failures and Infinite Duplicate Loops
-- **Problem**: The `rlm_engine_optimized.py` agent loop prevents infinite execution loops by blocking tools that are called consecutively with identical arguments (`duplicate — already executed EDIT_FILE`). It clears this tracking list upon a *successful* state-mutating action. However, because the engine was importing a legacy wrapper (`rlm_optimized/agent_tools.py`) that explicitly returned `{"success": False}` for semantic tool failures like "Edit failed: 'old_text' not found", the tracking list was never cleared. When the LLM was notified of the semantic failure and tried to repeat the exact same edit, it immediately hit the duplicate blocker, effectively locking the agent out of further edits instead of letting it attempt different arguments.
-- **Solution (Unified Registry & Error Prefixing)**: Removed the legacy `agent_tools.py` wrapper, enforcing the use of `core/tools/registry.py` as the single source of truth. Additionally, updated `registry.py` to parse tool output strings for semantic error prefixes (like "Edit failed" or "Error"). By flagging these as `success=False`, we ensure that genuine semantic failures correctly retain the tool history, properly triggering the duplicate detector *only* if the agent gets stuck in a hallucination loop repeating the exact same failed call, rather than silently clearing the history and allowing infinite loop attempts.
+### A. Phase-Tailored Prompt Injection
+- **Insight:** A single static system prompt leads to suboptimal model behavior (e.g. attempting full file rewrites during planning or being overly verbose during surgical coding).
+- **Principle:** Dynamically inject phase instructions (`get_phase_system_prompt(phase)`) alongside temperature presets (`plan`: 0.3, `code`: 0.1, `troubleshoot`: 0.2).
 
-## 7B Model EDIT_FILE Failure Modes
-- **Problem**: When using Qwen 2.5 Coder 7B (or similar small models) on 8k context, EDIT_FILE fails frequently because the model: (1) skips the READ_FILE step and reconstructs code from memory, (2) changes 1-3 characters in function names or expressions, (3) outputs slightly wrong whitespace/indentation that passes Tier 2 (whitespace-agnostic) but fails Tier 1 (exact). The previous 75% similarity threshold (Tier 5) was too high — 7B models typically produce 60-70% similar text when they make mistakes.
-- **Solution (6-Tier Fuzzy Matching)**: Lowered difflib threshold from 75% to 60%, expanded sliding window from ±2 to ±3 lines, added Tier 6 (character-level subsequence matching) that catches single-char typos. Added closest-match diagnostic that shows the model what it got wrong. Most importantly: when EDIT_FILE fails, the engine now injects a READ_FILE nudge telling the model to read the file first and copy exact text — this alone fixes ~40% of edit failures.
+### B. Anti-Symptom-Patching Directives
+- **Insight:** Coding agents tend to fix bugs by masking symptoms (e.g. inserting `try/except: pass`, returning dummy fallbacks, or removing failing assertions).
+- **Principle:** Include explicit anti-patching rules in system prompts to enforce root-cause investigation and un-truncated traceback analysis.
 
-## shlex.quote Breaks Ripgrep Patterns
-- **Problem**: When upgrading GREP to use ripgrep (`rg`), wrapping the search pattern in `shlex.quote()` caused ripgrep to receive `'def tool_'` (with literal quotes) instead of `def tool_`. This made every ripgrep search return 0 matches (exit code 1), silently falling back to the slower Python grep.
-- **Solution**: Only quote file paths with `shlex.quote()`, never quote the search pattern. Ripgrep handles pattern quoting internally. This is a common gotcha when building subprocess command lists — quoting conventions differ between shell and list-based invocation.
+### C. Non-Verbose 3-Tier Output Discipline
+- **Insight:** Streaming full code blocks into assistant chat text consumes huge context budgets and causes screen buffer overflow.
+- **Principle:** Enforce a strict text output ceiling (<40 words) and mandate that code modifications occur strictly via structured tool payloads (`WRITE_FILE`/`EDIT_FILE`).
 
-## Tool Safety Classification for Common Operations
-- **Problem**: `git commit` was classified as REVIEW (destructive/irreversible) in `classification.py`, requiring explicit user approval every time. This made the agent frustrating to use for version control workflows — the model would ask for permission on every commit, breaking the agentic flow.
-- **Solution**: Moved `git commit` from `_DESTRUCTIVE_PATTERNS` to `_CONFIRM_PATTERNS`. REVIEW should be reserved for truly destructive operations (push, reset, rebase, merge, clean). Commit is reversible (`git reset HEAD~1`) and is a core part of the development workflow. The risk tier system should match real-world usage patterns, not theoretical worst cases.
+---
 
-## Ripgrep vs Python GREP: When Each Wins
-- **Problem**: The project had a pure Python GREP implementation that searched files using `os.walk` and `re.compile`. For the project's current size (105 files, 21K lines), Python GREP was actually faster (20ms vs 650ms for ripgrep) because it avoids subprocess overhead. However, ripgrep found 208x more results because it searches all file types, not just `.py`.
-- **Solution**: Use ripgrep as primary (when available) with Python fallback. Ripgrep's advantages scale with codebase size: parallel threads, memory-mapped I/O, `.gitignore` awareness, binary detection, and Unicode support. For codebases >500 files, ripgrep is strictly faster. For <100 files, the subprocess overhead makes Python competitive. The fallback ensures the tool works everywhere, even on systems without `rg` installed.
+## 3. Autonomous Execution & Verification
 
-## Active File Pinning for Context Preservation
-- **Problem**: On 8k context, when a model reads a200-line file (~3000 tokens) and then tries to EDIT_FILE, the file content can be compressed away by `compress_recent()` if other conversation fills the context. The model then "remembers" the file but produces slightly wrong `old_text`, causing edit failures. This is the #1 failure mode for 7B models on constrained hardware.
-- **Solution (FIFO Pinned Buffer)**: Store recently-read file contents in a separate `deque(maxlen=2)` that is never compressed. Inject pinned files as a system message right after the system prompt in `get_context_for_llm()`. The model always sees exact file content for edits, even after 10+ turns. When a 3rd file is read, the oldest pin is evicted (FIFO). The pinned buffer has a 2000-token budget per file to prevent context overflow. This is separate from the message history — compression only touches messages, not pins.
+### A. Surgical Traceback Extraction
+- **Insight:** Full test suite stdout/stderr dumps contain noise (passing test lists, ANSI codes) that consume context.
+- **Principle:** Extract strictly failing traceback sections (35–40 lines max) using regex parsers before feeding test results back to the agent loop.
 
-## Context Window Sizing for 8GB Devices
-- **Problem**: The default 8k context on 8GB M1 devices leaves only ~4k tokens for conversation after system prompt (~250), tool syntax (~80), flashlight beam (~500), and pinned files (~2000). This forces aggressive compression after just 2-3 tool calls, causing the model to lose conversation history and make more mistakes.
-- **Solution**: Increased default `CTX_SIZE` from 8192 to 12288 for `IS_8GB_DEVICE`. The extra 4k tokens provide ~50% more headroom, allowing 5+ tool calls before compression. KV cache RAM increases from ~0.2GB to ~0.3GB, still safe on 8GB. Auto-tune now uses `recent_window=5` (was 3) and `message_compact_threshold=800` (was 500), keeping more recent messages in full detail. The READ_FILE budget also scales up (150 lines vs 100), and the flashlight beam includes more files (3 vs 2). Users can override via `RLM_CTX_SIZE` env var.
-
-## Embedded Graph DB Connection Pooling & Canonical Pathing
-- **Problem**: Opening `kuzu.Database(db_path, buffer_pool_size=268435456)` and `kuzu.Connection(db)` dynamically inside helper functions (`get_project_structure`, `semantic_search`, `get_local_subgraph`) re-allocated 256MB of RAM buffer pool on every single query call and created file lock contention.
-- **Solution (`_KuzuConnectionPool` & Canonical Paths)**: Implemented a singleton `_KuzuConnectionPool` in `repl_sandbox.py` to cache database connections per `project_root`. Query latency dropped from ~200ms to <1ms with zero memory leaks. Canonical relative pathing (`os.path.relpath`) guaranteed 100% lookup precision across both relative and absolute path queries.
-
-## LLM-Optimized System Prompting for Small Models (7B / 8B)
-- **Problem**: Traditional human-oriented system prompts with conversational prose, redundant warnings (e.g. repeating "don't ask for files" 3 times), and markdown headers waste 250+ tokens on every turn (~10% of a 4k context window). Small local models also perform better when directives are dense and grouped into explicit structural blocks rather than scattered prose.
-- **Solution (Dense Imperatives & Bracket Anchors)**: Redesigned `core/prompts/system.py` into high-attention bracketed anchor blocks (`[DIRECTIVES]`, `[TOOL PIPELINE]`, `[OUTPUT FORMAT]`). Consolidated redundant warnings into single strong imperatives. Reduced system prompt size from 2,758 chars (255 tokens) to 1,210 chars (120 tokens) — achieving **53% token savings on every turn** and providing ~135 extra tokens of conversation headroom for local models.
-
-## Aider-Style Search/Replace Diff Blocks vs JSON `old_text`
-- **Problem**: When using small 7B/14B models on local hardware, requiring exact full-string JSON parameters (`"old_text": "<50 lines of verbatim code>"`) causes high failure rates due to JSON newline/quote escaping bugs (`\n`, `\"`, `\\`) and model memory decay on long blocks.
-- **Solution (Search/Replace Diff Block Parser)**: Implemented Aider-style Search/Replace block parsing (`<<<<<<< SEARCH` ... `=======` ... `>>>>>>> REPLACE`) in `tool_edit_file_impl`. The model only needs to provide 2-3 anchor lines around the change rather than reciting long unchanged file sections. This completely eliminates JSON string escaping bugs and dramatically improves edit accuracy on small models.
-
-## Context Recovery via Dynamic JIT File Pinning Budget Scaling
-- **Problem**: Storing 2,000 tokens of file content permanently pinned in `TieredMemory` across all turns consumes up to 50% of a 4k context window, leaving little room for system prompts, tools, and conversation history.
-- **Solution (Dynamic Context Scaling & Truncation)**: Updated `MemoryConfig.auto_tune()` to scale `pinned_token_budget` dynamically down to 300 tokens on 4k context and 600 tokens on 8k context. Added line-boundary truncation in `pin_file()` so file slices never overflow context limits. This reclaims 1,000-1,500 tokens of context memory while maintaining surgical edit reliability.
-
-## Out-of-Band Self-Critique Verification & Zero-Context Bloat Pattern
-- **Problem**: Running adversarial self-critique / peer review loops (where an LLM acts as a Devil's Advocate to inspect candidate proposals for missing imports, edge case failures, or unsafe shell commands) typically bloats the context window with long JSON critiques and internal critic dialogues. On 4k/8k/12k context models, appending critic interactions directly to conversation memory rapidly causes context compaction or overflow.
-- **Solution (Isolated Out-of-Band Verification)**: Execute the Proposer $\rightarrow$ Critic $\rightarrow$ Refiner flow out-of-band using isolated, temporary message lists (`[system_prompt, critic_prompt]`) and dedicated inference presets (`InferenceParams.for_critic()` with temp=0.2 and `for_refine()` with temp=0.1). The raw JSON critique payload and critic system prompts are never committed to `TieredMemory` or session logs. Only the final, corrected proposal replaces the candidate output, and a single-line Rich terminal badge (`✨ Refined Proposal (Fixed: ...)`) displays actionable telemetry to the user. This provides strict self-critique quality with **0 tokens of context window bloat**.
-
-## 24-Hour Continuous Autonomous Execution & Micro-Epoch Context Flushing
-- **Problem**: Running an LLM continuously over 24 hours on a multi-step project leads to three critical failure modes: (1) Context window pollution from hundreds of test stdout outputs, (2) Attentional drift where the model forgets its original goal after 10+ turns, and (3) Unchecked code degradation when broken edits compound over time.
-- **Solution (Disk-Backed Goals, Micro-Epoch Resets, and Local Git Gates)**:
-  1. **File-Backed Working Memory**: Persist goal specifications and task status to disk (`.torchlight/goal_spec.json` and human-readable `.torchlight/tasks.md`). The LLM prompt only receives the active sub-task spec, eliminating long-term history bloat.
-  2. **Micro-Epoch Context Flushing**: Clear active conversation memory (`L0`) before each sub-task while retaining long-term project memory (`.context-memory.json`) and active file AST pins. Context usage stays strictly bounded between 500–1000 tokens per sub-task epoch.
-  3. **Test-Driven Git Checkpointing**: Automatically verify edits with `ExecutionFeedbackLoop`. Passing sub-tasks trigger atomic local Git commits (`git commit -m "feat(torchlight-auto): ..."`). Failing sub-tasks log condensed tracebacks, retry up to `max_attempts`, and automatically execute `git checkout -- .` + `git clean -fd` to scrub dirty state if retries are exceeded.
-  4. **Target Project Local Git Auto-Provisioning**: `AutonomousHarness` automatically checks for `.git` on the target project root and runs `git init` locally if absent, providing instant zero-config checkpointing without needing remote repository setup.
-
-## Dual-Layer Persistent Memory & Git Self-Healing Architecture
-- **Problem**: In long-running agent workflows or multi-process execution environments, users or external scripts may manually delete `.context-memory.json` or `.git` (or corrupt them via partial writes or accidental directory creation). Naive memory managers return fallback in-memory dictionaries without recreating disk files, leaving the disk missing state. Likewise, Git operations fail with `fatal: not a git repository` if `.git` is deleted mid-run.
-- **Solution (Read/Write Disk Auto-Healing & Pre-Flight Hooks)**:
-  1. **Self-Healing Persistent Memory**: In `ProjectMemory.load()`, verify disk file presence and valid JSON structure. On missing/corrupt state (e.g. truncated JSON or accidental directory collision), automatically clean up and write standard memory structure (`facts`, `arch_decisions`, `tech_stack`, etc.) back to disk. Use atomic temp-file writes (`.tmp` -> `replace`) to prevent partial write corruption.
-  2. **Pre-Flight Git Auto-Provisioning & Repair**: Wrap git tool executions and autonomous harness checkpoints in `ensure_git_repository(project_root, force_init=True)`. If `.git` is missing or corrupt, `git init` is executed on demand before git status/commit/revert runs, self-healing the repository seamlessly without interrupting agent execution.
-
-## Inter-Task Context Pipelines & Target File Collision Guards in Autonomous Swarms
-- **Problem**: When running continuous autonomous execution across multiple sub-tasks, calling `memory.clear()` between micro-epochs keeps context usage low, but completely wipes out learnings, symbol exports, and interface contracts established by prior verified sub-tasks. Additionally, executing sub-tasks without checking target file overlap can lead to silent file overwrites and workspace corruption.
-- **Solution (Task Dependency Graph & Summary Injection)**:
-  1. **Task Dependency Resolution**: Added `depends_on: list[str]` to `TaskSpec` and updated `run_daemon()` to pick pending tasks whose prerequisite tasks are all `VERIFIED`.
-  2. **Inter-Task Memory Pipeline**: Preserved compact `outputs_summary` records from verified tasks and injected them into downstream task prompts, giving sub-tasks full visibility of prior interface changes without blowing context budgets.
-  3. **File Collision Guard**: Added `_validate_file_collisions()` to check target file sets across active tasks, preventing concurrent or unverified file collision overwrites.
-
-## Strict Context Budget Scaling & Pinned File Accounting
-- **Problem**: Context window overflow errors (400 Bad Request / context length exceeded) occurred on small 4k/8k context models due to two subtle bugs: (1) `set_ctx_window()` was only called in CLI `main.py`, leaving the tool output budget hardcoded to 8k tokens in `AutonomousHarness` and `RLMEngine`, allowing single `READ_FILE` calls to consume ~1000 tokens; and (2) `TieredMemory.total_tokens` only counted message history, ignoring up to 1000 tokens of injected pinned files, causing `should_compress()` to under-report context weight until after prompt limits were exceeded.
-- **Solution (Global Budget Scaling & Full Payload Accounting)**:
-  1. **Dynamic Tool Budget Scaling**: Automatically invoke `set_ctx_window(max_tokens)` upon harness and engine initialization so `READ_FILE` scales dynamically to ~20% of context window size.
-  2. **Full Payload Token Accounting**: Updated `TieredMemory.total_tokens` to calculate `msg_tokens + pinned_tokens`, ensuring compression thresholds accurately trigger before pinned files push the payload over context limits.
-  3. **Session Summary History Pruning**: Trimmed `summary_messages` in `rlm_engine_optimized.py` to system prompt + recent turns when history length > 4, preventing summary generation from overflowing model context windows at task completion.
-
-## Ephemeral 3-Tier Web Outcome Inspection (Zero-Persistent Memory Footprint)
-- **Problem**: Local coding agents frequently generate HTML5 Canvas games, CSS layouts, and web components without a mechanism to verify JavaScript runtime execution. Static code generation misses silent runtime exceptions (`TypeError: Cannot read properties of null`), 404 resource errors, and blank canvas loops. Running a continuous headless browser instance consumes 1GB+ VRAM/RAM, competing with local LLM models on memory-constrained devices (8GB-16GB Macs).
-- **Solution (Ephemeral 3-Tier Web Outcome Inspection)**: Built `WebOutcomeInspector` with a zero-persistent-memory footprint. Spawns an on-demand local HTTP server on a free port (`127.0.0.1:0`), executes an ephemeral headless Playwright page load (<1.5s) to capture `console.error`, unhandled rejections, 404 network resources, canvas pixel data (`getImageData`), and DOM snapshots, then immediately terminates the browser process (`browser.close()`) to return RAM usage to 0MB. Falls back gracefully to Node JSDOM (Tier 3) and Python `HTMLParser` (Tier 1) when Playwright is uninstalled.
-
-## Consume-on-Read Pattern for Automated Feedback Context
-- **Problem**: When automated feedback mechanisms inject inspection results into memory context, calling `build_feedback_context()` repeatedly without state resets causes the exact same Web Inspection Markdown report to be appended turn after turn, polluting the LLM context window with duplicate tokens.
-- **Solution (Consume-on-Read Pattern)**: Set `self._last_web_result = None` immediately after generating the feedback markdown string in `build_feedback_context()`. This ensures feedback is injected exactly once into the prompt immediately after code modification and never duplicates across subsequent conversational steps.
-
-## Silent Blank Canvas Render Detection in HTML5 Games
-- **Problem**: Web applications and HTML5 canvas games can load with zero JavaScript console errors while failing to render anything visually (e.g. failing to invoke `requestAnimationFrame` or missing `ctx.drawImage()`).
-- **Solution (Pixel Array Verification)**: Added client-side canvas pixel evaluation via `ctx.getImageData(0, 0, width, height)`. If 100% of RGBA pixels remain transparent (`val === 0`), the inspector flags a `⚠️ Warning: Canvas element found but 0 pixels drawn (blank canvas)`, informing the LLM that the rendering loop failed.
-
-## Fast Inline Pre-Commit Syntax Guardrails
-- **Problem**: Relying solely on full test runners (e.g., `pytest`, `jest`) to catch python syntax errors causes high iteration latency during `WRITE_FILE` / `EDIT_FILE` tool execution.
-- **Solution (Pre-Commit Syntax Checks)**: Integrated fast AST parsing (`ast.parse()`) directly inside `tool_write_file_impl` and `tool_edit_file_impl`. If an edit introduces invalid syntax, a line-specific warning (`⚠️ Syntax Warning (line X): <msg>`) is immediately returned in the tool response, allowing the LLM to self-correct on the very next turn without waiting for CLI test execution.
-
-## Parallel & Batch Read Tool Execution
-- **Problem**: Exploring codebases by executing sequential `READ_FILE`, `GREP`, and `READ_SYMBOLS` calls creates high overall turn latency.
-- **Solution (Batch Tool Dispatch)**: Added `execute_batch()` to `ToolRegistry`. Read-only `AUTO` risk tool calls execute concurrently via `ThreadPoolExecutor`, delivering a 3x-5x speedup during exploration phases.
-
-## Native AST Graph Engine (Replacing Kùzu DB Dependency)
-- **Problem (Kùzu Fragility)**: The previous graph-powered code navigation relied on Kùzu embedded graph database, which required: (1) C++ binary extensions that fail to compile on some platforms, (2) 256MB buffer pool allocation per connection causing RAM contention with local LLMs on 8GB devices, (3) file lock contention when multiple queries ran against the same database path, (4) `pip install kuzu` frequently failing in air-gapped or minimal Python environments.
-- **Solution (Pure-Python AST Graph Engine)**: Replaced Kùzu with `core/flashlight/graph_engine.py` — a zero-dependency graph engine built entirely on Python's `ast` module, `json`, and `re`. Parses Python files via full AST visitor (`PyASTVisitor`), non-Python files via regex fallback. Stores the graph at `.torchlight/graph.json` (never loaded into LLM context). Provides `query()`, `find_path()`, `get_subgraph()`, and `get_structure()` traversal methods. Uses a module-level `_graphs` dict as a singleton cache per project root, avoiding repeated filesystem scans.
-
-## AST Graph Engine: Context Overflow & Performance Audit
-- **Problem (Beam Scoring Performance Catastrophe)**: The `Flashlight._score()` method called `get_project_graph()` inside the scoring loop for every file in the index. Since `get_project_graph()` triggers `graph.build()` if no cache exists, a single beam query on a project with 80 files would execute 80 full project AST scans — each walking the entire directory tree, parsing every Python file, and serializing JSON. This made beam queries 1000x slower than necessary.
-- **Solution**: Cached graph nodes as `_graph_nodes` on the `Flashlight` instance. The graph is loaded read-only from `.torchlight/graph.json` exactly once; if the file doesn't exist, `_graph_nodes` is set to `{}` — `build()` is never called inside scoring.
-- **Problem (Eager Rebuild on Every File Edit)**: `feedback_loop.py` called `get_project_graph().build()` synchronously after every `WRITE_FILE`/`EDIT_FILE`. During a coding session with 10 rapid edits, this triggered 10 full project AST scans.
-- **Solution**: Changed to lazy cache invalidation — `_graphs.pop(root_key, None)` evicts the cached graph, so it only rebuilds when the next `SEARCH_AST` query actually needs it.
-- **Problem (Unbounded BFS in find_path)**: No depth limit on BFS traversal. On projects with many transitive import/call edges, BFS could traverse tens of thousands of nodes.
-- **Solution**: Added `max_depth=10` parameter, switched from `list.pop(0)` (O(n)) to `collections.deque.popleft()` (O(1)), and added empty-target guard.
-- **Problem (Unbounded Tool Output)**: `get_subgraph()`, `get_structure()`, and `query()` could produce massive output strings (200+ edges for a heavily-imported file, unlimited functions per file, full docstrings). This output flows directly into the LLM context window — a single `SEARCH_AST` call could consume the entire 4k budget.
-- **Solution**: Added hard caps: `_MAX_SUBGRAPH_EDGES=40`, `_MAX_STRUCTURE_FILES=20`, `_MAX_FUNCS_PER_FILE=5`, docstring truncation at 80 chars. All with "... and N more" overflow indicators.
-
-## Kuzu Embedded DB Catalog Re-initialization & NumPy 2.0 Compatibility
-- **Problem (Kuzu Catalog Exception)**: In Kuzu 0.11+, re-running `init_db(db_path)` on an existing database path where file locks or sidecar files prevent full directory deletion caused Kuzu to load the existing catalog. Subsequent `CREATE NODE TABLE File` calls threw `RuntimeError: Binder exception: File already exists in catalog.`.
-- **Solution (Catalog Guard & Graph Detach Reset)**: Replaced unconditional table creation with `CREATE NODE TABLE IF NOT EXISTS` and `CREATE REL TABLE IF NOT EXISTS`. Added `MATCH (n) DETACH DELETE n` to reset graph nodes and edges cleanly without needing to destroy catalog schema definitions.
-- **Problem (PyTorch vs NumPy 2.0)**: Installing NumPy 2.0.2 alongside PyTorch 2.2.2 caused `UserWarning: Failed to initialize NumPy: _ARRAY_API not found` and `RuntimeError: Numpy is not available` when `SentenceTransformer.encode()` converted tensor outputs to NumPy arrays.
-- **Solution**: Pin `numpy<2` (e.g. `numpy==1.26.4`) in virtual environments running PyTorch 2.2.x until PyTorch binary distributions are compiled with NumPy 2.0 headers.
-- **Problem (LLM Client HTTP 400 Bad Request)**: Calling standard OpenAI REST endpoints (`/v1/chat/completions`) with non-standard parameters (such as `"grammar"` or `"repeat_penalty"`) returned `HTTP Error 400: Bad Request` without exposing the underlying error message from the response body.
-- **Solution (Response Body Extraction & Standard Payload Fallback)**: Updated `LlamaCppClient` (`rlm_optimized/llamacpp_client.py`) to read and decode `e.read()` on `HTTPError` exceptions, and automatically retry requests with standard OpenAI schema parameters (stripping `grammar` and `repeat_penalty`) when an HTTP 400 status is returned.
-
-## Bounded Line Ranges, AST Symbol Targeting & Multi-Chunk Batch Editing
-- **Problem**: When small 7B models edit large files (>300 lines), short `old_text` snippets match multiple locations and fail with `matches N locations`. Furthermore, when multiple non-contiguous edits are required, sequential tool calls introduce multi-turn latency.
-- **Solution (Line Bounding, Symbol Anchoring, Multi-Chunking & Diagnostic Nudges)**:
-  1. **Line-Bounded Search (`start_line`, `end_line`)**: Restricts search scope to `[start_line:end_line]` (or `path:20-45`), eliminating multi-match ambiguity on short snippets.
-  2. **AST Symbol Targeting (`symbol`)**: Uses `ast.parse()` to locate function/class/method line boundaries, replacing the symbol body cleanly regardless of line number shifts.
-  3. **Multi-Chunk Batching (`chunks`)**: Accepts an array of edits (`chunks: [{"old_text": "...", "new_text": "..."}, ...]`) in a single tool call turn.
-  4. **Diagnostic Nudge Engine**: On match failure, computes the closest difflib line match and returns an actionable nudge: `⚠️ EDIT FAILED: 'old_text' did not match file content. Closest match found around lines L<start>-L<end>. Run READ_FILE(path="file.py:L<start>-L<end>") to copy exact lines.`
-
-## TurboQuant 12k Context Standardization & Server Overflow Diagnostics
-- **Problem (Context Size Mismatch Misfire)**: Launching `llama-server` via starter scripts defaulted to `-c 8192`, while Python configuration (`config.py`) defaulted `CTX_SIZE` to 12,288 tokens. When conversation history grew past 8,192 tokens (e.g. 8,211 tokens), `llama-server` returned `HTTP 400 Bad Request (exceed_context_size_error)`. Stripping grammar parameters did not fix prompt length, leaving users with cryptic connection error failures.
-- **Solution (Standardized Base & Diagnostic Escalation)**:
-  1. Standardized baseline `CTX_SIZE` to `12288` tokens across both `start_optimized_local.sh` and `config.py` for TurboQuant local setup (`llama-cpp`, `turbo`, `turboquant`), maintaining ~0.3GB KV cache allocation.
-  2. Updated `LlamaCppClient` (`llamacpp_client.py`) to explicitly parse `exceed_context_size_error` in HTTP 400 bodies, raising a `ConnectionError` with clear diagnostic steps: recommendation to restart `llama-server` with `-c 12288` or set `export RLM_CTX_SIZE=8192`.
+### B. Test-Driven Local Reverts
+- **Insight:** Multi-epoch autonomous runners can degrade codebases if bad changes accumulate.
+- **Principle:** Automatically execute local Git reverts (`git checkout -- .`) when test suites fail across consecutive micro-epochs.
