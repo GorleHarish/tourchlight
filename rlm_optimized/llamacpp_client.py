@@ -102,16 +102,25 @@ class LlamaCppClient:
                 if e.code == 404 and "/v1" in url:
                     url = url.replace("/v1", "")
                     continue
-                if e.code == 400 and not fallback:
-                    # Retry immediately with standard payload (stripping grammar & repeat_penalty)
-                    try:
-                        std_data = json.dumps(_make_payload(include_extra=False)).encode("utf-8")
-                        req_std = urllib.request.Request(url, data=std_data, headers=headers, method="POST")
-                        with urllib.request.urlopen(req_std, timeout=60) as response:
-                            res_body = json.loads(response.read().decode("utf-8"))
-                            return res_body["choices"][0]["message"]["content"]
-                    except Exception as fallback_err:
-                        err_body += f" | Fallback error: {fallback_err}"
+                if e.code == 400:
+                    if "exceed" in err_body.lower() or "context" in err_body.lower():
+                        msg = (
+                            f"llama-server context limit exceeded: {err_body}\n"
+                            f"To resolve this issue:\n"
+                            f" 1. Restart llama-server with a larger context window: `./rlm_optimized/start_optimized_local.sh` (defaults to 12288) or run `llama-server -c 12288`\n"
+                            f" 2. Or set `export RLM_CTX_SIZE=8192` to match your server's current context limit so Torchlight compresses context earlier."
+                        )
+                        raise ConnectionError(msg) from e
+                    if not fallback:
+                        # Retry immediately with standard payload (stripping grammar & repeat_penalty)
+                        try:
+                            std_data = json.dumps(_make_payload(include_extra=False)).encode("utf-8")
+                            req_std = urllib.request.Request(url, data=std_data, headers=headers, method="POST")
+                            with urllib.request.urlopen(req_std, timeout=60) as response:
+                                res_body = json.loads(response.read().decode("utf-8"))
+                                return res_body["choices"][0]["message"]["content"]
+                        except Exception as fallback_err:
+                            err_body += f" | Fallback error: {fallback_err}"
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
                 else:

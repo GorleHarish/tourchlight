@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785183742.156707,
-    "ast_hash": "e2b4cab7348c59ec8d9462aa459b6840",
+    "mtime": 1785217575.088482,
+    "ast_hash": "2497ea69a4be6681096c6bbdbb4a2b60",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -400,9 +400,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "core/tests/test_api.py": {
-    "mtime": 1784761522.3146582,
-    "ast_hash": "7a35a7ee07a25cbdb99cb8c8341537a5",
-    "semantic_hash": "7a35a7ee07a25cbdb99cb8c8341537a5"
+    "mtime": 1785217561.8047278,
+    "ast_hash": "bec97b02e3ded5585db7a843c8c7099c",
+    "semantic_hash": ""
   },
   "core/tests/test_ast_tool.py": {
     "mtime": 1784902114.9136853,
@@ -570,8 +570,8 @@
     "semantic_hash": "c4e0e06e1e46f7e6ec0a54d059218a04"
   },
   "rlm_optimized/llamacpp_client.py": {
-    "mtime": 1785183123.0453084,
-    "ast_hash": "5cd263f16c02c62c4b1026ce1acc31ff",
+    "mtime": 1785217554.733304,
+    "ast_hash": "6317c902b1d23ba17566ffdc467ceb01",
     "semantic_hash": ""
   },
   "rlm_optimized/main.py": {
@@ -625,9 +625,9 @@
     "semantic_hash": "7a2d226f7c052c7912ce20e72c6487c7"
   },
   "rlm_optimized/start_optimized_local.sh": {
-    "mtime": 1784810890.6944332,
-    "ast_hash": "3679e8b1473b56b3285ed870c75f6a2f",
-    "semantic_hash": "3679e8b1473b56b3285ed870c75f6a2f"
+    "mtime": 1785217548.3543105,
+    "ast_hash": "eb6d4bfa4d533ab949c5fc47af91b3c2",
+    "semantic_hash": ""
   },
   "rlm_optimized/test_parse.py": {
     "mtime": 1784806356.334866,

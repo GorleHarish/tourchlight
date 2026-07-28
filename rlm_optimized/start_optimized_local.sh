@@ -44,15 +44,15 @@ fi
 # Auto-detect RAM for safe context sizing
 TOTAL_RAM_GB=$(sysctl -n hw.memsize 2>/dev/null | awk '{print int($1/1073741824)}')
 if [ "${TOTAL_RAM_GB:-0}" -le 8 ]; then
-    CTX_SIZE=${CTX_SIZE:-8192}
+    CTX_SIZE=${CTX_SIZE:-12288}
     THREADS=${THREADS:-4}
     BATCH_SIZE=${BATCH_SIZE:-512}
     log_info "🔒 8GB RAM detected (${TOTAL_RAM_GB}GB) — safe mode: CTX=${CTX_SIZE}, threads=${THREADS}"
 else
-    CTX_SIZE=${CTX_SIZE:-16384}
+    CTX_SIZE=${CTX_SIZE:-12288}
     THREADS=${THREADS:-8}
     BATCH_SIZE=${BATCH_SIZE:-1024}
-    log_info "✅ ${TOTAL_RAM_GB}GB RAM detected — CTX=${CTX_SIZE}, threads=${THREADS}"
+    log_info "✅ ${TOTAL_RAM_GB}GB RAM detected — TurboQuant base mode: CTX=${CTX_SIZE}, threads=${THREADS}"
 fi
 
 if [ ! -f "$MODEL_PATH" ]; then

@@ -86,7 +86,8 @@ if PROVIDER == "lmstudio":
     # LM Studio silently drops oldest messages (context shift) if we exceed its loaded context size.
     # Defaulting to 4096 ensures our TieredMemory compresses BEFORE LM Studio drops our System Prompt.
     CTX_SIZE = int(os.environ.get("RLM_CTX_SIZE", "4096"))
-elif IS_8GB_DEVICE:
+elif PROVIDER in ("llama-cpp", "turbo", "turboquant") or IS_8GB_DEVICE:
+    # Base 12288 tokens for TurboQuant setup (q4_0 KV ≈ 0.3GB)
     CTX_SIZE = int(os.environ.get("RLM_CTX_SIZE", "12288"))
 else:
     CTX_SIZE = int(os.environ.get("RLM_CTX_SIZE", "16384"))

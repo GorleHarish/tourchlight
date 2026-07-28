@@ -59,3 +59,27 @@ def test_presets_exist():
     assert "plan" in PRESETS
     assert "troubleshoot" in PRESETS
     assert "chat" in PRESETS
+
+
+def test_llamacpp_client_context_size_error(monkeypatch):
+    import io
+    import urllib.error
+    from rlm_optimized.llamacpp_client import LlamaCppClient
+
+    client = LlamaCppClient(base_url="http://localhost:8080/v1")
+
+    err_json = '{"error":{"code":400,"message":"request (8211 tokens) exceeds the available context size (8192 tokens), try increasing it","type":"exceed_context_size_error","n_prompt_tokens":8211,"n_ctx":8192}}'
+    fp = io.BytesIO(err_json.encode("utf-8"))
+    http_err = urllib.error.HTTPError("http://localhost:8080/v1/chat/completions", 400, "Bad Request", {}, fp)
+
+    def mock_urlopen(*args, **kwargs):
+        raise http_err
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    with pytest.raises(ConnectionError) as exc_info:
+        client.query(prompt="Hello")
+
+    assert "llama-server context limit exceeded" in str(exc_info.value)
+    assert "8211 tokens" in str(exc_info.value)
+
