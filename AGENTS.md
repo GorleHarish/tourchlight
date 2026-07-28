@@ -88,7 +88,7 @@ rlm_optimized/                              # TUI frontend
 - **Zero-Config Local Git Provisioning**: `AutonomousHarness` checks target project roots and automatically executes `git init` locally if missing
 - **Tiered memory**: Recent 3 messages full detail, older summarized
 - **Active file pinning**: Recently-read files pinned in separate FIFO buffer (max 2), survives compression
-- **12k context (8GB)**: Default CTX_SIZE=12288, KV cache ~0.3GB, override via `RLM_CTX_SIZE`
+- **12k context (8GB & TurboQuant base)**: Default CTX_SIZE=12288 across config and start scripts, KV cache ~0.3GB, override via `RLM_CTX_SIZE`
 - **85% context budget**: Headroom for system/tools/beam
 - **Phase-based inference**: code (temp=0.1), troubleshoot (temp=0.3), chat (temp=0.7)
 - **Surgical file reading**: SEARCH_AST → GREP → READ_SYMBOLS → READ_FILE(range/symbol)

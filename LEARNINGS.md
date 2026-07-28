@@ -148,3 +148,9 @@
 - **Solution**: Pin `numpy<2` (e.g. `numpy==1.26.4`) in virtual environments running PyTorch 2.2.x until PyTorch binary distributions are compiled with NumPy 2.0 headers.
 - **Problem (LLM Client HTTP 400 Bad Request)**: Calling standard OpenAI REST endpoints (`/v1/chat/completions`) with non-standard parameters (such as `"grammar"` or `"repeat_penalty"`) returned `HTTP Error 400: Bad Request` without exposing the underlying error message from the response body.
 - **Solution (Response Body Extraction & Standard Payload Fallback)**: Updated `LlamaCppClient` (`rlm_optimized/llamacpp_client.py`) to read and decode `e.read()` on `HTTPError` exceptions, and automatically retry requests with standard OpenAI schema parameters (stripping `grammar` and `repeat_penalty`) when an HTTP 400 status is returned.
+
+## TurboQuant 12k Context Standardization & Server Overflow Diagnostics
+- **Problem (Context Size Mismatch Misfire)**: Launching `llama-server` via starter scripts defaulted to `-c 8192`, while Python configuration (`config.py`) defaulted `CTX_SIZE` to 12,288 tokens. When conversation history grew past 8,192 tokens (e.g. 8,211 tokens), `llama-server` returned `HTTP 400 Bad Request (exceed_context_size_error)`. Stripping grammar parameters did not fix prompt length, leaving users with cryptic connection error failures.
+- **Solution (Standardized Base & Diagnostic Escalation)**:
+  1. Standardized baseline `CTX_SIZE` to `12288` tokens across both `start_optimized_local.sh` and `config.py` for TurboQuant local setup (`llama-cpp`, `turbo`, `turboquant`), maintaining ~0.3GB KV cache allocation.
+  2. Updated `LlamaCppClient` (`llamacpp_client.py`) to explicitly parse `exceed_context_size_error` in HTTP 400 bodies, raising a `ConnectionError` with clear diagnostic steps: recommendation to restart `llama-server` with `-c 12288` or set `export RLM_CTX_SIZE=8192`.

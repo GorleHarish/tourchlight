@@ -18,6 +18,12 @@
 - **NumPy 2.0 PyTorch Compatibility**: Downgraded `numpy` from 2.0.2 to 1.26.4 (`numpy<2`) in `rlm_optimized/venv`, eliminating PyTorch `_ARRAY_API` initialization warnings and restoring `SentenceTransformer` vector embedding generation.
 - **LLM Client HTTP 400 Error Body Extraction & Fallback**: Updated `LlamaCppClient` (`rlm_optimized/llamacpp_client.py`) to read and log response bodies on `HTTPError` exceptions, and auto-fallback to standard OpenAI schema payloads (stripping non-standard `grammar` and `repeat_penalty` fields) when `llama-server` returns HTTP 400 Bad Request.
 
+### TurboQuant 12k Context Standardization & llama-server Error Diagnostics (`config.py`, `start_optimized_local.sh`, `llamacpp_client.py`)
+
+- **Baseline 12,288 Token Context Window**: Standardized `CTX_SIZE` default to 12,288 tokens across `rlm_optimized/config.py` and `rlm_optimized/start_optimized_local.sh` for TurboQuant local setup (`llama-cpp`, `turbo`, `turboquant` providers), resolving context limit mismatches between python memory management and `llama-server`.
+- **Exceed Context Size Error Detection**: Enhanced `LlamaCppClient` (`rlm_optimized/llamacpp_client.py`) to parse `exceed_context_size_error` returned in HTTP 400 Bad Request responses from `llama-server`. Provides actionable diagnostic error messages with explicit commands to restart `llama-server` with `-c 12288` or set `RLM_CTX_SIZE=8192`.
+- **Automated Tests**: Added `test_llamacpp_client_context_size_error` in `core/tests/test_api.py`. Verified with full test suite passing (196/196 tests).
+
 ### Bug Audit & Context Overflow Hardening (6 Issues Fixed)
 
 - **Critical Fix: Beam Scoring O(n²) Rebuild**: `_score()` called `get_project_graph()` on every file scored, triggering full AST rebuilds per file. Fixed with instance-level `_graph_nodes` cache.
