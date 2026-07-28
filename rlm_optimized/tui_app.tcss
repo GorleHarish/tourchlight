@@ -378,3 +378,28 @@ ModalScreen {
 #approval-title {
     color: $error;
 }
+
+/* ── Collapsible & Tool Cards ─────────────────────────────────────────── */
+
+Collapsible {
+    background: $surface;
+    border: solid $panel;
+    margin: 0 0 1 0;
+    padding: 0;
+}
+
+CollapsibleTitle {
+    background: $panel;
+    color: $foreground;
+    padding: 0 1;
+}
+
+CollapsibleTitle:hover {
+    background: $block-hover-background;
+}
+
+CollapsibleContents {
+    padding: 0 1;
+    background: $background;
+}
+

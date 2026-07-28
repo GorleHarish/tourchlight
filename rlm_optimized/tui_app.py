@@ -735,31 +735,74 @@ class TorchlightApp(App):
     def _build_plan_text(self) -> str:
         project_root = getattr(self.engine, "project_root", os.getcwd())
         plan_path = os.path.join(project_root, "implementation_plan.md")
-        if not os.path.exists(plan_path):
+        alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
+        alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
+
+        target_file = None
+        file_type = None
+
+        if os.path.exists(plan_path):
+            target_file = plan_path
+            file_type = "markdown"
+        elif os.path.exists(alt_tasks_path):
+            target_file = alt_tasks_path
+            file_type = "markdown"
+        elif os.path.exists(alt_goal_path):
+            target_file = alt_goal_path
+            file_type = "json"
+        else:
             return "[dim]No active implementation_plan.md[/dim]"
 
         try:
-            with open(plan_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
+            if file_type == "json":
+                with open(target_file, "r", encoding="utf-8") as f:
+                    goal_data = json.load(f)
+                goal_title = goal_data.get("title", "Autonomous Goal")
+                raw_tasks = goal_data.get("tasks", [])
+                tasks = [f"[bold cyan]📌 {escape(goal_title)}[/bold cyan]"]
+                completed = 0
+                for t in raw_tasks:
+                    st = t.get("status", "pending")
+                    desc = escape(str(t.get("description") or t.get("id") or "Task"))
+                    if st in ("verified", "completed"):
+                        completed += 1
+                        tasks.append(f"[bold green]✅ {desc}[/bold green]")
+                    elif st == "in_progress":
+                        tasks.append(f"[bold cyan]● {desc}[/bold cyan]")
+                    else:
+                        tasks.append(f"[yellow]⏳ {desc}[/yellow]")
+                total = len(raw_tasks)
+            else:
+                with open(target_file, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
 
-            tasks = []
-            completed = 0
-            for line in lines:
-                stripped = line.strip()
-                if stripped.startswith("- [x]") or stripped.startswith("- [X]"):
-                    completed += 1
-                    task_text = escape(stripped[5:].strip())
-                    tasks.append(f"[bold green]✅ {task_text}[/bold green]")
-                elif stripped.startswith("- [ ]"):
-                    task_text = escape(stripped[5:].strip())
-                    tasks.append(f"[yellow]⏳ {task_text}[/yellow]")
-                elif stripped.startswith("##"):
-                    title = escape(stripped.lstrip("#").strip())
-                    tasks.append(f"[bold cyan]📌 {title}[/bold cyan]")
+                tasks = []
+                completed = 0
+                total = 0
+                import re
+                chk_regex = re.compile(r"^(?:[-*]|\d+\.)\s*\[([ xX/\-])\]\s*(.*)$")
 
-            total = sum(1 for line in lines if line.strip().startswith(("- [ ]", "- [x]", "- [X]")))
+                for line in lines:
+                    stripped = line.strip()
+                    m = chk_regex.match(stripped)
+                    if m:
+                        state, task_raw = m.group(1), m.group(2).strip()
+                        total += 1
+                        task_text = escape(task_raw)
+                        if state in ("x", "X"):
+                            completed += 1
+                            tasks.append(f"[bold green]✅ {task_text}[/bold green]")
+                        elif state in ("/", "-"):
+                            tasks.append(f"[bold cyan]● {task_text}[/bold cyan]")
+                        else:
+                            tasks.append(f"[yellow]⏳ {task_text}[/yellow]")
+                    elif stripped.startswith("##"):
+                        title = escape(stripped.lstrip("#").strip())
+                        tasks.append(f"[bold cyan]📌 {title}[/bold cyan]")
+
             if total == 0:
-                return "[dim]implementation_plan.md exists (0 tasks)[/dim]"
+                basename = os.path.basename(target_file)
+                return f"[dim]{basename} exists (0 tasks)[/dim]"
 
             pct = int((completed / total) * 100) if total > 0 else 0
             bar_width = 10
@@ -1240,22 +1283,39 @@ class TorchlightApp(App):
 
         try:
             # Thinking / reasoning
-            if step.thinking and step.thinking not in ("(forced)", ""):
+            if step.thinking and step.thinking.strip() not in ("(forced)", ""):
+                trimmed = step.thinking.strip()
+                if len(trimmed) > 15000:
+                    trimmed = trimmed[:15000] + "\n... [Reasoning Truncated]"
+                escaped_thinking = escape(trimmed)
                 if Collapsible is not None:
-                    trimmed = step.thinking[:15000] + "\n... [Reasoning Truncated]" if len(step.thinking) > 15000 else step.thinking
-                    self._safe_mount(container, Collapsible(Static(escape(trimmed), classes="stream-text"), title="💭 Reasoning", collapsed=True))
+                    self._safe_mount(container, Collapsible(
+                        Static(escaped_thinking, classes="stream-text"),
+                        title="💭 Reasoning",
+                        collapsed=True
+                    ))
                 else:
-                    trimmed = step.thinking[:600] + "..." if len(step.thinking) > 600 else step.thinking
                     self._safe_mount(container, Static(Panel(
-                        escape(trimmed),
+                        escaped_thinking,
                         title="💭 Reasoning",
                         border_style="dim magenta",
                     )))
 
-            # Tool execution
+            # Tool execution - Single Unified Card
             if step.action == "tool":
                 label = step.tool_name or "TOOL"
-                display_args = dict(step.tool_args) if step.tool_args else {}
+                display_args = dict(step.tool_args) if isinstance(step.tool_args, dict) else {}
+
+                target_name = ""
+                if "path" in display_args:
+                    target_name = str(display_args["path"])
+                elif "file_path" in display_args:
+                    target_name = str(display_args["file_path"])
+                elif "command" in display_args:
+                    target_name = str(display_args["command"])
+                elif "query" in display_args:
+                    target_name = str(display_args["query"])
+
                 if label == "WRITE_FILE" and "content" in display_args:
                     display_args["content"] = f"... [{len(str(display_args['content']))} chars of code hidden]"
                 elif label == "EDIT_FILE":
@@ -1263,58 +1323,73 @@ class TorchlightApp(App):
                         display_args["old_text"] = f"... [{len(str(display_args['old_text']))} chars hidden]"
                     if "new_text" in display_args:
                         display_args["new_text"] = f"... [{len(str(display_args['new_text']))} chars hidden]"
-                
+
                 args_str = json.dumps(display_args, indent=2) if display_args else ""
                 if len(args_str) > 4000:
                     args_str = args_str[:4000] + "\n... [Arguments Truncated for UI Performance]"
-                
-                escaped_args = escape(args_str)
+
+                res_raw = step.result or ""
+                denied = "denied" in res_raw.lower()
+                is_err = (
+                    res_raw.startswith("Error")
+                    or res_raw.startswith("❌")
+                    or ("requires" in res_raw.lower() and "block" in res_raw.lower())
+                    or ("failed" in res_raw.lower() and "error" in res_raw.lower())
+                )
+
+                if denied:
+                    badge_icon = "⚠️"
+                    badge_style = "yellow"
+                    status_str = " (Denied)"
+                elif is_err:
+                    badge_icon = "❌"
+                    badge_style = "red"
+                    status_str = " (Failed)"
+                else:
+                    badge_icon = "✓"
+                    badge_style = "green"
+                    status_str = ""
+
                 escaped_label = escape(label)
+                escaped_target = escape(target_name)
+                card_icon = "✏️" if label in ("WRITE_FILE", "EDIT_FILE") else "🔧"
+                card_title = f"{badge_icon} {card_icon} {escaped_label}"
+                if escaped_target:
+                    card_title += f" [cyan]{escaped_target}[/cyan]"
+                card_title += status_str
+
+                body_parts = []
+                if args_str:
+                    body_parts.append(f"[dim]Args:[/dim]\n[dim]{escape(args_str)}[/dim]")
+                if res_raw:
+                    display_result = res_raw
+                    if len(display_result) > 15000:
+                        display_result = display_result[:15000] + "\n... [Output Truncated for UI Performance]"
+                    body_parts.append(f"[bold]Result:[/bold]\n{escape(display_result)}")
+
+                combined_body = "\n\n".join(body_parts) if body_parts else "[dim]No arguments or output[/dim]"
+
                 if Collapsible is not None:
+                    is_collapsed = not (is_err or denied)
                     self._safe_mount(container, Collapsible(
-                        Static(f"[dim]{escaped_args}[/]", classes="stream-text"),
-                        title=f"🔧 {escaped_label}",
-                        collapsed=True
+                        Static(combined_body, classes="stream-text"),
+                        title=card_title,
+                        collapsed=is_collapsed
                     ))
                 else:
                     self._safe_mount(container, Static(Panel(
-                        f"[bold]{escaped_label}[/]\n[dim]{escaped_args}[/]",
-                        title=f"🔧 {escaped_label}",
-                        border_style="bright_blue",
+                        combined_body,
+                        title=card_title,
+                        border_style=badge_style,
                     )))
-                if step.tool_name in ("WRITE_FILE", "EDIT_FILE") and step.result and not ("error" in step.result.lower() or "denied" in step.result.lower()):
+
+                if step.tool_name in ("WRITE_FILE", "EDIT_FILE") and step.result and not (is_err or denied):
                     try:
                         tree = self.query_one("#file-tree", DirectoryTree)
                         tree.reload()
                     except Exception:
                         pass
                     self._start_ast_indexing()
-                if step.result:
-                    display_result = step.result
-                    if len(display_result) > 15000:
-                        display_result = display_result[:15000] + "\n... [Output Truncated for UI Performance]"
-                    denied = "denied" in (step.result or "").lower()
-                    is_err = (step.result or "").startswith("Error") or (step.result or "").startswith("❌")
-                    if denied:
-                        style, icon = "yellow", "⚠"
-                    elif is_err:
-                        style, icon = "red", "❌"
-                    else:
-                        style, icon = "green", "📤"
-                    
-                    escaped_res = escape(display_result)
-                    if Collapsible is not None and not is_err and not denied:
-                        self._safe_mount(container, Collapsible(
-                            Static(escaped_res, classes="stream-text"), 
-                            title=f"{icon} Result", 
-                            collapsed=True
-                        ))
-                    else:
-                        self._safe_mount(container, Static(Panel(
-                            escaped_res,
-                            title=f"{icon} Result",
-                            border_style=style,
-                        )))
 
             # Code execution
             elif step.action == "code":
@@ -1369,6 +1444,12 @@ class TorchlightApp(App):
                         title="📥 Sub-Query Results",
                         border_style="dim green",
                     )))
+        except Exception:
+            pass
+
+        # Update sidebar plan panel & metadata in real-time after every step
+        try:
+            self.update_sidebar_meta()
         except Exception:
             pass
 
