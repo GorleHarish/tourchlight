@@ -200,18 +200,26 @@ class TieredMemory:
         self._pinned_files.clear()
 
     def should_compress(self) -> bool:
-        if len(self.messages) < self.config.recent_window + 2:
+        if len(self.messages) <= 1:
             return False
         ratio = self.total_tokens / self.config.max_tokens
+        # Emergency ratio override at >= 0.85 (85%) token usage even if message count is small
+        if ratio >= 0.85:
+            return True
+        if len(self.messages) < self.config.recent_window + 2:
+            return False
         return ratio > self.config.compression_threshold
 
-    def compress_recent(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0) -> None:
+    def compress_recent(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0, force: bool = False) -> None:
         """Compress older messages, preserving the first N messages."""
-        if len(self.messages) <= self.config.recent_window + preserve_first:
+        min_messages = 1 if force else (self.config.recent_window + preserve_first)
+        if len(self.messages) <= min_messages:
             return
-        recent = list(self.messages)[-self.config.recent_window:]
+        
+        window_size = 1 if force else self.config.recent_window
+        recent = list(self.messages)[-window_size:] if window_size > 0 else []
         preserved = list(self.messages)[:preserve_first]
-        older = list(self.messages)[preserve_first:-self.config.recent_window]
+        older = list(self.messages)[preserve_first:-window_size] if window_size > 0 else list(self.messages)[preserve_first:]
         
         if older:
             self.messages.clear()
@@ -227,9 +235,9 @@ class TieredMemory:
             for msg in recent:
                 self.messages.append(msg)
 
-    async def compress_recent_async(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0) -> None:
+    async def compress_recent_async(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0, force: bool = False) -> None:
         """Async wrapper for compress_recent."""
-        self.compress_recent(summarizer_fn, preserve_first)
+        self.compress_recent(summarizer_fn, preserve_first, force=force)
 
     def get_context_for_llm(self, user_query: str = "") -> list[dict]:
         """Build the message list for the LLM.

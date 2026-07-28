@@ -168,7 +168,7 @@ rlm_optimized/
 | `/help` | Show available commands |
 | `/status` | Show context statistics (tokens, messages, memory state) |
 | `/stream` | Toggle streaming mode on/off |
-| `/compress` | Manually trigger memory compression |
+| `/compress`, `/compact` | Manually trigger memory compression |
 | `/clear` | Clear all context from the current session |
 | `/tokens` | Show current token usage breakdown |
 | `/save [name]` | Save the current session to disk |

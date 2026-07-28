@@ -794,24 +794,25 @@ class StreamingChatSession:
 
         return Panel(content, title="[bold]Live Stats[/bold]", border_style="blue")
 
-    async def _compress_context(self):
+    async def _compress_context(self, force: bool = True):
+        tokens_before = self.memory.total_tokens
         # Persist session state to project memory before compressing
         if self.project_memory:
             self.project_memory.persist_session_state(self.memory.state)
             console.print("\n[dim]◉ Session findings persisted to project memory.[/dim]")
-        older = list(self.memory.messages)[: -self.memory.config.recent_window]
-        if older:
-            # Use async path when available — runs LLM extractor + regex in parallel.
-            # Falls back to sync compress_recent() if extractor is not wired in.
-            await self.memory.compress_recent_async(self.summarizer.simple_summarize)
+        
+        await self.memory.compress_recent_async(self.summarizer.simple_summarize, force=force)
+        tokens_after = self.memory.total_tokens
+        tokens_freed = max(0, tokens_before - tokens_after)
 
-            # Log extractor diagnostics at DEBUG level
-            if self.memory._llm_extractor is not None:
-                s = self.memory._llm_extractor.stats
-                console.print(
-                    f"  [dim]◉ State extractor: {s['hits']} hits / "
-                    f"{s['calls']} calls / {s['errors']} errors[/dim]"
-                )
+        # Log extractor diagnostics at DEBUG level
+        if self.memory._llm_extractor is not None:
+            s = self.memory._llm_extractor.stats
+            console.print(
+                f"  [dim]◉ State extractor: {s['hits']} hits / "
+                f"{s['calls']} calls / {s['errors']} errors[/dim]"
+            )
+        return tokens_before, tokens_after, tokens_freed
 
     # ── Command handling ───────────────────────────────────────────────────────
 
@@ -827,9 +828,9 @@ class StreamingChatSession:
         elif command == "/stream":
             self.stream_enabled = not self.stream_enabled
             dashboard.print_info(f"Streaming {'enabled' if self.stream_enabled else 'disabled'}")
-        elif command == "/compress":
-            await self._compress_context()
-            dashboard.print_success("Context compressed")
+        elif command in ("/compress", "/compact"):
+            tb, ta, tf = await self._compress_context(force=True)
+            dashboard.print_success(f"Context manually compressed: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)")
         elif command == "/clear":
             self.memory.clear()
             dashboard.print_success("Context cleared")
@@ -944,7 +945,7 @@ class StreamingChatSession:
   /status      — context statistics
   /tasks       — show sub-agent goal & task progress telemetry
   /stream      — toggle streaming
-  /compress    — compress context now
+  /compress, /compact — compress context manually now
   /clear       — wipe all context
   /tokens      — show token usage
   /save [name] — save session

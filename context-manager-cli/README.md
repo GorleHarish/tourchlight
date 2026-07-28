@@ -46,7 +46,7 @@ context chat --max-tokens 4096
 | `/help` | Show available commands |
 | `/status` | Show context statistics (tokens, messages, memory) |
 | `/stream` | Toggle streaming mode |
-| `/compress` | Manually trigger memory compression |
+| `/compress`, `/compact` | Manually trigger memory compression |
 | `/clear` | Clear all context |
 | `/tokens` | Show token usage breakdown |
 | `/save [name]` | Save current session to disk |

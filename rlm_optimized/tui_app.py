@@ -688,6 +688,7 @@ class TorchlightApp(App):
         Binding("ctrl+m", "select_model", "Select Model", show=True),
         Binding("ctrl+b", "toggle_sidebar", "Toggle Sidebar", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
+        Binding("ctrl+p", "compact_context", "Compact Context", show=True),
         Binding("ctrl+r", "reset_session", "Reset REPL", show=False),
         Binding("ctrl+l", "clear", "Clear Chat", show=False),
         Binding("ctrl+c", "quit", "Quit", show=True),
@@ -1296,6 +1297,9 @@ class TorchlightApp(App):
                 self.update_status_bar()
                 self.update_sidebar_meta()
                 self.notify(f"Switched model to {escape(normalized)}", severity="information", timeout=2)
+
+        elif cmd in ("/compress", "/compact"):
+            self.action_compact_context()
 
         elif cmd in ("/clear", "/cls"):
             self.action_clear()
@@ -2035,6 +2039,20 @@ class TorchlightApp(App):
     def action_clear(self) -> None:
         container = self.query_one("#chat-container")
         container.remove_children()
+
+    def action_compact_context(self) -> None:
+        """Manually trigger memory context compaction."""
+        mem = getattr(self.engine, "_memory", None)
+        if not mem:
+            self.notify("No active memory context to compact", severity="warning", timeout=3)
+            return
+        tb, ta, tf = self.engine.compact_context(mem, force=True)
+        self.update_status_bar()
+        self.update_sidebar_meta()
+        if tf > 0:
+            self.notify(f"Context compacted: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)", severity="information", timeout=4)
+        else:
+            self.notify(f"Context already minimal ({ta:,} tokens)", severity="information", timeout=3)
 
 
 def create_client(args):

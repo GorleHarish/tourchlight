@@ -239,6 +239,17 @@ class RLMEngineOptimized:
             return self._repair_stop_tokens(raw)
 
 
+    def compact_context(self, memory=None, force: bool = True) -> tuple[int, int, int]:
+        """Manually compact context memory and return (before, after, freed)."""
+        target_mem = memory or getattr(self, "_memory", None)
+        if not target_mem:
+            return 0, 0, 0
+        before = getattr(target_mem, "total_tokens", 0)
+        summarizer_fn = _summarizer.simple_summarize if _summarizer else None
+        target_mem.compress_recent(summarizer_fn=summarizer_fn, preserve_first=2, force=force)
+        after = getattr(target_mem, "total_tokens", 0)
+        return before, after, max(0, before - after)
+
     async def solve_async(self, task: str, depth: int = 0) -> SolveResult:
         result = SolveResult(answer="", depth=depth)
         
@@ -247,6 +258,7 @@ class RLMEngineOptimized:
             memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE))
             memory.add_system_message(build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192)))
             memory.add_user_message(task)
+            self._memory = memory
             use_memory = True
         else:
             from .config import CTX_SIZE

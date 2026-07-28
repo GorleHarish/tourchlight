@@ -2,6 +2,16 @@
 
 ## 2026-07-28
 
+### Manual Context Compaction Trigger & High-Ratio Threshold Fix (`core/memory/manager.py`, `context-manager-cli`, `rlm_optimized`)
+
+- **High-Ratio Compaction Threshold Fix**: Updated `should_compress()` in `core/memory/manager.py` so that high token pressure (>= 85%) overrides minimum message count bounds, ensuring high-capacity context turns trigger auto-compaction before context length errors occur.
+- **CLI Cooldown Emergency Cap Fix**: Adjusted emergency compaction threshold in `context-manager-cli/src/context_manager/memory/manager.py` from 92% to 85%, resolving the bug where token accumulation at 91% capacity was blocked from auto-compacting during cooldowns.
+- **Forced Compaction Support**: Added `force: bool = False` parameter to `compress_recent()` and `compress_recent_async()` across core and CLI memory managers to allow manual triggers to bypass minimum message history bounds and reset cooldown timers.
+- **CLI & TUI Slash Commands**: Added `/compact` and `/compress` slash command handlers to both `context-manager-cli` (`main.py`) and RLM TUI (`rlm_optimized/tui_app.py`), displaying token before/after stats and tokens freed.
+- **TUI Shortcuts & Programmatic API**: Added `Ctrl+P` ("Compact Context") shortcut binding to `TorchlightApp` and implemented `compact_context()` on `RLMEngineOptimized`.
+- **Documentation & READMEs**: Updated CLI `/help` output, `README.md`, and `context-manager-cli/README.md`.
+- **Automated Tests**: Added `core/tests/test_manual_compaction.py` (5 test cases). Verified all 177 core unit tests and 46 CLI unit tests pass cleanly.
+
 ### Flexible Diff Parsing & Diagnostic Error Hints for `EDIT_FILE` (`implementations.py`, `test_diff_edit.py`)
 
 - **Resilient Diff Block Parsing (`_parse_diff_block`)**: Enhanced `_parse_diff_block` in `core/tools/implementations.py` to parse Aider-style Search/Replace blocks with common LLM syntax variations (e.g. missing `REPLACE` keyword, or models outputting `>>>>>>>` as middle divider instead of `=======`).

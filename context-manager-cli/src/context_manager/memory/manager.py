@@ -747,8 +747,8 @@ class TieredMemory:
         # since the last compression event.
         new_since = self._total_tokens - self._compression_cooldown_tokens
         if new_since < self._compression_min_new_tokens:
-            # Emergency override: compress anyway if severely over the hard ceiling
-            return self._total_tokens > self.config.max_tokens * 0.92
+            # Emergency override: compress anyway if severely over the hard ceiling (>=85%)
+            return self._total_tokens > self.config.max_tokens * 0.85
         effective_max = self.config.max_tokens - self.config.metadata_overhead
         if self.config.max_tokens <= 5000:
             return self._total_tokens > effective_max * 0.60
@@ -1142,12 +1142,14 @@ class TieredMemory:
 
     # ── Compression ───────────────────────────────────────────────────────────
 
-    def compress_recent(self, compress_fn: Callable[[list[Message]], str]) -> str:
-        if len(self.messages) <= self.config.recent_window:
+    def compress_recent(self, compress_fn: Callable[[list[Message]], str], force: bool = False) -> str:
+        min_messages = 1 if force else self.config.recent_window
+        if len(self.messages) <= min_messages:
             return ""
 
-        recent = list(self.messages)[-self.config.recent_window:]
-        older  = list(self.messages)[:-self.config.recent_window]
+        window_size = 1 if force else self.config.recent_window
+        recent = list(self.messages)[-window_size:] if window_size > 0 else []
+        older  = list(self.messages)[:-window_size] if window_size > 0 else list(self.messages)
 
         summary = compress_fn(older)
 
@@ -1181,18 +1183,20 @@ class TieredMemory:
         self.messages.appendleft(summary_msg)
 
         # FIX 4: Record token level at compression time.
-        # Re-compression blocked until _compression_min_new_tokens new tokens arrive.
-        self._compression_cooldown_tokens = self._total_tokens
+        self._compression_cooldown_tokens = self._total_tokens if not force else 0
 
         return summary
 
-    async def compress_recent_async(self, compress_fn: Callable[[list[Message]], str]) -> str:
+    async def compress_recent_async(self, compress_fn: Callable[[list[Message]], str], force: bool = False) -> str:
         import asyncio
 
-        if len(self.messages) <= self.config.recent_window:
+        min_messages = 1 if force else self.config.recent_window
+        if len(self.messages) <= min_messages:
             return ""
 
-        older = list(self.messages)[:-self.config.recent_window]
+        window_size = 1 if force else self.config.recent_window
+        recent = list(self.messages)[-window_size:] if window_size > 0 else []
+        older  = list(self.messages)[:-window_size] if window_size > 0 else list(self.messages)
 
         if self._llm_extractor is not None:
             summary, _ = await asyncio.gather(
@@ -1217,7 +1221,6 @@ class TieredMemory:
         ))
         self.state.memory_objects = self.state.memory_objects[-120:]
 
-        recent = list(self.messages)[-self.config.recent_window:]
         max_summary_tokens = int(self.config.max_tokens * self.config.summary_budget_fraction)
         if self.tokenizer.count(summary) > max_summary_tokens:
             summary = self._get_compactor().compress(summary)
@@ -1236,7 +1239,7 @@ class TieredMemory:
         self.messages.appendleft(summary_msg)
 
         # FIX 4: same token-based cooldown as synchronous path
-        self._compression_cooldown_tokens = self._total_tokens
+        self._compression_cooldown_tokens = self._total_tokens if not force else 0
 
         return summary
 

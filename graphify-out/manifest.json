@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785233198.0529134,
-    "ast_hash": "6165a474e460ad0b1c50c349f7f8eb11",
+    "mtime": 1785248601.3755383,
+    "ast_hash": "5ac9079f7c402745d3d5d12ce6dd15b1",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1785223766.4470208,
-    "ast_hash": "d6990d83c7eabf0df74ef2457f3cb0eb",
+    "mtime": 1785248409.1141844,
+    "ast_hash": "03d4f175a60b9a9b1b7b629520ff159d",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -140,8 +140,8 @@
     "semantic_hash": "9f176db23d1c89bb49a3adf241047ded"
   },
   "context-manager-cli/src/context_manager/memory/manager.py": {
-    "mtime": 1785223760.4463475,
-    "ast_hash": "8acfcdc27c93e2067f92696337c22cd1",
+    "mtime": 1785248393.7111633,
+    "ast_hash": "7fe63de8bbde2e525f4c5abf8f7f602b",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/memory/models.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785223754.4923446,
-    "ast_hash": "cf56353f95d37743d1905251c8ff532e",
+    "mtime": 1785248372.945694,
+    "ast_hash": "5b1f6e78a58d5ef358c26deb0d1ad7aa",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": "23ae1792e4c1d67058f0e6efb649a4f8"
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785224434.1266944,
-    "ast_hash": "cb52b2744a05d505616776270b72b9ec",
+    "mtime": 1785248418.704427,
+    "ast_hash": "aaf4cc91a246edeb23a319e2f11e3674",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -640,8 +640,8 @@
     "semantic_hash": "b1e6a896c2c08a849387079fcbc4e560"
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785233185.6729918,
-    "ast_hash": "d9d40bb6e3ac06f1853dee04f5539884",
+    "mtime": 1785248449.2685525,
+    "ast_hash": "2cf0ef0717b168e95c0d0ddb4cf92463",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -695,8 +695,8 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785228379.5792835,
-    "ast_hash": "1e06bb4cd35a8950b6c98ac2d082d6bd",
+    "mtime": 1785248636.3189154,
+    "ast_hash": "3254d9ebe89f76c0ef6733184f1f1855",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
@@ -705,13 +705,13 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1785095992.7783976,
-    "ast_hash": "1ad0fcea678702b7a5c6e61d0993e1e4",
+    "mtime": 1785248577.671689,
+    "ast_hash": "31157b4fb7631739f1b828f21be665c2",
     "semantic_hash": ""
   },
   "context-manager-cli/README.md": {
-    "mtime": 1784750337.0115154,
-    "ast_hash": "c9259e650edb13d877c6509038237dcd",
+    "mtime": 1785248586.605681,
+    "ast_hash": "bf7481a9787a40c0854eb9807b137679",
     "semantic_hash": ""
   },
   "context-manager-cli/android_SKILL.md": {
@@ -812,6 +812,11 @@
   "core/tests/test_trajectory.py": {
     "mtime": 1785225392.2653024,
     "ast_hash": "ec44c3953fdfc22d07c2a1271dd6e166",
+    "semantic_hash": ""
+  },
+  "core/tests/test_manual_compaction.py": {
+    "mtime": 1785248528.9625432,
+    "ast_hash": "a21ef2b3d96cc98fe431faf80767933c",
     "semantic_hash": ""
   }
 }
