@@ -370,6 +370,10 @@ class StreamingChatSession:
                     fpath = params.get("path", "")
                     if fpath and result.output:
                         self.memory.pin_file(fpath, result.output)
+                elif ok and name.upper() in ("EDIT_FILE", "WRITE_FILE"):
+                    fpath = params.get("path") or params.get("file")
+                    if fpath:
+                        self.memory.refresh_pin(fpath, self.project_root)
                 
                 # Execution feedback: auto-run tests after code changes
                 test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
@@ -408,6 +412,10 @@ class StreamingChatSession:
                         fpath = params.get("path", "")
                         if fpath and result.output:
                             self.memory.pin_file(fpath, result.output)
+                    elif ok and name.upper() in ("EDIT_FILE", "WRITE_FILE"):
+                        fpath = params.get("path") or params.get("file")
+                        if fpath:
+                            self.memory.refresh_pin(fpath, self.project_root)
                     
                     # Execution feedback: auto-run tests after code changes
                     test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
@@ -452,6 +460,10 @@ class StreamingChatSession:
                         fpath = params.get("path", "")
                         if fpath and result.output:
                             self.memory.pin_file(fpath, result.output)
+                    elif ok and name.upper() in ("EDIT_FILE", "WRITE_FILE"):
+                        fpath = params.get("path") or params.get("file")
+                        if fpath:
+                            self.memory.refresh_pin(fpath, self.project_root)
                     
                     # Execution feedback: auto-run tests after code changes
                     test_result = self._feedback_loop.on_tool_executed(name, params, result.output)

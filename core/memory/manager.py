@@ -172,6 +172,25 @@ class TieredMemory:
         # New pin — FIFO eviction when deque is full
         self._pinned_files.append((path, content))
 
+    def unpin_file(self, path: str) -> None:
+        """Remove a file from pinned memory if deleted or stale."""
+        self._pinned_files = deque(
+            [(p, c) for p, c in self._pinned_files if p != path],
+            maxlen=self._pinned_files.maxlen
+        )
+
+    def refresh_pin(self, path: str, project_root: str) -> None:
+        """Re-read an edited file from disk and update its pin in memory."""
+        try:
+            from core.tools.implementations import tool_read_file_impl
+            res = tool_read_file_impl({"path": path}, project_root)
+            if res and not res.startswith("Error") and not res.startswith("File not found"):
+                self.pin_file(path, res)
+            else:
+                self.unpin_file(path)
+        except Exception:
+            self.unpin_file(path)
+
     def get_pinned_files(self) -> list[tuple[str, str]]:
         """Return list of (path, content) for pinned files."""
         return list(self._pinned_files)

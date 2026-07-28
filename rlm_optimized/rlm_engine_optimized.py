@@ -452,11 +452,16 @@ class RLMEngineOptimized:
                     self._notify_status("TOOL_DONE", {"tool_name": tool_name, "success": tool_result.success})
 
                     # Pin file content after READ_FILE so it survives compression
-                    if (use_memory and tool_result.success
-                            and tool_name and "READ_FILE" in tool_name.upper()):
-                        fpath = tool_args.get("path", "")
-                        if fpath and tool_result.output:
-                            memory.pin_file(fpath, tool_result.output)
+                    if (use_memory and tool_result.success and tool_name):
+                        tname_upper = tool_name.upper()
+                        if "READ_FILE" in tname_upper:
+                            fpath = tool_args.get("path", "")
+                            if fpath and tool_result.output:
+                                memory.pin_file(fpath, tool_result.output)
+                        elif "EDIT_FILE" in tname_upper or "WRITE_FILE" in tname_upper:
+                            fpath = tool_args.get("path") or tool_args.get("file", "")
+                            if fpath and hasattr(memory, "refresh_pin"):
+                                memory.refresh_pin(fpath, self.project_root)
 
                     msg_type = "tool_result" if tool_result.success else "tool_error"
                     feedback = build_step_message(msg_type, tool_result.output)
