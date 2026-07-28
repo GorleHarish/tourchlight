@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785265756.7094216,
-    "ast_hash": "924e4d56da5593339abca9c564aedd2c",
+    "mtime": 1785249157.3975728,
+    "ast_hash": "a029e99df6d18ba8475904d817382f30",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1785265739.9604747,
-    "ast_hash": "3759aefcd461a33c01480e8022b96f6c",
+    "mtime": 1785248409.1141844,
+    "ast_hash": "03d4f175a60b9a9b1b7b629520ff159d",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785265700.987552,
-    "ast_hash": "f15eac46b2e3778ac4ee46b82c2f4b23",
+    "mtime": 1785248372.945694,
+    "ast_hash": "5b1f6e78a58d5ef358c26deb0d1ad7aa",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785265690.8990166,
-    "ast_hash": "72f3b3b1e95929751c35335322b25066",
+    "mtime": 1785226542.6505442,
+    "ast_hash": "62889bcf4b3fa13eeadea9e80e9855e0",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -690,18 +690,18 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785265816.404368,
-    "ast_hash": "5c00d14008c0ace1cfdd0fd5c01c4feb",
+    "mtime": 1785226880.4465244,
+    "ast_hash": "286f137e241ac6eb5283e0af9ddd7a4d",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785265758.0039253,
-    "ast_hash": "fb28d65d433a9defdfcab161d8474cc2",
+    "mtime": 1785248636.3189154,
+    "ast_hash": "3254d9ebe89f76c0ef6733184f1f1855",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
-    "mtime": 1785265766.0589855,
-    "ast_hash": "884783bfe30e33191978c71d96a9be8b",
+    "mtime": 1785228389.0861287,
+    "ast_hash": "241ea264430fd6fe842178971bc8e775",
     "semantic_hash": ""
   },
   "README.md": {
@@ -817,11 +817,6 @@
   "core/tests/test_manual_compaction.py": {
     "mtime": 1785248528.9625432,
     "ast_hash": "a21ef2b3d96cc98fe431faf80767933c",
-    "semantic_hash": ""
-  },
-  "core/tests/test_prompts_and_memory.py": {
-    "mtime": 1785265744.9785242,
-    "ast_hash": "5ee6172bd18f143ccbedfae182ce5214",
     "semantic_hash": ""
   }
 }
