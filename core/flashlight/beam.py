@@ -57,12 +57,38 @@ class Flashlight:
         self._max_lines = _DEFAULT_MAX_LINES
         self._anchor_pre = _DEFAULT_ANCHOR_PRE
         self._graph_nodes = None  # Lazy-loaded AST graph node cache
+        self._git_churn_scores = None  # Lazy-loaded Git churn score cache
 
     def configure(self, max_context_tokens: int) -> None:
         self._max_files, self._max_lines, self._anchor_pre = _beam_config_for_context(max_context_tokens)
 
     def mark_active(self, rel_path: str) -> None:
         self._active_file = rel_path
+
+    def _get_git_churn_scores(self) -> dict:
+        if self._git_churn_scores is not None:
+            return self._git_churn_scores
+        churn = {}
+        try:
+            import subprocess
+            p_dir = getattr(self.index, "project_dir", "")
+            if p_dir:
+                res = subprocess.run(
+                    ["git", "log", "-n", "20", "--name-only", "--pretty=format:"],
+                    cwd=p_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=3,
+                )
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        line = line.strip()
+                        if line:
+                            churn[line] = churn.get(line, 0) + 1
+        except Exception:
+            pass
+        self._git_churn_scores = churn
+        return self._git_churn_scores
 
     def beam(self, query: str, max_files: Optional[int] = None) -> list[BeamResult]:
         if max_files is None:
@@ -120,6 +146,11 @@ class Flashlight:
             score += len(query_tokens & self._tokenize(line)) * 0.5
         if rel_path == self._active_file and score > 0:
             score += 2.0
+
+        # Git churn relevance bonus
+        churn_map = self._get_git_churn_scores()
+        if rel_path in churn_map and score > 0:
+            score += min(5.0, churn_map[rel_path] * 1.5)
 
         # AST Graph relevance bonus (cached, never triggers build inside scoring)
         if self._graph_nodes is None:

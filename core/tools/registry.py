@@ -158,6 +158,31 @@ class ToolRegistry:
                 metadata={"tool_name": name, "exception": str(e)},
             )
 
+    def preview_dry_run(self, name: str, args: dict, project_root: str = ".") -> str:
+        """
+        Generate a dry-run preview string for a tool call without executing mutations.
+        Useful for UI pre-flight reviews and approval dialogs.
+        """
+        tool_name = name.upper()
+        risk = self.risk_level_for(tool_name, args)
+        path = args.get("path") or args.get("file", "")
+
+        if tool_name == "WRITE_FILE":
+            content = args.get("content") or args.get("code") or ""
+            line_count = content.count("\n") + 1 if content else 0
+            return f"[DRY-RUN PREVIEW] WRITE_FILE '{path}' ({line_count} lines) [Risk: {risk.upper()}]"
+
+        if tool_name == "EDIT_FILE":
+            old_text = args.get("old_text", "")
+            new_text = args.get("new_text", "")
+            return f"[DRY-RUN PREVIEW] EDIT_FILE '{path}' (replacing {len(old_text)} chars with {len(new_text)} chars) [Risk: {risk.upper()}]"
+
+        if tool_name == "RUN_COMMAND":
+            cmd = args.get("cmd", "")
+            return f"[DRY-RUN PREVIEW] RUN_COMMAND '{cmd}' [Risk: {risk.upper()}]"
+
+        return f"[DRY-RUN PREVIEW] {tool_name} (args: {list(args.keys())}) [Risk: {risk.upper()}]"
+
     def execute_batch(self, tool_calls: list[dict], project_root: str = ".", max_workers: int = 4) -> list[ToolResult]:
         """
         Execute multiple tool calls in parallel when safe (AUTO risk level).

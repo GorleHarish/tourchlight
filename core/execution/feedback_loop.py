@@ -154,8 +154,32 @@ class ExecutionFeedbackLoop:
             return True
         return False
 
+    def _run_preflight_lint(self) -> None:
+        """Run fast pre-flight auto-fixer/linter on modified files before test execution."""
+        py_files = [f for f in self._files_modified_since_test if f.endswith(".py")]
+        if not py_files:
+            return
+        abs_files = []
+        for f in py_files:
+            p = self.project_root / f if not Path(f).is_absolute() else Path(f)
+            if p.exists():
+                abs_files.append(str(p))
+        if not abs_files:
+            return
+
+        try:
+            subprocess.run(
+                ["ruff", "check", "--fix"] + abs_files[:5],
+                cwd=str(self.project_root),
+                capture_output=True,
+                timeout=5,
+            )
+        except Exception:
+            pass
+
     def _run_tests(self) -> TestRunResult:
         """Detect and run the project's test suite or web inspector."""
+        self._run_preflight_lint()
         test_cmd = self._detect_test_command()
         if not test_cmd:
             # Check if any modified file is a web file (.html, .js, .css)

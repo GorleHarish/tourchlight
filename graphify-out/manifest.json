@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785225234.750174,
-    "ast_hash": "81ea3f3234fab8274e6975dda79c85f4",
+    "mtime": 1785225424.926511,
+    "ast_hash": "52dadaeed318c1d72c46fd1ec4cb12b0",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -310,8 +310,8 @@
     "semantic_hash": "896450ad36a9a70488a82a611d319da1"
   },
   "core/execution/feedback_loop.py": {
-    "mtime": 1785224592.3460236,
-    "ast_hash": "5b2e8e3da8b2bb6a9d9b40a3578b30b4",
+    "mtime": 1785225374.9136348,
+    "ast_hash": "87f7789ae0dad58b8d31dff5f7fc5b51",
     "semantic_hash": ""
   },
   "core/execution/run_harness.py": {
@@ -330,8 +330,8 @@
     "semantic_hash": "09574588768e55cd60539f5de1bca50b"
   },
   "core/flashlight/beam.py": {
-    "mtime": 1785181748.573112,
-    "ast_hash": "c2a60f32f4a4eabee8f15b8186bf0c32",
+    "mtime": 1785225361.1507623,
+    "ast_hash": "03bec2808bc9a34c715f1072319b1462",
     "semantic_hash": ""
   },
   "core/flashlight/indexer.py": {
@@ -485,9 +485,9 @@
     "semantic_hash": "dc45180336a6ec1e9ae9f1ee8ade1851"
   },
   "core/tests/test_registry.py": {
-    "mtime": 1784761513.048554,
-    "ast_hash": "a4702d0b46782476c243cbf4e620ae03",
-    "semantic_hash": "a4702d0b46782476c243cbf4e620ae03"
+    "mtime": 1785225413.5330513,
+    "ast_hash": "f73d42991c67eff195c689f871c38275",
+    "semantic_hash": ""
   },
   "core/tests/test_rlm_engine.py": {
     "mtime": 1785009170.2318563,
@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
-    "mtime": 1785181776.3535893,
-    "ast_hash": "7773ed5031ba7c66d3c1d7d8a6b31f68",
+    "mtime": 1785225406.4656904,
+    "ast_hash": "bffdd659f78256cadcef443809e56938",
     "semantic_hash": ""
   },
   "core/tools/schemas.py": {
@@ -802,6 +802,16 @@
   "core/tests/test_feedback_loop.py": {
     "mtime": 1785224599.0507464,
     "ast_hash": "94bae93d06cae07271031732e20d1ad4",
+    "semantic_hash": ""
+  },
+  "core/execution/trajectory.py": {
+    "mtime": 1785225387.2734437,
+    "ast_hash": "0ee71c22e812b2173181deca0d3fe90f",
+    "semantic_hash": ""
+  },
+  "core/tests/test_trajectory.py": {
+    "mtime": 1785225392.2653024,
+    "ast_hash": "ec44c3953fdfc22d07c2a1271dd6e166",
     "semantic_hash": ""
   }
 }

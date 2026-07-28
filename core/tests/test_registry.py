@@ -68,3 +68,14 @@ def test_get_tool_registry():
     assert "GREP" in reg.names()
     assert "RUN_COMMAND" in reg.names()
     assert len(reg.names()) >= 15
+
+
+def test_tool_registry_preview_dry_run():
+    reg = get_tool_registry()
+    prev = reg.preview_dry_run("WRITE_FILE", {"path": "test.py", "content": "a = 1\nb = 2\n"})
+    assert "[DRY-RUN PREVIEW] WRITE_FILE" in prev
+    assert "test.py" in prev
+
+    prev_cmd = reg.preview_dry_run("RUN_COMMAND", {"cmd": "pytest"})
+    assert "[DRY-RUN PREVIEW] RUN_COMMAND 'pytest'" in prev_cmd
+
