@@ -1,7 +1,7 @@
 # Graph Report - tourchlight v1_i6  (2026-07-28)
 
 ## Corpus Check
-- 156 files · ~241,146 words
+- 156 files · ~241,166 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -219,8 +219,8 @@ Cohesion: 0.17
 Nodes (5): Return pending tasks whose dependencies are all VERIFIED., Return list of target files that collide with active or failed tasks., Construct inter-task memory prompt summarizing prior verified tasks and dependen, Run a single micro-epoch for a target task., Run continuous autonomous daemon until completion or timeout.
 
 ### Community 9 - "implementations.py"
-Cohesion: 0.10
-Nodes (34): test_list_dir_impl(), _ddg_search(), _detect_doc_source(), _extract_identifiers(), _git_run(), Unified tool implementations for Torchlight.  All tool functions follow the sign, WEB_FETCH — fetch and return readable content of a URL., DOC_SEARCH — search official documentation. (+26 more)
+Cohesion: 0.09
+Nodes (37): test_list_dir_impl(), test_read_symbols_impl(), _ddg_search(), _detect_doc_source(), _extract_identifiers(), _git_run(), Unified tool implementations for Torchlight.  All tool functions follow the sign, WEB_FETCH — fetch and return readable content of a URL. (+29 more)
 
 ### Community 10 - "TorchlightApp"
 Cohesion: 0.10
@@ -235,8 +235,8 @@ Cohesion: 0.21
 Nodes (5): _beam_config_for_context(), BeamResult, Flashlight, FileEntry, SymbolIndex
 
 ### Community 13 - "test_implementations.py"
-Cohesion: 0.10
-Nodes (29): test_grep_hyphen_pattern(), test_grep_impl(), test_grep_impl_file_path(), test_grep_impl_no_match(), test_read_file_impl(), test_read_file_impl_not_found(), test_read_symbols_impl(), test_run_command_impl() (+21 more)
+Cohesion: 0.11
+Nodes (26): test_grep_hyphen_pattern(), test_grep_impl(), test_grep_impl_file_path(), test_grep_impl_no_match(), test_read_file_impl(), test_read_file_impl_not_found(), test_run_command_impl(), test_run_command_impl_fail() (+18 more)
 
 ### Community 14 - "WebOutcomeInspector"
 Cohesion: 0.09
