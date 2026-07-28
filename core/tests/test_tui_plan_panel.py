@@ -139,4 +139,14 @@ def test_build_plan_text_goal_spec_json():
         assert "📌 Build Agent" in res
         assert "✅ Design UI" in res
         assert "● Implement feature" in res
+def test_tui_app_tcss_valid_syntax():
+    tcss_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "rlm_optimized", "tui_app.tcss"))
+    assert os.path.exists(tcss_path), f"tui_app.tcss not found at {tcss_path}"
+    with open(tcss_path, "r", encoding="utf-8") as f:
+        content = f.read()
 
+    try:
+        from textual.css.parse import parse
+        parse("tui_app.tcss", content)
+    except ImportError:
+        pytest.skip("textual not installed in test environment")

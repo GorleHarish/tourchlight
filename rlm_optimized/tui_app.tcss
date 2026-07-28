@@ -231,16 +231,15 @@ Input > .input--cursor {
     margin-top: 0;
     margin-bottom: 0;
     padding: 0 0;
-    align: space-between middle;
 }
 
 #input-model-badge {
-    width: auto;
+    width: 1fr;
     color: $foreground;
 }
 
 #context-progress-badge {
-    width: auto;
+    width: 1fr;
     color: $foreground;
     text-align: right;
 }
