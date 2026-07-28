@@ -785,6 +785,11 @@ class TorchlightApp(App):
                             id="input-model-badge",
                             variant="default"
                         )
+                        yield Button(
+                            "🗜️ Compact",
+                            id="compact-btn",
+                            variant="default"
+                        )
                         yield Static(
                             self._build_context_progress_text(),
                             id="context-progress-badge"
@@ -887,7 +892,12 @@ class TorchlightApp(App):
             return "[dim red]Error reading plan file[/dim red]"
 
     def _build_context_progress_text(self) -> str:
-        tokens_est = self.engine._total_llm_calls * 450
+        mem = getattr(self.engine, "_memory", None)
+        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
+            tokens_est = mem.total_tokens
+        else:
+            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+            
         ctx_max = CTX_SIZE
         pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
         bar_width = 10
@@ -904,7 +914,12 @@ class TorchlightApp(App):
         return f"[dim]Context:[/] [{color}]{bar}[/{color}] [bold {color}]{pct}%[/bold {color}] [dim]({tokens_est:,}/{ctx_max:,})[/dim]"
 
     def _build_meta_text(self) -> str:
-        tokens_est = self.engine._total_llm_calls * 450
+        mem = getattr(self.engine, "_memory", None)
+        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
+            tokens_est = mem.total_tokens
+        else:
+            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+
         mem_line = format_memory_status()
         chip_line = f"[bold]Chip:[/] [cyan]{CHIP_NAME}[/]" if CHIP_NAME != "unknown" else ""
         ram_line = f"[bold]RAM:[/] {TOTAL_RAM_GB}GB {'[yellow](8GB mode)[/]' if IS_8GB_DEVICE else ''}" if TOTAL_RAM_GB > 0 else ""
@@ -927,7 +942,7 @@ class TorchlightApp(App):
             f"[bold]Model:[/] [magenta]{escape(self.model_name)}[/]\n"
             f"[bold]Context:[/] {CTX_SIZE:,} tokens\n"
             f"[bold]LLM Calls:[/] {self.engine._total_llm_calls}\n"
-            f"[bold]Est Tokens:[/] {tokens_est:,} / {CTX_SIZE:,}\n"
+            f"[bold]Live Tokens:[/] {tokens_est:,} / {CTX_SIZE:,}\n"
             f"[bold]Depth Limit:[/] {self.engine.max_depth}\n"
             f"{mem_line}"
         ).strip()
@@ -964,6 +979,10 @@ class TorchlightApp(App):
     @on(Button.Pressed, "#input-model-badge")
     def on_input_model_badge_clicked(self) -> None:
         self.action_select_model()
+
+    @on(Button.Pressed, "#compact-btn")
+    def on_compact_btn_clicked(self) -> None:
+        self.action_compact_context()
 
     @on(Input.Submitted, "#user-input")
     async def handle_input(self, event: Input.Submitted) -> None:

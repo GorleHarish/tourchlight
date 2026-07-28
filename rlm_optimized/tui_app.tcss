@@ -277,6 +277,29 @@ Input > .input--cursor {
     color: $primary;
 }
 
+#compact-btn {
+    width: auto;
+    height: 1;
+    min-width: 10;
+    padding: 0 1;
+    margin-left: 1;
+    border: none;
+    background: transparent;
+    color: $warning;
+    text-style: bold;
+}
+
+#compact-btn:hover {
+    background: $panel;
+    color: $text-warning;
+}
+
+#compact-btn:focus {
+    border: none;
+    background: $panel;
+    color: $text-warning;
+}
+
 #context-progress-badge {
     width: 1fr;
     color: $foreground;
