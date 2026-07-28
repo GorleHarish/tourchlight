@@ -2,6 +2,12 @@
 
 ## 2026-07-28
 
+### Flexible Diff Parsing & Diagnostic Error Hints for `EDIT_FILE` (`implementations.py`, `test_diff_edit.py`)
+
+- **Resilient Diff Block Parsing (`_parse_diff_block`)**: Enhanced `_parse_diff_block` in `core/tools/implementations.py` to parse Aider-style Search/Replace blocks with common LLM syntax variations (e.g. missing `REPLACE` keyword, or models outputting `>>>>>>>` as middle divider instead of `=======`).
+- **Actionable Diagnostic Error Hints**: Updated `tool_edit_file_impl` to detect malformed diff blocks passed in any argument (`diff`, `old_text`, `content`, `raw`). Instead of falling through to a generic "EDIT_FILE requires old_text" error message, it now returns a clear diagnostic hint explaining the exact syntax expected (`<<<<<<< SEARCH \n ... \n ======= \n ... \n >>>>>>> REPLACE`), breaking repetitive failure loops.
+- **Automated Tests**: Added `test_parse_diff_block_llm_variations` and `test_edit_file_malformed_diff_diagnostic` in `core/tests/test_diff_edit.py`. Verified all 171 core unit tests and 46 CLI unit tests pass cleanly.
+
 ### Industry-Standard Non-Verbose Code Output & Context Protection Protocol (`system.py`, `prompts.py`, `AGENTS.md`)
 
 - **Non-Verbose Code Output Protocol**: Updated system prompts across `core/prompts/system.py`, `context-manager-cli/src/context_manager/prompts.py`, `prompts_minimal.py`, and `rlm_optimized/prompts.py` to forbid raw code block dumping in assistant responses, resolving terminal "blank screen scrolling".
