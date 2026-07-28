@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785218253.029022,
-    "ast_hash": "cedda5ee540a3a279af760066df6a8f2",
+    "mtime": 1785218654.9197695,
+    "ast_hash": "9c281d98a2805c00c3af5bd4b124adaf",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -640,8 +640,8 @@
     "semantic_hash": "b1e6a896c2c08a849387079fcbc4e560"
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785183713.9777427,
-    "ast_hash": "d095beb5b420e90c8e3947dca4051f6e",
+    "mtime": 1785218565.7553418,
+    "ast_hash": "6e0a92a6a6674473462feb93dba2586c",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -695,8 +695,8 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785218213.3138013,
-    "ast_hash": "ff0f9420ec4c9acee836eafee0d2fed9",
+    "mtime": 1785219144.0247002,
+    "ast_hash": "3d997dd0b8307738417b3c65668b9342",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
@@ -787,6 +787,11 @@
   "rlm_architecture.svg": {
     "mtime": 1784901540.2147408,
     "ast_hash": "71b9e0a09c610713c2bed2b7ffa42dee",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_plan_panel.py": {
+    "mtime": 1785218639.2675142,
+    "ast_hash": "90117fea3623a978e2841b9378697de3",
     "semantic_hash": ""
   }
 }
