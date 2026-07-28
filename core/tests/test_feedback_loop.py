@@ -101,3 +101,20 @@ core/test_demo.py:5: AssertionError
             assert "[POST-EDIT TEST FAILURE DETECTED]" in ctx
             assert "Recovery Hint:" in ctx
             assert "AssertionError" in ctx
+
+
+def test_extract_surgical_traceback_ansi_stripping():
+    ansi_output = "\x1b[31m=================================== FAILURES ===================================\x1b[0m\n\x1b[1mAssertionError: 4 == 5\x1b[0m"
+    surgical = extract_surgical_traceback(ansi_output)
+    assert "\x1b[" not in surgical
+    assert "FAILURES" in surgical
+    assert "AssertionError: 4 == 5" in surgical
+
+
+def test_scoped_test_command_detection(tmp_path):
+    (tmp_path / "pyproject.toml").touch()
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True, auto_run=True)
+    loop._files_modified_since_test.add("core/tests/test_feature.py")
+    cmd = loop._detect_test_command()
+    assert "pytest core/tests/test_feature.py" in cmd
+

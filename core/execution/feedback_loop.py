@@ -213,12 +213,17 @@ class ExecutionFeedbackLoop:
 
     def _detect_test_command(self) -> str:
         if (self.project_root / "pytest.ini").exists() or (self.project_root / "pyproject.toml").exists():
+            test_files = [f for f in self._files_modified_since_test if ("test_" in Path(f).name or "_test" in Path(f).name) and f.endswith(".py")]
+            if test_files:
+                target = " ".join(test_files[:3])
+                return f"python -m pytest {target} -x --tb=short -q"
             return "python -m pytest -x --tb=short -q"
         if (self.project_root / "package.json").exists():
             return "npm test --silent"
         if (self.project_root / "Cargo.toml").exists():
             return "cargo test --quiet"
         return ""
+
 
     def _parse_test_output(self, output: str, command: str) -> list[TestResult]:
         results = []
