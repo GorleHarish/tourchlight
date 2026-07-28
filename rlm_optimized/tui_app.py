@@ -8,6 +8,7 @@ import sys
 import json
 import asyncio
 import argparse
+from pathlib import Path
 from typing import Optional
 
 from textual.app import App, ComposeResult
@@ -506,7 +507,6 @@ class AgentStatusModal(ModalScreen[None]):
                         tot = len(tasks)
                         ver = sum(1 for t in tasks if t.get("status") == "verified")
                         pct = (ver / tot * 100) if tot > 0 else 0
-                        from rich.markup import escape
                         yield Static(f"🎯 Autonomous Goal: [bold cyan]{escape(title)}[/] ({pct:.0f}% - {ver}/{tot} Verified)", classes="status-log-entry")
                         for t in tasks:
                             st = t.get("status", "pending")
@@ -518,7 +518,6 @@ class AgentStatusModal(ModalScreen[None]):
                 if not self.events:
                     yield Static("[dim italic]No agent background activity recorded yet.[/]")
                 else:
-                    from rich.markup import escape
                     for ev in reversed(self.events):
                         ts = ev.get("time", "")
                         state = ev.get("state", "INFO")
@@ -729,7 +728,6 @@ class TorchlightApp(App):
         if state == "REFINED":
             flaws = details.get("flaws", [])
             tool_name = details.get("tool_name", "")
-            from rich.markup import escape
             target = f" for {escape(tool_name)}" if tool_name else ""
             escaped_flaws = [escape(f) for f in flaws]
             flaw_str = f" [dim](Fixed: {', '.join(escaped_flaws)})[/dim]" if flaws else ""
@@ -782,7 +780,6 @@ class TorchlightApp(App):
                 yield VerticalScroll(id="chat-container")
                 with Vertical(id="input-area"):
                     with Horizontal(id="input-header-bar"):
-                        from rich.markup import escape
                         yield Button(
                             f"🤖 {escape(self.model_name)} ▾",
                             id="input-model-badge",
@@ -982,7 +979,6 @@ class TorchlightApp(App):
 
         self._chat_history.append({"role": "user", "content": user_text})
         container = self.query_one("#chat-container")
-        from rich.markup import escape
         self._safe_mount(container, Static(Panel(
             escape(user_text),
             title="You",
@@ -1009,7 +1005,6 @@ class TorchlightApp(App):
 
         self._chat_history.append({"role": "user", "content": text})
         container = self.query_one("#chat-container")
-        from rich.markup import escape
         self._safe_mount(container, Static(Panel(
             escape(text),
             title="You",
@@ -1177,7 +1172,6 @@ class TorchlightApp(App):
         # Show user message
         self._chat_history.append({"role": "user", "content": user_text})
         container = self.query_one("#chat-container")
-        from rich.markup import escape
         self._safe_mount(container, Static(Panel(
             escape(user_text),
             title="You",
@@ -1201,7 +1195,6 @@ class TorchlightApp(App):
 
         self._chat_history.append({"role": "user", "content": text})
         container = self.query_one("#chat-container")
-        from rich.markup import escape
         self._safe_mount(container, Static(Panel(
             escape(text),
             title="You",
@@ -1447,7 +1440,6 @@ class TorchlightApp(App):
         self._streaming_text += chunk
         try:
             widget = self._ensure_streaming_widget()
-            from rich.markup import escape
             display_text = self._streaming_text
             is_preparing = False
 
@@ -1487,7 +1479,6 @@ class TorchlightApp(App):
     def _handle_step(self, step: Step) -> None:
         container = self.query_one("#chat-container")
         self._remove_streaming()
-        from rich.markup import escape
 
         try:
             # Thinking / reasoning
@@ -1805,7 +1796,6 @@ class TorchlightApp(App):
                 f"  [bold red]✗ Missing dependency for indexing: {e}. Run `pip install kuzu sentence-transformers`.[/]"
             )
         except Exception as e:
-            from rich.markup import escape
             self.call_from_thread(
                 mount_static,
                 f"  [bold red]✗ Indexing failed:[/] {escape(str(e))}"
@@ -1888,7 +1878,6 @@ class TorchlightApp(App):
                 self._poll_server_launch()
             except Exception as e:
                 self._server_starting = False
-                from rich.markup import escape
                 self.notify(f"Failed to launch server: {escape(str(e))}", severity="error", timeout=5)
                 self.update_status_bar()
                 self.update_sidebar_meta()
@@ -1908,7 +1897,6 @@ class TorchlightApp(App):
             subprocess.run(["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL)
             self.notify("Engine server stopped", severity="warning", timeout=2)
         except Exception as e:
-            from rich.markup import escape
             self.notify(f"Failed to stop server: {escape(str(e))}", severity="error", timeout=5)
 
     @on(Button.Pressed, "#restart-engine-btn")
