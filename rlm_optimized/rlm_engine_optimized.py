@@ -136,6 +136,13 @@ class RLMEngineOptimized:
         else:
             self.debate_verifier = None
 
+        try:
+            from core.execution.feedback_loop import ExecutionFeedbackLoop
+            self.feedback_loop = ExecutionFeedbackLoop(project_root=Path(self.project_root))
+        except Exception:
+            self.feedback_loop = None
+
+
     def set_project_root(self, project_root: str) -> None:
         """Switch the active workspace, keeping the sandbox's AST-graph
         lookups (get_project_structure/semantic_search/etc.) in sync so
@@ -144,6 +151,9 @@ class RLMEngineOptimized:
         if ensure_project_initialized:
             ensure_project_initialized(self.project_root)
         self.sandbox.set_project_root(project_root)
+        if self.feedback_loop:
+            self.feedback_loop.project_root = Path(project_root).resolve()
+
 
     def _notify_status(self, state: str, details: Optional[dict] = None) -> None:
         """Notify listeners of real-time background status and action telemetry."""
@@ -463,8 +473,21 @@ class RLMEngineOptimized:
                             if fpath and hasattr(memory, "refresh_pin"):
                                 memory.refresh_pin(fpath, self.project_root)
 
+                    # Execution feedback: auto-run tests after code changes
+                    if self.feedback_loop and tool_name and tool_name.upper() in ("EDIT_FILE", "WRITE_FILE", "RUN_COMMAND"):
+                        test_run = self.feedback_loop.on_tool_executed(tool_name.upper(), tool_args, tool_result.output)
+                        if test_run and not test_run.all_passed:
+                            fb_ctx = self.feedback_loop.build_feedback_context()
+                            if fb_ctx:
+                                feedback += f"\n\n{fb_ctx}"
+
                     msg_type = "tool_result" if tool_result.success else "tool_error"
                     feedback = build_step_message(msg_type, tool_result.output)
+                    if self.feedback_loop and self.feedback_loop._last_test_result and not self.feedback_loop._last_test_result.all_passed:
+                        fb_ctx = self.feedback_loop.build_feedback_context()
+                        if fb_ctx:
+                            feedback += f"\n\n{fb_ctx}"
+
                     if tool_result.success:
                         feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."
                     elif tool_name and "EDIT_FILE" in tool_name.upper():
@@ -474,6 +497,7 @@ class RLMEngineOptimized:
                             f"\nCRITICAL: READ_FILE('{target_path}') FIRST, then copy the exact lines "
                             f"you want to replace as old_text. Do NOT paraphrase or reconstruct from memory."
                         )
+
                 else:
                     self._notify_status("TOOL_DENIED", {"tool_name": tool_name})
                     step.result = "⚠ User denied execution"

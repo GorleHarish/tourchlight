@@ -15,8 +15,10 @@ from .types import (
     ConnectionError,
     SecurityError,
     ToolValidationError,
+    TestFailureError,
     RecoveryAction,
 )
+
 
 
 # ── Recovery hints per error type ──────────────────────────────────────────
@@ -112,7 +114,15 @@ def get_recovery_hint(error: TorchlightError) -> str:
             hints.append(f"Invalid fields: {list(error.invalid_fields.keys())}")
         return " ".join(hints) if hints else "Tool call failed validation."
 
+    if isinstance(error, TestFailureError):
+        fails_str = ", ".join(error.failing_tests[:3]) if error.failing_tests else "test suite"
+        return (
+            f"Post-edit test failure in {fails_str}. "
+            "Inspect the surgical traceback and fix the syntax or logic error immediately."
+        )
+
     return "An error occurred. Try a different approach."
+
 
 
 # ── Recovery engine ────────────────────────────────────────────────────────

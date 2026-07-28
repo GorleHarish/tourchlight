@@ -112,3 +112,20 @@ class ToolValidationError(TorchlightError):
             if self.invalid_fields:
                 parts.append(f"invalid: {list(self.invalid_fields.keys())}")
             self.message = f"Validation failed for {self.tool_name}: {'; '.join(parts)}"
+
+
+@dataclass
+class TestFailureError(TorchlightError):
+    """Post-edit auto-run test suite failure."""
+    __test__ = False
+    command: str = ""
+    failing_tests: list[str] = field(default_factory=list)
+    surgical_traceback: str = ""
+    return_code: int = 1
+
+
+    def __post_init__(self):
+        if not self.message:
+            fails_str = ", ".join(self.failing_tests) if self.failing_tests else "test suite"
+            self.message = f"Post-edit test failure ({self.command}): {fails_str}"
+
