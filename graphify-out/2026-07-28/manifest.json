@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785225424.926511,
-    "ast_hash": "52dadaeed318c1d72c46fd1ec4cb12b0",
+    "mtime": 1785226562.7413397,
+    "ast_hash": "f33a1de0e746d153b0232df44fbfc3cf",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -165,9 +165,9 @@
     "semantic_hash": "d835c9b7c56ac23044a1bcf769109739"
   },
   "context-manager-cli/src/context_manager/prompts.py": {
-    "mtime": 1785146926.6906593,
-    "ast_hash": "3db1f90d69c53e64c91d26e0b492fdc0",
-    "semantic_hash": "3db1f90d69c53e64c91d26e0b492fdc0"
+    "mtime": 1785226546.6565795,
+    "ast_hash": "09c1c162e43644d6ed37067e6c7ac199",
+    "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/prompts_minimal.py": {
     "mtime": 1774606039.5538085,
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785220484.074166,
-    "ast_hash": "98b86b52f35aac9791c2fe579cf81b23",
+    "mtime": 1785226542.6505442,
+    "ast_hash": "62889bcf4b3fa13eeadea9e80e9855e0",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -595,9 +595,9 @@
     "semantic_hash": "d46bff76decbce47ad4c0417cdf6c9c9"
   },
   "rlm_optimized/prompts.py": {
-    "mtime": 1784904764.4198213,
-    "ast_hash": "4bb8465c987086fcd44385782f3669d8",
-    "semantic_hash": "4bb8465c987086fcd44385782f3669d8"
+    "mtime": 1785226551.094492,
+    "ast_hash": "a41ab8c87f311f291085ea0eb8f92bbd",
+    "semantic_hash": ""
   },
   "rlm_optimized/repl_sandbox.py": {
     "mtime": 1785009866.341253,
@@ -690,7 +690,7 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785218220.4697027,
+    "mtime": 1785226481.0549352,
     "ast_hash": "4304c5c6c9771688f3dd24dbfb42b6a9",
     "semantic_hash": ""
   },

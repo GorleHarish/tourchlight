@@ -4,15 +4,125 @@
   "graph": {},
   "nodes": [
     {
+      "label": "context_manager/prompts.py",
+      "file_type": "code",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "context_manager_cli_src_context_manager_prompts",
+      "community": 152,
+      "community_name": "context_manager/prompts.py",
+      "norm_label": "context_manager/prompts.py"
+    },
+    {
+      "label": "build_default_system_prompt()",
+      "file_type": "code",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L155",
+      "_origin": "ast",
+      "id": "context_manager_cli_src_context_manager_prompts_build_default_system_prompt",
+      "community": 152,
+      "community_name": "context_manager/prompts.py",
+      "norm_label": "build_default_system_prompt()"
+    },
+    {
+      "label": "Torchlight prompt stack \u2014 single source of truth.  V2: Optimized for local LLMs",
+      "file_type": "rationale",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "context_manager_cli_src_context_manager_prompts_rationale_1",
+      "community": 152,
+      "community_name": "context_manager/prompts.py",
+      "norm_label": "torchlight prompt stack \u2014 single source of truth.  v2: optimized for local llms"
+    },
+    {
+      "label": "Build system prompt. Use V2 for small contexts.",
+      "file_type": "rationale",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L156",
+      "_origin": "ast",
+      "id": "context_manager_cli_src_context_manager_prompts_rationale_156",
+      "community": 152,
+      "community_name": "context_manager/prompts.py",
+      "norm_label": "build system prompt. use v2 for small contexts."
+    },
+    {
+      "label": "system.py",
+      "file_type": "code",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "core_prompts_system",
+      "community": 108,
+      "community_name": "prompts/__init__.py",
+      "norm_label": "system.py"
+    },
+    {
+      "label": "Unified system prompts for Torchlight.  Single source of truth for all frontends",
+      "file_type": "rationale",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "core_prompts_system_rationale_1",
+      "community": 108,
+      "community_name": "prompts/__init__.py",
+      "norm_label": "unified system prompts for torchlight.  single source of truth for all frontends"
+    },
+    {
+      "label": "rlm_optimized/prompts.py",
+      "file_type": "code",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "rlm_optimized_prompts",
+      "community": 54,
+      "community_name": "rlm_engine_optimized.py",
+      "norm_label": "rlm_optimized/prompts.py"
+    },
+    {
+      "label": "build_system_prompt()",
+      "file_type": "code",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L4",
+      "_origin": "ast",
+      "id": "rlm_optimized_prompts_build_system_prompt",
+      "community": 54,
+      "community_name": "rlm_engine_optimized.py",
+      "norm_label": "build_system_prompt()"
+    },
+    {
+      "label": "build_step_message()",
+      "file_type": "code",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L132",
+      "_origin": "ast",
+      "id": "rlm_optimized_prompts_build_step_message",
+      "community": 54,
+      "community_name": "rlm_engine_optimized.py",
+      "norm_label": "build_step_message()"
+    },
+    {
+      "label": "Build the system prompt for the coding agent.      Args:         project_root: T",
+      "file_type": "rationale",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L5",
+      "_origin": "ast",
+      "id": "rlm_optimized_prompts_rationale_5",
+      "community": 54,
+      "community_name": "rlm_engine_optimized.py",
+      "norm_label": "build the system prompt for the coding agent.      args:         project_root: t"
+    },
+    {
       "label": "core/execution/feedback_loop.py",
       "file_type": "code",
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop",
       "community": 110,
       "community_name": "test_feedback_loop.py",
-      "norm_label": "core/execution/feedback_loop.py"
+      "norm_label": "core/execution/feedback_loop.py",
+      "id": "core_execution_feedback_loop"
     },
     {
       "label": "TestResultStatus",
@@ -20,10 +130,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L21",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_testresultstatus",
       "community": 110,
       "community_name": "test_feedback_loop.py",
-      "norm_label": "testresultstatus"
+      "norm_label": "testresultstatus",
+      "id": "core_execution_feedback_loop_testresultstatus"
     },
     {
       "label": "Enum",
@@ -31,10 +141,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "enum",
       "community": 110,
       "community_name": "test_feedback_loop.py",
-      "norm_label": "enum"
+      "norm_label": "enum",
+      "id": "enum"
     },
     {
       "label": "TestResult",
@@ -42,10 +152,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L31",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_testresult",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "testresult"
+      "norm_label": "testresult",
+      "id": "core_execution_feedback_loop_testresult"
     },
     {
       "label": "TestRunResult",
@@ -53,10 +163,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L42",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_testrunresult",
       "community": 9,
       "community_name": "test_autonomous_harness_pipeline.py",
-      "norm_label": "testrunresult"
+      "norm_label": "testrunresult",
+      "id": "core_execution_feedback_loop_testrunresult"
     },
     {
       "label": ".passed()",
@@ -64,10 +174,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L53",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_testrunresult_passed",
       "community": 9,
       "community_name": "test_autonomous_harness_pipeline.py",
-      "norm_label": ".passed()"
+      "norm_label": ".passed()",
+      "id": "core_execution_feedback_loop_testrunresult_passed"
     },
     {
       "label": ".failed()",
@@ -75,10 +185,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L57",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_testrunresult_failed",
       "community": 9,
       "community_name": "test_autonomous_harness_pipeline.py",
-      "norm_label": ".failed()"
+      "norm_label": ".failed()",
+      "id": "core_execution_feedback_loop_testrunresult_failed"
     },
     {
       "label": ".all_passed()",
@@ -86,10 +196,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L61",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_testrunresult_all_passed",
       "community": 9,
       "community_name": "test_autonomous_harness_pipeline.py",
-      "norm_label": ".all_passed()"
+      "norm_label": ".all_passed()",
+      "id": "core_execution_feedback_loop_testrunresult_all_passed"
     },
     {
       "label": "extract_surgical_traceback()",
@@ -97,10 +207,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L65",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_extract_surgical_traceback",
       "community": 110,
       "community_name": "test_feedback_loop.py",
-      "norm_label": "extract_surgical_traceback()"
+      "norm_label": "extract_surgical_traceback()",
+      "id": "core_execution_feedback_loop_extract_surgical_traceback"
     },
     {
       "label": "ExecutionFeedbackLoop",
@@ -108,10 +218,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L117",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "executionfeedbackloop"
+      "norm_label": "executionfeedbackloop",
+      "id": "core_execution_feedback_loop_executionfeedbackloop"
     },
     {
       "label": ".__init__()",
@@ -119,10 +229,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L120",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_init",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_init"
     },
     {
       "label": "Path",
@@ -130,10 +240,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "path",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "path"
+      "norm_label": "path",
+      "id": "path"
     },
     {
       "label": ".on_tool_executed()",
@@ -141,10 +251,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L129",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": ".on_tool_executed()"
+      "norm_label": ".on_tool_executed()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed"
     },
     {
       "label": "._should_run_tests()",
@@ -152,10 +262,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L150",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_should_run_tests",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "._should_run_tests()"
+      "norm_label": "._should_run_tests()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_should_run_tests"
     },
     {
       "label": "._run_preflight_lint()",
@@ -163,10 +273,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L157",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "._run_preflight_lint()"
+      "norm_label": "._run_preflight_lint()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint"
     },
     {
       "label": "._run_tests()",
@@ -174,10 +284,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L180",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "._run_tests()"
+      "norm_label": "._run_tests()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_run_tests"
     },
     {
       "label": "._detect_test_command()",
@@ -185,10 +295,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L238",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "._detect_test_command()"
+      "norm_label": "._detect_test_command()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command"
     },
     {
       "label": "._parse_test_output()",
@@ -196,10 +306,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L252",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "._parse_test_output()"
+      "norm_label": "._parse_test_output()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output"
     },
     {
       "label": ".get_test_failure_error()",
@@ -207,10 +317,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L273",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": ".get_test_failure_error()"
+      "norm_label": ".get_test_failure_error()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error"
     },
     {
       "label": "TestFailureError",
@@ -218,10 +328,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "testfailureerror",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "testfailureerror"
+      "norm_label": "testfailureerror",
+      "id": "testfailureerror"
     },
     {
       "label": ".build_feedback_context()",
@@ -229,10 +339,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L287",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": ".build_feedback_context()"
+      "norm_label": ".build_feedback_context()",
+      "id": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context"
     },
     {
       "label": "Execution Feedback Loop for Torchlight.  Closes the loop between code changes an",
@@ -240,10 +350,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_1",
       "community": 110,
       "community_name": "test_feedback_loop.py",
-      "norm_label": "execution feedback loop for torchlight.  closes the loop between code changes an"
+      "norm_label": "execution feedback loop for torchlight.  closes the loop between code changes an",
+      "id": "core_execution_feedback_loop_rationale_1"
     },
     {
       "label": "Extract strictly surgical failure traceback from test output, removing passing t",
@@ -251,10 +361,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L66",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_66",
       "community": 110,
       "community_name": "test_feedback_loop.py",
-      "norm_label": "extract strictly surgical failure traceback from test output, removing passing t"
+      "norm_label": "extract strictly surgical failure traceback from test output, removing passing t",
+      "id": "core_execution_feedback_loop_rationale_66"
     },
     {
       "label": "Auto-run tests and web outcome inspection after code changes and inject feedback",
@@ -262,10 +372,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L118",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_118",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "auto-run tests and web outcome inspection after code changes and inject feedback"
+      "norm_label": "auto-run tests and web outcome inspection after code changes and inject feedback",
+      "id": "core_execution_feedback_loop_rationale_118"
     },
     {
       "label": "Called after a tool is executed. Returns test results if tests were run.",
@@ -273,10 +383,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L130",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_130",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "called after a tool is executed. returns test results if tests were run."
+      "norm_label": "called after a tool is executed. returns test results if tests were run.",
+      "id": "core_execution_feedback_loop_rationale_130"
     },
     {
       "label": "Run fast pre-flight auto-fixer/linter on modified files before test execution.",
@@ -284,10 +394,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L158",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_158",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "run fast pre-flight auto-fixer/linter on modified files before test execution."
+      "norm_label": "run fast pre-flight auto-fixer/linter on modified files before test execution.",
+      "id": "core_execution_feedback_loop_rationale_158"
     },
     {
       "label": "Detect and run the project's test suite or web inspector.",
@@ -295,10 +405,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L181",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_181",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "detect and run the project's test suite or web inspector."
+      "norm_label": "detect and run the project's test suite or web inspector.",
+      "id": "core_execution_feedback_loop_rationale_181"
     },
     {
       "label": "Convert current failing TestRunResult into a structured TestFailureError for Rec",
@@ -306,10 +416,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L274",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_274",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "convert current failing testrunresult into a structured testfailureerror for rec"
+      "norm_label": "convert current failing testrunresult into a structured testfailureerror for rec",
+      "id": "core_execution_feedback_loop_rationale_274"
     },
     {
       "label": "Build feedback context string for the LLM with surgical error injection.",
@@ -317,10 +427,10 @@
       "source_file": "core/execution/feedback_loop.py",
       "source_location": "L288",
       "_origin": "ast",
-      "id": "core_execution_feedback_loop_rationale_288",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": "build feedback context string for the llm with surgical error injection."
+      "norm_label": "build feedback context string for the llm with surgical error injection.",
+      "id": "core_execution_feedback_loop_rationale_288"
     },
     {
       "label": "trajectory.py",
@@ -328,10 +438,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_execution_trajectory",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "trajectory.py"
+      "norm_label": "trajectory.py",
+      "id": "core_execution_trajectory"
     },
     {
       "label": "TrajectoryStep",
@@ -339,10 +449,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L19",
       "_origin": "ast",
-      "id": "core_execution_trajectory_trajectorystep",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "trajectorystep"
+      "norm_label": "trajectorystep",
+      "id": "core_execution_trajectory_trajectorystep"
     },
     {
       "label": "TrajectoryLogger",
@@ -350,10 +460,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L31",
       "_origin": "ast",
-      "id": "core_execution_trajectory_trajectorylogger",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "trajectorylogger"
+      "norm_label": "trajectorylogger",
+      "id": "core_execution_trajectory_trajectorylogger"
     },
     {
       "label": ".__init__()",
@@ -361,10 +471,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L34",
       "_origin": "ast",
-      "id": "core_execution_trajectory_trajectorylogger_init",
       "community": 116,
       "community_name": "ExecutionFeedbackLoop",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "core_execution_trajectory_trajectorylogger_init"
     },
     {
       "label": ".record_step()",
@@ -372,10 +482,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L43",
       "_origin": "ast",
-      "id": "core_execution_trajectory_trajectorylogger_record_step",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": ".record_step()"
+      "norm_label": ".record_step()",
+      "id": "core_execution_trajectory_trajectorylogger_record_step"
     },
     {
       "label": "Any",
@@ -383,10 +493,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "any",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "any"
+      "norm_label": "any",
+      "id": "any"
     },
     {
       "label": "Session Trajectory Logger & Audit Exporter for Torchlight.  Records full agent e",
@@ -394,10 +504,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_execution_trajectory_rationale_1",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "session trajectory logger & audit exporter for torchlight.  records full agent e"
+      "norm_label": "session trajectory logger & audit exporter for torchlight.  records full agent e",
+      "id": "core_execution_trajectory_rationale_1"
     },
     {
       "label": "Session trajectory recorder writing structured JSONL steps to disk.",
@@ -405,10 +515,10 @@
       "source_file": "core/execution/trajectory.py",
       "source_location": "L32",
       "_origin": "ast",
-      "id": "core_execution_trajectory_rationale_32",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "session trajectory recorder writing structured jsonl steps to disk."
+      "norm_label": "session trajectory recorder writing structured jsonl steps to disk.",
+      "id": "core_execution_trajectory_rationale_32"
     },
     {
       "label": "core/flashlight/beam.py",
@@ -416,10 +526,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_flashlight_beam",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "core/flashlight/beam.py"
+      "norm_label": "core/flashlight/beam.py",
+      "id": "core_flashlight_beam"
     },
     {
       "label": "_beam_config_for_context()",
@@ -427,10 +537,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L26",
       "_origin": "ast",
-      "id": "core_flashlight_beam_beam_config_for_context",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "_beam_config_for_context()"
+      "norm_label": "_beam_config_for_context()",
+      "id": "core_flashlight_beam_beam_config_for_context"
     },
     {
       "label": "BeamResult",
@@ -438,10 +548,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L37",
       "_origin": "ast",
-      "id": "core_flashlight_beam_beamresult",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "beamresult"
+      "norm_label": "beamresult",
+      "id": "core_flashlight_beam_beamresult"
     },
     {
       "label": ".__init__()",
@@ -449,10 +559,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L40",
       "_origin": "ast",
-      "id": "core_flashlight_beam_beamresult_init",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "core_flashlight_beam_beamresult_init"
     },
     {
       "label": ".to_block()",
@@ -460,10 +570,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L47",
       "_origin": "ast",
-      "id": "core_flashlight_beam_beamresult_to_block",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".to_block()"
+      "norm_label": ".to_block()",
+      "id": "core_flashlight_beam_beamresult_to_block"
     },
     {
       "label": "Flashlight",
@@ -471,10 +581,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L52",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "flashlight"
+      "norm_label": "flashlight",
+      "id": "core_flashlight_beam_flashlight"
     },
     {
       "label": ".__init__()",
@@ -482,10 +592,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L53",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_init",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "core_flashlight_beam_flashlight_init"
     },
     {
       "label": "SymbolIndex",
@@ -493,10 +603,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "symbolindex",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "symbolindex"
+      "norm_label": "symbolindex",
+      "id": "symbolindex"
     },
     {
       "label": ".configure()",
@@ -504,10 +614,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L62",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_configure",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".configure()"
+      "norm_label": ".configure()",
+      "id": "core_flashlight_beam_flashlight_configure"
     },
     {
       "label": ".mark_active()",
@@ -515,10 +625,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L65",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_mark_active",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".mark_active()"
+      "norm_label": ".mark_active()",
+      "id": "core_flashlight_beam_flashlight_mark_active"
     },
     {
       "label": "._get_git_churn_scores()",
@@ -526,10 +636,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L68",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_get_git_churn_scores",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "._get_git_churn_scores()"
+      "norm_label": "._get_git_churn_scores()",
+      "id": "core_flashlight_beam_flashlight_get_git_churn_scores"
     },
     {
       "label": ".beam()",
@@ -537,10 +647,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L93",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_beam",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".beam()"
+      "norm_label": ".beam()",
+      "id": "core_flashlight_beam_flashlight_beam"
     },
     {
       "label": ".beam_block()",
@@ -548,10 +658,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L127",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_beam_block",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": ".beam_block()"
+      "norm_label": ".beam_block()",
+      "id": "core_flashlight_beam_flashlight_beam_block"
     },
     {
       "label": "._score()",
@@ -559,10 +669,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L135",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_score",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "._score()"
+      "norm_label": "._score()",
+      "id": "core_flashlight_beam_flashlight_score"
     },
     {
       "label": "FileEntry",
@@ -570,10 +680,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "fileentry",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "fileentry"
+      "norm_label": "fileentry",
+      "id": "fileentry"
     },
     {
       "label": "._extract_snippet()",
@@ -581,10 +691,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L175",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_extract_snippet",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "._extract_snippet()"
+      "norm_label": "._extract_snippet()",
+      "id": "core_flashlight_beam_flashlight_extract_snippet"
     },
     {
       "label": "._tokenize()",
@@ -592,10 +702,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L197",
       "_origin": "ast",
-      "id": "core_flashlight_beam_flashlight_tokenize",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "._tokenize()"
+      "norm_label": "._tokenize()",
+      "id": "core_flashlight_beam_flashlight_tokenize"
     },
     {
       "label": "Flashlight Beam \u2014 query-to-code relevance scorer.  Scoring strategy (additive):",
@@ -603,10 +713,10 @@
       "source_file": "core/flashlight/beam.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_flashlight_beam_rationale_1",
       "community": 114,
       "community_name": "Flashlight",
-      "norm_label": "flashlight beam \u2014 query-to-code relevance scorer.  scoring strategy (additive):"
+      "norm_label": "flashlight beam \u2014 query-to-code relevance scorer.  scoring strategy (additive):",
+      "id": "core_flashlight_beam_rationale_1"
     },
     {
       "label": "test_registry.py",
@@ -614,10 +724,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tests_test_registry",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_registry.py"
+      "norm_label": "test_registry.py",
+      "id": "core_tests_test_registry"
     },
     {
       "label": "test_tool_result_success()",
@@ -625,10 +735,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L5",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_result_success",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "test_tool_result_success()"
+      "norm_label": "test_tool_result_success()",
+      "id": "core_tests_test_registry_test_tool_result_success"
     },
     {
       "label": "test_tool_result_failure()",
@@ -636,10 +746,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L11",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_result_failure",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "test_tool_result_failure()"
+      "norm_label": "test_tool_result_failure()",
+      "id": "core_tests_test_registry_test_tool_result_failure"
     },
     {
       "label": "test_tool_registry_register()",
@@ -647,10 +757,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L17",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_register",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_tool_registry_register()"
+      "norm_label": "test_tool_registry_register()",
+      "id": "core_tests_test_registry_test_tool_registry_register"
     },
     {
       "label": "test_tool_registry_get()",
@@ -658,10 +768,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L24",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_get",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_tool_registry_get()"
+      "norm_label": "test_tool_registry_get()",
+      "id": "core_tests_test_registry_test_tool_registry_get"
     },
     {
       "label": "test_tool_registry_execute()",
@@ -669,10 +779,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L33",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_execute",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_tool_registry_execute()"
+      "norm_label": "test_tool_registry_execute()",
+      "id": "core_tests_test_registry_test_tool_registry_execute"
     },
     {
       "label": "test_tool_registry_execute_unknown()",
@@ -680,10 +790,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L42",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_execute_unknown",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_tool_registry_execute_unknown()"
+      "norm_label": "test_tool_registry_execute_unknown()",
+      "id": "core_tests_test_registry_test_tool_registry_execute_unknown"
     },
     {
       "label": "test_tool_registry_risk_level()",
@@ -691,10 +801,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L49",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_risk_level",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_tool_registry_risk_level()"
+      "norm_label": "test_tool_registry_risk_level()",
+      "id": "core_tests_test_registry_test_tool_registry_risk_level"
     },
     {
       "label": "test_tool_registry_risk_level_run_command()",
@@ -702,10 +812,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L56",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_risk_level_run_command",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "test_tool_registry_risk_level_run_command()"
+      "norm_label": "test_tool_registry_risk_level_run_command()",
+      "id": "core_tests_test_registry_test_tool_registry_risk_level_run_command"
     },
     {
       "label": "test_get_tool_registry()",
@@ -713,10 +823,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L64",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_get_tool_registry",
       "community": 118,
       "community_name": "get_tool_registry",
-      "norm_label": "test_get_tool_registry()"
+      "norm_label": "test_get_tool_registry()",
+      "id": "core_tests_test_registry_test_get_tool_registry"
     },
     {
       "label": "test_tool_registry_preview_dry_run()",
@@ -724,10 +834,10 @@
       "source_file": "core/tests/test_registry.py",
       "source_location": "L73",
       "_origin": "ast",
-      "id": "core_tests_test_registry_test_tool_registry_preview_dry_run",
       "community": 118,
       "community_name": "get_tool_registry",
-      "norm_label": "test_tool_registry_preview_dry_run()"
+      "norm_label": "test_tool_registry_preview_dry_run()",
+      "id": "core_tests_test_registry_test_tool_registry_preview_dry_run"
     },
     {
       "label": "test_trajectory.py",
@@ -735,10 +845,10 @@
       "source_file": "core/tests/test_trajectory.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tests_test_trajectory",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "test_trajectory.py"
+      "norm_label": "test_trajectory.py",
+      "id": "core_tests_test_trajectory"
     },
     {
       "label": "test_trajectory_logger_record_step()",
@@ -746,10 +856,10 @@
       "source_file": "core/tests/test_trajectory.py",
       "source_location": "L11",
       "_origin": "ast",
-      "id": "core_tests_test_trajectory_test_trajectory_logger_record_step",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "test_trajectory_logger_record_step()"
+      "norm_label": "test_trajectory_logger_record_step()",
+      "id": "core_tests_test_trajectory_test_trajectory_logger_record_step"
     },
     {
       "label": "Tests for TrajectoryLogger.",
@@ -757,10 +867,10 @@
       "source_file": "core/tests/test_trajectory.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tests_test_trajectory_rationale_1",
       "community": 105,
       "community_name": "TrajectoryLogger",
-      "norm_label": "tests for trajectorylogger."
+      "norm_label": "tests for trajectorylogger.",
+      "id": "core_tests_test_trajectory_rationale_1"
     },
     {
       "label": "registry.py",
@@ -768,10 +878,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tools_registry",
       "community": 61,
       "community_name": "registry.py",
-      "norm_label": "registry.py"
+      "norm_label": "registry.py",
+      "id": "core_tools_registry"
     },
     {
       "label": "ToolResult",
@@ -779,10 +889,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L18",
       "_origin": "ast",
-      "id": "core_tools_registry_toolresult",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "toolresult"
+      "norm_label": "toolresult",
+      "id": "core_tools_registry_toolresult"
     },
     {
       "label": ".__str__()",
@@ -790,10 +900,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L25",
       "_origin": "ast",
-      "id": "core_tools_registry_toolresult_str",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".__str__()"
+      "norm_label": ".__str__()",
+      "id": "core_tools_registry_toolresult_str"
     },
     {
       "label": "ToolDef",
@@ -801,10 +911,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L30",
       "_origin": "ast",
-      "id": "core_tools_registry_tooldef",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "tooldef"
+      "norm_label": "tooldef",
+      "id": "core_tools_registry_tooldef"
     },
     {
       "label": ".is_dangerous()",
@@ -812,10 +922,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L40",
       "_origin": "ast",
-      "id": "core_tools_registry_tooldef_is_dangerous",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".is_dangerous()"
+      "norm_label": ".is_dangerous()",
+      "id": "core_tools_registry_tooldef_is_dangerous"
     },
     {
       "label": "ToolRegistry",
@@ -823,10 +933,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L46",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "toolregistry"
+      "norm_label": "toolregistry",
+      "id": "core_tools_registry_toolregistry"
     },
     {
       "label": ".__init__()",
@@ -834,10 +944,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L56",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_init",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "core_tools_registry_toolregistry_init"
     },
     {
       "label": ".register()",
@@ -845,10 +955,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L59",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_register",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".register()"
+      "norm_label": ".register()",
+      "id": "core_tools_registry_toolregistry_register"
     },
     {
       "label": ".get()",
@@ -856,10 +966,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L63",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_get",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".get()"
+      "norm_label": ".get()",
+      "id": "core_tools_registry_toolregistry_get"
     },
     {
       "label": ".names()",
@@ -867,10 +977,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L67",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_names",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".names()"
+      "norm_label": ".names()",
+      "id": "core_tools_registry_toolregistry_names"
     },
     {
       "label": ".all()",
@@ -878,10 +988,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L71",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_all",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".all()"
+      "norm_label": ".all()",
+      "id": "core_tools_registry_toolregistry_all"
     },
     {
       "label": ".by_category()",
@@ -889,10 +999,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L75",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_by_category",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".by_category()"
+      "norm_label": ".by_category()",
+      "id": "core_tools_registry_toolregistry_by_category"
     },
     {
       "label": ".icons()",
@@ -900,10 +1010,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L79",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_icons",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".icons()"
+      "norm_label": ".icons()",
+      "id": "core_tools_registry_toolregistry_icons"
     },
     {
       "label": ".validate()",
@@ -911,10 +1021,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L83",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_validate",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".validate()"
+      "norm_label": ".validate()",
+      "id": "core_tools_registry_toolregistry_validate"
     },
     {
       "label": ".risk_level_for()",
@@ -922,10 +1032,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L96",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_risk_level_for",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".risk_level_for()"
+      "norm_label": ".risk_level_for()",
+      "id": "core_tools_registry_toolregistry_risk_level_for"
     },
     {
       "label": ".execute()",
@@ -933,10 +1043,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L110",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_execute",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".execute()"
+      "norm_label": ".execute()",
+      "id": "core_tools_registry_toolregistry_execute"
     },
     {
       "label": ".preview_dry_run()",
@@ -944,10 +1054,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L161",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_preview_dry_run",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".preview_dry_run()"
+      "norm_label": ".preview_dry_run()",
+      "id": "core_tools_registry_toolregistry_preview_dry_run"
     },
     {
       "label": ".execute_batch()",
@@ -955,10 +1065,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L186",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_execute_batch",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": ".execute_batch()"
+      "norm_label": ".execute_batch()",
+      "id": "core_tools_registry_toolregistry_execute_batch"
     },
     {
       "label": ".get_description_block()",
@@ -966,10 +1076,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L245",
       "_origin": "ast",
-      "id": "core_tools_registry_toolregistry_get_description_block",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": ".get_description_block()"
+      "norm_label": ".get_description_block()",
+      "id": "core_tools_registry_toolregistry_get_description_block"
     },
     {
       "label": "get_tool_registry()",
@@ -977,10 +1087,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L277",
       "_origin": "ast",
-      "id": "core_tools_registry_get_tool_registry",
       "community": 118,
       "community_name": "get_tool_registry",
-      "norm_label": "get_tool_registry()"
+      "norm_label": "get_tool_registry()",
+      "id": "core_tools_registry_get_tool_registry"
     },
     {
       "label": "_create_default_registry()",
@@ -988,10 +1098,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L285",
       "_origin": "ast",
-      "id": "core_tools_registry_create_default_registry",
       "community": 118,
       "community_name": "get_tool_registry",
-      "norm_label": "_create_default_registry()"
+      "norm_label": "_create_default_registry()",
+      "id": "core_tools_registry_create_default_registry"
     },
     {
       "label": "Unified tool registry for Torchlight.  Single entry point for all tool execution",
@@ -999,10 +1109,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_1",
       "community": 61,
       "community_name": "registry.py",
-      "norm_label": "unified tool registry for torchlight.  single entry point for all tool execution"
+      "norm_label": "unified tool registry for torchlight.  single entry point for all tool execution",
+      "id": "core_tools_registry_rationale_1"
     },
     {
       "label": "Structured result from tool execution.",
@@ -1010,10 +1120,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L19",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_19",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "structured result from tool execution."
+      "norm_label": "structured result from tool execution.",
+      "id": "core_tools_registry_rationale_19"
     },
     {
       "label": "Definition of a registered tool.",
@@ -1021,10 +1131,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L31",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_31",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "definition of a registered tool."
+      "norm_label": "definition of a registered tool.",
+      "id": "core_tools_registry_rationale_31"
     },
     {
       "label": "Unified tool registry with validation, risk classification, and execution.",
@@ -1032,10 +1142,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L47",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_47",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "unified tool registry with validation, risk classification, and execution."
+      "norm_label": "unified tool registry with validation, risk classification, and execution.",
+      "id": "core_tools_registry_rationale_47"
     },
     {
       "label": "Register a tool definition.",
@@ -1043,10 +1153,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L60",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_60",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "register a tool definition."
+      "norm_label": "register a tool definition.",
+      "id": "core_tools_registry_rationale_60"
     },
     {
       "label": "Get a tool definition by name.",
@@ -1054,10 +1164,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L64",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_64",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "get a tool definition by name."
+      "norm_label": "get a tool definition by name.",
+      "id": "core_tools_registry_rationale_64"
     },
     {
       "label": "List all registered tool names.",
@@ -1065,10 +1175,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L68",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_68",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "list all registered tool names."
+      "norm_label": "list all registered tool names.",
+      "id": "core_tools_registry_rationale_68"
     },
     {
       "label": "List all registered tool definitions.",
@@ -1076,10 +1186,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L72",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_72",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "list all registered tool definitions."
+      "norm_label": "list all registered tool definitions.",
+      "id": "core_tools_registry_rationale_72"
     },
     {
       "label": "List tools in a specific category.",
@@ -1087,10 +1197,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L76",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_76",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "list tools in a specific category."
+      "norm_label": "list tools in a specific category.",
+      "id": "core_tools_registry_rationale_76"
     },
     {
       "label": "Map tool names to their icons.",
@@ -1098,10 +1208,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L80",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_80",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "map tool names to their icons."
+      "norm_label": "map tool names to their icons.",
+      "id": "core_tools_registry_rationale_80"
     },
     {
       "label": "Validate a tool call against its schema.          Returns (is_valid, error_msg,",
@@ -1109,10 +1219,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L84",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_84",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "validate a tool call against its schema.          returns (is_valid, error_msg,"
+      "norm_label": "validate a tool call against its schema.          returns (is_valid, error_msg,",
+      "id": "core_tools_registry_rationale_84"
     },
     {
       "label": "Get the risk tier for a tool call.          For RUN_COMMAND, dynamically classif",
@@ -1120,10 +1230,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L97",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_97",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "get the risk tier for a tool call.          for run_command, dynamically classif"
+      "norm_label": "get the risk tier for a tool call.          for run_command, dynamically classif",
+      "id": "core_tools_registry_rationale_97"
     },
     {
       "label": "Execute a tool by name with given arguments.          Validates args, executes,",
@@ -1131,10 +1241,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L111",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_111",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "execute a tool by name with given arguments.          validates args, executes,"
+      "norm_label": "execute a tool by name with given arguments.          validates args, executes,",
+      "id": "core_tools_registry_rationale_111"
     },
     {
       "label": "Generate a dry-run preview string for a tool call without executing mutations.",
@@ -1142,10 +1252,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L162",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_162",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "generate a dry-run preview string for a tool call without executing mutations."
+      "norm_label": "generate a dry-run preview string for a tool call without executing mutations.",
+      "id": "core_tools_registry_rationale_162"
     },
     {
       "label": "Execute multiple tool calls in parallel when safe (AUTO risk level).         Fal",
@@ -1153,10 +1263,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L187",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_187",
       "community": 55,
       "community_name": "ToolResult",
-      "norm_label": "execute multiple tool calls in parallel when safe (auto risk level).         fal"
+      "norm_label": "execute multiple tool calls in parallel when safe (auto risk level).         fal",
+      "id": "core_tools_registry_rationale_187"
     },
     {
       "label": "Generate tool descriptions for injection into the system prompt.          Scales",
@@ -1164,10 +1274,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L247",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_247",
       "community": 4,
       "community_name": "ToolRegistry",
-      "norm_label": "generate tool descriptions for injection into the system prompt.          scales"
+      "norm_label": "generate tool descriptions for injection into the system prompt.          scales",
+      "id": "core_tools_registry_rationale_247"
     },
     {
       "label": "Get or create the global tool registry.",
@@ -1175,10 +1285,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L278",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_278",
       "community": 118,
       "community_name": "get_tool_registry",
-      "norm_label": "get or create the global tool registry."
+      "norm_label": "get or create the global tool registry.",
+      "id": "core_tools_registry_rationale_278"
     },
     {
       "label": "Create the default tool registry with all built-in tools.",
@@ -1186,10 +1296,10 @@
       "source_file": "core/tools/registry.py",
       "source_location": "L286",
       "_origin": "ast",
-      "id": "core_tools_registry_rationale_286",
       "community": 118,
       "community_name": "get_tool_registry",
-      "norm_label": "create the default tool registry with all built-in tools."
+      "norm_label": "create the default tool registry with all built-in tools.",
+      "id": "core_tools_registry_rationale_286"
     },
     {
       "label": "android_troubleshoot.py",
@@ -7857,50 +7967,6 @@
       "community_name": "TokenCounter",
       "norm_label": "get_token_counter()",
       "id": "context_manager_cli_src_context_manager_memory_token_counter_get_token_counter"
-    },
-    {
-      "label": "context_manager/prompts.py",
-      "file_type": "code",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 152,
-      "community_name": "context_manager/prompts.py",
-      "norm_label": "context_manager/prompts.py",
-      "id": "context_manager_cli_src_context_manager_prompts"
-    },
-    {
-      "label": "build_default_system_prompt()",
-      "file_type": "code",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L153",
-      "_origin": "ast",
-      "community": 152,
-      "community_name": "context_manager/prompts.py",
-      "norm_label": "build_default_system_prompt()",
-      "id": "context_manager_cli_src_context_manager_prompts_build_default_system_prompt"
-    },
-    {
-      "label": "Torchlight prompt stack \u2014 single source of truth.  V2: Optimized for local LLMs",
-      "file_type": "rationale",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 152,
-      "community_name": "context_manager/prompts.py",
-      "norm_label": "torchlight prompt stack \u2014 single source of truth.  v2: optimized for local llms",
-      "id": "context_manager_cli_src_context_manager_prompts_rationale_1"
-    },
-    {
-      "label": "Build system prompt. Use V2 for small contexts.",
-      "file_type": "rationale",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L154",
-      "_origin": "ast",
-      "community": 152,
-      "community_name": "context_manager/prompts.py",
-      "norm_label": "build system prompt. use v2 for small contexts.",
-      "id": "context_manager_cli_src_context_manager_prompts_rationale_154"
     },
     {
       "label": "prompts_minimal.py",
@@ -14602,28 +14668,6 @@
       "id": "core_prompts_init"
     },
     {
-      "label": "system.py",
-      "file_type": "code",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "prompts/__init__.py",
-      "norm_label": "system.py",
-      "id": "core_prompts_system"
-    },
-    {
-      "label": "Unified system prompts for Torchlight.  Single source of truth for all frontends",
-      "file_type": "rationale",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "prompts/__init__.py",
-      "norm_label": "unified system prompts for torchlight.  single source of truth for all frontends",
-      "id": "core_prompts_system_rationale_1"
-    },
-    {
       "label": "tool_syntax.py",
       "file_type": "code",
       "source_file": "core/prompts/tool_syntax.py",
@@ -19047,50 +19091,6 @@
       "community_name": "OllamaClient",
       "norm_label": "async streaming implementation required by llmclient protocol.",
       "id": "rlm_optimized_ollama_client_rationale_94"
-    },
-    {
-      "label": "rlm_optimized/prompts.py",
-      "file_type": "code",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 54,
-      "community_name": "rlm_engine_optimized.py",
-      "norm_label": "rlm_optimized/prompts.py",
-      "id": "rlm_optimized_prompts"
-    },
-    {
-      "label": "build_system_prompt()",
-      "file_type": "code",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L4",
-      "_origin": "ast",
-      "community": 54,
-      "community_name": "rlm_engine_optimized.py",
-      "norm_label": "build_system_prompt()",
-      "id": "rlm_optimized_prompts_build_system_prompt"
-    },
-    {
-      "label": "build_step_message()",
-      "file_type": "code",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L131",
-      "_origin": "ast",
-      "community": 54,
-      "community_name": "rlm_engine_optimized.py",
-      "norm_label": "build_step_message()",
-      "id": "rlm_optimized_prompts_build_step_message"
-    },
-    {
-      "label": "Build the system prompt for the coding agent.      Args:         project_root: T",
-      "file_type": "rationale",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L5",
-      "_origin": "ast",
-      "community": 54,
-      "community_name": "rlm_engine_optimized.py",
-      "norm_label": "build the system prompt for the coding agent.      args:         project_root: t",
-      "id": "rlm_optimized_prompts_rationale_5"
     },
     {
       "label": "repl_sandbox.py",
@@ -26368,6 +26368,239 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/scripts/verify_prompts.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "context_manager_cli_scripts_verify_prompts",
+      "target": "context_manager_cli_src_context_manager_prompts"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "context_manager_cli_src_context_manager_cli_main",
+      "target": "context_manager_cli_src_context_manager_prompts"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L155",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "context_manager_cli_src_context_manager_prompts",
+      "target": "context_manager_cli_src_context_manager_prompts_build_default_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "context_manager_cli_src_context_manager_prompts_rationale_1",
+      "target": "context_manager_cli_src_context_manager_prompts",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/prompts.py",
+      "source_location": "L156",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "context_manager_cli_src_context_manager_prompts_rationale_156",
+      "target": "context_manager_cli_src_context_manager_prompts_build_default_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "context_manager_cli_src_context_manager_cli_main",
+      "target": "core_prompts_system"
+    },
+    {
+      "relation": "re_exports",
+      "context": "export",
+      "confidence": "EXTRACTED",
+      "source_file": "core/prompts/__init__.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "core_prompts_init",
+      "target": "core_prompts_system"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "core_prompts_system_rationale_1",
+      "target": "core_prompts_system",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L124",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_prompts",
+      "target": "rlm_optimized_config",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L132",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_prompts",
+      "target": "rlm_optimized_prompts_build_step_message",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_prompts",
+      "target": "rlm_optimized_prompts_build_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/rlm_engine.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "rlm_optimized_rlm_engine",
+      "target": "rlm_optimized_prompts"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/rlm_engine_optimized.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "rlm_optimized_rlm_engine_optimized",
+      "target": "rlm_optimized_prompts"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/prompts.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_prompts_rationale_5",
+      "target": "rlm_optimized_prompts_build_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/rlm_engine_optimized.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "rlm_optimized_rlm_engine_optimized",
+      "target": "rlm_optimized_prompts_build_system_prompt"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "rlm_optimized/rlm_engine_optimized.py",
+      "source_location": "L248",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_solve_async",
+      "target": "rlm_optimized_prompts_build_system_prompt"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/rlm_engine.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "rlm_optimized_rlm_engine",
+      "target": "rlm_optimized_prompts_build_step_message"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "rlm_optimized/rlm_engine_optimized.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "rlm_optimized_rlm_engine_optimized",
+      "target": "rlm_optimized_prompts_build_step_message"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "rlm_optimized/rlm_engine_optimized.py",
+      "source_location": "L379",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_solve_async",
+      "target": "rlm_optimized_prompts_build_step_message"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "rlm_optimized/rlm_engine.py",
+      "source_location": "L163",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "rlm_optimized_rlm_engine_rlmengine_solve",
+      "target": "rlm_optimized_prompts_build_step_message"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
       "source_file": "context-manager-cli/src/context_manager/cli/main.py",
       "source_location": "L22",
       "weight": 1.0,
@@ -26396,9 +26629,9 @@
       "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "core_errors_types",
-      "confidence_score": 1.0
+      "target": "core_errors_types"
     },
     {
       "relation": "contains",
@@ -26407,9 +26640,9 @@
       "source_location": "L117",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop"
     },
     {
       "relation": "contains",
@@ -26418,9 +26651,9 @@
       "source_location": "L65",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "core_execution_feedback_loop_extract_surgical_traceback",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_extract_surgical_traceback"
     },
     {
       "relation": "contains",
@@ -26429,9 +26662,9 @@
       "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "core_execution_feedback_loop_testresult",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testresult"
     },
     {
       "relation": "contains",
@@ -26440,9 +26673,9 @@
       "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "core_execution_feedback_loop_testresultstatus",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testresultstatus"
     },
     {
       "relation": "contains",
@@ -26451,9 +26684,9 @@
       "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "core_execution_feedback_loop_testrunresult",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testrunresult"
     },
     {
       "relation": "imports_from",
@@ -26463,9 +26696,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "datetime",
-      "confidence_score": 1.0
+      "target": "datetime"
     },
     {
       "relation": "imports_from",
@@ -26475,9 +26708,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop",
-      "target": "enum",
-      "confidence_score": 1.0
+      "target": "enum"
     },
     {
       "relation": "rationale_for",
@@ -26486,9 +26719,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_1",
-      "target": "core_execution_feedback_loop",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop"
     },
     {
       "relation": "re_exports",
@@ -26545,9 +26778,9 @@
       "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_testresultstatus",
-      "target": "enum",
-      "confidence_score": 1.0
+      "target": "enum"
     },
     {
       "relation": "imports",
@@ -26593,9 +26826,9 @@
       "source_location": "L252",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output",
-      "target": "core_execution_feedback_loop_testresult",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testresult"
     },
     {
       "relation": "calls",
@@ -26605,9 +26838,9 @@
       "source_location": "L203",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "target": "core_execution_feedback_loop_testresult",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testresult"
     },
     {
       "relation": "imports",
@@ -26689,9 +26922,9 @@
       "source_location": "L129",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed",
-      "target": "core_execution_feedback_loop_testrunresult",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testrunresult"
     },
     {
       "relation": "references",
@@ -26701,9 +26934,9 @@
       "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "target": "core_execution_feedback_loop_testrunresult",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testrunresult"
     },
     {
       "relation": "method",
@@ -26712,9 +26945,9 @@
       "source_location": "L61",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_testrunresult",
-      "target": "core_execution_feedback_loop_testrunresult_all_passed",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testrunresult_all_passed"
     },
     {
       "relation": "method",
@@ -26723,9 +26956,9 @@
       "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_testrunresult",
-      "target": "core_execution_feedback_loop_testrunresult_failed",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testrunresult_failed"
     },
     {
       "relation": "method",
@@ -26734,9 +26967,9 @@
       "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_testrunresult",
-      "target": "core_execution_feedback_loop_testrunresult_passed",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_testrunresult_passed"
     },
     {
       "relation": "imports",
@@ -26806,9 +27039,9 @@
       "source_location": "L279",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error",
-      "target": "core_execution_feedback_loop_extract_surgical_traceback",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_extract_surgical_traceback"
     },
     {
       "relation": "rationale_for",
@@ -26817,9 +27050,9 @@
       "source_location": "L66",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_66",
-      "target": "core_execution_feedback_loop_extract_surgical_traceback",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_extract_surgical_traceback"
     },
     {
       "relation": "imports",
@@ -26900,9 +27133,9 @@
       "source_location": "L287",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context"
     },
     {
       "relation": "method",
@@ -26911,9 +27144,9 @@
       "source_location": "L238",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command"
     },
     {
       "relation": "method",
@@ -26922,9 +27155,9 @@
       "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error"
     },
     {
       "relation": "method",
@@ -26933,9 +27166,9 @@
       "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_init",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_init"
     },
     {
       "relation": "method",
@@ -26944,9 +27177,9 @@
       "source_location": "L129",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed"
     },
     {
       "relation": "method",
@@ -26955,9 +27188,9 @@
       "source_location": "L252",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output"
     },
     {
       "relation": "method",
@@ -26966,9 +27199,9 @@
       "source_location": "L157",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint"
     },
     {
       "relation": "method",
@@ -26977,9 +27210,9 @@
       "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_run_tests"
     },
     {
       "relation": "method",
@@ -26988,9 +27221,9 @@
       "source_location": "L150",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_should_run_tests",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_should_run_tests"
     },
     {
       "relation": "rationale_for",
@@ -26999,9 +27232,9 @@
       "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_118",
-      "target": "core_execution_feedback_loop_executionfeedbackloop",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop"
     },
     {
       "relation": "imports",
@@ -27131,9 +27364,9 @@
       "source_location": "L120",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_init",
-      "target": "path",
-      "confidence_score": 1.0
+      "target": "path"
     },
     {
       "relation": "calls",
@@ -27143,9 +27376,9 @@
       "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command",
-      "target": "path",
-      "confidence_score": 1.0
+      "target": "path"
     },
     {
       "relation": "calls",
@@ -27155,9 +27388,9 @@
       "source_location": "L164",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint",
-      "target": "path",
-      "confidence_score": 1.0
+      "target": "path"
     },
     {
       "relation": "calls",
@@ -27167,9 +27400,9 @@
       "source_location": "L197",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "target": "path",
-      "confidence_score": 1.0
+      "target": "path"
     },
     {
       "relation": "calls",
@@ -27215,9 +27448,9 @@
       "source_location": "L147",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_run_tests"
     },
     {
       "relation": "calls",
@@ -27227,9 +27460,9 @@
       "source_location": "L146",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_should_run_tests",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_should_run_tests"
     },
     {
       "relation": "rationale_for",
@@ -27238,9 +27471,9 @@
       "source_location": "L130",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_130",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_on_tool_executed"
     },
     {
       "relation": "calls",
@@ -27250,9 +27483,9 @@
       "source_location": "L182",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint"
     },
     {
       "relation": "rationale_for",
@@ -27261,9 +27494,9 @@
       "source_location": "L158",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_158",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_run_preflight_lint"
     },
     {
       "relation": "calls",
@@ -27273,9 +27506,9 @@
       "source_location": "L183",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_detect_test_command"
     },
     {
       "relation": "calls",
@@ -27285,9 +27518,9 @@
       "source_location": "L223",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_parse_test_output"
     },
     {
       "relation": "rationale_for",
@@ -27296,9 +27529,9 @@
       "source_location": "L181",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_181",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_run_tests",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_run_tests"
     },
     {
       "relation": "calls",
@@ -27308,9 +27541,9 @@
       "source_location": "L295",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error"
     },
     {
       "relation": "references",
@@ -27320,9 +27553,9 @@
       "source_location": "L273",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error",
-      "target": "testfailureerror",
-      "confidence_score": 1.0
+      "target": "testfailureerror"
     },
     {
       "relation": "rationale_for",
@@ -27331,9 +27564,9 @@
       "source_location": "L274",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_274",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_get_test_failure_error"
     },
     {
       "relation": "rationale_for",
@@ -27342,9 +27575,9 @@
       "source_location": "L288",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_feedback_loop_rationale_288",
-      "target": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context",
-      "confidence_score": 1.0
+      "target": "core_execution_feedback_loop_executionfeedbackloop_build_feedback_context"
     },
     {
       "relation": "contains",
@@ -27353,9 +27586,9 @@
       "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory",
-      "target": "core_execution_trajectory_trajectorylogger",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorylogger"
     },
     {
       "relation": "contains",
@@ -27364,9 +27597,9 @@
       "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory",
-      "target": "core_execution_trajectory_trajectorystep",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorystep"
     },
     {
       "relation": "imports_from",
@@ -27376,9 +27609,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory",
-      "target": "datetime",
-      "confidence_score": 1.0
+      "target": "datetime"
     },
     {
       "relation": "rationale_for",
@@ -27387,9 +27620,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory_rationale_1",
-      "target": "core_execution_trajectory",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory"
     },
     {
       "relation": "imports_from",
@@ -27399,9 +27632,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_trajectory",
-      "target": "core_execution_trajectory",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory"
     },
     {
       "relation": "references",
@@ -27411,9 +27644,9 @@
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory_trajectorylogger_record_step",
-      "target": "core_execution_trajectory_trajectorystep",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorystep"
     },
     {
       "relation": "imports",
@@ -27423,9 +27656,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_trajectory",
-      "target": "core_execution_trajectory_trajectorystep",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorystep"
     },
     {
       "relation": "rationale_for",
@@ -27434,9 +27667,9 @@
       "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory_rationale_32",
-      "target": "core_execution_trajectory_trajectorylogger",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorylogger"
     },
     {
       "relation": "method",
@@ -27445,9 +27678,9 @@
       "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory_trajectorylogger",
-      "target": "core_execution_trajectory_trajectorylogger_init",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorylogger_init"
     },
     {
       "relation": "method",
@@ -27456,9 +27689,9 @@
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory_trajectorylogger",
-      "target": "core_execution_trajectory_trajectorylogger_record_step",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorylogger_record_step"
     },
     {
       "relation": "imports",
@@ -27468,9 +27701,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_trajectory",
-      "target": "core_execution_trajectory_trajectorylogger",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorylogger"
     },
     {
       "relation": "calls",
@@ -27480,9 +27713,9 @@
       "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_trajectory_test_trajectory_logger_record_step",
-      "target": "core_execution_trajectory_trajectorylogger",
-      "confidence_score": 1.0
+      "target": "core_execution_trajectory_trajectorylogger"
     },
     {
       "relation": "references",
@@ -27492,9 +27725,9 @@
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_execution_trajectory_trajectorylogger_record_step",
-      "target": "any",
-      "confidence_score": 1.0
+      "target": "any"
     },
     {
       "relation": "contains",
@@ -27503,9 +27736,9 @@
       "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam",
-      "target": "core_flashlight_beam_beam_config_for_context",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beam_config_for_context"
     },
     {
       "relation": "contains",
@@ -27514,9 +27747,9 @@
       "source_location": "L37",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam",
-      "target": "core_flashlight_beam_beamresult",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beamresult"
     },
     {
       "relation": "contains",
@@ -27525,9 +27758,9 @@
       "source_location": "L52",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam",
-      "target": "core_flashlight_beam_flashlight",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight"
     },
     {
       "relation": "imports_from",
@@ -27537,9 +27770,9 @@
       "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam",
-      "target": "core_flashlight_indexer",
-      "confidence_score": 1.0
+      "target": "core_flashlight_indexer"
     },
     {
       "relation": "rationale_for",
@@ -27548,9 +27781,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_rationale_1",
-      "target": "core_flashlight_beam",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam"
     },
     {
       "relation": "re_exports",
@@ -27572,9 +27805,9 @@
       "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_configure",
-      "target": "core_flashlight_beam_beam_config_for_context",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beam_config_for_context"
     },
     {
       "relation": "method",
@@ -27583,9 +27816,9 @@
       "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_beamresult",
-      "target": "core_flashlight_beam_beamresult_init",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beamresult_init"
     },
     {
       "relation": "method",
@@ -27594,9 +27827,9 @@
       "source_location": "L47",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_beamresult",
-      "target": "core_flashlight_beam_beamresult_to_block",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beamresult_to_block"
     },
     {
       "relation": "references",
@@ -27606,9 +27839,9 @@
       "source_location": "L93",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_beam",
-      "target": "core_flashlight_beam_beamresult",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beamresult"
     },
     {
       "relation": "calls",
@@ -27618,9 +27851,9 @@
       "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_beam_block",
-      "target": "core_flashlight_beam_beamresult_to_block",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_beamresult_to_block"
     },
     {
       "relation": "imports",
@@ -27641,9 +27874,9 @@
       "source_location": "L93",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_beam",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_beam"
     },
     {
       "relation": "method",
@@ -27652,9 +27885,9 @@
       "source_location": "L127",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_beam_block",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_beam_block"
     },
     {
       "relation": "method",
@@ -27663,9 +27896,9 @@
       "source_location": "L62",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_configure",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_configure"
     },
     {
       "relation": "method",
@@ -27674,9 +27907,9 @@
       "source_location": "L175",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_extract_snippet",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_extract_snippet"
     },
     {
       "relation": "method",
@@ -27685,9 +27918,9 @@
       "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_get_git_churn_scores",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_get_git_churn_scores"
     },
     {
       "relation": "method",
@@ -27696,9 +27929,9 @@
       "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_init",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_init"
     },
     {
       "relation": "method",
@@ -27707,9 +27940,9 @@
       "source_location": "L65",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_mark_active",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_mark_active"
     },
     {
       "relation": "method",
@@ -27718,9 +27951,9 @@
       "source_location": "L135",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_score",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_score"
     },
     {
       "relation": "method",
@@ -27729,9 +27962,9 @@
       "source_location": "L197",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight",
-      "target": "core_flashlight_beam_flashlight_tokenize",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_tokenize"
     },
     {
       "relation": "imports",
@@ -27753,9 +27986,9 @@
       "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_init",
-      "target": "symbolindex",
-      "confidence_score": 1.0
+      "target": "symbolindex"
     },
     {
       "relation": "calls",
@@ -27765,9 +27998,9 @@
       "source_location": "L151",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_score",
-      "target": "core_flashlight_beam_flashlight_get_git_churn_scores",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_get_git_churn_scores"
     },
     {
       "relation": "calls",
@@ -27777,9 +28010,9 @@
       "source_location": "L111",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_beam",
-      "target": "core_flashlight_beam_flashlight_extract_snippet",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_extract_snippet"
     },
     {
       "relation": "calls",
@@ -27789,9 +28022,9 @@
       "source_location": "L103",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_beam",
-      "target": "core_flashlight_beam_flashlight_score",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_score"
     },
     {
       "relation": "calls",
@@ -27801,9 +28034,9 @@
       "source_location": "L97",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_beam",
-      "target": "core_flashlight_beam_flashlight_tokenize",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_tokenize"
     },
     {
       "relation": "calls",
@@ -27813,9 +28046,9 @@
       "source_location": "L128",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_beam_block",
-      "target": "core_flashlight_beam_flashlight_beam",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_beam"
     },
     {
       "relation": "calls",
@@ -27825,9 +28058,9 @@
       "source_location": "L137",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_score",
-      "target": "core_flashlight_beam_flashlight_tokenize",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_tokenize"
     },
     {
       "relation": "references",
@@ -27837,9 +28070,9 @@
       "source_location": "L135",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_score",
-      "target": "fileentry",
-      "confidence_score": 1.0
+      "target": "fileentry"
     },
     {
       "relation": "references",
@@ -27849,9 +28082,9 @@
       "source_location": "L175",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_extract_snippet",
-      "target": "fileentry",
-      "confidence_score": 1.0
+      "target": "fileentry"
     },
     {
       "relation": "calls",
@@ -27861,9 +28094,9 @@
       "source_location": "L181",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_flashlight_beam_flashlight_extract_snippet",
-      "target": "core_flashlight_beam_flashlight_tokenize",
-      "confidence_score": 1.0
+      "target": "core_flashlight_beam_flashlight_tokenize"
     },
     {
       "relation": "contains",
@@ -27872,9 +28105,9 @@
       "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_get_tool_registry",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_get_tool_registry"
     },
     {
       "relation": "contains",
@@ -27883,9 +28116,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_execute",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_execute"
     },
     {
       "relation": "contains",
@@ -27894,9 +28127,9 @@
       "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_execute_unknown",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_execute_unknown"
     },
     {
       "relation": "contains",
@@ -27905,9 +28138,9 @@
       "source_location": "L24",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_get",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_get"
     },
     {
       "relation": "contains",
@@ -27916,9 +28149,9 @@
       "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_preview_dry_run",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_preview_dry_run"
     },
     {
       "relation": "contains",
@@ -27927,9 +28160,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_register",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_register"
     },
     {
       "relation": "contains",
@@ -27938,9 +28171,9 @@
       "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_risk_level",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_risk_level"
     },
     {
       "relation": "contains",
@@ -27949,9 +28182,9 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_registry_risk_level_run_command",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_registry_risk_level_run_command"
     },
     {
       "relation": "contains",
@@ -27960,9 +28193,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_result_failure",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_result_failure"
     },
     {
       "relation": "contains",
@@ -27971,9 +28204,9 @@
       "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tests_test_registry_test_tool_result_success",
-      "confidence_score": 1.0
+      "target": "core_tests_test_registry_test_tool_result_success"
     },
     {
       "relation": "imports_from",
@@ -27983,9 +28216,9 @@
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tools_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry"
     },
     {
       "relation": "imports",
@@ -27995,9 +28228,9 @@
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tools_registry_get_tool_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_get_tool_registry"
     },
     {
       "relation": "imports",
@@ -28007,9 +28240,9 @@
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "imports",
@@ -28019,9 +28252,9 @@
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "imports",
@@ -28031,9 +28264,9 @@
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "calls",
@@ -28043,9 +28276,9 @@
       "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_result_success",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "calls",
@@ -28055,9 +28288,9 @@
       "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_result_failure",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "calls",
@@ -28067,9 +28300,9 @@
       "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_register",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "calls",
@@ -28079,9 +28312,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_register",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "calls",
@@ -28091,9 +28324,9 @@
       "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_get",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "calls",
@@ -28103,9 +28336,9 @@
       "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_get",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "calls",
@@ -28115,9 +28348,9 @@
       "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_execute",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "calls",
@@ -28127,9 +28360,9 @@
       "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_execute",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "calls",
@@ -28139,9 +28372,9 @@
       "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_execute_unknown",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "calls",
@@ -28151,9 +28384,9 @@
       "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_risk_level",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "calls",
@@ -28163,9 +28396,9 @@
       "source_location": "L50",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_risk_level",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "calls",
@@ -28175,9 +28408,9 @@
       "source_location": "L58",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_risk_level_run_command",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "calls",
@@ -28187,9 +28420,9 @@
       "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_risk_level_run_command",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "calls",
@@ -28199,9 +28432,9 @@
       "source_location": "L65",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_get_tool_registry",
-      "target": "core_tools_registry_get_tool_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_get_tool_registry"
     },
     {
       "relation": "calls",
@@ -28211,9 +28444,9 @@
       "source_location": "L74",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_registry_test_tool_registry_preview_dry_run",
-      "target": "core_tools_registry_get_tool_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_get_tool_registry"
     },
     {
       "relation": "contains",
@@ -28222,9 +28455,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_trajectory",
-      "target": "core_tests_test_trajectory_test_trajectory_logger_record_step",
-      "confidence_score": 1.0
+      "target": "core_tests_test_trajectory_test_trajectory_logger_record_step"
     },
     {
       "relation": "rationale_for",
@@ -28233,9 +28466,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_trajectory_rationale_1",
-      "target": "core_tests_test_trajectory",
-      "confidence_score": 1.0
+      "target": "core_tests_test_trajectory"
     },
     {
       "relation": "imports_from",
@@ -28305,9 +28538,9 @@
       "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_classification",
-      "confidence_score": 1.0
+      "target": "core_tools_classification"
     },
     {
       "relation": "contains",
@@ -28316,9 +28549,9 @@
       "source_location": "L285",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_registry_create_default_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_create_default_registry"
     },
     {
       "relation": "contains",
@@ -28327,9 +28560,9 @@
       "source_location": "L277",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_registry_get_tool_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_get_tool_registry"
     },
     {
       "relation": "contains",
@@ -28338,9 +28571,9 @@
       "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "contains",
@@ -28349,9 +28582,9 @@
       "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "contains",
@@ -28360,9 +28593,9 @@
       "source_location": "L18",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "imports_from",
@@ -28372,9 +28605,9 @@
       "source_location": "L12",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry",
-      "target": "core_tools_schemas",
-      "confidence_score": 1.0
+      "target": "core_tools_schemas"
     },
     {
       "relation": "rationale_for",
@@ -28383,9 +28616,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_1",
-      "target": "core_tools_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry"
     },
     {
       "relation": "imports_from",
@@ -28430,9 +28663,9 @@
       "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_19",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "references",
@@ -28442,9 +28675,9 @@
       "source_location": "L110",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "references",
@@ -28454,9 +28687,9 @@
       "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute_batch",
-      "target": "core_tools_registry_toolresult",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult"
     },
     {
       "relation": "method",
@@ -28465,9 +28698,9 @@
       "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolresult",
-      "target": "core_tools_registry_toolresult_str",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolresult_str"
     },
     {
       "relation": "imports",
@@ -28488,9 +28721,9 @@
       "source_location": "L31",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_31",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "method",
@@ -28499,9 +28732,9 @@
       "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_tooldef",
-      "target": "core_tools_registry_tooldef_is_dangerous",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef_is_dangerous"
     },
     {
       "relation": "references",
@@ -28511,9 +28744,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_all",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "references",
@@ -28523,9 +28756,9 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_by_category",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "references",
@@ -28535,9 +28768,9 @@
       "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_get",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "references",
@@ -28547,9 +28780,9 @@
       "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_register",
-      "target": "core_tools_registry_tooldef",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_tooldef"
     },
     {
       "relation": "imports",
@@ -28583,9 +28816,9 @@
       "source_location": "L285",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_create_default_registry",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "references",
@@ -28595,9 +28828,9 @@
       "source_location": "L277",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_get_tool_registry",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "rationale_for",
@@ -28606,9 +28839,9 @@
       "source_location": "L47",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_47",
-      "target": "core_tools_registry_toolregistry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry"
     },
     {
       "relation": "method",
@@ -28617,9 +28850,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_all",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_all"
     },
     {
       "relation": "method",
@@ -28628,9 +28861,9 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_by_category",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_by_category"
     },
     {
       "relation": "method",
@@ -28639,9 +28872,9 @@
       "source_location": "L110",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_execute",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_execute"
     },
     {
       "relation": "method",
@@ -28650,9 +28883,9 @@
       "source_location": "L186",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_execute_batch",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_execute_batch"
     },
     {
       "relation": "method",
@@ -28661,9 +28894,9 @@
       "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_get",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get"
     },
     {
       "relation": "method",
@@ -28672,9 +28905,9 @@
       "source_location": "L245",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_get_description_block",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get_description_block"
     },
     {
       "relation": "method",
@@ -28683,9 +28916,9 @@
       "source_location": "L79",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_icons",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_icons"
     },
     {
       "relation": "method",
@@ -28694,9 +28927,9 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_init",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_init"
     },
     {
       "relation": "method",
@@ -28705,9 +28938,9 @@
       "source_location": "L67",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_names",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_names"
     },
     {
       "relation": "method",
@@ -28716,9 +28949,9 @@
       "source_location": "L161",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_preview_dry_run",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_preview_dry_run"
     },
     {
       "relation": "method",
@@ -28727,9 +28960,9 @@
       "source_location": "L59",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_register",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_register"
     },
     {
       "relation": "method",
@@ -28738,9 +28971,9 @@
       "source_location": "L96",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_risk_level_for",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_risk_level_for"
     },
     {
       "relation": "method",
@@ -28749,9 +28982,9 @@
       "source_location": "L83",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry",
-      "target": "core_tools_registry_toolregistry_validate",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_validate"
     },
     {
       "relation": "rationale_for",
@@ -28760,9 +28993,9 @@
       "source_location": "L60",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_60",
-      "target": "core_tools_registry_toolregistry_register",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_register"
     },
     {
       "relation": "rationale_for",
@@ -28771,9 +29004,9 @@
       "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_64",
-      "target": "core_tools_registry_toolregistry_get",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get"
     },
     {
       "relation": "calls",
@@ -28783,9 +29016,9 @@
       "source_location": "L116",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute",
-      "target": "core_tools_registry_toolregistry_get",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get"
     },
     {
       "relation": "calls",
@@ -28795,9 +29028,9 @@
       "source_location": "L204",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute_batch",
-      "target": "core_tools_registry_toolregistry_get",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get"
     },
     {
       "relation": "calls",
@@ -28807,9 +29040,9 @@
       "source_location": "L168",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_preview_dry_run",
-      "target": "core_tools_registry_toolregistry_get",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get"
     },
     {
       "relation": "calls",
@@ -28819,9 +29052,9 @@
       "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_risk_level_for",
-      "target": "core_tools_registry_toolregistry_get",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get"
     },
     {
       "relation": "rationale_for",
@@ -28830,9 +29063,9 @@
       "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_68",
-      "target": "core_tools_registry_toolregistry_names",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_names"
     },
     {
       "relation": "rationale_for",
@@ -28841,9 +29074,9 @@
       "source_location": "L72",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_72",
-      "target": "core_tools_registry_toolregistry_all",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_all"
     },
     {
       "relation": "rationale_for",
@@ -28852,9 +29085,9 @@
       "source_location": "L76",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_76",
-      "target": "core_tools_registry_toolregistry_by_category",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_by_category"
     },
     {
       "relation": "rationale_for",
@@ -28863,9 +29096,9 @@
       "source_location": "L80",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_80",
-      "target": "core_tools_registry_toolregistry_icons",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_icons"
     },
     {
       "relation": "rationale_for",
@@ -28874,9 +29107,9 @@
       "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_84",
-      "target": "core_tools_registry_toolregistry_validate",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_validate"
     },
     {
       "relation": "calls",
@@ -28886,9 +29119,9 @@
       "source_location": "L126",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute",
-      "target": "core_tools_registry_toolregistry_validate",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_validate"
     },
     {
       "relation": "rationale_for",
@@ -28897,9 +29130,9 @@
       "source_location": "L97",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_97",
-      "target": "core_tools_registry_toolregistry_risk_level_for",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_risk_level_for"
     },
     {
       "relation": "calls",
@@ -28909,9 +29142,9 @@
       "source_location": "L208",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute_batch",
-      "target": "core_tools_registry_toolregistry_risk_level_for",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_risk_level_for"
     },
     {
       "relation": "calls",
@@ -28921,9 +29154,9 @@
       "source_location": "L167",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_preview_dry_run",
-      "target": "core_tools_registry_toolregistry_risk_level_for",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_risk_level_for"
     },
     {
       "relation": "rationale_for",
@@ -28932,9 +29165,9 @@
       "source_location": "L111",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_111",
-      "target": "core_tools_registry_toolregistry_execute",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_execute"
     },
     {
       "relation": "calls",
@@ -28944,9 +29177,9 @@
       "source_location": "L238",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_toolregistry_execute_batch",
-      "target": "core_tools_registry_toolregistry_execute",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_execute"
     },
     {
       "relation": "rationale_for",
@@ -28955,9 +29188,9 @@
       "source_location": "L162",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_162",
-      "target": "core_tools_registry_toolregistry_preview_dry_run",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_preview_dry_run"
     },
     {
       "relation": "rationale_for",
@@ -28966,9 +29199,9 @@
       "source_location": "L187",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_187",
-      "target": "core_tools_registry_toolregistry_execute_batch",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_execute_batch"
     },
     {
       "relation": "rationale_for",
@@ -28977,9 +29210,9 @@
       "source_location": "L247",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_247",
-      "target": "core_tools_registry_toolregistry_get_description_block",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_toolregistry_get_description_block"
     },
     {
       "relation": "imports",
@@ -29109,9 +29342,9 @@
       "source_location": "L281",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_get_tool_registry",
-      "target": "core_tools_registry_create_default_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_create_default_registry"
     },
     {
       "relation": "rationale_for",
@@ -29120,9 +29353,9 @@
       "source_location": "L278",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_278",
-      "target": "core_tools_registry_get_tool_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_get_tool_registry"
     },
     {
       "relation": "imports",
@@ -29155,9 +29388,9 @@
       "source_location": "L286",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_registry_rationale_286",
-      "target": "core_tools_registry_create_default_registry",
-      "confidence_score": 1.0
+      "target": "core_tools_registry_create_default_registry"
     },
     {
       "relation": "contains",
@@ -31431,18 +31664,6 @@
       "confidence_score": 1.0,
       "source": "context_manager_cli_scripts_verify_prompts",
       "target": "context_manager_cli_scripts_verify_prompts_verify_gui_prompt"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/scripts/verify_prompts.py",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_scripts_verify_prompts",
-      "target": "context_manager_cli_src_context_manager_prompts"
     },
     {
       "relation": "calls",
@@ -33843,18 +34064,6 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "context-manager-cli/src/context_manager/cli/main.py",
-      "source_location": "L39",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_cli_main",
-      "target": "context_manager_cli_src_context_manager_prompts"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
       "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
@@ -34161,18 +34370,6 @@
       "confidence_score": 1.0,
       "source": "context_manager_cli_src_context_manager_cli_main",
       "target": "core_memory_token_counter_get_token_counter"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
-      "source_location": "L25",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_cli_main",
-      "target": "core_prompts_system"
     },
     {
       "relation": "imports_from",
@@ -44663,39 +44860,6 @@
       "_origin": "ast",
       "source": "context_manager_cli_tests_test_token_counter_test_get_token_counter_different_models",
       "target": "context_manager_cli_src_context_manager_memory_token_counter_get_token_counter"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L153",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_prompts",
-      "target": "context_manager_cli_src_context_manager_prompts_build_default_system_prompt"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_prompts_rationale_1",
-      "target": "context_manager_cli_src_context_manager_prompts"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/prompts.py",
-      "source_location": "L154",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_prompts_rationale_154",
-      "target": "context_manager_cli_src_context_manager_prompts_build_default_system_prompt"
     },
     {
       "relation": "contains",
@@ -60362,18 +60526,6 @@
       "context": "export",
       "confidence": "EXTRACTED",
       "source_file": "core/prompts/__init__.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_prompts_init",
-      "target": "core_prompts_system"
-    },
-    {
-      "relation": "re_exports",
-      "context": "export",
-      "confidence": "EXTRACTED",
-      "source_file": "core/prompts/__init__.py",
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
@@ -60404,17 +60556,6 @@
       "confidence_score": 1.0,
       "source": "core_prompts_init",
       "target": "core_prompts_tool_syntax_get_tool_syntax_for_context_size"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_prompts_system_rationale_1",
-      "target": "core_prompts_system"
     },
     {
       "relation": "contains",
@@ -65776,18 +65917,6 @@
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L123",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_prompts",
-      "target": "rlm_optimized_config"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
       "source_file": "rlm_optimized/repl_sandbox.py",
       "source_location": "L226",
       "weight": 1.0,
@@ -67814,135 +67943,6 @@
       "confidence_score": 1.0,
       "source": "rlm_optimized_ollama_client_rationale_94",
       "target": "rlm_optimized_ollama_client_ollamaclient_chat_stream"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L131",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_prompts",
-      "target": "rlm_optimized_prompts_build_step_message"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L4",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_prompts",
-      "target": "rlm_optimized_prompts_build_system_prompt"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/rlm_engine.py",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_rlm_engine",
-      "target": "rlm_optimized_prompts"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_rlm_engine_optimized",
-      "target": "rlm_optimized_prompts"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_prompts_rationale_5",
-      "target": "rlm_optimized_prompts_build_system_prompt"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_rlm_engine_optimized",
-      "target": "rlm_optimized_prompts_build_system_prompt"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L248",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_solve_async",
-      "target": "rlm_optimized_prompts_build_system_prompt"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/rlm_engine.py",
-      "source_location": "L6",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_rlm_engine",
-      "target": "rlm_optimized_prompts_build_step_message"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L9",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "rlm_optimized_rlm_engine_optimized",
-      "target": "rlm_optimized_prompts_build_step_message"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L379",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_solve_async",
-      "target": "rlm_optimized_prompts_build_step_message"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "rlm_optimized/rlm_engine.py",
-      "source_location": "L163",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "rlm_optimized_rlm_engine_rlmengine_solve",
-      "target": "rlm_optimized_prompts_build_step_message"
     },
     {
       "relation": "contains",
@@ -77842,5 +77842,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "442cce4e21f62ea83384013ab8d30d908d460c4b"
+  "built_at_commit": "30e53063d9e5d39bb41896f4875ada93a608bc6d"
 }
