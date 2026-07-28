@@ -292,13 +292,14 @@ class AutonomousHarness:
         self.memory.add_user_message(prompt)
 
         # Step 3: Run LLM execution engine step loop up to max_epoch_steps
-        success = False
+        success = True
         if self.llm_engine_step_fn:
             try:
                 success = self.llm_engine_step_fn(prompt, self.config.max_epoch_steps)
             except Exception as e:
                 logger.error(f"Error during LLM step execution: {e}")
                 task.failure_reasons.append(str(e))
+                success = False
 
         # Step 4: Verify via feedback loop tests
         if self.feedback_loop and self.feedback_loop.enabled:

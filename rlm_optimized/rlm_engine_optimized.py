@@ -277,6 +277,7 @@ class RLMEngineOptimized:
         _last_tool_key: Optional[tuple[str, str]] = None
         consecutive_duplicates = 0
         MAX_DUPLICATES = 3  # force-break after this many consecutive identical calls
+        self._final_answer_rejections = 0
 
         for iteration in range(MAX_ITERATIONS_PER_LEVEL):
             self._total_llm_calls += 1
@@ -286,7 +287,7 @@ class RLMEngineOptimized:
                     self._notify_status("THINKING", {"depth": depth, "status": "compacting context"})
                     summarizer_fn = _summarizer.simple_summarize if _summarizer else None
                     memory.compress_recent(summarizer_fn=summarizer_fn, preserve_first=2)
-                context = memory.get_context_for_llm()
+                context = memory.get_context_for_llm(project_root=self.project_root)
             else:
                 context = messages
 
@@ -328,6 +329,42 @@ class RLMEngineOptimized:
                 consecutive_thinking = 0
 
             if action == "final_answer":
+                # ── Verification Gate: Prevent Premature Final Answers ──
+                rejection_reason = None
+                if iteration < MAX_ITERATIONS_PER_LEVEL - 2 and getattr(self, "_final_answer_rejections", 0) < 2:
+                    # 1. Check for failing post-edit tests
+                    if self.feedback_loop and self.feedback_loop._last_test_result and not self.feedback_loop._last_test_result.all_passed:
+                        fb_ctx = self.feedback_loop.build_feedback_context()
+                        rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE) to debug and resolve the failure."
+
+                    # 2. Check for pending goal sub-tasks in .torchlight/goal_spec.json
+                    else:
+                        g_json = os.path.join(self.project_root, ".torchlight", "goal_spec.json")
+                        if os.path.exists(g_json):
+                            try:
+                                with open(g_json, "r", encoding="utf-8") as f:
+                                    gdata = json.load(f)
+                                pending_tasks = [t for t in gdata.get("tasks", []) if t.get("status") in ("pending", "in_progress")]
+                                if pending_tasks:
+                                    task_descs = [f"- {t.get('id')}: {t.get('description')}" for t in pending_tasks[:3]]
+                                    rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nThe following sub-tasks in goal_spec.json are still PENDING or IN_PROGRESS:\n" + "\n".join(task_descs) + "\n\nContinue executing tool calls until all tasks are completed and verified before yielding <FINAL_ANSWER>."
+                            except Exception:
+                                pass
+
+                if rejection_reason:
+                    self._final_answer_rejections = getattr(self, "_final_answer_rejections", 0) + 1
+                    step.result = "⚠️ Final answer rejected by Verification Gate."
+                    result.steps.append(step)
+                    if self.on_step:
+                        self.on_step(step)
+                    if use_memory:
+                        memory.add_assistant_message(response)
+                        memory.add_user_message(rejection_reason)
+                    else:
+                        messages.append({"role": "assistant", "content": response})
+                        messages.append({"role": "user", "content": rejection_reason})
+                    continue
+
                 step.result = content
                 result.steps.append(step)
                 if self.on_step:

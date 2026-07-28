@@ -239,20 +239,42 @@ class TieredMemory:
         """Async wrapper for compress_recent."""
         self.compress_recent(summarizer_fn, preserve_first, force=force)
 
-    def get_context_for_llm(self, user_query: str = "") -> list[dict]:
+    def get_context_for_llm(self, user_query: str = "", project_root: Optional[str] = None) -> list[dict]:
         """Build the message list for the LLM.
 
-        Pinned files are injected as a system message right after the first
-        system message so the model always has exact file content available
-        for edits, even after compression.
+        Pinned files and dynamic L0 Scratchpad are injected into system context
+        so the model always has exact file content and goal progress available,
+        even after compression.
         """
         context = []
         pinned_injected = False
+        l0_scratchpad = self.format_l0_scratchpad(project_root=project_root)
+
         for msg in self.messages:
             role = msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
             context.append({"role": role, "content": msg.content})
-            # Inject pinned files after the first system message
-            if not pinned_injected and role == "system" and self._pinned_files:
+            # Inject L0 Scratchpad and pinned files after the first system message
+            if not pinned_injected and role == "system":
+                if l0_scratchpad:
+                    context.append({"role": "system", "content": l0_scratchpad})
+                if self._pinned_files:
+                    pinned_lines = ["[Pinned file contents — use for EDIT_FILE old_text:]"]
+                    pinned_tokens = 0
+                    for path, content in self._pinned_files:
+                        entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
+                        entry_tokens = self.tokenizer.count(entry)
+                        if pinned_tokens + entry_tokens > self._pinned_token_budget:
+                            break
+                        pinned_lines.append(entry)
+                        pinned_tokens += entry_tokens
+                    if len(pinned_lines) > 1:
+                        context.append({"role": "system", "content": "\n".join(pinned_lines)})
+                pinned_injected = True
+
+        if not pinned_injected:
+            if l0_scratchpad:
+                context.insert(0, {"role": "system", "content": l0_scratchpad})
+            if self._pinned_files:
                 pinned_lines = ["[Pinned file contents — use for EDIT_FILE old_text:]"]
                 pinned_tokens = 0
                 for path, content in self._pinned_files:
@@ -263,29 +285,29 @@ class TieredMemory:
                     pinned_lines.append(entry)
                     pinned_tokens += entry_tokens
                 if len(pinned_lines) > 1:
-                    context.append({"role": "system", "content": "\n".join(pinned_lines)})
-                pinned_injected = True
-
-        if not pinned_injected and self._pinned_files:
-            pinned_lines = ["[Pinned file contents — use for EDIT_FILE old_text:]"]
-            pinned_tokens = 0
-            for path, content in self._pinned_files:
-                entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
-                entry_tokens = self.tokenizer.count(entry)
-                if pinned_tokens + entry_tokens > self._pinned_token_budget:
-                    break
-                pinned_lines.append(entry)
-                pinned_tokens += entry_tokens
-            if len(pinned_lines) > 1:
-                context.insert(0, {"role": "system", "content": "\n".join(pinned_lines)})
+                    context.insert(0, {"role": "system", "content": "\n".join(pinned_lines)})
 
         return context
 
-    def format_l0_scratchpad(self) -> str:
+    def format_l0_scratchpad(self, project_root: Optional[str] = None) -> str:
         """Format current SessionState into a dynamic L0 working memory scratchpad for system context."""
         parts = ["[L0 WORKING MEMORY SCRATCHPAD]"]
         if self.state.current_task:
             parts.append(f"- Active Goal: {self.state.current_task}")
+        elif project_root:
+            import os, json
+            g_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
+            if os.path.exists(g_path):
+                try:
+                    with open(g_path, "r", encoding="utf-8") as f:
+                        gdata = json.load(f)
+                    parts.append(f"- Active Goal: {gdata.get('title', 'Autonomous Goal')}")
+                    pending = [t.get('id') for t in gdata.get("tasks", []) if t.get("status") in ("pending", "in_progress")]
+                    if pending:
+                        parts.append(f"- Pending Tasks: {', '.join(pending[:5])}")
+                except Exception:
+                    pass
+
         if self.state.active_file:
             parts.append(f"- Active File: {self.state.active_file}")
         if self.state.files_modified:
