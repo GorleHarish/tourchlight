@@ -563,12 +563,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     pass
 
         # Check for Aider-style Search/Replace blocks in diff, old_text, or raw inputs
+        diff_attempted = False
         for candidate in [diff_text, old_text, args.get("content", ""), args.get("raw", "")]:
-            if candidate:
+            if candidate and any(m in str(candidate) for m in ["<<<<<<<", "SEARCH", "=======", ">>>>>>>"]):
+                diff_attempted = True
                 s_parsed, r_parsed = _parse_diff_block(str(candidate))
                 if s_parsed is not None and r_parsed is not None:
                     old_text = s_parsed
                     new_text = r_parsed
+                    diff_attempted = False
                     break
 
         if not path:
@@ -620,13 +623,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             except ValueError:
                 pass
 
-        if not old_text:
-            diff_attempted = any(
-                marker in str(candidate)
-                for candidate in [diff_text, args.get("old_text", ""), args.get("content", ""), args.get("raw", "")]
-                for marker in ["<<<<<<<", "SEARCH", "=======", ">>>>>>>"]
-                if candidate
-            )
+        if not old_text or diff_attempted:
             if diff_attempted:
                 return (
                     "Edit failed: Malformed diff block syntax in 'diff'. Could not locate valid SEARCH block, '=======' divider, and '>>>>>>> REPLACE' footer.\n"
