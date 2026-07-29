@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785312309.845942,
-    "ast_hash": "b435b9363e3d076a62bf78f7a0b9f357",
+    "mtime": 1785312539.9775305,
+    "ast_hash": "8409d6d81f72e09309504aca1a5237c1",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785268075.928662,
-    "ast_hash": "1684a63647afc01f2ba431837013852e",
+    "mtime": 1785312522.8975546,
+    "ast_hash": "0e10e6cdf1658373bcf9ba6ea199c0b3",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {

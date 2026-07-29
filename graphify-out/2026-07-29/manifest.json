@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785304027.8465595,
-    "ast_hash": "ef439522d77ba36812d15de676ee24b1",
+    "mtime": 1785312309.845942,
+    "ast_hash": "b435b9363e3d076a62bf78f7a0b9f357",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -525,8 +525,8 @@
     "semantic_hash": "e67c18b62ba4922e6367840ed2043c18"
   },
   "core/tools/implementations.py": {
-    "mtime": 1785303413.7761893,
-    "ast_hash": "de13045c7a973f6cb319e3296f117eda",
+    "mtime": 1785312127.032773,
+    "ast_hash": "f4588a82280611a39abaed10956e7373",
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
@@ -690,23 +690,23 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785304000.6828568,
-    "ast_hash": "ba4f9667cccdd80d33df0d13cac67f21",
+    "mtime": 1785312289.5009184,
+    "ast_hash": "3d693db51d9bdf1807f74ac7c7c236c4",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785303985.408295,
-    "ast_hash": "691df2e366ed50b13eaa5c4a8bf54984",
+    "mtime": 1785312262.4827244,
+    "ast_hash": "7bcddcfe15531de4f85d465d965cf14d",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
-    "mtime": 1785265766.0589855,
-    "ast_hash": "884783bfe30e33191978c71d96a9be8b",
+    "mtime": 1785312269.6190875,
+    "ast_hash": "5ea597409a605bf6972bb6ef34230eb2",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1785304011.389406,
-    "ast_hash": "27a3aa9923c6f6bb46ba55d1aa753d8f",
+    "mtime": 1785312279.4407108,
+    "ast_hash": "b6cae4274d474bb30f36ebcf53714673",
     "semantic_hash": ""
   },
   "context-manager-cli/README.md": {
@@ -827,6 +827,11 @@
   "core/tests/test_code_quality_harness.py": {
     "mtime": 1785303427.8158393,
     "ast_hash": "1c8524d34c361cbf34b6aff4ff4eae68",
+    "semantic_hash": ""
+  },
+  "core/tests/test_enhanced_web_tools.py": {
+    "mtime": 1785312131.9667659,
+    "ast_hash": "0db0ecf54ccd185d91a600e122b6e052",
     "semantic_hash": ""
   }
 }

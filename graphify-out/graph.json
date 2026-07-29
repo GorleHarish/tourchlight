@@ -4,15 +4,59 @@
   "graph": {},
   "nodes": [
     {
+      "label": "system.py",
+      "file_type": "code",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "core_prompts_system",
+      "community": 1,
+      "community_name": "cli/main.py",
+      "norm_label": "system.py"
+    },
+    {
+      "label": "get_phase_system_prompt()",
+      "file_type": "code",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L69",
+      "_origin": "ast",
+      "id": "core_prompts_system_get_phase_system_prompt",
+      "community": 1,
+      "community_name": "cli/main.py",
+      "norm_label": "get_phase_system_prompt()"
+    },
+    {
+      "label": "Unified system prompts for Torchlight.  Single source of truth for all frontends",
+      "file_type": "rationale",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "core_prompts_system_rationale_1",
+      "community": 1,
+      "community_name": "cli/main.py",
+      "norm_label": "unified system prompts for torchlight.  single source of truth for all frontends"
+    },
+    {
+      "label": "Generate phase-tailored system prompt by appending phase instructions.",
+      "file_type": "rationale",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L70",
+      "_origin": "ast",
+      "id": "core_prompts_system_rationale_70",
+      "community": 1,
+      "community_name": "cli/main.py",
+      "norm_label": "generate phase-tailored system prompt by appending phase instructions."
+    },
+    {
       "label": "AGENTS.md",
       "file_type": "document",
       "source_file": "AGENTS.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "agents",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "agents.md"
+      "norm_label": "agents.md",
+      "id": "agents"
     },
     {
       "label": "Commands",
@@ -20,10 +64,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "agents_commands",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "commands"
+      "norm_label": "commands",
+      "id": "agents_commands"
     },
     {
       "label": "Architecture",
@@ -31,10 +75,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L10",
       "_origin": "ast",
-      "id": "agents_architecture",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "architecture"
+      "norm_label": "architecture",
+      "id": "agents_architecture"
     },
     {
       "label": "Module Structure",
@@ -42,10 +86,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L14",
       "_origin": "ast",
-      "id": "agents_module_structure",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "module structure"
+      "norm_label": "module structure",
+      "id": "agents_module_structure"
     },
     {
       "label": "Context Budget Breakdown",
@@ -53,10 +97,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L65",
       "_origin": "ast",
-      "id": "agents_context_budget_breakdown",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "context budget breakdown"
+      "norm_label": "context budget breakdown",
+      "id": "agents_context_budget_breakdown"
     },
     {
       "label": "1. 12k Context (TurboQuant Base \u2014 12,288 Tokens)",
@@ -64,10 +108,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L67",
       "_origin": "ast",
-      "id": "agents_1_12k_context_turboquant_base_12_288_tokens",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "1. 12k context (turboquant base \u2014 12,288 tokens)"
+      "norm_label": "1. 12k context (turboquant base \u2014 12,288 tokens)",
+      "id": "agents_1_12k_context_turboquant_base_12_288_tokens"
     },
     {
       "label": "2. 4k Model Fallback (4,096 Tokens)",
@@ -75,10 +119,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L75",
       "_origin": "ast",
-      "id": "agents_2_4k_model_fallback_4_096_tokens",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "2. 4k model fallback (4,096 tokens)"
+      "norm_label": "2. 4k model fallback (4,096 tokens)",
+      "id": "agents_2_4k_model_fallback_4_096_tokens"
     },
     {
       "label": "Agentic Loop",
@@ -86,10 +130,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L82",
       "_origin": "ast",
-      "id": "agents_agentic_loop",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "agentic loop"
+      "norm_label": "agentic loop",
+      "id": "agents_agentic_loop"
     },
     {
       "label": "Key Design Decisions",
@@ -97,10 +141,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L93",
       "_origin": "ast",
-      "id": "agents_key_design_decisions",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "key design decisions"
+      "norm_label": "key design decisions",
+      "id": "agents_key_design_decisions"
     },
     {
       "label": "Tool Risk Tiers",
@@ -108,10 +152,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L118",
       "_origin": "ast",
-      "id": "agents_tool_risk_tiers",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "tool risk tiers"
+      "norm_label": "tool risk tiers",
+      "id": "agents_tool_risk_tiers"
     },
     {
       "label": "Development",
@@ -119,10 +163,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L123",
       "_origin": "ast",
-      "id": "agents_development",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "development"
+      "norm_label": "development",
+      "id": "agents_development"
     },
     {
       "label": "Memory Files",
@@ -130,10 +174,10 @@
       "source_file": "AGENTS.md",
       "source_location": "L138",
       "_origin": "ast",
-      "id": "agents_memory_files",
       "community": 68,
       "community_name": "Architecture",
-      "norm_label": "memory files"
+      "norm_label": "memory files",
+      "id": "agents_memory_files"
     },
     {
       "label": "CHANGELOG.md",
@@ -141,10 +185,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "changelog",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "changelog.md"
+      "norm_label": "changelog.md",
+      "id": "changelog"
     },
     {
       "label": "Changelog",
@@ -152,10 +196,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "changelog_changelog",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "changelog"
+      "norm_label": "changelog",
+      "id": "changelog_changelog"
     },
     {
       "label": "[v1.9.0] - 2026-07-29",
@@ -163,10 +207,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L5",
       "_origin": "ast",
-      "id": "changelog_v1_9_0_2026_07_29",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "[v1.9.0] - 2026-07-29"
+      "norm_label": "[v1.9.0] - 2026-07-29",
+      "id": "changelog_v1_9_0_2026_07_29"
     },
     {
       "label": "Added & Improved",
@@ -174,10 +218,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L7",
       "_origin": "ast",
-      "id": "changelog_added_improved",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "added & improved"
+      "norm_label": "added & improved",
+      "id": "changelog_added_improved"
     },
     {
       "label": "[v1.8.0] - 2026-07-29",
@@ -185,10 +229,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L15",
       "_origin": "ast",
-      "id": "changelog_v1_8_0_2026_07_29",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "[v1.8.0] - 2026-07-29"
+      "norm_label": "[v1.8.0] - 2026-07-29",
+      "id": "changelog_v1_8_0_2026_07_29"
     },
     {
       "label": "Added & Improved",
@@ -196,10 +240,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L17",
       "_origin": "ast",
-      "id": "changelog_added_improved_17",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "added & improved"
+      "norm_label": "added & improved",
+      "id": "changelog_added_improved_17"
     },
     {
       "label": "[v1.7.0] - 2026-07-29",
@@ -207,10 +251,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L25",
       "_origin": "ast",
-      "id": "changelog_v1_7_0_2026_07_29",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "[v1.7.0] - 2026-07-29"
+      "norm_label": "[v1.7.0] - 2026-07-29",
+      "id": "changelog_v1_7_0_2026_07_29"
     },
     {
       "label": "Added",
@@ -218,10 +262,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L27",
       "_origin": "ast",
-      "id": "changelog_added",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "added"
+      "norm_label": "added",
+      "id": "changelog_added"
     },
     {
       "label": "Fixed & Improved",
@@ -229,10 +273,10 @@
       "source_file": "CHANGELOG.md",
       "source_location": "L35",
       "_origin": "ast",
-      "id": "changelog_fixed_improved",
       "community": 30,
       "community_name": "Changelog",
-      "norm_label": "fixed & improved"
+      "norm_label": "fixed & improved",
+      "id": "changelog_fixed_improved"
     },
     {
       "label": "LEARNINGS.md",
@@ -240,10 +284,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "learnings",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "learnings.md"
+      "norm_label": "learnings.md",
+      "id": "learnings"
     },
     {
       "label": "Architectural Learnings & Engineering Principles",
@@ -251,10 +295,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "learnings_architectural_learnings_engineering_principles",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "architectural learnings & engineering principles"
+      "norm_label": "architectural learnings & engineering principles",
+      "id": "learnings_architectural_learnings_engineering_principles"
     },
     {
       "label": "1. Context Engineering & Memory Architecture",
@@ -262,10 +306,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L7",
       "_origin": "ast",
-      "id": "learnings_1_context_engineering_memory_architecture",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "1. context engineering & memory architecture"
+      "norm_label": "1. context engineering & memory architecture",
+      "id": "learnings_1_context_engineering_memory_architecture"
     },
     {
       "label": "A. Context Overhead vs Available Headroom",
@@ -273,10 +317,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L9",
       "_origin": "ast",
-      "id": "learnings_a_context_overhead_vs_available_headroom",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "a. context overhead vs available headroom"
+      "norm_label": "a. context overhead vs available headroom",
+      "id": "learnings_a_context_overhead_vs_available_headroom"
     },
     {
       "label": "B. The L0 Working Memory Scratchpad",
@@ -284,10 +328,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L13",
       "_origin": "ast",
-      "id": "learnings_b_the_l0_working_memory_scratchpad",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "b. the l0 working memory scratchpad"
+      "norm_label": "b. the l0 working memory scratchpad",
+      "id": "learnings_b_the_l0_working_memory_scratchpad"
     },
     {
       "label": "C. Active File Pinning",
@@ -295,10 +339,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L17",
       "_origin": "ast",
-      "id": "learnings_c_active_file_pinning",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "c. active file pinning"
+      "norm_label": "c. active file pinning",
+      "id": "learnings_c_active_file_pinning"
     },
     {
       "label": "2. Prompt Engineering & Agent Steering",
@@ -306,10 +350,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L23",
       "_origin": "ast",
-      "id": "learnings_2_prompt_engineering_agent_steering",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "2. prompt engineering & agent steering"
+      "norm_label": "2. prompt engineering & agent steering",
+      "id": "learnings_2_prompt_engineering_agent_steering"
     },
     {
       "label": "A. Phase-Tailored Prompt Injection",
@@ -317,10 +361,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L25",
       "_origin": "ast",
-      "id": "learnings_a_phase_tailored_prompt_injection",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "a. phase-tailored prompt injection"
+      "norm_label": "a. phase-tailored prompt injection",
+      "id": "learnings_a_phase_tailored_prompt_injection"
     },
     {
       "label": "B. Anti-Symptom-Patching Directives",
@@ -328,10 +372,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L29",
       "_origin": "ast",
-      "id": "learnings_b_anti_symptom_patching_directives",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "b. anti-symptom-patching directives"
+      "norm_label": "b. anti-symptom-patching directives",
+      "id": "learnings_b_anti_symptom_patching_directives"
     },
     {
       "label": "C. Non-Verbose 3-Tier Output Discipline",
@@ -339,10 +383,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L33",
       "_origin": "ast",
-      "id": "learnings_c_non_verbose_3_tier_output_discipline",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "c. non-verbose 3-tier output discipline"
+      "norm_label": "c. non-verbose 3-tier output discipline",
+      "id": "learnings_c_non_verbose_3_tier_output_discipline"
     },
     {
       "label": "3. Autonomous Execution & Verification",
@@ -350,10 +394,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L39",
       "_origin": "ast",
-      "id": "learnings_3_autonomous_execution_verification",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "3. autonomous execution & verification"
+      "norm_label": "3. autonomous execution & verification",
+      "id": "learnings_3_autonomous_execution_verification"
     },
     {
       "label": "A. Surgical Traceback Extraction",
@@ -361,10 +405,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L41",
       "_origin": "ast",
-      "id": "learnings_a_surgical_traceback_extraction",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "a. surgical traceback extraction"
+      "norm_label": "a. surgical traceback extraction",
+      "id": "learnings_a_surgical_traceback_extraction"
     },
     {
       "label": "B. Test-Driven Local Reverts",
@@ -372,10 +416,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L45",
       "_origin": "ast",
-      "id": "learnings_b_test_driven_local_reverts",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "b. test-driven local reverts"
+      "norm_label": "b. test-driven local reverts",
+      "id": "learnings_b_test_driven_local_reverts"
     },
     {
       "label": "4. Web Browsing, Anti-Blocking & Documentation Engineering",
@@ -383,10 +427,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L51",
       "_origin": "ast",
-      "id": "learnings_4_web_browsing_anti_blocking_documentation_engineering",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "4. web browsing, anti-blocking & documentation engineering"
+      "norm_label": "4. web browsing, anti-blocking & documentation engineering",
+      "id": "learnings_4_web_browsing_anti_blocking_documentation_engineering"
     },
     {
       "label": "A. Structure-Preserving Content Extraction vs HTML Fluff",
@@ -394,10 +438,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L53",
       "_origin": "ast",
-      "id": "learnings_a_structure_preserving_content_extraction_vs_html_fluff",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "a. structure-preserving content extraction vs html fluff"
+      "norm_label": "a. structure-preserving content extraction vs html fluff",
+      "id": "learnings_a_structure_preserving_content_extraction_vs_html_fluff"
     },
     {
       "label": "B. Multi-Tier Anti-Blocking Escalation Ladder",
@@ -405,10 +449,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L57",
       "_origin": "ast",
-      "id": "learnings_b_multi_tier_anti_blocking_escalation_ladder",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "b. multi-tier anti-blocking escalation ladder"
+      "norm_label": "b. multi-tier anti-blocking escalation ladder",
+      "id": "learnings_b_multi_tier_anti_blocking_escalation_ladder"
     },
     {
       "label": "C. Version-Locked Documentation Queries",
@@ -416,10 +460,10 @@
       "source_file": "LEARNINGS.md",
       "source_location": "L61",
       "_origin": "ast",
-      "id": "learnings_c_version_locked_documentation_queries",
       "community": 28,
       "community_name": "Architectural Learnings & Engineering Principles",
-      "norm_label": "c. version-locked documentation queries"
+      "norm_label": "c. version-locked documentation queries",
+      "id": "learnings_c_version_locked_documentation_queries"
     },
     {
       "label": "README.md",
@@ -427,10 +471,10 @@
       "source_file": "README.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "readme",
       "community": 122,
       "community_name": "architecture.md",
-      "norm_label": "readme.md"
+      "norm_label": "readme.md",
+      "id": "readme"
     },
     {
       "label": "Torchlight \u2014 Terminal AI Coding Agent",
@@ -438,10 +482,10 @@
       "source_file": "README.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "readme_torchlight_terminal_ai_coding_agent",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "torchlight \u2014 terminal ai coding agent"
+      "norm_label": "torchlight \u2014 terminal ai coding agent",
+      "id": "readme_torchlight_terminal_ai_coding_agent"
     },
     {
       "label": "Quick Start",
@@ -449,10 +493,10 @@
       "source_file": "README.md",
       "source_location": "L9",
       "_origin": "ast",
-      "id": "readme_quick_start",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "quick start"
+      "norm_label": "quick start",
+      "id": "readme_quick_start"
     },
     {
       "label": "Architecture",
@@ -460,10 +504,10 @@
       "source_file": "README.md",
       "source_location": "L26",
       "_origin": "ast",
-      "id": "readme_architecture",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "architecture"
+      "norm_label": "architecture",
+      "id": "readme_architecture"
     },
     {
       "label": "Web Browsing & Stealth Anti-Blocking Architecture",
@@ -471,10 +515,10 @@
       "source_file": "README.md",
       "source_location": "L70",
       "_origin": "ast",
-      "id": "readme_web_browsing_stealth_anti_blocking_architecture",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "web browsing & stealth anti-blocking architecture"
+      "norm_label": "web browsing & stealth anti-blocking architecture",
+      "id": "readme_web_browsing_stealth_anti_blocking_architecture"
     },
     {
       "label": "Core Flow",
@@ -482,10 +526,10 @@
       "source_file": "README.md",
       "source_location": "L87",
       "_origin": "ast",
-      "id": "readme_core_flow",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "core flow"
+      "norm_label": "core flow",
+      "id": "readme_core_flow"
     },
     {
       "label": "Key Features",
@@ -493,10 +537,10 @@
       "source_file": "README.md",
       "source_location": "L100",
       "_origin": "ast",
-      "id": "readme_key_features",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "key features"
+      "norm_label": "key features",
+      "id": "readme_key_features"
     },
     {
       "label": "Module Structure",
@@ -504,10 +548,10 @@
       "source_file": "README.md",
       "source_location": "L121",
       "_origin": "ast",
-      "id": "readme_module_structure",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "module structure"
+      "norm_label": "module structure",
+      "id": "readme_module_structure"
     },
     {
       "label": "CLI Commands",
@@ -515,10 +559,10 @@
       "source_file": "README.md",
       "source_location": "L180",
       "_origin": "ast",
-      "id": "readme_cli_commands",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "cli commands"
+      "norm_label": "cli commands",
+      "id": "readme_cli_commands"
     },
     {
       "label": "Development",
@@ -526,10 +570,10 @@
       "source_file": "README.md",
       "source_location": "L198",
       "_origin": "ast",
-      "id": "readme_development",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "development"
+      "norm_label": "development",
+      "id": "readme_development"
     },
     {
       "label": "Memory Files",
@@ -537,10 +581,10 @@
       "source_file": "README.md",
       "source_location": "L223",
       "_origin": "ast",
-      "id": "readme_memory_files",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "memory files"
+      "norm_label": "memory files",
+      "id": "readme_memory_files"
     },
     {
       "label": "Error Handling",
@@ -548,10 +592,10 @@
       "source_file": "README.md",
       "source_location": "L232",
       "_origin": "ast",
-      "id": "readme_error_handling",
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
-      "norm_label": "error handling"
+      "norm_label": "error handling",
+      "id": "readme_error_handling"
     },
     {
       "label": "test_enhanced_web_tools.py",
@@ -559,10 +603,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "test_enhanced_web_tools.py"
+      "norm_label": "test_enhanced_web_tools.py",
+      "id": "core_tests_test_enhanced_web_tools"
     },
     {
       "label": "test_structure_preserving_html_parser()",
@@ -570,10 +614,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L16",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools_test_structure_preserving_html_parser",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "test_structure_preserving_html_parser()"
+      "norm_label": "test_structure_preserving_html_parser()",
+      "id": "core_tests_test_enhanced_web_tools_test_structure_preserving_html_parser"
     },
     {
       "label": "test_get_browser_headers()",
@@ -581,10 +625,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L41",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools_test_get_browser_headers",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "test_get_browser_headers()"
+      "norm_label": "test_get_browser_headers()",
+      "id": "core_tests_test_enhanced_web_tools_test_get_browser_headers"
     },
     {
       "label": "test_augment_query_with_project_deps_pyproject()",
@@ -592,10 +636,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L49",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_pyproject",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "test_augment_query_with_project_deps_pyproject()"
+      "norm_label": "test_augment_query_with_project_deps_pyproject()",
+      "id": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_pyproject"
     },
     {
       "label": "test_augment_query_with_project_deps_package_json()",
@@ -603,10 +647,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L60",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_package_json",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "test_augment_query_with_project_deps_package_json()"
+      "norm_label": "test_augment_query_with_project_deps_package_json()",
+      "id": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_package_json"
     },
     {
       "label": "test_tool_web_fetch_no_url()",
@@ -614,10 +658,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L71",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools_test_tool_web_fetch_no_url",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "test_tool_web_fetch_no_url()"
+      "norm_label": "test_tool_web_fetch_no_url()",
+      "id": "core_tests_test_enhanced_web_tools_test_tool_web_fetch_no_url"
     },
     {
       "label": "Tests for enhanced web tools and anti-blocking capabilities in core/tools/implem",
@@ -625,10 +669,10 @@
       "source_file": "core/tests/test_enhanced_web_tools.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tests_test_enhanced_web_tools_rationale_1",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "tests for enhanced web tools and anti-blocking capabilities in core/tools/implem"
+      "norm_label": "tests for enhanced web tools and anti-blocking capabilities in core/tools/implem",
+      "id": "core_tests_test_enhanced_web_tools_rationale_1"
     },
     {
       "label": "implementations.py",
@@ -636,10 +680,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tools_implementations",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "implementations.py"
+      "norm_label": "implementations.py",
+      "id": "core_tools_implementations"
     },
     {
       "label": "_extract_symbols()",
@@ -647,10 +691,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L55",
       "_origin": "ast",
-      "id": "core_tools_implementations_extract_symbols",
       "community": 49,
       "community_name": "tool_read_file",
-      "norm_label": "_extract_symbols()"
+      "norm_label": "_extract_symbols()",
+      "id": "core_tools_implementations_extract_symbols"
     },
     {
       "label": "_symbol_map()",
@@ -658,10 +702,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L71",
       "_origin": "ast",
-      "id": "core_tools_implementations_symbol_map",
       "community": 49,
       "community_name": "tool_read_file",
-      "norm_label": "_symbol_map()"
+      "norm_label": "_symbol_map()",
+      "id": "core_tools_implementations_symbol_map"
     },
     {
       "label": "_resolve_path()",
@@ -669,10 +713,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L83",
       "_origin": "ast",
-      "id": "core_tools_implementations_resolve_path",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "_resolve_path()"
+      "norm_label": "_resolve_path()",
+      "id": "core_tools_implementations_resolve_path"
     },
     {
       "label": "_truncate()",
@@ -680,10 +724,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L104",
       "_origin": "ast",
-      "id": "core_tools_implementations_truncate",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "_truncate()"
+      "norm_label": "_truncate()",
+      "id": "core_tools_implementations_truncate"
     },
     {
       "label": "_read_budget()",
@@ -691,10 +735,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L110",
       "_origin": "ast",
-      "id": "core_tools_implementations_read_budget",
       "community": 49,
       "community_name": "tool_read_file",
-      "norm_label": "_read_budget()"
+      "norm_label": "_read_budget()",
+      "id": "core_tools_implementations_read_budget"
     },
     {
       "label": "set_ctx_window()",
@@ -702,10 +746,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L125",
       "_origin": "ast",
-      "id": "core_tools_implementations_set_ctx_window",
       "community": 118,
       "community_name": "test_context_budget_overflow.py",
-      "norm_label": "set_ctx_window()"
+      "norm_label": "set_ctx_window()",
+      "id": "core_tools_implementations_set_ctx_window"
     },
     {
       "label": "_read_budget_for_ctx()",
@@ -713,10 +757,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L131",
       "_origin": "ast",
-      "id": "core_tools_implementations_read_budget_for_ctx",
       "community": 118,
       "community_name": "test_context_budget_overflow.py",
-      "norm_label": "_read_budget_for_ctx()"
+      "norm_label": "_read_budget_for_ctx()",
+      "id": "core_tools_implementations_read_budget_for_ctx"
     },
     {
       "label": "_detect_doc_source()",
@@ -724,10 +768,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L166",
       "_origin": "ast",
-      "id": "core_tools_implementations_detect_doc_source",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "_detect_doc_source()"
+      "norm_label": "_detect_doc_source()",
+      "id": "core_tools_implementations_detect_doc_source"
     },
     {
       "label": "_ddg_search()",
@@ -735,10 +779,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L179",
       "_origin": "ast",
-      "id": "core_tools_implementations_ddg_search",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "_ddg_search()"
+      "norm_label": "_ddg_search()",
+      "id": "core_tools_implementations_ddg_search"
     },
     {
       "label": "StructurePreservingHTMLParser",
@@ -746,10 +790,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L209",
       "_origin": "ast",
-      "id": "core_tools_implementations_structurepreservinghtmlparser",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "structurepreservinghtmlparser"
+      "norm_label": "structurepreservinghtmlparser",
+      "id": "core_tools_implementations_structurepreservinghtmlparser"
     },
     {
       "label": "HTMLParser",
@@ -757,10 +801,10 @@
       "source_file": "",
       "source_location": "",
       "_origin": "ast",
-      "id": "htmlparser",
       "community": 14,
       "community_name": "WebOutcomeInspector",
-      "norm_label": "htmlparser"
+      "norm_label": "htmlparser",
+      "id": "htmlparser"
     },
     {
       "label": ".__init__()",
@@ -768,10 +812,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L214",
       "_origin": "ast",
-      "id": "core_tools_implementations_structurepreservinghtmlparser_init",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": ".__init__()"
+      "norm_label": ".__init__()",
+      "id": "core_tools_implementations_structurepreservinghtmlparser_init"
     },
     {
       "label": ".handle_starttag()",
@@ -779,10 +823,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L222",
       "_origin": "ast",
-      "id": "core_tools_implementations_structurepreservinghtmlparser_handle_starttag",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": ".handle_starttag()"
+      "norm_label": ".handle_starttag()",
+      "id": "core_tools_implementations_structurepreservinghtmlparser_handle_starttag"
     },
     {
       "label": ".handle_endtag()",
@@ -790,10 +834,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L238",
       "_origin": "ast",
-      "id": "core_tools_implementations_structurepreservinghtmlparser_handle_endtag",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": ".handle_endtag()"
+      "norm_label": ".handle_endtag()",
+      "id": "core_tools_implementations_structurepreservinghtmlparser_handle_endtag"
     },
     {
       "label": ".handle_data()",
@@ -801,10 +845,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L249",
       "_origin": "ast",
-      "id": "core_tools_implementations_structurepreservinghtmlparser_handle_data",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": ".handle_data()"
+      "norm_label": ".handle_data()",
+      "id": "core_tools_implementations_structurepreservinghtmlparser_handle_data"
     },
     {
       "label": ".get_markdown()",
@@ -812,10 +856,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L259",
       "_origin": "ast",
-      "id": "core_tools_implementations_structurepreservinghtmlparser_get_markdown",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": ".get_markdown()"
+      "norm_label": ".get_markdown()",
+      "id": "core_tools_implementations_structurepreservinghtmlparser_get_markdown"
     },
     {
       "label": "_get_browser_headers()",
@@ -823,10 +867,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L264",
       "_origin": "ast",
-      "id": "core_tools_implementations_get_browser_headers",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "_get_browser_headers()"
+      "norm_label": "_get_browser_headers()",
+      "id": "core_tools_implementations_get_browser_headers"
     },
     {
       "label": "_fetch_remote_playwright()",
@@ -834,10 +878,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L285",
       "_origin": "ast",
-      "id": "core_tools_implementations_fetch_remote_playwright",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "_fetch_remote_playwright()"
+      "norm_label": "_fetch_remote_playwright()",
+      "id": "core_tools_implementations_fetch_remote_playwright"
     },
     {
       "label": "_augment_query_with_project_deps()",
@@ -845,10 +889,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L314",
       "_origin": "ast",
-      "id": "core_tools_implementations_augment_query_with_project_deps",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "_augment_query_with_project_deps()"
+      "norm_label": "_augment_query_with_project_deps()",
+      "id": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "label": "_extract_identifiers()",
@@ -856,10 +900,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L352",
       "_origin": "ast",
-      "id": "core_tools_implementations_extract_identifiers",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "_extract_identifiers()"
+      "norm_label": "_extract_identifiers()",
+      "id": "core_tools_implementations_extract_identifiers"
     },
     {
       "label": "tool_read_file_impl()",
@@ -867,10 +911,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L372",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_read_file_impl",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "tool_read_file_impl()"
+      "norm_label": "tool_read_file_impl()",
+      "id": "core_tools_implementations_tool_read_file_impl"
     },
     {
       "label": "_normalize_whitespace()",
@@ -878,10 +922,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L519",
       "_origin": "ast",
-      "id": "core_tools_implementations_normalize_whitespace",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "_normalize_whitespace()"
+      "norm_label": "_normalize_whitespace()",
+      "id": "core_tools_implementations_normalize_whitespace"
     },
     {
       "label": "_detect_stubs()",
@@ -889,10 +933,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L535",
       "_origin": "ast",
-      "id": "core_tools_implementations_detect_stubs",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "_detect_stubs()"
+      "norm_label": "_detect_stubs()",
+      "id": "core_tools_implementations_detect_stubs"
     },
     {
       "label": "_format_code_on_save()",
@@ -900,10 +944,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L564",
       "_origin": "ast",
-      "id": "core_tools_implementations_format_code_on_save",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "_format_code_on_save()"
+      "norm_label": "_format_code_on_save()",
+      "id": "core_tools_implementations_format_code_on_save"
     },
     {
       "label": "_check_syntax()",
@@ -911,10 +955,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L640",
       "_origin": "ast",
-      "id": "core_tools_implementations_check_syntax",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "_check_syntax()"
+      "norm_label": "_check_syntax()",
+      "id": "core_tools_implementations_check_syntax"
     },
     {
       "label": "tool_write_file_impl()",
@@ -922,10 +966,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L694",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_write_file_impl",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "tool_write_file_impl()"
+      "norm_label": "tool_write_file_impl()",
+      "id": "core_tools_implementations_tool_write_file_impl"
     },
     {
       "label": "_parse_diff_block()",
@@ -933,10 +977,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L745",
       "_origin": "ast",
-      "id": "core_tools_implementations_parse_diff_block",
       "community": 57,
       "community_name": "tool_edit_file_impl",
-      "norm_label": "_parse_diff_block()"
+      "norm_label": "_parse_diff_block()",
+      "id": "core_tools_implementations_parse_diff_block"
     },
     {
       "label": "_get_symbol_bounds_ast()",
@@ -944,10 +988,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L814",
       "_origin": "ast",
-      "id": "core_tools_implementations_get_symbol_bounds_ast",
       "community": 57,
       "community_name": "tool_edit_file_impl",
-      "norm_label": "_get_symbol_bounds_ast()"
+      "norm_label": "_get_symbol_bounds_ast()",
+      "id": "core_tools_implementations_get_symbol_bounds_ast"
     },
     {
       "label": "tool_edit_file_impl()",
@@ -955,10 +999,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L831",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_edit_file_impl",
       "community": 57,
       "community_name": "tool_edit_file_impl",
-      "norm_label": "tool_edit_file_impl()"
+      "norm_label": "tool_edit_file_impl()",
+      "id": "core_tools_implementations_tool_edit_file_impl"
     },
     {
       "label": "tool_read_symbols_impl()",
@@ -966,10 +1010,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1181",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_read_symbols_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_read_symbols_impl()"
+      "norm_label": "tool_read_symbols_impl()",
+      "id": "core_tools_implementations_tool_read_symbols_impl"
     },
     {
       "label": "tool_list_dir_impl()",
@@ -977,10 +1021,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1226",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_list_dir_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_list_dir_impl()"
+      "norm_label": "tool_list_dir_impl()",
+      "id": "core_tools_implementations_tool_list_dir_impl"
     },
     {
       "label": "tool_grep_impl()",
@@ -988,10 +1032,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1259",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_grep_impl",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "tool_grep_impl()"
+      "norm_label": "tool_grep_impl()",
+      "id": "core_tools_implementations_tool_grep_impl"
     },
     {
       "label": "_grep_rg()",
@@ -999,10 +1043,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1285",
       "_origin": "ast",
-      "id": "core_tools_implementations_grep_rg",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "_grep_rg()"
+      "norm_label": "_grep_rg()",
+      "id": "core_tools_implementations_grep_rg"
     },
     {
       "label": "_grep_python()",
@@ -1010,10 +1054,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1349",
       "_origin": "ast",
-      "id": "core_tools_implementations_grep_python",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "_grep_python()"
+      "norm_label": "_grep_python()",
+      "id": "core_tools_implementations_grep_python"
     },
     {
       "label": "tool_run_command_impl()",
@@ -1021,10 +1065,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1412",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_run_command_impl",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "tool_run_command_impl()"
+      "norm_label": "tool_run_command_impl()",
+      "id": "core_tools_implementations_tool_run_command_impl"
     },
     {
       "label": "tool_web_search_impl()",
@@ -1032,10 +1076,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1439",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_web_search_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_web_search_impl()"
+      "norm_label": "tool_web_search_impl()",
+      "id": "core_tools_implementations_tool_web_search_impl"
     },
     {
       "label": "tool_web_fetch_impl()",
@@ -1043,10 +1087,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1464",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_web_fetch_impl",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "tool_web_fetch_impl()"
+      "norm_label": "tool_web_fetch_impl()",
+      "id": "core_tools_implementations_tool_web_fetch_impl"
     },
     {
       "label": "tool_doc_search_impl()",
@@ -1054,10 +1098,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1504",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_doc_search_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_doc_search_impl()"
+      "norm_label": "tool_doc_search_impl()",
+      "id": "core_tools_implementations_tool_doc_search_impl"
     },
     {
       "label": "tool_web_verify_impl()",
@@ -1065,10 +1109,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1540",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_web_verify_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_web_verify_impl()"
+      "norm_label": "tool_web_verify_impl()",
+      "id": "core_tools_implementations_tool_web_verify_impl"
     },
     {
       "label": "tool_save_memory_impl()",
@@ -1076,10 +1120,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1584",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_save_memory_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_save_memory_impl()"
+      "norm_label": "tool_save_memory_impl()",
+      "id": "core_tools_implementations_tool_save_memory_impl"
     },
     {
       "label": "tool_format_code_impl()",
@@ -1087,10 +1131,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1617",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_format_code_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_format_code_impl()"
+      "norm_label": "tool_format_code_impl()",
+      "id": "core_tools_implementations_tool_format_code_impl"
     },
     {
       "label": "tool_verify_impl()",
@@ -1098,10 +1142,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1630",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_verify_impl",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "tool_verify_impl()"
+      "norm_label": "tool_verify_impl()",
+      "id": "core_tools_implementations_tool_verify_impl"
     },
     {
       "label": "tool_ask_user_impl()",
@@ -1109,10 +1153,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1650",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_ask_user_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_ask_user_impl()"
+      "norm_label": "tool_ask_user_impl()",
+      "id": "core_tools_implementations_tool_ask_user_impl"
     },
     {
       "label": "_git_run()",
@@ -1120,10 +1164,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1666",
       "_origin": "ast",
-      "id": "core_tools_implementations_git_run",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "_git_run()"
+      "norm_label": "_git_run()",
+      "id": "core_tools_implementations_git_run"
     },
     {
       "label": "tool_git_impl()",
@@ -1131,10 +1175,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1685",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_git_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_git_impl()"
+      "norm_label": "tool_git_impl()",
+      "id": "core_tools_implementations_tool_git_impl"
     },
     {
       "label": "tool_search_ast_impl()",
@@ -1142,10 +1186,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1807",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_search_ast_impl",
       "community": 34,
       "community_name": "validate_tool_call",
-      "norm_label": "tool_search_ast_impl()"
+      "norm_label": "tool_search_ast_impl()",
+      "id": "core_tools_implementations_tool_search_ast_impl"
     },
     {
       "label": "tool_inspect_web_impl()",
@@ -1153,10 +1197,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1846",
       "_origin": "ast",
-      "id": "core_tools_implementations_tool_inspect_web_impl",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "tool_inspect_web_impl()"
+      "norm_label": "tool_inspect_web_impl()",
+      "id": "core_tools_implementations_tool_inspect_web_impl"
     },
     {
       "label": "Unified tool implementations for Torchlight.  All tool functions follow the sign",
@@ -1164,10 +1208,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "unified tool implementations for torchlight.  all tool functions follow the sign"
+      "norm_label": "unified tool implementations for torchlight.  all tool functions follow the sign",
+      "id": "core_tools_implementations_rationale_1"
     },
     {
       "label": "Return [(lineno_1based, kind, name), ...] sorted by line number.",
@@ -1175,10 +1219,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L56",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_56",
       "community": 49,
       "community_name": "tool_read_file",
-      "norm_label": "return [(lineno_1based, kind, name), ...] sorted by line number."
+      "norm_label": "return [(lineno_1based, kind, name), ...] sorted by line number.",
+      "id": "core_tools_implementations_rationale_56"
     },
     {
       "label": "Compact symbol map prepended to READ_FILE output.",
@@ -1186,10 +1230,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L72",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_72",
       "community": 49,
       "community_name": "tool_read_file",
-      "norm_label": "compact symbol map prepended to read_file output."
+      "norm_label": "compact symbol map prepended to read_file output.",
+      "id": "core_tools_implementations_rationale_72"
     },
     {
       "label": "Resolve a path relative to project root, handling ~ and absolute paths.",
@@ -1197,10 +1241,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L84",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_84",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "resolve a path relative to project root, handling ~ and absolute paths."
+      "norm_label": "resolve a path relative to project root, handling ~ and absolute paths.",
+      "id": "core_tools_implementations_rationale_84"
     },
     {
       "label": "Return (MAX_LINES, MAX_CHARS) based on available context window.",
@@ -1208,10 +1252,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L111",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_111",
       "community": 49,
       "community_name": "tool_read_file",
-      "norm_label": "return (max_lines, max_chars) based on available context window."
+      "norm_label": "return (max_lines, max_chars) based on available context window.",
+      "id": "core_tools_implementations_rationale_111"
     },
     {
       "label": "Tell the tool layer what context window the current model has.",
@@ -1219,10 +1263,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L126",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_126",
       "community": 118,
       "community_name": "test_context_budget_overflow.py",
-      "norm_label": "tell the tool layer what context window the current model has."
+      "norm_label": "tell the tool layer what context window the current model has.",
+      "id": "core_tools_implementations_rationale_126"
     },
     {
       "label": "Return (MAX_LINES, MAX_CHARS) for the current context window.",
@@ -1230,10 +1274,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L132",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_132",
       "community": 118,
       "community_name": "test_context_budget_overflow.py",
-      "norm_label": "return (max_lines, max_chars) for the current context window."
+      "norm_label": "return (max_lines, max_chars) for the current context window.",
+      "id": "core_tools_implementations_rationale_132"
     },
     {
       "label": "DuckDuckGo HTML search fallback.",
@@ -1241,10 +1285,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L180",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_180",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "duckduckgo html search fallback."
+      "norm_label": "duckduckgo html search fallback.",
+      "id": "core_tools_implementations_rationale_180"
     },
     {
       "label": "HTML Parser that preserves structure (<pre>, <code>, <table>, headings)     whil",
@@ -1252,10 +1296,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L210",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_210",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "html parser that preserves structure (<pre>, <code>, <table>, headings)     whil"
+      "norm_label": "html parser that preserves structure (<pre>, <code>, <table>, headings)     whil",
+      "id": "core_tools_implementations_rationale_210"
     },
     {
       "label": "Returns realistic browser headers for stealth HTTP fetching.",
@@ -1263,10 +1307,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L265",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_265",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "returns realistic browser headers for stealth http fetching."
+      "norm_label": "returns realistic browser headers for stealth http fetching.",
+      "id": "core_tools_implementations_rationale_265"
     },
     {
       "label": "Fallback fetch via Playwright headless browser for Cloudflare / JS SPAs / 403 bl",
@@ -1274,10 +1318,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L286",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_286",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "fallback fetch via playwright headless browser for cloudflare / js spas / 403 bl"
+      "norm_label": "fallback fetch via playwright headless browser for cloudflare / js spas / 403 bl",
+      "id": "core_tools_implementations_rationale_286"
     },
     {
       "label": "Inspects project dependencies (pyproject.toml, package.json, Cargo.toml) to lock",
@@ -1285,10 +1329,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L315",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_315",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "inspects project dependencies (pyproject.toml, package.json, cargo.toml) to lock"
+      "norm_label": "inspects project dependencies (pyproject.toml, package.json, cargo.toml) to lock",
+      "id": "core_tools_implementations_rationale_315"
     },
     {
       "label": "READ_FILE \u2014 read a file with optional line-range or symbol syntax.",
@@ -1296,10 +1340,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L373",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_373",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "read_file \u2014 read a file with optional line-range or symbol syntax."
+      "norm_label": "read_file \u2014 read a file with optional line-range or symbol syntax.",
+      "id": "core_tools_implementations_rationale_373"
     },
     {
       "label": "Normalize mixed tabs to spaces (except Makefiles/TSV/Go), remove trailing line s",
@@ -1307,10 +1351,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L520",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_520",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "normalize mixed tabs to spaces (except makefiles/tsv/go), remove trailing line s"
+      "norm_label": "normalize mixed tabs to spaces (except makefiles/tsv/go), remove trailing line s",
+      "id": "core_tools_implementations_rationale_520"
     },
     {
       "label": "Scan content for suspicious lazy LLM stub/placeholder patterns.",
@@ -1318,10 +1362,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L536",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_536",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "scan content for suspicious lazy llm stub/placeholder patterns."
+      "norm_label": "scan content for suspicious lazy llm stub/placeholder patterns.",
+      "id": "core_tools_implementations_rationale_536"
     },
     {
       "label": "Format code deterministically post-save using local tools (ruff, black, prettier",
@@ -1329,10 +1373,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L565",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_565",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "format code deterministically post-save using local tools (ruff, black, prettier"
+      "norm_label": "format code deterministically post-save using local tools (ruff, black, prettier",
+      "id": "core_tools_implementations_rationale_565"
     },
     {
       "label": "Perform fast inline syntax validation for edited/written files across Python, JS",
@@ -1340,10 +1384,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L641",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_641",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "perform fast inline syntax validation for edited/written files across python, js"
+      "norm_label": "perform fast inline syntax validation for edited/written files across python, js",
+      "id": "core_tools_implementations_rationale_641"
     },
     {
       "label": "WRITE_FILE \u2014 create or overwrite a file.",
@@ -1351,10 +1395,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L695",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_695",
       "community": 70,
       "community_name": "test_code_quality_harness.py",
-      "norm_label": "write_file \u2014 create or overwrite a file."
+      "norm_label": "write_file \u2014 create or overwrite a file.",
+      "id": "core_tools_implementations_rationale_695"
     },
     {
       "label": "Parse Aider-style <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block into (old",
@@ -1362,10 +1406,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L746",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_746",
       "community": 57,
       "community_name": "tool_edit_file_impl",
-      "norm_label": "parse aider-style <<<<<<< search ... ======= ... >>>>>>> replace block into (old"
+      "norm_label": "parse aider-style <<<<<<< search ... ======= ... >>>>>>> replace block into (old",
+      "id": "core_tools_implementations_rationale_746"
     },
     {
       "label": "Helper to locate exact start and end line bounds for an AST symbol in Python sou",
@@ -1373,10 +1417,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L815",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_815",
       "community": 57,
       "community_name": "tool_edit_file_impl",
-      "norm_label": "helper to locate exact start and end line bounds for an ast symbol in python sou"
+      "norm_label": "helper to locate exact start and end line bounds for an ast symbol in python sou",
+      "id": "core_tools_implementations_rationale_815"
     },
     {
       "label": "EDIT_FILE \u2014 surgically replace a block of text in a file with multi-tiered resil",
@@ -1384,10 +1428,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L832",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_832",
       "community": 57,
       "community_name": "tool_edit_file_impl",
-      "norm_label": "edit_file \u2014 surgically replace a block of text in a file with multi-tiered resil"
+      "norm_label": "edit_file \u2014 surgically replace a block of text in a file with multi-tiered resil",
+      "id": "core_tools_implementations_rationale_832"
     },
     {
       "label": "READ_SYMBOLS \u2014 show file structure without loading content.",
@@ -1395,10 +1439,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1182",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1182",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "read_symbols \u2014 show file structure without loading content."
+      "norm_label": "read_symbols \u2014 show file structure without loading content.",
+      "id": "core_tools_implementations_rationale_1182"
     },
     {
       "label": "LIST_DIR \u2014 list directory contents.",
@@ -1406,10 +1450,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1227",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1227",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "list_dir \u2014 list directory contents."
+      "norm_label": "list_dir \u2014 list directory contents.",
+      "id": "core_tools_implementations_rationale_1227"
     },
     {
       "label": "GREP \u2014 search for a pattern in files using ripgrep (rg) with Python fallback.",
@@ -1417,10 +1461,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1260",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1260",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "grep \u2014 search for a pattern in files using ripgrep (rg) with python fallback."
+      "norm_label": "grep \u2014 search for a pattern in files using ripgrep (rg) with python fallback.",
+      "id": "core_tools_implementations_rationale_1260"
     },
     {
       "label": "Search using ripgrep for maximum speed and accuracy.",
@@ -1428,10 +1472,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1286",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1286",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "search using ripgrep for maximum speed and accuracy."
+      "norm_label": "search using ripgrep for maximum speed and accuracy.",
+      "id": "core_tools_implementations_rationale_1286"
     },
     {
       "label": "Pure Python grep fallback when ripgrep is not available.",
@@ -1439,10 +1483,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1350",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1350",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "pure python grep fallback when ripgrep is not available."
+      "norm_label": "pure python grep fallback when ripgrep is not available.",
+      "id": "core_tools_implementations_rationale_1350"
     },
     {
       "label": "RUN_COMMAND \u2014 execute a shell command.",
@@ -1450,10 +1494,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1413",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1413",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "run_command \u2014 execute a shell command."
+      "norm_label": "run_command \u2014 execute a shell command.",
+      "id": "core_tools_implementations_rationale_1413"
     },
     {
       "label": "WEB_SEARCH \u2014 general web search.",
@@ -1461,10 +1505,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1440",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1440",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "web_search \u2014 general web search."
+      "norm_label": "web_search \u2014 general web search.",
+      "id": "core_tools_implementations_rationale_1440"
     },
     {
       "label": "WEB_FETCH \u2014 fetch and return readable content of a URL.",
@@ -1472,10 +1516,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1465",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1465",
       "community": 11,
       "community_name": "test_enhanced_web_tools.py",
-      "norm_label": "web_fetch \u2014 fetch and return readable content of a url."
+      "norm_label": "web_fetch \u2014 fetch and return readable content of a url.",
+      "id": "core_tools_implementations_rationale_1465"
     },
     {
       "label": "DOC_SEARCH \u2014 search official documentation.",
@@ -1483,10 +1527,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1505",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1505",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "doc_search \u2014 search official documentation."
+      "norm_label": "doc_search \u2014 search official documentation.",
+      "id": "core_tools_implementations_rationale_1505"
     },
     {
       "label": "WEB_VERIFY \u2014 verify code snippet API calls against documentation.",
@@ -1494,10 +1538,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1541",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1541",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "web_verify \u2014 verify code snippet api calls against documentation."
+      "norm_label": "web_verify \u2014 verify code snippet api calls against documentation.",
+      "id": "core_tools_implementations_rationale_1541"
     },
     {
       "label": "SAVE_MEMORY \u2014 save a fact to project memory.",
@@ -1505,10 +1549,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1585",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1585",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "save_memory \u2014 save a fact to project memory."
+      "norm_label": "save_memory \u2014 save a fact to project memory.",
+      "id": "core_tools_implementations_rationale_1585"
     },
     {
       "label": "FORMAT_CODE \u2014 beautify a code snippet.",
@@ -1516,10 +1560,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1618",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1618",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "format_code \u2014 beautify a code snippet."
+      "norm_label": "format_code \u2014 beautify a code snippet.",
+      "id": "core_tools_implementations_rationale_1618"
     },
     {
       "label": "VERIFY \u2014 verify a file exists and optionally contains expected content.",
@@ -1527,10 +1571,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1631",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1631",
       "community": 13,
       "community_name": "test_implementations.py",
-      "norm_label": "verify \u2014 verify a file exists and optionally contains expected content."
+      "norm_label": "verify \u2014 verify a file exists and optionally contains expected content.",
+      "id": "core_tools_implementations_rationale_1631"
     },
     {
       "label": "ASK_USER \u2014 ask the user a question.",
@@ -1538,10 +1582,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1651",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1651",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "ask_user \u2014 ask the user a question."
+      "norm_label": "ask_user \u2014 ask the user a question.",
+      "id": "core_tools_implementations_rationale_1651"
     },
     {
       "label": "Run a git command and return (success, output).",
@@ -1549,10 +1593,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1667",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1667",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "run a git command and return (success, output)."
+      "norm_label": "run a git command and return (success, output).",
+      "id": "core_tools_implementations_rationale_1667"
     },
     {
       "label": "GIT \u2014 execute git operations with safety classification.      Supported subcomma",
@@ -1560,10 +1604,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1686",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1686",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "git \u2014 execute git operations with safety classification.      supported subcomma"
+      "norm_label": "git \u2014 execute git operations with safety classification.      supported subcomma",
+      "id": "core_tools_implementations_rationale_1686"
     },
     {
       "label": "Query AST Knowledge Graph (search, path, subgraph, structure, update, summary).",
@@ -1571,10 +1615,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1808",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1808",
       "community": 34,
       "community_name": "validate_tool_call",
-      "norm_label": "query ast knowledge graph (search, path, subgraph, structure, update, summary)."
+      "norm_label": "query ast knowledge graph (search, path, subgraph, structure, update, summary).",
+      "id": "core_tools_implementations_rationale_1808"
     },
     {
       "label": "Inspect runtime outcome of HTML/JS/CSS web pages or Canvas games.",
@@ -1582,10 +1626,10 @@
       "source_file": "core/tools/implementations.py",
       "source_location": "L1847",
       "_origin": "ast",
-      "id": "core_tools_implementations_rationale_1847",
       "community": 0,
       "community_name": "implementations.py",
-      "norm_label": "inspect runtime outcome of html/js/css web pages or canvas games."
+      "norm_label": "inspect runtime outcome of html/js/css web pages or canvas games.",
+      "id": "core_tools_implementations_rationale_1847"
     },
     {
       "label": "test_code_quality_harness.py",
@@ -4028,50 +4072,6 @@
       "community_name": "TieredMemory",
       "norm_label": "predict likely next tools based on current state.",
       "id": "core_memory_manager_rationale_336"
-    },
-    {
-      "label": "system.py",
-      "file_type": "code",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "cli/main.py",
-      "norm_label": "system.py",
-      "id": "core_prompts_system"
-    },
-    {
-      "label": "get_phase_system_prompt()",
-      "file_type": "code",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L67",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "cli/main.py",
-      "norm_label": "get_phase_system_prompt()",
-      "id": "core_prompts_system_get_phase_system_prompt"
-    },
-    {
-      "label": "Unified system prompts for Torchlight.  Single source of truth for all frontends",
-      "file_type": "rationale",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "cli/main.py",
-      "norm_label": "unified system prompts for torchlight.  single source of truth for all frontends",
-      "id": "core_prompts_system_rationale_1"
-    },
-    {
-      "label": "Generate phase-tailored system prompt by appending phase instructions.",
-      "file_type": "rationale",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L68",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "cli/main.py",
-      "norm_label": "generate phase-tailored system prompt by appending phase instructions.",
-      "id": "core_prompts_system_rationale_68"
     },
     {
       "label": "rlm_engine_optimized.py",
@@ -26849,15 +26849,120 @@
   ],
   "links": [
     {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "context_manager_cli_src_context_manager_cli_main",
+      "target": "core_prompts_system"
+    },
+    {
+      "relation": "re_exports",
+      "context": "export",
+      "confidence": "EXTRACTED",
+      "source_file": "core/prompts/__init__.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "core_prompts_init",
+      "target": "core_prompts_system"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L69",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "core_prompts_system",
+      "target": "core_prompts_system_get_phase_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "core_prompts_system_rationale_1",
+      "target": "core_prompts_system",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "core/tests/test_prompts_and_memory.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "core_tests_test_prompts_and_memory",
+      "target": "core_prompts_system"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "context_manager_cli_src_context_manager_cli_main",
+      "target": "core_prompts_system_get_phase_system_prompt"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "core/prompts/system.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "core_prompts_system_rationale_70",
+      "target": "core_prompts_system_get_phase_system_prompt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "core/tests/test_prompts_and_memory.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "core_tests_test_prompts_and_memory",
+      "target": "core_prompts_system_get_phase_system_prompt"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "core/tests/test_prompts_and_memory.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "confidence_score": 1.0,
+      "source": "core_tests_test_prompts_and_memory_test_phase_system_prompt_generation",
+      "target": "core_prompts_system_get_phase_system_prompt"
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "AGENTS.md",
       "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents",
-      "target": "agents_architecture",
-      "confidence_score": 1.0
+      "target": "agents_architecture"
     },
     {
       "relation": "contains",
@@ -26866,9 +26971,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents",
-      "target": "agents_commands",
-      "confidence_score": 1.0
+      "target": "agents_commands"
     },
     {
       "relation": "contains",
@@ -26877,9 +26982,9 @@
       "source_location": "L123",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents",
-      "target": "agents_development",
-      "confidence_score": 1.0
+      "target": "agents_development"
     },
     {
       "relation": "contains",
@@ -26888,9 +26993,9 @@
       "source_location": "L138",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents",
-      "target": "agents_memory_files",
-      "confidence_score": 1.0
+      "target": "agents_memory_files"
     },
     {
       "relation": "contains",
@@ -26899,9 +27004,9 @@
       "source_location": "L82",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_architecture",
-      "target": "agents_agentic_loop",
-      "confidence_score": 1.0
+      "target": "agents_agentic_loop"
     },
     {
       "relation": "contains",
@@ -26910,9 +27015,9 @@
       "source_location": "L65",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_architecture",
-      "target": "agents_context_budget_breakdown",
-      "confidence_score": 1.0
+      "target": "agents_context_budget_breakdown"
     },
     {
       "relation": "contains",
@@ -26921,9 +27026,9 @@
       "source_location": "L93",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_architecture",
-      "target": "agents_key_design_decisions",
-      "confidence_score": 1.0
+      "target": "agents_key_design_decisions"
     },
     {
       "relation": "contains",
@@ -26932,9 +27037,9 @@
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_architecture",
-      "target": "agents_module_structure",
-      "confidence_score": 1.0
+      "target": "agents_module_structure"
     },
     {
       "relation": "contains",
@@ -26943,9 +27048,9 @@
       "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_architecture",
-      "target": "agents_tool_risk_tiers",
-      "confidence_score": 1.0
+      "target": "agents_tool_risk_tiers"
     },
     {
       "relation": "contains",
@@ -26954,9 +27059,9 @@
       "source_location": "L67",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_context_budget_breakdown",
-      "target": "agents_1_12k_context_turboquant_base_12_288_tokens",
-      "confidence_score": 1.0
+      "target": "agents_1_12k_context_turboquant_base_12_288_tokens"
     },
     {
       "relation": "contains",
@@ -26965,9 +27070,9 @@
       "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "agents_context_budget_breakdown",
-      "target": "agents_2_4k_model_fallback_4_096_tokens",
-      "confidence_score": 1.0
+      "target": "agents_2_4k_model_fallback_4_096_tokens"
     },
     {
       "relation": "contains",
@@ -26976,9 +27081,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog",
-      "target": "changelog_changelog",
-      "confidence_score": 1.0
+      "target": "changelog_changelog"
     },
     {
       "relation": "contains",
@@ -26987,9 +27092,9 @@
       "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_changelog",
-      "target": "changelog_v1_7_0_2026_07_29",
-      "confidence_score": 1.0
+      "target": "changelog_v1_7_0_2026_07_29"
     },
     {
       "relation": "contains",
@@ -26998,9 +27103,9 @@
       "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_changelog",
-      "target": "changelog_v1_8_0_2026_07_29",
-      "confidence_score": 1.0
+      "target": "changelog_v1_8_0_2026_07_29"
     },
     {
       "relation": "contains",
@@ -27009,9 +27114,9 @@
       "source_location": "L5",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_changelog",
-      "target": "changelog_v1_9_0_2026_07_29",
-      "confidence_score": 1.0
+      "target": "changelog_v1_9_0_2026_07_29"
     },
     {
       "relation": "contains",
@@ -27020,9 +27125,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_v1_9_0_2026_07_29",
-      "target": "changelog_added_improved",
-      "confidence_score": 1.0
+      "target": "changelog_added_improved"
     },
     {
       "relation": "contains",
@@ -27031,9 +27136,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_v1_8_0_2026_07_29",
-      "target": "changelog_added_improved_17",
-      "confidence_score": 1.0
+      "target": "changelog_added_improved_17"
     },
     {
       "relation": "contains",
@@ -27042,9 +27147,9 @@
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_v1_7_0_2026_07_29",
-      "target": "changelog_added",
-      "confidence_score": 1.0
+      "target": "changelog_added"
     },
     {
       "relation": "contains",
@@ -27053,9 +27158,9 @@
       "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "changelog_v1_7_0_2026_07_29",
-      "target": "changelog_fixed_improved",
-      "confidence_score": 1.0
+      "target": "changelog_fixed_improved"
     },
     {
       "relation": "contains",
@@ -27064,9 +27169,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings",
-      "target": "learnings_architectural_learnings_engineering_principles",
-      "confidence_score": 1.0
+      "target": "learnings_architectural_learnings_engineering_principles"
     },
     {
       "relation": "contains",
@@ -27075,9 +27180,9 @@
       "source_location": "L7",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_architectural_learnings_engineering_principles",
-      "target": "learnings_1_context_engineering_memory_architecture",
-      "confidence_score": 1.0
+      "target": "learnings_1_context_engineering_memory_architecture"
     },
     {
       "relation": "contains",
@@ -27086,9 +27191,9 @@
       "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_architectural_learnings_engineering_principles",
-      "target": "learnings_2_prompt_engineering_agent_steering",
-      "confidence_score": 1.0
+      "target": "learnings_2_prompt_engineering_agent_steering"
     },
     {
       "relation": "contains",
@@ -27097,9 +27202,9 @@
       "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_architectural_learnings_engineering_principles",
-      "target": "learnings_3_autonomous_execution_verification",
-      "confidence_score": 1.0
+      "target": "learnings_3_autonomous_execution_verification"
     },
     {
       "relation": "contains",
@@ -27108,9 +27213,9 @@
       "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_architectural_learnings_engineering_principles",
-      "target": "learnings_4_web_browsing_anti_blocking_documentation_engineering",
-      "confidence_score": 1.0
+      "target": "learnings_4_web_browsing_anti_blocking_documentation_engineering"
     },
     {
       "relation": "contains",
@@ -27119,9 +27224,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_1_context_engineering_memory_architecture",
-      "target": "learnings_a_context_overhead_vs_available_headroom",
-      "confidence_score": 1.0
+      "target": "learnings_a_context_overhead_vs_available_headroom"
     },
     {
       "relation": "contains",
@@ -27130,9 +27235,9 @@
       "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_1_context_engineering_memory_architecture",
-      "target": "learnings_b_the_l0_working_memory_scratchpad",
-      "confidence_score": 1.0
+      "target": "learnings_b_the_l0_working_memory_scratchpad"
     },
     {
       "relation": "contains",
@@ -27141,9 +27246,9 @@
       "source_location": "L17",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_1_context_engineering_memory_architecture",
-      "target": "learnings_c_active_file_pinning",
-      "confidence_score": 1.0
+      "target": "learnings_c_active_file_pinning"
     },
     {
       "relation": "contains",
@@ -27152,9 +27257,9 @@
       "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_2_prompt_engineering_agent_steering",
-      "target": "learnings_a_phase_tailored_prompt_injection",
-      "confidence_score": 1.0
+      "target": "learnings_a_phase_tailored_prompt_injection"
     },
     {
       "relation": "contains",
@@ -27163,9 +27268,9 @@
       "source_location": "L29",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_2_prompt_engineering_agent_steering",
-      "target": "learnings_b_anti_symptom_patching_directives",
-      "confidence_score": 1.0
+      "target": "learnings_b_anti_symptom_patching_directives"
     },
     {
       "relation": "contains",
@@ -27174,9 +27279,9 @@
       "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_2_prompt_engineering_agent_steering",
-      "target": "learnings_c_non_verbose_3_tier_output_discipline",
-      "confidence_score": 1.0
+      "target": "learnings_c_non_verbose_3_tier_output_discipline"
     },
     {
       "relation": "contains",
@@ -27185,9 +27290,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_3_autonomous_execution_verification",
-      "target": "learnings_a_surgical_traceback_extraction",
-      "confidence_score": 1.0
+      "target": "learnings_a_surgical_traceback_extraction"
     },
     {
       "relation": "contains",
@@ -27196,9 +27301,9 @@
       "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_3_autonomous_execution_verification",
-      "target": "learnings_b_test_driven_local_reverts",
-      "confidence_score": 1.0
+      "target": "learnings_b_test_driven_local_reverts"
     },
     {
       "relation": "contains",
@@ -27207,9 +27312,9 @@
       "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_4_web_browsing_anti_blocking_documentation_engineering",
-      "target": "learnings_a_structure_preserving_content_extraction_vs_html_fluff",
-      "confidence_score": 1.0
+      "target": "learnings_a_structure_preserving_content_extraction_vs_html_fluff"
     },
     {
       "relation": "contains",
@@ -27218,9 +27323,9 @@
       "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_4_web_browsing_anti_blocking_documentation_engineering",
-      "target": "learnings_b_multi_tier_anti_blocking_escalation_ladder",
-      "confidence_score": 1.0
+      "target": "learnings_b_multi_tier_anti_blocking_escalation_ladder"
     },
     {
       "relation": "contains",
@@ -27229,9 +27334,9 @@
       "source_location": "L61",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "learnings_4_web_browsing_anti_blocking_documentation_engineering",
-      "target": "learnings_c_version_locked_documentation_queries",
-      "confidence_score": 1.0
+      "target": "learnings_c_version_locked_documentation_queries"
     },
     {
       "relation": "references",
@@ -27262,9 +27367,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme",
-      "target": "readme_torchlight_terminal_ai_coding_agent",
-      "confidence_score": 1.0
+      "target": "readme_torchlight_terminal_ai_coding_agent"
     },
     {
       "relation": "contains",
@@ -27273,9 +27378,9 @@
       "source_location": "L26",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_architecture",
-      "confidence_score": 1.0
+      "target": "readme_architecture"
     },
     {
       "relation": "contains",
@@ -27284,9 +27389,9 @@
       "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_cli_commands",
-      "confidence_score": 1.0
+      "target": "readme_cli_commands"
     },
     {
       "relation": "contains",
@@ -27295,9 +27400,9 @@
       "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_core_flow",
-      "confidence_score": 1.0
+      "target": "readme_core_flow"
     },
     {
       "relation": "contains",
@@ -27306,9 +27411,9 @@
       "source_location": "L198",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_development",
-      "confidence_score": 1.0
+      "target": "readme_development"
     },
     {
       "relation": "contains",
@@ -27317,9 +27422,9 @@
       "source_location": "L232",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_error_handling",
-      "confidence_score": 1.0
+      "target": "readme_error_handling"
     },
     {
       "relation": "contains",
@@ -27328,9 +27433,9 @@
       "source_location": "L100",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_key_features",
-      "confidence_score": 1.0
+      "target": "readme_key_features"
     },
     {
       "relation": "contains",
@@ -27339,9 +27444,9 @@
       "source_location": "L223",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_memory_files",
-      "confidence_score": 1.0
+      "target": "readme_memory_files"
     },
     {
       "relation": "contains",
@@ -27350,9 +27455,9 @@
       "source_location": "L121",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_module_structure",
-      "confidence_score": 1.0
+      "target": "readme_module_structure"
     },
     {
       "relation": "contains",
@@ -27361,9 +27466,9 @@
       "source_location": "L9",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_torchlight_terminal_ai_coding_agent",
-      "target": "readme_quick_start",
-      "confidence_score": 1.0
+      "target": "readme_quick_start"
     },
     {
       "relation": "contains",
@@ -27372,9 +27477,9 @@
       "source_location": "L70",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "readme_architecture",
-      "target": "readme_web_browsing_stealth_anti_blocking_architecture",
-      "confidence_score": 1.0
+      "target": "readme_web_browsing_stealth_anti_blocking_architecture"
     },
     {
       "relation": "contains",
@@ -27383,9 +27488,9 @@
       "source_location": "L60",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_package_json",
-      "confidence_score": 1.0
+      "target": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_package_json"
     },
     {
       "relation": "contains",
@@ -27394,9 +27499,9 @@
       "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_pyproject",
-      "confidence_score": 1.0
+      "target": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_pyproject"
     },
     {
       "relation": "contains",
@@ -27405,9 +27510,9 @@
       "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tests_test_enhanced_web_tools_test_get_browser_headers",
-      "confidence_score": 1.0
+      "target": "core_tests_test_enhanced_web_tools_test_get_browser_headers"
     },
     {
       "relation": "contains",
@@ -27416,9 +27521,9 @@
       "source_location": "L16",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tests_test_enhanced_web_tools_test_structure_preserving_html_parser",
-      "confidence_score": 1.0
+      "target": "core_tests_test_enhanced_web_tools_test_structure_preserving_html_parser"
     },
     {
       "relation": "contains",
@@ -27427,9 +27532,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tests_test_enhanced_web_tools_test_tool_web_fetch_no_url",
-      "confidence_score": 1.0
+      "target": "core_tests_test_enhanced_web_tools_test_tool_web_fetch_no_url"
     },
     {
       "relation": "imports_from",
@@ -27439,9 +27544,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tools_implementations",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations"
     },
     {
       "relation": "imports",
@@ -27451,9 +27556,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tools_implementations_augment_query_with_project_deps",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "relation": "imports",
@@ -27463,9 +27568,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tools_implementations_get_browser_headers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_browser_headers"
     },
     {
       "relation": "imports",
@@ -27475,9 +27580,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tools_implementations_structurepreservinghtmlparser",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser"
     },
     {
       "relation": "imports",
@@ -27487,9 +27592,9 @@
       "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools",
-      "target": "core_tools_implementations_tool_web_fetch_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_fetch_impl"
     },
     {
       "relation": "rationale_for",
@@ -27498,9 +27603,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools_rationale_1",
-      "target": "core_tests_test_enhanced_web_tools",
-      "confidence_score": 1.0
+      "target": "core_tests_test_enhanced_web_tools"
     },
     {
       "relation": "calls",
@@ -27510,9 +27615,9 @@
       "source_location": "L30",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools_test_structure_preserving_html_parser",
-      "target": "core_tools_implementations_structurepreservinghtmlparser",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser"
     },
     {
       "relation": "calls",
@@ -27522,9 +27627,9 @@
       "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools_test_get_browser_headers",
-      "target": "core_tools_implementations_get_browser_headers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_browser_headers"
     },
     {
       "relation": "calls",
@@ -27534,9 +27639,9 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_pyproject",
-      "target": "core_tools_implementations_augment_query_with_project_deps",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "relation": "calls",
@@ -27546,9 +27651,9 @@
       "source_location": "L67",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools_test_augment_query_with_project_deps_package_json",
-      "target": "core_tools_implementations_augment_query_with_project_deps",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "relation": "calls",
@@ -27558,9 +27663,9 @@
       "source_location": "L72",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tests_test_enhanced_web_tools_test_tool_web_fetch_no_url",
-      "target": "core_tools_implementations_tool_web_fetch_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_fetch_impl"
     },
     {
       "relation": "imports_from",
@@ -27689,9 +27794,9 @@
       "source_location": "L314",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_augment_query_with_project_deps",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "relation": "contains",
@@ -27700,9 +27805,9 @@
       "source_location": "L640",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_check_syntax",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_check_syntax"
     },
     {
       "relation": "contains",
@@ -27711,9 +27816,9 @@
       "source_location": "L179",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_ddg_search",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_ddg_search"
     },
     {
       "relation": "contains",
@@ -27722,9 +27827,9 @@
       "source_location": "L166",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_detect_doc_source",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_doc_source"
     },
     {
       "relation": "contains",
@@ -27733,9 +27838,9 @@
       "source_location": "L535",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_detect_stubs",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_stubs"
     },
     {
       "relation": "contains",
@@ -27744,9 +27849,9 @@
       "source_location": "L352",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_extract_identifiers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_identifiers"
     },
     {
       "relation": "contains",
@@ -27755,9 +27860,9 @@
       "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_extract_symbols",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_symbols"
     },
     {
       "relation": "contains",
@@ -27766,9 +27871,9 @@
       "source_location": "L285",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_fetch_remote_playwright",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_fetch_remote_playwright"
     },
     {
       "relation": "contains",
@@ -27777,9 +27882,9 @@
       "source_location": "L564",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_format_code_on_save",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_format_code_on_save"
     },
     {
       "relation": "contains",
@@ -27788,9 +27893,9 @@
       "source_location": "L264",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_get_browser_headers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_browser_headers"
     },
     {
       "relation": "contains",
@@ -27799,9 +27904,9 @@
       "source_location": "L814",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_get_symbol_bounds_ast",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_symbol_bounds_ast"
     },
     {
       "relation": "contains",
@@ -27810,9 +27915,9 @@
       "source_location": "L1666",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_git_run",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_git_run"
     },
     {
       "relation": "contains",
@@ -27821,9 +27926,9 @@
       "source_location": "L1349",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_grep_python",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_python"
     },
     {
       "relation": "contains",
@@ -27832,9 +27937,9 @@
       "source_location": "L1285",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_grep_rg",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_rg"
     },
     {
       "relation": "contains",
@@ -27843,9 +27948,9 @@
       "source_location": "L519",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_normalize_whitespace",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_normalize_whitespace"
     },
     {
       "relation": "contains",
@@ -27854,9 +27959,9 @@
       "source_location": "L745",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_parse_diff_block",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_parse_diff_block"
     },
     {
       "relation": "contains",
@@ -27865,9 +27970,9 @@
       "source_location": "L110",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_read_budget",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_read_budget"
     },
     {
       "relation": "contains",
@@ -27876,9 +27981,9 @@
       "source_location": "L131",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_read_budget_for_ctx",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_read_budget_for_ctx"
     },
     {
       "relation": "contains",
@@ -27887,9 +27992,9 @@
       "source_location": "L83",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_resolve_path",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_resolve_path"
     },
     {
       "relation": "contains",
@@ -27898,9 +28003,9 @@
       "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_set_ctx_window",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_set_ctx_window"
     },
     {
       "relation": "contains",
@@ -27909,9 +28014,9 @@
       "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_structurepreservinghtmlparser",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser"
     },
     {
       "relation": "contains",
@@ -27920,9 +28025,9 @@
       "source_location": "L71",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_symbol_map",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_symbol_map"
     },
     {
       "relation": "contains",
@@ -27931,9 +28036,9 @@
       "source_location": "L1650",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_ask_user_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_ask_user_impl"
     },
     {
       "relation": "contains",
@@ -27942,9 +28047,9 @@
       "source_location": "L1504",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_doc_search_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_doc_search_impl"
     },
     {
       "relation": "contains",
@@ -27953,9 +28058,9 @@
       "source_location": "L831",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_edit_file_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_edit_file_impl"
     },
     {
       "relation": "contains",
@@ -27964,9 +28069,9 @@
       "source_location": "L1617",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_format_code_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_format_code_impl"
     },
     {
       "relation": "contains",
@@ -27975,9 +28080,9 @@
       "source_location": "L1685",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_git_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_git_impl"
     },
     {
       "relation": "contains",
@@ -27986,9 +28091,9 @@
       "source_location": "L1259",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_grep_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_grep_impl"
     },
     {
       "relation": "contains",
@@ -27997,9 +28102,9 @@
       "source_location": "L1846",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_inspect_web_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_inspect_web_impl"
     },
     {
       "relation": "contains",
@@ -28008,9 +28113,9 @@
       "source_location": "L1226",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_list_dir_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_list_dir_impl"
     },
     {
       "relation": "contains",
@@ -28019,9 +28124,9 @@
       "source_location": "L372",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_read_file_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_read_file_impl"
     },
     {
       "relation": "contains",
@@ -28030,9 +28135,9 @@
       "source_location": "L1181",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_read_symbols_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_read_symbols_impl"
     },
     {
       "relation": "contains",
@@ -28041,9 +28146,9 @@
       "source_location": "L1412",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_run_command_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_run_command_impl"
     },
     {
       "relation": "contains",
@@ -28052,9 +28157,9 @@
       "source_location": "L1584",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_save_memory_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_save_memory_impl"
     },
     {
       "relation": "contains",
@@ -28063,9 +28168,9 @@
       "source_location": "L1807",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_search_ast_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_search_ast_impl"
     },
     {
       "relation": "contains",
@@ -28074,9 +28179,9 @@
       "source_location": "L1630",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_verify_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_verify_impl"
     },
     {
       "relation": "contains",
@@ -28085,9 +28190,9 @@
       "source_location": "L1464",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_web_fetch_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_fetch_impl"
     },
     {
       "relation": "contains",
@@ -28096,9 +28201,9 @@
       "source_location": "L1439",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_web_search_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_search_impl"
     },
     {
       "relation": "contains",
@@ -28107,9 +28212,9 @@
       "source_location": "L1540",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_web_verify_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_verify_impl"
     },
     {
       "relation": "contains",
@@ -28118,9 +28223,9 @@
       "source_location": "L694",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_tool_write_file_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_write_file_impl"
     },
     {
       "relation": "contains",
@@ -28129,9 +28234,9 @@
       "source_location": "L104",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations",
-      "target": "core_tools_implementations_truncate",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_truncate"
     },
     {
       "relation": "rationale_for",
@@ -28140,9 +28245,9 @@
       "source_location": "L1",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1",
-      "target": "core_tools_implementations",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations"
     },
     {
       "relation": "imports",
@@ -28199,9 +28304,9 @@
       "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_56",
-      "target": "core_tools_implementations_extract_symbols",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_symbols"
     },
     {
       "relation": "calls",
@@ -28211,9 +28316,9 @@
       "source_location": "L73",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_symbol_map",
-      "target": "core_tools_implementations_extract_symbols",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_symbols"
     },
     {
       "relation": "calls",
@@ -28223,9 +28328,9 @@
       "source_location": "L470",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_read_file_impl",
-      "target": "core_tools_implementations_extract_symbols",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_symbols"
     },
     {
       "relation": "calls",
@@ -28235,9 +28340,9 @@
       "source_location": "L1212",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_read_symbols_impl",
-      "target": "core_tools_implementations_extract_symbols",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_symbols"
     },
     {
       "relation": "imports",
@@ -28270,9 +28375,9 @@
       "source_location": "L72",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_72",
-      "target": "core_tools_implementations_symbol_map",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_symbol_map"
     },
     {
       "relation": "calls",
@@ -28282,9 +28387,9 @@
       "source_location": "L479",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_read_file_impl",
-      "target": "core_tools_implementations_symbol_map",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_symbol_map"
     },
     {
       "relation": "rationale_for",
@@ -28293,9 +28398,9 @@
       "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_84",
-      "target": "core_tools_implementations_resolve_path",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_resolve_path"
     },
     {
       "relation": "calls",
@@ -28305,9 +28410,9 @@
       "source_location": "L1229",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_list_dir_impl",
-      "target": "core_tools_implementations_resolve_path",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_resolve_path"
     },
     {
       "relation": "calls",
@@ -28317,9 +28422,9 @@
       "source_location": "L1252",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_list_dir_impl",
-      "target": "core_tools_implementations_truncate",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_truncate"
     },
     {
       "relation": "imports",
@@ -28352,9 +28457,9 @@
       "source_location": "L111",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_111",
-      "target": "core_tools_implementations_read_budget",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_read_budget"
     },
     {
       "relation": "imports",
@@ -28399,9 +28504,9 @@
       "source_location": "L126",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_126",
-      "target": "core_tools_implementations_set_ctx_window",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_set_ctx_window"
     },
     {
       "relation": "imports",
@@ -28446,9 +28551,9 @@
       "source_location": "L132",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_132",
-      "target": "core_tools_implementations_read_budget_for_ctx",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_read_budget_for_ctx"
     },
     {
       "relation": "calls",
@@ -28458,9 +28563,9 @@
       "source_location": "L466",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_read_file_impl",
-      "target": "core_tools_implementations_read_budget_for_ctx",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_read_budget_for_ctx"
     },
     {
       "relation": "calls",
@@ -28470,9 +28575,9 @@
       "source_location": "L1509",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_doc_search_impl",
-      "target": "core_tools_implementations_detect_doc_source",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_doc_source"
     },
     {
       "relation": "calls",
@@ -28482,9 +28587,9 @@
       "source_location": "L1555",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_verify_impl",
-      "target": "core_tools_implementations_detect_doc_source",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_doc_source"
     },
     {
       "relation": "rationale_for",
@@ -28493,9 +28598,9 @@
       "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_180",
-      "target": "core_tools_implementations_ddg_search",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_ddg_search"
     },
     {
       "relation": "calls",
@@ -28505,9 +28610,9 @@
       "source_location": "L1516",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_doc_search_impl",
-      "target": "core_tools_implementations_ddg_search",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_ddg_search"
     },
     {
       "relation": "calls",
@@ -28517,9 +28622,9 @@
       "source_location": "L1456",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_search_impl",
-      "target": "core_tools_implementations_ddg_search",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_ddg_search"
     },
     {
       "relation": "calls",
@@ -28529,9 +28634,9 @@
       "source_location": "L1563",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_verify_impl",
-      "target": "core_tools_implementations_ddg_search",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_ddg_search"
     },
     {
       "relation": "rationale_for",
@@ -28540,9 +28645,9 @@
       "source_location": "L210",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_210",
-      "target": "core_tools_implementations_structurepreservinghtmlparser",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser"
     },
     {
       "relation": "method",
@@ -28551,9 +28656,9 @@
       "source_location": "L259",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_structurepreservinghtmlparser",
-      "target": "core_tools_implementations_structurepreservinghtmlparser_get_markdown",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser_get_markdown"
     },
     {
       "relation": "method",
@@ -28562,9 +28667,9 @@
       "source_location": "L249",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_structurepreservinghtmlparser",
-      "target": "core_tools_implementations_structurepreservinghtmlparser_handle_data",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser_handle_data"
     },
     {
       "relation": "method",
@@ -28573,9 +28678,9 @@
       "source_location": "L238",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_structurepreservinghtmlparser",
-      "target": "core_tools_implementations_structurepreservinghtmlparser_handle_endtag",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser_handle_endtag"
     },
     {
       "relation": "method",
@@ -28584,9 +28689,9 @@
       "source_location": "L222",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_structurepreservinghtmlparser",
-      "target": "core_tools_implementations_structurepreservinghtmlparser_handle_starttag",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser_handle_starttag"
     },
     {
       "relation": "method",
@@ -28595,9 +28700,9 @@
       "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_structurepreservinghtmlparser",
-      "target": "core_tools_implementations_structurepreservinghtmlparser_init",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser_init"
     },
     {
       "relation": "inherits",
@@ -28606,9 +28711,9 @@
       "source_location": "L209",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_structurepreservinghtmlparser",
-      "target": "htmlparser",
-      "confidence_score": 1.0
+      "target": "htmlparser"
     },
     {
       "relation": "calls",
@@ -28618,9 +28723,9 @@
       "source_location": "L1488",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_fetch_impl",
-      "target": "core_tools_implementations_structurepreservinghtmlparser",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser"
     },
     {
       "relation": "inherits",
@@ -28641,9 +28746,9 @@
       "source_location": "L1490",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_fetch_impl",
-      "target": "core_tools_implementations_structurepreservinghtmlparser_get_markdown",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_structurepreservinghtmlparser_get_markdown"
     },
     {
       "relation": "rationale_for",
@@ -28652,9 +28757,9 @@
       "source_location": "L265",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_265",
-      "target": "core_tools_implementations_get_browser_headers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_browser_headers"
     },
     {
       "relation": "calls",
@@ -28664,9 +28769,9 @@
       "source_location": "L1485",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_fetch_impl",
-      "target": "core_tools_implementations_get_browser_headers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_browser_headers"
     },
     {
       "relation": "rationale_for",
@@ -28675,9 +28780,9 @@
       "source_location": "L286",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_286",
-      "target": "core_tools_implementations_fetch_remote_playwright",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_fetch_remote_playwright"
     },
     {
       "relation": "calls",
@@ -28687,9 +28792,9 @@
       "source_location": "L1497",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_fetch_impl",
-      "target": "core_tools_implementations_fetch_remote_playwright",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_fetch_remote_playwright"
     },
     {
       "relation": "rationale_for",
@@ -28698,9 +28803,9 @@
       "source_location": "L315",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_315",
-      "target": "core_tools_implementations_augment_query_with_project_deps",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "relation": "calls",
@@ -28710,9 +28815,9 @@
       "source_location": "L1508",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_doc_search_impl",
-      "target": "core_tools_implementations_augment_query_with_project_deps",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_augment_query_with_project_deps"
     },
     {
       "relation": "calls",
@@ -28722,9 +28827,9 @@
       "source_location": "L1544",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_web_verify_impl",
-      "target": "core_tools_implementations_extract_identifiers",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_extract_identifiers"
     },
     {
       "relation": "imports",
@@ -28793,9 +28898,9 @@
       "source_location": "L373",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_373",
-      "target": "core_tools_implementations_tool_read_file_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_read_file_impl"
     },
     {
       "relation": "imports",
@@ -28865,9 +28970,9 @@
       "source_location": "L637",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_format_code_on_save",
-      "target": "core_tools_implementations_normalize_whitespace",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_normalize_whitespace"
     },
     {
       "relation": "rationale_for",
@@ -28876,9 +28981,9 @@
       "source_location": "L520",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_520",
-      "target": "core_tools_implementations_normalize_whitespace",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_normalize_whitespace"
     },
     {
       "relation": "imports",
@@ -28911,9 +29016,9 @@
       "source_location": "L536",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_536",
-      "target": "core_tools_implementations_detect_stubs",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_stubs"
     },
     {
       "relation": "calls",
@@ -28923,9 +29028,9 @@
       "source_location": "L909",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_edit_file_impl",
-      "target": "core_tools_implementations_detect_stubs",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_stubs"
     },
     {
       "relation": "calls",
@@ -28935,9 +29040,9 @@
       "source_location": "L738",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_write_file_impl",
-      "target": "core_tools_implementations_detect_stubs",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_detect_stubs"
     },
     {
       "relation": "imports",
@@ -28970,9 +29075,9 @@
       "source_location": "L565",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_565",
-      "target": "core_tools_implementations_format_code_on_save",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_format_code_on_save"
     },
     {
       "relation": "calls",
@@ -28982,9 +29087,9 @@
       "source_location": "L903",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_edit_file_impl",
-      "target": "core_tools_implementations_format_code_on_save",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_format_code_on_save"
     },
     {
       "relation": "calls",
@@ -28994,9 +29099,9 @@
       "source_location": "L731",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_write_file_impl",
-      "target": "core_tools_implementations_format_code_on_save",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_format_code_on_save"
     },
     {
       "relation": "imports",
@@ -29077,9 +29182,9 @@
       "source_location": "L641",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_641",
-      "target": "core_tools_implementations_check_syntax",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_check_syntax"
     },
     {
       "relation": "calls",
@@ -29089,9 +29194,9 @@
       "source_location": "L908",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_edit_file_impl",
-      "target": "core_tools_implementations_check_syntax",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_check_syntax"
     },
     {
       "relation": "calls",
@@ -29101,9 +29206,9 @@
       "source_location": "L737",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_write_file_impl",
-      "target": "core_tools_implementations_check_syntax",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_check_syntax"
     },
     {
       "relation": "imports",
@@ -29208,9 +29313,9 @@
       "source_location": "L695",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_695",
-      "target": "core_tools_implementations_tool_write_file_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_write_file_impl"
     },
     {
       "relation": "imports",
@@ -29291,9 +29396,9 @@
       "source_location": "L746",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_746",
-      "target": "core_tools_implementations_parse_diff_block",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_parse_diff_block"
     },
     {
       "relation": "calls",
@@ -29303,9 +29408,9 @@
       "source_location": "L876",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_edit_file_impl",
-      "target": "core_tools_implementations_parse_diff_block",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_parse_diff_block"
     },
     {
       "relation": "rationale_for",
@@ -29314,9 +29419,9 @@
       "source_location": "L815",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_815",
-      "target": "core_tools_implementations_get_symbol_bounds_ast",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_symbol_bounds_ast"
     },
     {
       "relation": "calls",
@@ -29326,9 +29431,9 @@
       "source_location": "L895",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_edit_file_impl",
-      "target": "core_tools_implementations_get_symbol_bounds_ast",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_get_symbol_bounds_ast"
     },
     {
       "relation": "imports",
@@ -29529,9 +29634,9 @@
       "source_location": "L832",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_832",
-      "target": "core_tools_implementations_tool_edit_file_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_edit_file_impl"
     },
     {
       "relation": "imports",
@@ -29588,9 +29693,9 @@
       "source_location": "L1182",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1182",
-      "target": "core_tools_implementations_tool_read_symbols_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_read_symbols_impl"
     },
     {
       "relation": "imports",
@@ -29647,9 +29752,9 @@
       "source_location": "L1227",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1227",
-      "target": "core_tools_implementations_tool_list_dir_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_list_dir_impl"
     },
     {
       "relation": "imports",
@@ -29742,9 +29847,9 @@
       "source_location": "L1260",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1260",
-      "target": "core_tools_implementations_tool_grep_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_grep_impl"
     },
     {
       "relation": "calls",
@@ -29754,9 +29859,9 @@
       "source_location": "L1280",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_grep_impl",
-      "target": "core_tools_implementations_grep_python",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_python"
     },
     {
       "relation": "calls",
@@ -29766,9 +29871,9 @@
       "source_location": "L1277",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_grep_impl",
-      "target": "core_tools_implementations_grep_rg",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_rg"
     },
     {
       "relation": "imports",
@@ -29802,9 +29907,9 @@
       "source_location": "L1346",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_grep_rg",
-      "target": "core_tools_implementations_grep_python",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_python"
     },
     {
       "relation": "rationale_for",
@@ -29813,9 +29918,9 @@
       "source_location": "L1286",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1286",
-      "target": "core_tools_implementations_grep_rg",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_rg"
     },
     {
       "relation": "rationale_for",
@@ -29824,9 +29929,9 @@
       "source_location": "L1350",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1350",
-      "target": "core_tools_implementations_grep_python",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_grep_python"
     },
     {
       "relation": "imports",
@@ -29883,9 +29988,9 @@
       "source_location": "L1413",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1413",
-      "target": "core_tools_implementations_tool_run_command_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_run_command_impl"
     },
     {
       "relation": "imports",
@@ -29918,9 +30023,9 @@
       "source_location": "L1440",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1440",
-      "target": "core_tools_implementations_tool_web_search_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_search_impl"
     },
     {
       "relation": "imports",
@@ -29953,9 +30058,9 @@
       "source_location": "L1465",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1465",
-      "target": "core_tools_implementations_tool_web_fetch_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_fetch_impl"
     },
     {
       "relation": "imports",
@@ -29988,9 +30093,9 @@
       "source_location": "L1505",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1505",
-      "target": "core_tools_implementations_tool_doc_search_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_doc_search_impl"
     },
     {
       "relation": "imports",
@@ -30023,9 +30128,9 @@
       "source_location": "L1541",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1541",
-      "target": "core_tools_implementations_tool_web_verify_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_web_verify_impl"
     },
     {
       "relation": "imports",
@@ -30058,9 +30163,9 @@
       "source_location": "L1585",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1585",
-      "target": "core_tools_implementations_tool_save_memory_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_save_memory_impl"
     },
     {
       "relation": "imports",
@@ -30093,9 +30198,9 @@
       "source_location": "L1618",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1618",
-      "target": "core_tools_implementations_tool_format_code_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_format_code_impl"
     },
     {
       "relation": "imports",
@@ -30176,9 +30281,9 @@
       "source_location": "L1631",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1631",
-      "target": "core_tools_implementations_tool_verify_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_verify_impl"
     },
     {
       "relation": "imports",
@@ -30211,9 +30316,9 @@
       "source_location": "L1651",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1651",
-      "target": "core_tools_implementations_tool_ask_user_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_ask_user_impl"
     },
     {
       "relation": "imports",
@@ -30246,9 +30351,9 @@
       "source_location": "L1667",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1667",
-      "target": "core_tools_implementations_git_run",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_git_run"
     },
     {
       "relation": "calls",
@@ -30258,9 +30363,9 @@
       "source_location": "L1710",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_tool_git_impl",
-      "target": "core_tools_implementations_git_run",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_git_run"
     },
     {
       "relation": "rationale_for",
@@ -30269,9 +30374,9 @@
       "source_location": "L1686",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1686",
-      "target": "core_tools_implementations_tool_git_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_git_impl"
     },
     {
       "relation": "imports",
@@ -30328,9 +30433,9 @@
       "source_location": "L1808",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1808",
-      "target": "core_tools_implementations_tool_search_ast_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_search_ast_impl"
     },
     {
       "relation": "imports",
@@ -30363,9 +30468,9 @@
       "source_location": "L1847",
       "weight": 1.0,
       "_origin": "ast",
+      "confidence_score": 1.0,
       "source": "core_tools_implementations_rationale_1847",
-      "target": "core_tools_implementations_tool_inspect_web_impl",
-      "confidence_score": 1.0
+      "target": "core_tools_implementations_tool_inspect_web_impl"
     },
     {
       "relation": "imports",
@@ -36750,111 +36855,6 @@
       "confidence_score": 1.0,
       "source": "core_memory_manager_tieredmemory_update_state_from_message",
       "target": "message"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
-      "source_location": "L40",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_cli_main",
-      "target": "core_prompts_system"
-    },
-    {
-      "relation": "re_exports",
-      "context": "export",
-      "confidence": "EXTRACTED",
-      "source_file": "core/prompts/__init__.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_prompts_init",
-      "target": "core_prompts_system"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L67",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_prompts_system",
-      "target": "core_prompts_system_get_phase_system_prompt"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_prompts_system_rationale_1",
-      "target": "core_prompts_system"
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "core/tests/test_prompts_and_memory.py",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_tests_test_prompts_and_memory",
-      "target": "core_prompts_system"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "context-manager-cli/src/context_manager/cli/main.py",
-      "source_location": "L25",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "context_manager_cli_src_context_manager_cli_main",
-      "target": "core_prompts_system_get_phase_system_prompt"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "core/prompts/system.py",
-      "source_location": "L68",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_prompts_system_rationale_68",
-      "target": "core_prompts_system_get_phase_system_prompt"
-    },
-    {
-      "relation": "imports",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "core/tests/test_prompts_and_memory.py",
-      "source_location": "L5",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_tests_test_prompts_and_memory",
-      "target": "core_prompts_system_get_phase_system_prompt"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "core/tests/test_prompts_and_memory.py",
-      "source_location": "L10",
-      "weight": 1.0,
-      "_origin": "ast",
-      "confidence_score": 1.0,
-      "source": "core_tests_test_prompts_and_memory_test_phase_system_prompt_generation",
-      "target": "core_prompts_system_get_phase_system_prompt"
     },
     {
       "relation": "imports_from",
@@ -77736,5 +77736,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "98a06f544528235ea60c7ed75b0d841a440a9a54"
+  "built_at_commit": "14dfd47c1563f0d47c21f106add4b2cac7a39183"
 }
