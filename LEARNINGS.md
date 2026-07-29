@@ -62,3 +62,12 @@ This document summarizes key learnings and design principles established during 
 - **Insight:** Web searches for popular libraries (React, Pydantic, Next.js) often return outdated version documentation, leading models to hallucinate obsolete or deprecated API parameters.
 - **Principle:** Inspect project dependency manifests (`pyproject.toml`, `package.json`) to automatically augment search queries with active package versions (e.g. `query + " v2"`).
 
+### D. Indirect Prompt Injection Defense on Untrusted Web Text
+- **Insight:** Remote web pages or forums fetched via `WEB_FETCH` can contain prompt injection text or raw `<tool_call>` tags designed to trick local LLMs into executing malicious tool payloads.
+- **Principle:** Sanitize `<tool_call>` tags in fetched web page strings (`text.replace("<tool_call>", "&lt;tool_call&gt;")`) and enforce strict risk tier approval boundaries (`CONFIRM` / `REVIEW`) for write and shell execution tools.
+
+### E. System Prompt Tool Declaration Consistency
+- **Insight:** If system prompt templates omit registered tools from their pipeline lists, local LLMs will assume those tools do not exist even if schemas are present in runtime code.
+- **Principle:** Ensure single-source-of-truth tool pipeline declarations across all prompt templates (`core/prompts/system.py`, CLI `prompts.py`, `prompts_minimal.py`).
+
+

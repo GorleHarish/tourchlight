@@ -244,6 +244,18 @@ class RLMEngine:
         return result
 
     def _parse_response(self, response: str) -> tuple[str, str, str]:
+        explicit_thinking = ""
+        think_match = re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', response, re.DOTALL | re.IGNORECASE)
+        if think_match:
+            explicit_thinking = think_match.group(1).strip()
+
+        def _get_thinking(tag_start_pos: int) -> str:
+            pre_tag_text = response[:tag_start_pos].strip()
+            cleaned_pre = re.sub(r'<(?:think|thought)>[\s\S]*?</(?:think|thought)>', '', pre_tag_text, flags=re.IGNORECASE).strip()
+            if explicit_thinking and cleaned_pre:
+                return f"{explicit_thinking}\n\n{cleaned_pre}"
+            return explicit_thinking or cleaned_pre
+
         code_match = re.search(r"<CODE>(.*?)</CODE>", response, re.DOTALL | re.IGNORECASE)
         sub_query_match = re.search(r"<SUB_QUERY>(.*?)</SUB_QUERY>", response, re.DOTALL | re.IGNORECASE)
         final_match = re.search(r"<FINAL_ANSWER>(.*?)</FINAL_ANSWER>", response, re.DOTALL | re.IGNORECASE)
@@ -254,14 +266,28 @@ class RLMEngine:
         if sub_query_match:
             matches.append(("sub_query", sub_query_match))
         if final_match:
-            matches.append(("final_answer", final_match))
+            raw_content = final_match.group(1).strip()
+            pre_text = response[:final_match.start()].strip()
+            is_template = bool(re.match(r"^(?:your|the)?\s*(?:complete\s+)?answer$", raw_content.lower()))
+            is_mid_sentence = bool(re.search(r"\b(?:use|using|with|by|in|written|into|output|tag|provide|format|wrap)\s*[`'\"]*$", pre_text, re.IGNORECASE))
+            if not is_template and not is_mid_sentence and raw_content:
+                matches.append(("final_answer", final_match))
 
         if matches:
             matches.sort(key=lambda x: x[1].start())
             first_action, match = matches[0]
             content = match.group(1).strip()
-            thinking = response[:match.start()].strip()
+            thinking = _get_thinking(match.start())
             return (first_action, thinking, content)
+
+        cleaned_body = re.sub(r'<(?:think|thought)>[\s\S]*?</(?:think|thought)>', '', response, flags=re.IGNORECASE).strip()
+        has_unclosed = bool(re.search(r'<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b', cleaned_body, re.IGNORECASE))
+        if not has_unclosed and cleaned_body:
+            if explicit_thinking:
+                return ("final_answer", explicit_thinking, cleaned_body)
+            final_cleaned = re.sub(r'</?FINAL_ANSWER>', '', cleaned_body, flags=re.IGNORECASE).strip()
+            if final_cleaned:
+                return ("final_answer", "", final_cleaned)
 
         return ("thinking", response.strip(), "")
 

@@ -2,15 +2,28 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v1.9.1] - 2026-07-29
+
+### Fixed & Improved
+- **Robust Reasoning & Answer Tag Parsing**:
+  - **Explicit `<think>` Block Extraction**: Isolated `<think>...</think>` and `<thought>...</thought>` reasoning tags emitted by reasoning models (Qwen 2.5, DeepSeek R1, Gemma) into the Reasoning UI block instead of leaking them into answer output.
+  - **Mid-Sentence Tag Split Prevention**: Fixed an issue in `_parse_response` where `<FINAL_ANSWER>` tags mentioned mid-sentence (e.g., `"I will use <FINAL_ANSWER> to..."`) caused reasoning text to be truncated mid-sentence and sentence fragments assigned to the Final Answer panel.
+  - **Direct Plain-Text Answer Support**: Non-tool conversational responses without explicit `<FINAL_ANSWER>` tags are now cleanly extracted as final answers, eliminating infinite thinking loop degradation and unnecessary prompt nudges.
+  - **Template Placeholder Filtering**: Added filtering for template artifact tags like `<FINAL_ANSWER>your answer</FINAL_ANSWER>` copied from prompt examples.
+  - **Unit Test Coverage**: Added comprehensive test cases in `core/tests/test_rlm_engine.py` covering reasoning extraction, mid-sentence tag prevention, and direct text answer parsing (245 tests passing).
+
 ## [v1.9.0] - 2026-07-29
 
 ### Added & Improved
 - **Enhanced Web Browsing & Stealth Anti-Blocking Engine**:
-  - **Structure-Preserving HTML Parser (`StructurePreservingHTMLParser`)**: Isolates `<pre><code>` blocks, parameter tables, lists, and headings while stripping navigation bars, sidebars, footers, and script noise.
+  - **Structure-Preserving HTML Parser (`StructurePreservingHTMLParser`)**: Isolates `<pre><code>` blocks, parameter tables, lists, and headings while stripping navigation bars, sidebars, footers, and script noise. Uses depth tracking (`code_depth`, `skip_depth`) to cleanly render nested `<pre><code>` tags without duplicate backtick fences.
   - **Stealth Browser Request Headers (`_get_browser_headers`)**: Passes realistic browser fingerprints (`Sec-Ch-Ua`, `Sec-Fetch-Dest`, `Accept-Language`) and HTTP/2 headers to prevent generic scraper blocks.
   - **Remote Headless Playwright Fallback (`_fetch_remote_playwright`)**: Tier-2 fallback engine routing remote URLs through Playwright when HTTP GET returns 403, 429, Cloudflare anti-bot challenges, or empty JavaScript SPAs.
-  - **Version-Aware Dependency Query Augmentation (`_augment_query_with_project_deps`)**: Auto-inspects `pyproject.toml` and `package.json` in project root to lock `DOC_SEARCH` queries to active library versions (e.g. `pydantic v2`, `react v19`).
-  - **Web Tool Unit Tests (`test_enhanced_web_tools.py`)**: Unit test suite verifying structure-preserving HTML parsing, header generation, version query augmentation, and web tool execution.
+  - **Indirect Prompt Injection Sanitization**: Automatically escapes `<tool_call>` tags in fetched web page content to prevent poisoned web pages from injecting unauthorized tool calls into LLM conversation history.
+  - **Version-Aware Dependency Query Augmentation (`_augment_query_with_project_deps`)**: Auto-inspects `pyproject.toml` (Poetry & PEP 621 array syntax) and `package.json` in project root to lock `DOC_SEARCH` queries to active library versions (e.g. `pydantic v2`, `react v19`).
+  - **Unified System Prompt Alignment**: Declared `WEB_FETCH`, `DOC_SEARCH`, `WEB_SEARCH`, and `WEB_VERIFY` explicitly in `[TOOL PIPELINE]` across core system prompts (`core/prompts/system.py`), CLI prompts (`prompts.py`), and small-context prompts (`prompts_minimal.py`).
+  - **Web Tool Unit Tests (`test_enhanced_web_tools.py`)**: Unit test suite verifying structure-preserving HTML parsing, depth tracking, header generation, version query augmentation, prompt injection sanitization, and web tool execution (198 tests passing).
+
 
 ## [v1.8.0] - 2026-07-29
 

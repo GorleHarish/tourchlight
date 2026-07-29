@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785312539.9775305,
-    "ast_hash": "8409d6d81f72e09309504aca1a5237c1",
+    "mtime": 1785313480.1550803,
+    "ast_hash": "61e17ac774ccdcd13c61c0516d3ca1de",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -165,14 +165,14 @@
     "semantic_hash": "d835c9b7c56ac23044a1bcf769109739"
   },
   "context-manager-cli/src/context_manager/prompts.py": {
-    "mtime": 1785226546.6565795,
-    "ast_hash": "09c1c162e43644d6ed37067e6c7ac199",
+    "mtime": 1785313235.3576136,
+    "ast_hash": "bf18ba0e87b624526953843cae1be918",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/prompts_minimal.py": {
-    "mtime": 1774606039.5538085,
-    "ast_hash": "b0206451f75e6dff78c772d1607b15d5",
-    "semantic_hash": "b0206451f75e6dff78c772d1607b15d5"
+    "mtime": 1785313265.009459,
+    "ast_hash": "e3bf6896edbfe1930825166632160ab8",
+    "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/skills/base.py": {
     "mtime": 1784750236.210311,
@@ -525,8 +525,8 @@
     "semantic_hash": "e67c18b62ba4922e6367840ed2043c18"
   },
   "core/tools/implementations.py": {
-    "mtime": 1785312127.032773,
-    "ast_hash": "f4588a82280611a39abaed10956e7373",
+    "mtime": 1785313461.259358,
+    "ast_hash": "d52750c36ee965422e63665e8f11b867",
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
@@ -830,8 +830,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_enhanced_web_tools.py": {
-    "mtime": 1785312131.9667659,
-    "ast_hash": "0db0ecf54ccd185d91a600e122b6e052",
+    "mtime": 1785312977.2552714,
+    "ast_hash": "ae9ff5733e5f3e4b4a1aacb49bb8a871",
     "semantic_hash": ""
   }
 }

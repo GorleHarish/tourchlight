@@ -747,11 +747,24 @@ class RLMEngineOptimized:
         """Parse the LLM response for action tags.
         Returns: (action, thinking, content, extra_queries, tool_name, tool_args)
         """
+        # 0. Extract explicit <think>...</think> or <thought>...</thought> blocks if present
+        explicit_thinking = ""
+        think_match = re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', response, re.DOTALL | re.IGNORECASE)
+        if think_match:
+            explicit_thinking = think_match.group(1).strip()
+
+        def _get_thinking(tag_start_pos: int) -> str:
+            pre_tag_text = response[:tag_start_pos].strip()
+            cleaned_pre = re.sub(r'<(?:think|thought)>[\s\S]*?</(?:think|thought)>', '', pre_tag_text, flags=re.IGNORECASE).strip()
+            if explicit_thinking and cleaned_pre:
+                return f"{explicit_thinking}\n\n{cleaned_pre}"
+            return explicit_thinking or cleaned_pre
+
         # 1. Check for <tool_call>...</tool_call> (standard tag for Qwen / Llama models)
         tool_call_match = re.search(r'<tool_call>\s*(.*?)\s*</tool_call>', response, re.DOTALL | re.IGNORECASE)
         if tool_call_match:
             raw_payload = tool_call_match.group(1).strip()
-            thinking = response[:tool_call_match.start()].strip()
+            thinking = _get_thinking(tool_call_match.start())
             parsed_json = _clean_and_parse_json(raw_payload)
             
             tool_name = parsed_json.get("name") or parsed_json.get("tool") or parsed_json.get("action")
@@ -771,7 +784,7 @@ class RLMEngineOptimized:
         if tool_match:
             tool_name = tool_match.group(1).upper()
             raw_args = tool_match.group(2).strip()
-            thinking = response[:tool_match.start()].strip()
+            thinking = _get_thinking(tool_match.start())
             tool_args = _clean_and_parse_json(raw_args)
             return ("tool", thinking, f"{tool_name}({raw_args})", [], tool_name, tool_args)
 
@@ -782,7 +795,7 @@ class RLMEngineOptimized:
         )
         if action_tag_match:
             tool_name = action_tag_match.group(1).upper()
-            thinking = response[:action_tag_match.start()].strip()
+            thinking = _get_thinking(action_tag_match.start())
             # Try to extract JSON args from inside the tag
             tag_content = action_tag_match.group(0)
             json_match = re.search(r'\{.*\}', tag_content, re.DOTALL)
@@ -800,7 +813,7 @@ class RLMEngineOptimized:
         if write_tag_match:
             path_val = write_tag_match.group(1).strip()
             content_val = write_tag_match.group(2)
-            thinking = response[:write_tag_match.start()].strip()
+            thinking = _get_thinking(write_tag_match.start())
             return ("tool", thinking, f"WRITE_FILE({path_val})", [], "WRITE_FILE", {"path": path_val, "content": content_val})
 
         # 3b. Check for JSON array output (fallback for Qwen JSON outputs)
@@ -819,7 +832,7 @@ class RLMEngineOptimized:
                             t_args.pop("action", None)
                             t_args.pop("tool", None)
                         
-                        thinking = response[:json_array_match.start()].strip()
+                        thinking = _get_thinking(json_array_match.start())
                         return ("tool", thinking, f"{t_name}({json.dumps(t_args)})", [], t_name, t_args)
             except Exception:
                 pass
@@ -828,7 +841,7 @@ class RLMEngineOptimized:
         code_match = re.search(r"<CODE>(.*?)</CODE>", response, re.DOTALL | re.IGNORECASE)
         if code_match:
             content = code_match.group(1).strip()
-            thinking = response[:code_match.start()].strip()
+            thinking = _get_thinking(code_match.start())
             
             # Check if code block specifies a target file writing intent (e.g. # file: path/foo.py or # filename: foo.py)
             file_match = re.search(r"^(?:#|//)\s*(?:file|filename|filepath|path)\s*:\s*([^\n\r]+)", content, re.IGNORECASE)
@@ -844,15 +857,32 @@ class RLMEngineOptimized:
         sub_query_matches = re.findall(r"<SUB_QUERY>(.*?)</SUB_QUERY>", response, re.DOTALL | re.IGNORECASE)
         if sub_query_matches:
             first_tag_pos = response.lower().find("<sub_query>")
-            thinking = response[:first_tag_pos].strip() if first_tag_pos != -1 else ""
+            thinking = _get_thinking(first_tag_pos) if first_tag_pos != -1 else explicit_thinking
             return ("sub_queries", thinking, sub_query_matches[0].strip(),
                     [q.strip() for q in sub_query_matches[1:]], None, None)
 
         # 6. Check for <FINAL_ANSWER>...</FINAL_ANSWER>
         final_match = re.search(r"<FINAL_ANSWER>(.*?)</FINAL_ANSWER>", response, re.DOTALL | re.IGNORECASE)
         if final_match:
-            content = final_match.group(1).strip()
-            thinking = response[:final_match.start()].strip()
-            return ("final_answer", thinking, content, [], None, None)
+            raw_content = final_match.group(1).strip()
+            pre_text = response[:final_match.start()].strip()
+            
+            is_template = bool(re.match(r"^(?:your|the)?\s*(?:complete\s+)?answer$", raw_content.lower()))
+            is_mid_sentence = bool(re.search(r"\b(?:use|using|with|by|in|written|into|output|tag|provide|format|wrap)\s*[`'\"]*$", pre_text, re.IGNORECASE))
+
+            if not is_template and not is_mid_sentence and raw_content:
+                thinking = _get_thinking(final_match.start())
+                return ("final_answer", thinking, raw_content, [], None, None)
+
+        # 7. Direct answer / non-tool response handling
+        cleaned_body = re.sub(r'<(?:think|thought)>[\s\S]*?</(?:think|thought)>', '', response, flags=re.IGNORECASE).strip()
+        has_unclosed_tool_attempt = bool(re.search(r'<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b', cleaned_body, re.IGNORECASE))
+        if not has_unclosed_tool_attempt and cleaned_body:
+            if explicit_thinking:
+                return ("final_answer", explicit_thinking, cleaned_body, [], None, None)
+            
+            final_cleaned = re.sub(r'</?FINAL_ANSWER>', '', cleaned_body, flags=re.IGNORECASE).strip()
+            if final_cleaned:
+                return ("final_answer", "", final_cleaned, [], None, None)
 
         return ("thinking", response.strip(), "", [], None, None)

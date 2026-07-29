@@ -1,7 +1,7 @@
 # Graph Report - tourchlight v1_i6  (2026-07-29)
 
 ## Corpus Check
-- 165 files · ~243,285 words
+- 165 files · ~243,305 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `98a06f54`
+- Built from commit: `14dfd47c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -675,7 +675,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `TieredMemory` connect `TieredMemory` to `TokenCounter`, `_EvictingDeque`, `LLMStateExtractor`, `context_manager/memory/manager.py`, `RLMEngine`, `build_embedder`, `ProjectMemory`, `.clear`?**
   _High betweenness centrality (0.077) - this node is a cross-community bridge._
 - **Why does `TieredMemory` connect `TieredMemory` to `cli/main.py`, `ExecutionFeedbackLoop`, `TokenCounter`, `.format_l0_scratchpad`, `RLMEngine`, `AutonomousHarness`, `core/memory/__init__.py`, `test_context_budget_overflow.py`, `StreamingChatSession`, `.__init__`, `RLMEngineOptimized`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+  _High betweenness centrality (0.056) - this node is a cross-community bridge._
 - **Why does `SkillResult` connect `SkillResult` to `UnifiedSkillRegistry`, `ProjectSnapshot`, `BaseSkill`, `TDDSkill`, `MarkdownDocumentSkill`, `PlanningSkill`, `CalculatorSkill`, `discovery.py`, `TDDSkill`?**
   _High betweenness centrality (0.044) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `TieredMemory` (e.g. with `StreamingChatSession` and `AutonomousHarness`) actually correct?**

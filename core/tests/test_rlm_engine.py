@@ -83,7 +83,42 @@ def test_rlm_engine_optimized_none_tool_name():
         ]
         mock_client.chat_with_history.return_value = "Summary"
         engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
-        action, thinking, content, extra_queries, tool_name, tool_args = engine._parse_response("Invalid tag content")
+        action, thinking, content, extra_queries, tool_name, tool_args = engine._parse_response("<INVALID>tag</INVALID>")
         assert tool_name is None
+        assert action == "final_answer"
+        assert content == "<INVALID>tag</INVALID>"
     asyncio.run(_test())
+
+
+def test_rlm_engine_parse_think_tags_and_mid_sentence_prevention():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    # 1. Explicit <think> tag + <FINAL_ANSWER>
+    resp1 = "<think>Analyzing context...</think>\n<FINAL_ANSWER>The answer is 42.</FINAL_ANSWER>"
+    action, thinking, content, _, _, _ = engine._parse_response(resp1)
+    assert action == "final_answer"
+    assert thinking == "Analyzing context..."
+    assert content == "The answer is 42."
+
+    # 2. Mid-sentence tag insertion bug (model says 'I will use <FINAL_ANSWER> to address...')
+    resp2 = "Thinking Process:\n1. Goal: Answer query\n5. Execution: I will use <FINAL_ANSWER> to address the query directly and truthfully.</FINAL_ANSWER>"
+    action, thinking, content, _, _, _ = engine._parse_response(resp2)
+    assert action == "final_answer"
+    assert "Thinking Process:" in content or "to address the query" in content
+    # Ensure thinking was not cut off mid-sentence at 'I will use'
+    assert thinking == "" or thinking == "Thinking Process:"
+
+    # 3. Plain conversational text with no tool tags
+    resp3 = "I cannot browse the internet. My capabilities are limited to executing code and file tools."
+    action, thinking, content, _, _, _ = engine._parse_response(resp3)
+    assert action == "final_answer"
+    assert content == resp3
+
+    # 4. Template placeholder <FINAL_ANSWER>your answer</FINAL_ANSWER>
+    resp4 = "<FINAL_ANSWER>your answer</FINAL_ANSWER>"
+    action, thinking, content, _, _, _ = engine._parse_response(resp4)
+    assert action == "final_answer"
+    assert content == "your answer"
+
 
