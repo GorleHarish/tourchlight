@@ -67,6 +67,21 @@ python tui_app.py
 
 Both frontends import from `core/` with a `try/except ImportError` fallback to local modules, so each frontend remains standalone if `core/` is not installed.
 
+### Web Browsing & Stealth Anti-Blocking Architecture
+
+```mermaid
+flowchart TD
+    A["Tool Call: WEB_FETCH / DOC_SEARCH"] --> B["Version Query Augmentation<br><i>Reads pyproject.toml / package.json</i>"]
+    B --> C{"Tier 1: Jina AI Reader API<br><code>r.jina.ai/{url}</code>"}
+    C -->|200 OK| D["Return Markdown Payload"]
+    C -->|Blocked / Timeout| E{"Tier 1 Fallback: Stealth HTTP GET<br><i>Browser sec-ch-ua & HTTP/2 headers</i>"}
+    E -->|200 OK| F["StructurePreservingHTMLParser<br><i>Preserves &lt;pre&gt;&lt;code&gt;, &lt;table&gt;, headings</i>"]
+    F --> D
+    E -->|403 / 429 / JS Shell| G{"Tier 2 Fallback: Playwright Engine<br><i>Headless Chromium JS renderer</i>"}
+    G -->|Rendered DOM| D
+    G -->|Failed| H["Graceful Error Payload"]
+```
+
 ---
 
 ## Core Flow

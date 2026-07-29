@@ -13,6 +13,7 @@ import ast
 import difflib
 from pathlib import Path
 from typing import Optional, Tuple
+from html.parser import HTMLParser
 
 import httpx
 
@@ -203,6 +204,149 @@ def _ddg_search(q: str) -> str:
             url = "https://" + url
         out += f"**{title}**\n  {url}\n  {snip}\n\n"
     return out.strip()
+
+
+class StructurePreservingHTMLParser(HTMLParser):
+    """
+    HTML Parser that preserves structure (<pre>, <code>, <table>, headings)
+    while stripping navigation/script noise for clean markdown output.
+    """
+    def __init__(self):
+        super().__init__()
+        self.output = []
+        self.in_code = False
+        self.in_heading = False
+        self.in_skip = False
+        self.skip_tags = {"script", "style", "nav", "footer", "header", "noscript", "svg"}
+
+    def handle_starttag(self, tag, attrs):
+        tag_lower = tag.lower()
+        if tag_lower in self.skip_tags:
+            self.in_skip = True
+        elif tag_lower in ("pre", "code"):
+            self.in_code = True
+            self.output.append("\n```\n")
+        elif tag_lower in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            self.in_heading = True
+            level = int(tag_lower[1])
+            self.output.append("\n" + "#" * level + " ")
+        elif tag_lower == "li":
+            self.output.append("\n- ")
+        elif tag_lower in ("p", "br", "div", "tr"):
+            self.output.append("\n")
+
+    def handle_endtag(self, tag):
+        tag_lower = tag.lower()
+        if tag_lower in self.skip_tags:
+            self.in_skip = False
+        elif tag_lower in ("pre", "code"):
+            self.in_code = False
+            self.output.append("\n```\n")
+        elif tag_lower in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            self.in_heading = False
+            self.output.append("\n")
+
+    def handle_data(self, data):
+        if self.in_skip:
+            return
+        if self.in_code:
+            self.output.append(data)
+        else:
+            text = data.strip()
+            if text:
+                self.output.append(text + " ")
+
+    def get_markdown(self) -> str:
+        raw = "".join(self.output)
+        return re.sub(r"\n{3,}", "\n\n", raw).strip()
+
+
+def _get_browser_headers() -> dict:
+    """Returns realistic browser headers for stealth HTTP fetching."""
+    return {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/126.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Ch-Ua": '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"macOS"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+
+def _fetch_remote_playwright(url: str, timeout_ms: int = 10000) -> Optional[str]:
+    """Fallback fetch via Playwright headless browser for Cloudflare / JS SPAs / 403 blocks."""
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_page(
+                    user_agent=(
+                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/126.0.0.0 Safari/537.36"
+                    )
+                )
+                page.goto(url, wait_until="load", timeout=timeout_ms)
+                page.wait_for_timeout(1000)
+                body_text = page.evaluate("""() => {
+                    return document.body ? document.body.innerText : '';
+                }""")
+                if body_text and body_text.strip():
+                    return body_text.strip()[:4000]
+            finally:
+                browser.close()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug(f"Playwright remote fetch failed for {url}: {e}")
+    return None
+
+
+def _augment_query_with_project_deps(query: str, project_root: str) -> str:
+    """Inspects project dependencies (pyproject.toml, package.json, Cargo.toml) to lock doc query versions."""
+    if not project_root or not os.path.exists(project_root):
+        return query
+
+    query_lower = query.lower()
+    root_path = Path(project_root)
+
+    # Check pyproject.toml
+    pyproject = root_path / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            content = pyproject.read_text(encoding="utf-8", errors="ignore")
+            for pkg, ver in re.findall(r'([\w\-]+)\s*=\s*["\'][\^~>=]*(\d+\.\d+)', content):
+                if pkg.lower() in query_lower:
+                    major = ver.split('.')[0]
+                    if f"v{major}" not in query_lower and major not in query_lower:
+                        return f"{query} v{major}"
+        except Exception:
+            pass
+
+    # Check package.json
+    pkg_json = root_path / "package.json"
+    if pkg_json.exists():
+        try:
+            content = pkg_json.read_text(encoding="utf-8", errors="ignore")
+            for pkg, ver in re.findall(r'"([\w\-@/]+)"\s*:\s*"[\^~>=]*(\d+\.\d+)', content):
+                pkg_name = pkg.split('/')[-1]
+                if pkg_name.lower() in query_lower:
+                    major = ver.split('.')[0]
+                    if f"v{major}" not in query_lower and major not in query_lower:
+                        return f"{query} v{major}"
+        except Exception:
+            pass
+
+    return query
 
 
 def _extract_identifiers(snippet: str, language: str) -> list:
@@ -1320,30 +1464,48 @@ def tool_web_search_impl(args: dict, project_root: str) -> str:
 def tool_web_fetch_impl(args: dict, project_root: str) -> str:
     """WEB_FETCH — fetch and return readable content of a URL."""
     url = args.get("url", "")
+    if not url:
+        return "Fetch error: No URL provided."
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    # Tier 1: Reader API (Jina AI)
     try:
-        if not url.startswith("http"):
-            url = "https://" + url
-        try:
-            r = httpx.get(
-                f"https://r.jina.ai/{url}", headers={"Accept": "text/plain"},
-                timeout=20, follow_redirects=True,
-            )
-            if r.status_code == 200 and r.text.strip():
-                return f"{url}:\n{r.text.strip()[:4000]}"
-        except Exception:
-            pass
-        r = httpx.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20, follow_redirects=True)
-        r.raise_for_status()
-        clean = re.sub(r"\s{2,}", " ", re.sub(r"<[^>]+>", " ", r.text)).strip()
-        return f"{url}:\n{clean[:3000]}"
-    except Exception as e:
-        return f"Fetch error: {e}"
+        r = httpx.get(
+            f"https://r.jina.ai/{url}", headers={"Accept": "text/plain"},
+            timeout=20, follow_redirects=True,
+        )
+        if r.status_code == 200 and r.text.strip():
+            return f"{url}:\n{r.text.strip()[:4000]}"
+    except Exception:
+        pass
+
+    # Tier 1 Fallback: Stealth HTTP request with realistic browser headers
+    try:
+        headers = _get_browser_headers()
+        r = httpx.get(url, headers=headers, timeout=20, follow_redirects=True)
+        if r.status_code == 200 and r.text.strip():
+            parser = StructurePreservingHTMLParser()
+            parser.feed(r.text)
+            parsed_text = parser.get_markdown()
+            if parsed_text and len(parsed_text) > 50:
+                return f"{url}:\n{parsed_text[:4000]}"
+    except Exception:
+        pass
+
+    # Tier 2: Remote Playwright Headless Browser fallback (for 403, 429, JS SPAs)
+    pw_content = _fetch_remote_playwright(url)
+    if pw_content:
+        return f"{url} (via Playwright):\n{pw_content}"
+
+    return f"Fetch error: Unable to retrieve content from {url} (blocked or unreachable)."
 
 
 def tool_doc_search_impl(args: dict, project_root: str) -> str:
     """DOC_SEARCH — search official documentation."""
     import urllib.parse
-    query = args.get("query", "")
+    raw_query = args.get("query", "")
+    query = _augment_query_with_project_deps(raw_query, project_root)
     search_url, label = _detect_doc_source(query)
     if "duckduckgo" not in label:
         domain = re.search(r'https?://([^/]+)', search_url)
@@ -1372,6 +1534,7 @@ def tool_doc_search_impl(args: dict, project_root: str) -> str:
         except Exception:
             pass
     return f"DOC_SEARCH — source: {label}\n{'─' * 40}\n" + raw_results + fetch_snippet
+
 
 
 def tool_web_verify_impl(args: dict, project_root: str) -> str:

@@ -2,6 +2,16 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v1.9.0] - 2026-07-29
+
+### Added & Improved
+- **Enhanced Web Browsing & Stealth Anti-Blocking Engine**:
+  - **Structure-Preserving HTML Parser (`StructurePreservingHTMLParser`)**: Isolates `<pre><code>` blocks, parameter tables, lists, and headings while stripping navigation bars, sidebars, footers, and script noise.
+  - **Stealth Browser Request Headers (`_get_browser_headers`)**: Passes realistic browser fingerprints (`Sec-Ch-Ua`, `Sec-Fetch-Dest`, `Accept-Language`) and HTTP/2 headers to prevent generic scraper blocks.
+  - **Remote Headless Playwright Fallback (`_fetch_remote_playwright`)**: Tier-2 fallback engine routing remote URLs through Playwright when HTTP GET returns 403, 429, Cloudflare anti-bot challenges, or empty JavaScript SPAs.
+  - **Version-Aware Dependency Query Augmentation (`_augment_query_with_project_deps`)**: Auto-inspects `pyproject.toml` and `package.json` in project root to lock `DOC_SEARCH` queries to active library versions (e.g. `pydantic v2`, `react v19`).
+  - **Web Tool Unit Tests (`test_enhanced_web_tools.py`)**: Unit test suite verifying structure-preserving HTML parsing, header generation, version query augmentation, and web tool execution.
+
 ## [v1.8.0] - 2026-07-29
 
 ### Added & Improved

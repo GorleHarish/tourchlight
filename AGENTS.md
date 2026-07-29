@@ -109,7 +109,9 @@ rlm_optimized/                              # TUI frontend
 - **Lazy skill loading**: AST scan at startup, import on first execute
 - **Context-scaled tool output**: READ_FILE caps at ~20% of window; SEARCH_AST caps subgraph at 40 edges, structure at 20 files
 - **Zero-Context Harness Quality Engine**: Deterministic post-save code formatting (`ruff`, `black`, `prettier`, `gofmt`, `rustfmt`), POSIX whitespace normalization (preserving Makefile/Go tabs), multi-language syntax validation (Python AST, JSON, JS bracket balance), and stub detector operating in the Python harness layer with 0 LLM context overhead.
+- **Enhanced Web Browsing & Stealth Anti-Blocking Engine**: Multi-tier web retrieval (Jina Reader API → Stealth HTTP GET with `sec-ch-ua` browser headers → Remote Headless Playwright Chromium engine for 403/429/Cloudflare/JS SPAs), structure-preserving HTML parser (`StructurePreservingHTMLParser` preserving `<pre><code>` & `<table>` formatting), and version-locked query augmentation (`pyproject.toml` / `package.json` manifest inspector).
 - **Non-Verbose Code Output (3-Tier Output Discipline)**: Never dump raw code in assistant text. Code modifications occur via `WRITE_FILE`/`EDIT_FILE` tool payloads while chat responses state action, file path, line/function scope, and description. UI collapses tool payload args into clean status badges (`✓ ✏ Writing src/main.py`), reducing edit turn token usage by ~85% and preventing terminal screen buffer overflow.
+
 - **Structured errors**: 7 types with `RecoveryEngine` escalation ladder
 - **Fallback imports**: Frontends use `try/except ImportError` for backward compat
 

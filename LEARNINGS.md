@@ -45,3 +45,20 @@ This document summarizes key learnings and design principles established during 
 ### B. Test-Driven Local Reverts
 - **Insight:** Multi-epoch autonomous runners can degrade codebases if bad changes accumulate.
 - **Principle:** Automatically execute local Git reverts (`git checkout -- .`) when test suites fail across consecutive micro-epochs.
+
+---
+
+## 4. Web Browsing, Anti-Blocking & Documentation Engineering
+
+### A. Structure-Preserving Content Extraction vs HTML Fluff
+- **Insight:** Naive HTML tag stripping (`re.sub(r"<[^>]+>", " ")`) destroys code block syntax, indentation, and API table formatting while flooding context windows with navigation headers and footer noise.
+- **Principle:** Use structured HTML parsers (`StructurePreservingHTMLParser`) that explicitly isolate `<pre><code>` blocks, parameter tables, and headers while dropping script, nav, and footer tags.
+
+### B. Multi-Tier Anti-Blocking Escalation Ladder
+- **Insight:** Simple HTTP GET requests with generic user-agents fail on 403 Forbidden, 429 Rate Limits, or Cloudflare bot checks, while headless browsers consume higher VRAM/latency if used for every request.
+- **Principle:** Implement a multi-tier fallback ladder: Jina Reader API → Stealth HTTP GET with browser sec headers (`Sec-Ch-Ua`, `Sec-Fetch-Dest`) → Remote Headless Playwright Chromium browser.
+
+### C. Version-Locked Documentation Queries
+- **Insight:** Web searches for popular libraries (React, Pydantic, Next.js) often return outdated version documentation, leading models to hallucinate obsolete or deprecated API parameters.
+- **Principle:** Inspect project dependency manifests (`pyproject.toml`, `package.json`) to automatically augment search queries with active package versions (e.g. `query + " v2"`).
+
