@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785331589.5570261,
-    "ast_hash": "ea32e1a1d375ddadb86aa7017c7ae07c",
+    "mtime": 1785332828.7092009,
+    "ast_hash": "4380205ac94fd0bcd6fc758d2451d1e5",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1785331270.9426467,
-    "ast_hash": "1739743fc936bf490ff6e7428a293411",
+    "mtime": 1785332807.1153705,
+    "ast_hash": "b8a2745d9b14dd09d6b5f7c9fdc71127",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785331561.5836437,
-    "ast_hash": "11714d87f8095e624b7c8fe84d896205",
+    "mtime": 1785332840.2763066,
+    "ast_hash": "1702e7a31c2c0ed4c4b32312e18f4aab",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -595,8 +595,8 @@
     "semantic_hash": "d46bff76decbce47ad4c0417cdf6c9c9"
   },
   "rlm_optimized/prompts.py": {
-    "mtime": 1785226551.094492,
-    "ast_hash": "a41ab8c87f311f291085ea0eb8f92bbd",
+    "mtime": 1785332782.9742463,
+    "ast_hash": "9d89168ddbecf2eab57db5b2532c78a5",
     "semantic_hash": ""
   },
   "rlm_optimized/repl_sandbox.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785321179.4578006,
-    "ast_hash": "7a25684f99c44bd53056bc9c31af3a93",
+    "mtime": 1785332798.9344003,
+    "ast_hash": "233c820f9ab9d93a0158146d1ebbef18",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -810,8 +810,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_prompts_and_memory.py": {
-    "mtime": 1785265744.9785242,
-    "ast_hash": "5ee6172bd18f143ccbedfae182ce5214",
+    "mtime": 1785332814.2010508,
+    "ast_hash": "3e58c54eaf14ab0835982b0049ebae40",
     "semantic_hash": ""
   },
   "core/tests/test_code_quality_harness.py": {
@@ -837,6 +837,16 @@
   "core/dashboard/web_server.py": {
     "mtime": 1785331357.9617603,
     "ast_hash": "f85667c921e29ce96b1afe95e81872f8",
+    "semantic_hash": ""
+  },
+  ".opencode/opencode.json": {
+    "mtime": 1785333296.4731634,
+    "ast_hash": "e5f74d14a81702b55bdf53b33ec991d7",
+    "semantic_hash": ""
+  },
+  ".opencode/plugins/graphify.js": {
+    "mtime": 1785333138.6277468,
+    "ast_hash": "3ea725724bc8ebe483c9f13d6aa1124f",
     "semantic_hash": ""
   }
 }
