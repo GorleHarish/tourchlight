@@ -18,8 +18,11 @@ CORE TOOLS (always available):
 - WRITE_FILE(path, content): Write file
 - EDIT_FILE(path, old, new): Edit file
 - GREP(pattern, path): Search files
+- WEB_FETCH(url): Fetch web page / documentation
+- WEB_SEARCH(query): Search the web
 - RUN_COMMAND(cmd): Execute shell
 - VERIFY(path): Check file exists
+
 
 WORKFLOW SKILLS (discover with DISCOVER_SKILLS):
 Use /<skill> to invoke. Examples:

@@ -210,22 +210,24 @@ class StructurePreservingHTMLParser(HTMLParser):
     """
     HTML Parser that preserves structure (<pre>, <code>, <table>, headings)
     while stripping navigation/script noise for clean markdown output.
+    Uses depth tracking to handle nested tags cleanly without duplicate backticks.
     """
     def __init__(self):
         super().__init__()
         self.output = []
-        self.in_code = False
+        self.code_depth = 0
+        self.skip_depth = 0
         self.in_heading = False
-        self.in_skip = False
         self.skip_tags = {"script", "style", "nav", "footer", "header", "noscript", "svg"}
 
     def handle_starttag(self, tag, attrs):
         tag_lower = tag.lower()
         if tag_lower in self.skip_tags:
-            self.in_skip = True
+            self.skip_depth += 1
         elif tag_lower in ("pre", "code"):
-            self.in_code = True
-            self.output.append("\n```\n")
+            self.code_depth += 1
+            if self.code_depth == 1:
+                self.output.append("\n```\n")
         elif tag_lower in ("h1", "h2", "h3", "h4", "h5", "h6"):
             self.in_heading = True
             level = int(tag_lower[1])
@@ -238,18 +240,21 @@ class StructurePreservingHTMLParser(HTMLParser):
     def handle_endtag(self, tag):
         tag_lower = tag.lower()
         if tag_lower in self.skip_tags:
-            self.in_skip = False
+            if self.skip_depth > 0:
+                self.skip_depth -= 1
         elif tag_lower in ("pre", "code"):
-            self.in_code = False
-            self.output.append("\n```\n")
+            if self.code_depth > 0:
+                self.code_depth -= 1
+                if self.code_depth == 0:
+                    self.output.append("\n```\n")
         elif tag_lower in ("h1", "h2", "h3", "h4", "h5", "h6"):
             self.in_heading = False
             self.output.append("\n")
 
     def handle_data(self, data):
-        if self.in_skip:
+        if self.skip_depth > 0:
             return
-        if self.in_code:
+        if self.code_depth > 0:
             self.output.append(data)
         else:
             text = data.strip()
@@ -304,7 +309,10 @@ def _fetch_remote_playwright(url: str, timeout_ms: int = 10000) -> Optional[str]
                 if body_text and body_text.strip():
                     return body_text.strip()[:4000]
             finally:
-                browser.close()
+                try:
+                    browser.close()
+                except Exception:
+                    pass
     except Exception as e:
         import logging
         logging.getLogger(__name__).debug(f"Playwright remote fetch failed for {url}: {e}")
@@ -313,10 +321,11 @@ def _fetch_remote_playwright(url: str, timeout_ms: int = 10000) -> Optional[str]
 
 def _augment_query_with_project_deps(query: str, project_root: str) -> str:
     """Inspects project dependencies (pyproject.toml, package.json, Cargo.toml) to lock doc query versions."""
-    if not project_root or not os.path.exists(project_root):
-        return query
+    query_str = str(query or "").strip()
+    if not query_str or not project_root or not os.path.exists(project_root):
+        return query_str
 
-    query_lower = query.lower()
+    query_lower = query_str.lower()
     root_path = Path(project_root)
 
     # Check pyproject.toml
@@ -324,11 +333,14 @@ def _augment_query_with_project_deps(query: str, project_root: str) -> str:
     if pyproject.exists():
         try:
             content = pyproject.read_text(encoding="utf-8", errors="ignore")
-            for pkg, ver in re.findall(r'([\w\-]+)\s*=\s*["\'][\^~>=]*(\d+\.\d+)', content):
+            # Match Poetry style `pkg = "^2.7.0"` or PEP 621 style `"pkg>=2.7.0"`
+            matches = re.findall(r'([\w\-]+)\s*=\s*["\'][\^~>=]*(\d+\.\d+)', content)
+            matches += re.findall(r'["\']([\w\-]+)\s*[~^>=]+\s*(\d+\.\d+)', content)
+            for pkg, ver in matches:
                 if pkg.lower() in query_lower:
                     major = ver.split('.')[0]
                     if f"v{major}" not in query_lower and major not in query_lower:
-                        return f"{query} v{major}"
+                        return f"{query_str} v{major}"
         except Exception:
             pass
 
@@ -342,11 +354,12 @@ def _augment_query_with_project_deps(query: str, project_root: str) -> str:
                 if pkg_name.lower() in query_lower:
                     major = ver.split('.')[0]
                     if f"v{major}" not in query_lower and major not in query_lower:
-                        return f"{query} v{major}"
+                        return f"{query_str} v{major}"
         except Exception:
             pass
 
-    return query
+    return query_str
+
 
 
 def _extract_identifiers(snippet: str, language: str) -> list:
@@ -1463,42 +1476,48 @@ def tool_web_search_impl(args: dict, project_root: str) -> str:
 
 def tool_web_fetch_impl(args: dict, project_root: str) -> str:
     """WEB_FETCH — fetch and return readable content of a URL."""
-    url = args.get("url", "")
+    url = str(args.get("url") or "").strip()
     if not url:
         return "Fetch error: No URL provided."
     if not url.startswith("http"):
         url = "https://" + url
 
+    def sanitize_web_text(text: str) -> str:
+        # Sanitize <tool_call> tags to prevent indirect prompt injection from web pages
+        clean = text.replace("<tool_call>", "&lt;tool_call&gt;").replace("</tool_call>", "&lt;/tool_call&gt;")
+        return clean[:4000]
+
     # Tier 1: Reader API (Jina AI)
     try:
         r = httpx.get(
             f"https://r.jina.ai/{url}", headers={"Accept": "text/plain"},
-            timeout=20, follow_redirects=True,
+            timeout=10, follow_redirects=True,
         )
         if r.status_code == 200 and r.text.strip():
-            return f"{url}:\n{r.text.strip()[:4000]}"
+            return f"{url}:\n{sanitize_web_text(r.text.strip())}"
     except Exception:
         pass
 
     # Tier 1 Fallback: Stealth HTTP request with realistic browser headers
     try:
         headers = _get_browser_headers()
-        r = httpx.get(url, headers=headers, timeout=20, follow_redirects=True)
+        r = httpx.get(url, headers=headers, timeout=10, follow_redirects=True)
         if r.status_code == 200 and r.text.strip():
             parser = StructurePreservingHTMLParser()
             parser.feed(r.text)
             parsed_text = parser.get_markdown()
             if parsed_text and len(parsed_text) > 50:
-                return f"{url}:\n{parsed_text[:4000]}"
+                return f"{url}:\n{sanitize_web_text(parsed_text)}"
     except Exception:
         pass
 
     # Tier 2: Remote Playwright Headless Browser fallback (for 403, 429, JS SPAs)
-    pw_content = _fetch_remote_playwright(url)
+    pw_content = _fetch_remote_playwright(url, timeout_ms=8000)
     if pw_content:
-        return f"{url} (via Playwright):\n{pw_content}"
+        return f"{url} (via Playwright):\n{sanitize_web_text(pw_content)}"
 
     return f"Fetch error: Unable to retrieve content from {url} (blocked or unreachable)."
+
 
 
 def tool_doc_search_impl(args: dict, project_root: str) -> str:
