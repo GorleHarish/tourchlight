@@ -102,12 +102,16 @@ def test_rlm_engine_parse_think_tags_and_mid_sentence_prevention():
     assert content == "The answer is 42."
 
     # 2. Mid-sentence tag insertion bug (model says 'I will use <FINAL_ANSWER> to address...')
-    resp2 = "Thinking Process:\n1. Goal: Answer query\n5. Execution: I will use <FINAL_ANSWER> to address the query directly and truthfully.</FINAL_ANSWER>"
+    resp2 = "I will use <FINAL_ANSWER> to address the query directly and truthfully.</FINAL_ANSWER>"
     action, thinking, content, _, _, _ = engine._parse_response(resp2)
     assert action == "final_answer"
-    assert "Thinking Process:" in content or "to address the query" in content
-    # Ensure thinking was not cut off mid-sentence at 'I will use'
-    assert thinking == "" or thinking == "Thinking Process:"
+    assert "to address the query directly" in content
+
+    # 2b. Thinking process with mid-sentence tag
+    resp2b = "Thinking Process:\n1. Goal: Answer query\n5. Execution: I will use <FINAL_ANSWER> to address the query directly and truthfully.</FINAL_ANSWER>"
+    action_b, thinking_b, content_b, _, _, _ = engine._parse_response(resp2b)
+    assert action_b == "thinking"
+    assert "Goal: Answer query" in thinking_b
 
     # 3. Plain conversational text with no tool tags
     resp3 = "I cannot browse the internet. My capabilities are limited to executing code and file tools."
@@ -127,5 +131,32 @@ def test_rlm_engine_parse_think_tags_and_mid_sentence_prevention():
     assert action == "final_answer"
     assert thinking == "Thinking about the query..."
     assert content == "The answer is 42."
+
+    # 6. Unwrapped reasoning prefix ('thought The user wants me to...')
+    resp6 = "thought The user wants me to look for bugs in a 'snake game'. I need to first understand the project structure.\n\n1 List directory contents: Use LIST_DIR...\nI will start by listing directory contents."
+    action, thinking, content, _, _, _ = engine._parse_response(resp6)
+    assert action == "thinking"
+    assert "The user wants me to look for bugs" in thinking
+    assert content == ""
+
+    # 7. CoT planning step without tool tags
+    resp7 = "1 List directory contents: Use LIST_DIR to see what files are available.\nI will start by listing the directory contents."
+    action, thinking, content, _, _, _ = engine._parse_response(resp7)
+    assert action == "thinking"
+    assert "List directory contents" in thinking
+    assert content == ""
+
+
+def test_rlm_engine_unwrapped_thought_parsing():
+    from rlm_optimized.rlm_engine import RLMEngine
+    mock_client = MagicMock()
+    engine = RLMEngine(client=mock_client)
+
+    resp = "thought I need to inspect main.py before fixing the bug.\n1. List directory: Use LIST_DIR."
+    action, thinking, content = engine._parse_response(resp)
+    assert action == "thinking"
+    assert "I need to inspect main.py" in thinking
+    assert content == ""
+
 
 

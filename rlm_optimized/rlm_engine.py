@@ -245,14 +245,22 @@ class RLMEngine:
 
     def _parse_response(self, response: str) -> tuple[str, str, str]:
         explicit_thinking = ""
-        think_match = re.search(r'<(?:think|thought)>(.*?)</(?:think|thought)>', response, re.DOTALL | re.IGNORECASE)
+        think_match = re.search(r'<(?:think|thought|thinking|reasoning)>(.*?)(?:</(?:think|thought|thinking|reasoning)>|$)', response, re.DOTALL | re.IGNORECASE)
         if think_match:
             explicit_thinking = think_match.group(1).strip()
+        else:
+            prefix_match = re.match(
+                r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)(.*)',
+                response, re.DOTALL | re.IGNORECASE
+            )
+            if prefix_match:
+                explicit_thinking = prefix_match.group(1).strip()
 
         def _get_thinking(tag_start_pos: int) -> str:
             pre_tag_text = response[:tag_start_pos].strip()
-            cleaned_pre = re.sub(r'<(?:think|thought)>[\s\S]*?</(?:think|thought)>', '', pre_tag_text, flags=re.IGNORECASE).strip()
-            if explicit_thinking and cleaned_pre:
+            cleaned_pre = re.sub(r'<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)', '', pre_tag_text, flags=re.IGNORECASE).strip()
+            cleaned_pre = re.sub(r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)', '', cleaned_pre, flags=re.IGNORECASE).strip()
+            if explicit_thinking and cleaned_pre and cleaned_pre not in explicit_thinking:
                 return f"{explicit_thinking}\n\n{cleaned_pre}"
             return explicit_thinking or cleaned_pre
 
@@ -280,8 +288,25 @@ class RLMEngine:
             thinking = _get_thinking(match.start())
             return (first_action, thinking, content)
 
-        cleaned_body = re.sub(r'<(?:think|thought)>[\s\S]*?</(?:think|thought)>', '', response, flags=re.IGNORECASE).strip()
+        cleaned_body = re.sub(r'<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)', '', response, flags=re.IGNORECASE).strip()
         has_unclosed = bool(re.search(r'<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b', cleaned_body, re.IGNORECASE))
+        
+        reasoning_prefix_match = re.match(
+            r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)',
+            response.strip(), re.IGNORECASE
+        )
+        is_planning_cot = (
+            bool(reasoning_prefix_match) or
+            bool(re.search(r'\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|EXECUTE|RUN_COMMAND)\b', cleaned_body)) or
+            bool(re.match(r'^(?:1[\.\s]|step\s*1|first,|I\s+will\s+start|I\s+need\s+to\s+first)', cleaned_body, re.IGNORECASE))
+        )
+
+        if is_planning_cot and not has_unclosed:
+            thinking_text = explicit_thinking or cleaned_body
+            if reasoning_prefix_match:
+                thinking_text = re.sub(r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)', '', cleaned_body, flags=re.IGNORECASE).strip()
+            return ("thinking", thinking_text or cleaned_body, "")
+
         if not has_unclosed and cleaned_body:
             if explicit_thinking:
                 return ("final_answer", explicit_thinking, cleaned_body)
