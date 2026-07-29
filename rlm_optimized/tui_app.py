@@ -13,7 +13,7 @@ from typing import Optional
 
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Horizontal, Container
-from textual.widgets import Header, Footer, Static, Input, Button, Label, DirectoryTree, ProgressBar
+from textual.widgets import Header, Footer, Static, Input, Button, Label, DirectoryTree, ProgressBar, TextArea
 try:
     from textual.widgets import Collapsible
 except ImportError:
@@ -594,6 +594,8 @@ class ShortcutsHelpModal(ModalScreen[None]):
             yield Static("⌨️ Torchlight Codex - Shortcuts & Slash Commands", id="help-title")
             help_md = """
 ### ⌨️ Keyboard Shortcuts
+- **Enter** — Send prompt
+- **Shift+Enter** — New line in prompt (multi-line input)
 - **Ctrl+B** — Toggle Sidebar
 - **Ctrl+T** — Cycle Theme
 - **Ctrl+M** — Select Active Model
@@ -795,9 +797,13 @@ class TorchlightApp(App):
                             id="context-progress-badge"
                         )
                     with Horizontal(id="input-row"):
-                        yield Input(
-                            placeholder="Type prompt or /help... (Ctrl+B sidebar, Ctrl+C quit)",
+                        yield TextArea(
+                            "",
                             id="user-input",
+                            language=None,
+                            show_line_numbers=False,
+                            soft_wrap=True,
+                            tab_behavior="indent",
                         )
                         yield Button("Send", id="send-btn", variant="primary")
                         yield Static("", id="input-spinner")
@@ -971,19 +977,25 @@ class TorchlightApp(App):
     def on_help_pressed(self) -> None:
         self.action_show_help()
 
+    @on(Button.Pressed, "#input-model-badge")
+    def on_model_badge_clicked(self) -> None:
         self.action_select_model()
 
     @on(Button.Pressed, "#compact-btn")
     def on_compact_btn_clicked(self) -> None:
         self.action_compact_context()
 
-    @on(Input.Submitted, "#user-input")
-    async def handle_input(self, event: Input.Submitted) -> None:
-        user_text = event.value.strip()
+    async def _submit_user_input(self) -> None:
+        """Extract text from the TextArea, clear it, and dispatch."""
+        try:
+            inp = self.query_one("#user-input", TextArea)
+        except Exception:
+            return
+        user_text = inp.text.strip()
         if not user_text or self._is_running:
             return
 
-        event.input.value = ""
+        inp.clear()
 
         if user_text.startswith("/"):
             await self._handle_slash_command(user_text)
@@ -1004,25 +1016,7 @@ class TorchlightApp(App):
         if self._is_running:
             self.stop_current_agent()
             return
-
-        inp = self.query_one("#user-input")
-        text = inp.value.strip()
-        if not text:
-            return
-        inp.value = ""
-
-        if text.startswith("/"):
-            await self._handle_slash_command(text)
-            return
-
-        self._chat_history.append({"role": "user", "content": text})
-        container = self.query_one("#chat-container")
-        self._safe_mount(container, Static(Panel(
-            escape(text),
-            title="You",
-            border_style="bright_blue",
-        )))
-        self._run_agent(text)
+        await self._submit_user_input()
 
     def stop_current_agent(self) -> None:
         if not self._is_running:
@@ -1037,7 +1031,7 @@ class TorchlightApp(App):
 
     def _set_input_enabled(self, enabled: bool) -> None:
         try:
-            inp = self.query_one("#user-input")
+            inp = self.query_one("#user-input", TextArea)
             btn = self.query_one("#send-btn", Button)
             spinner = self.query_one("#input-spinner")
             inp.disabled = not enabled
@@ -1140,7 +1134,7 @@ class TorchlightApp(App):
             pass
 
         try:
-            self.set_focus(self.query_one("#user-input"))
+            self.set_focus(self.query_one("#user-input", TextArea))
         except Exception:
             pass
 
@@ -1168,13 +1162,17 @@ class TorchlightApp(App):
     def on_resize(self) -> None:
         self._apply_responsive_layout()
 
-    @on(Input.Submitted, "#user-input")
-    async def handle_input(self, event: Input.Submitted) -> None:
-        user_text = event.value.strip()
+    async def _submit_user_input(self) -> None:
+        """Extract text from the TextArea, clear it, and dispatch."""
+        try:
+            inp = self.query_one("#user-input", TextArea)
+        except Exception:
+            return
+        user_text = inp.text.strip()
         if not user_text or self._is_running:
             return
 
-        event.input.value = ""
+        inp.clear()
 
         # Handle Slash Commands
         if user_text.startswith("/"):
@@ -1195,28 +1193,27 @@ class TorchlightApp(App):
 
     @on(Button.Pressed, "#send-btn")
     async def on_send_button(self) -> None:
-        inp = self.query_one("#user-input")
-        text = inp.value.strip()
-        if not text or self._is_running:
+        if self._is_running:
+            self.stop_current_agent()
             return
-        inp.value = ""
+        await self._submit_user_input()
 
-        if text.startswith("/"):
-            await self._handle_slash_command(text)
-            return
-
-        self._chat_history.append({"role": "user", "content": text})
-        container = self.query_one("#chat-container")
-        self._safe_mount(container, Static(Panel(
-            escape(text),
-            title="You",
-            border_style="bright_blue",
-        )))
-        self._run_agent(text)
+    async def on_key(self, event) -> None:
+        """Enter submits the prompt; Shift+Enter inserts a newline."""
+        if event.key == "enter":
+            # Check if the TextArea is currently focused
+            try:
+                inp = self.query_one("#user-input", TextArea)
+            except Exception:
+                return
+            if self.focused is inp:
+                event.prevent_default()
+                event.stop()
+                await self._submit_user_input()
 
     def _set_input_enabled(self, enabled: bool) -> None:
         try:
-            inp = self.query_one("#user-input")
+            inp = self.query_one("#user-input", TextArea)
             btn = self.query_one("#send-btn")
             spinner = self.query_one("#input-spinner")
             inp.disabled = not enabled
@@ -1430,7 +1427,7 @@ class TorchlightApp(App):
             self._agent_state = "IDLE"
             self.update_status_bar()
             try:
-                self.set_focus(self.query_one("#user-input"))
+                self.set_focus(self.query_one("#user-input", TextArea))
             except Exception:
                 pass
 
@@ -1965,9 +1962,9 @@ class TorchlightApp(App):
         self.update_sidebar_meta()
         self.notify("Session killed, REPL memory reset", severity="warning", timeout=3)
 
-    @on(Button.Pressed, "#select-model-btn")
-    def on_select_model_btn(self) -> None:
-        self.action_select_model()
+    # NOTE: The model badge button click is handled by on_model_badge_clicked
+    # above (bound to #input-model-badge). Ctrl+M binding also works via
+    # action_select_model in the BINDINGS list.
 
     # ── Approval Modal ──────────────────────────────────────────────────
 

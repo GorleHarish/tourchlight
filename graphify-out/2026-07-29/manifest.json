@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785315423.812935,
-    "ast_hash": "e87af1435085c23a02a9eed0d2678a3a",
+    "mtime": 1785317547.2048929,
+    "ast_hash": "c0ac7f40caeacbda469836e137c535bb",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -490,8 +490,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_rlm_engine.py": {
-    "mtime": 1785314354.378637,
-    "ast_hash": "a612069bffeb703247adade4c772cddb",
+    "mtime": 1785317456.2084353,
+    "ast_hash": "f971aba0e4ced081758454fb44ae5a7e",
     "semantic_hash": ""
   },
   "core/tests/test_schemas.py": {
@@ -605,13 +605,13 @@
     "semantic_hash": "ebd7debed971dd448a6d438b2d9cd90d"
   },
   "rlm_optimized/rlm_engine.py": {
-    "mtime": 1785314342.450282,
-    "ast_hash": "5b7d1f8b8bd2086d7c1c7006e7d1ca15",
+    "mtime": 1785317524.347549,
+    "ast_hash": "81ee107a2eb25cfb85611381d65cce7a",
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785314329.1831455,
-    "ast_hash": "e31b9e04636d67a088ebba9b5b2552eb",
+    "mtime": 1785317516.7388027,
+    "ast_hash": "3c34f1894cfd2ffec5cd93e74c4ff64a",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {

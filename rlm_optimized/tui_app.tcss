@@ -189,6 +189,26 @@ Input > .input--cursor {
     color: $background;
 }
 
+/* ── TextArea (user prompt input) ─────────────────────────────────────── */
+
+TextArea {
+    color: $foreground;
+    background: $background;
+    border: solid $primary;
+}
+
+TextArea:focus {
+    color: $foreground;
+    background: $surface;
+    border: tall $accent;
+}
+
+TextArea:disabled {
+    border: solid $panel;
+    color: $foreground-muted;
+    background: $background;
+}
+
 /* ── Status Bar ───────────────────────────────────────────────────────── */
 
 #status-bar {
@@ -307,13 +327,17 @@ Input > .input--cursor {
 }
 
 #input-row {
-    height: 3;
+    height: auto;
+    min-height: 3;
+    max-height: 8;
     align: center middle;
 }
 
 #user-input {
     width: 1fr;
-    height: 3;
+    height: auto;
+    min-height: 3;
+    max-height: 6;
     background: $background;
     color: $foreground;
     border: tall $primary;
@@ -361,10 +385,13 @@ Input > .input--cursor {
 }
 
 .very-narrow-terminal #input-area {
-    height: 5;
+    height: auto;
+    min-height: 4;
+    max-height: 6;
 }
 .very-narrow-terminal #user-input {
-    height: 3;
+    min-height: 3;
+    max-height: 4;
 }
 
 .short-terminal #status-bar {

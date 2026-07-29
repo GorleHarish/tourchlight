@@ -2,6 +2,15 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.1.0] - 2026-07-29
+
+### Added & Improved
+- **Multi-Line Prompt Support in TUI**:
+  - **Textual `TextArea` Integration**: Upgraded `#user-input` prompt widget from single-line `Input` to multi-line `TextArea` in `tui_app.py`, enabling pasting and editing multi-line prompts seamlessly without newline stripping.
+  - **Smart Key Handling**: Intercepts `Enter` to submit the prompt and supports `Shift+Enter` for line breaks within multi-line prompts.
+  - **Dynamic Input Auto-Sizing**: Refactored `tui_app.tcss` `#user-input` and `#input-row` styles to support responsive auto-height (min 3 lines, max 6 lines).
+  - **Help Modal & Shortcut Documentation**: Updated the shortcuts help modal (`ShortcutsHelpModal`) to explicitly document `Enter` and `Shift+Enter` input behavior.
+
 ## [v2.0.0] - 2026-07-29
 
 ### Added & Improved
