@@ -53,25 +53,28 @@ def _build_plan_text_isolated(project_root: str) -> str:
             completed = 0
             total = 0
             import re
-            chk_regex = re.compile(r"^(?:[-*]|\d+\.)\s*\[([ xX/\-])\]\s*(.*)$")
+            chk_regex = re.compile(r"^(?:[-*+>]|\d+[\.\)])?\s*\[([ xX/\-v✓~])\]\s*(.*)$")
 
             for line in lines:
                 stripped = line.strip()
                 m = chk_regex.match(stripped)
                 if m:
                     state, task_raw = m.group(1), m.group(2).strip()
+                    if task_raw.lower().startswith("progress:"):
+                        continue
                     total += 1
                     task_text = escape(task_raw)
-                    if state in ("x", "X"):
+                    if state in ("x", "X", "v", "✓"):
                         completed += 1
                         tasks.append(f"[bold green]✅ {task_text}[/bold green]")
-                    elif state in ("/", "-"):
+                    elif state in ("/", "-", "~"):
                         tasks.append(f"[bold cyan]● {task_text}[/bold cyan]")
                     else:
                         tasks.append(f"[yellow]⏳ {task_text}[/yellow]")
-                elif stripped.startswith("##"):
+                elif stripped.startswith("#"):
                     title = escape(stripped.lstrip("#").strip())
-                    tasks.append(f"[bold cyan]📌 {title}[/bold cyan]")
+                    if title and not title.lower().startswith("implementation plan"):
+                        tasks.append(f"[bold cyan]📌 {title}[/bold cyan]")
 
         if total == 0:
             basename = os.path.basename(target_file)
@@ -101,15 +104,16 @@ def test_build_plan_text_with_tasks():
     with tempfile.TemporaryDirectory() as tmpdir:
         plan_path = os.path.join(tmpdir, "implementation_plan.md")
         with open(plan_path, "w", encoding="utf-8") as f:
-            f.write("## Phase 1\n- [x] Done Task\n* [ ] Pending Task\n1. [/] In-progress Task\n")
+            f.write("# Project Setup\n+ [x] Done Task\n* [ ] Pending Task\n1. [/] In-progress Task\n1) [✓] Checked Task\n")
 
         res = _build_plan_text_isolated(tmpdir)
         assert "Progress:" in res
-        assert "33%" in res
+        assert "50%" in res
         assert "✅ Done Task" in res
         assert "⏳ Pending Task" in res
         assert "● In-progress Task" in res
-        assert "📌 Phase 1" in res
+        assert "✅ Checked Task" in res
+        assert "📌 Project Setup" in res
 
 def test_build_plan_text_all_done():
     with tempfile.TemporaryDirectory() as tmpdir:

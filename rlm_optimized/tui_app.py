@@ -851,7 +851,7 @@ class TorchlightApp(App):
                 completed = 0
                 total = 0
                 import re
-                chk_regex = re.compile(r"^(?:[-*]|\d+\.)\s*\[([ xX/\-])\]\s*(.*)$")
+                chk_regex = re.compile(r"^(?:[-*+>]|\d+[\.\)])?\s*\[([ xX/\-v✓~])\]\s*(.*)$")
 
                 for line in lines:
                     stripped = line.strip()
@@ -862,16 +862,17 @@ class TorchlightApp(App):
                             continue
                         total += 1
                         task_text = escape(task_raw)
-                        if state in ("x", "X"):
+                        if state in ("x", "X", "v", "✓"):
                             completed += 1
                             tasks.append(f"[bold green]✅ {task_text}[/bold green]")
-                        elif state in ("/", "-"):
+                        elif state in ("/", "-", "~"):
                             tasks.append(f"[bold cyan]● {task_text}[/bold cyan]")
                         else:
                             tasks.append(f"[yellow]⏳ {task_text}[/yellow]")
-                    elif stripped.startswith("##"):
+                    elif stripped.startswith("#"):
                         title = escape(stripped.lstrip("#").strip())
-                        tasks.append(f"[bold cyan]📌 {title}[/bold cyan]")
+                        if title and not title.lower().startswith("implementation plan"):
+                            tasks.append(f"[bold cyan]📌 {title}[/bold cyan]")
 
             if total == 0:
                 basename = os.path.basename(target_file)
@@ -920,23 +921,17 @@ class TorchlightApp(App):
         else:
             tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
 
-        mem_line = format_memory_status()
-        chip_line = f"[bold]Chip:[/] [cyan]{CHIP_NAME}[/]" if CHIP_NAME != "unknown" else ""
-        ram_line = f"[bold]RAM:[/] {TOTAL_RAM_GB}GB {'[yellow](8GB mode)[/]' if IS_8GB_DEVICE else ''}" if TOTAL_RAM_GB > 0 else ""
-        if self.engine_port <= 0:
-            server_status_str = "[bold green]Cloud Provider[/]"
-        elif getattr(self, "_server_starting", False):
-            server_status_str = "[bold yellow]Starting...[/]"
+        server_status_str = getattr(self, "engine_server_status", "● Active")
+        if "Offline" in server_status_str or "Error" in server_status_str or "404" in server_status_str:
+            server_status_str = f"[bold red]{escape(server_status_str)}[/bold red]"
         else:
-            server_online = is_port_in_use(self.engine_port)
-            status_word = "Online" if server_online else "Offline"
-            server_status_str = (
-                f"[bold green]{status_word} (Port {self.engine_port})[/]" if server_online
-                else f"[bold red]{status_word} (Port {self.engine_port})[/]"
-            )
+            server_status_str = f"[bold green]{escape(server_status_str)}[/bold green]"
+
+        mem_line = ""
+        if mem and hasattr(mem, "messages"):
+            mem_line = f"[bold]Messages:[/] {len(mem.messages)}\n"
+
         return (
-            f"{chip_line}\n"
-            f"{ram_line}\n"
             f"[bold]Engine Server:[/] {server_status_str}\n"
             f"[bold]Provider:[/] [cyan]{escape(self.provider_name)}[/]\n"
             f"[bold]Model:[/] [magenta]{escape(self.model_name)}[/]\n"
@@ -973,11 +968,9 @@ class TorchlightApp(App):
         self.push_screen(ShortcutsHelpModal())
 
     @on(Button.Pressed, "#help-btn")
-    def on_help_btn_pressed(self) -> None:
+    def on_help_pressed(self) -> None:
         self.action_show_help()
 
-    @on(Button.Pressed, "#input-model-badge")
-    def on_input_model_badge_clicked(self) -> None:
         self.action_select_model()
 
     @on(Button.Pressed, "#compact-btn")
@@ -1598,6 +1591,7 @@ class TorchlightApp(App):
                     except Exception:
                         pass
                     self._start_ast_indexing()
+                    self.update_sidebar_meta()
 
             else:
                 # Standalone Reasoning (for non-tool steps)
