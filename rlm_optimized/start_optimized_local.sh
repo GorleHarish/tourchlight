@@ -40,6 +40,8 @@ if [ -n "$MODEL_INPUT" ]; then
         MODEL_PATH="$MODEL_INPUT"
     elif [ -f "$PROJECT_ROOT/models/$MODEL_INPUT" ]; then
         MODEL_PATH="$PROJECT_ROOT/models/$MODEL_INPUT"
+    elif [[ "$MODEL_INPUT" == *"4e4b"* ]] || [[ "$MODEL_INPUT" == *"e4b"* ]] || [[ "$MODEL_INPUT" == *"E4B"* ]]; then
+        MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E4B-it-Q4_K_M.gguf"
     else
         MODEL_PATH="$MODEL_INPUT"
     fi
@@ -69,6 +71,9 @@ if [ ! -f "$MODEL_PATH" ]; then
     if [[ "$MODEL_PATH" == *"qwen"* ]]; then
         python3 -m rlm_optimized.download_qwen
         MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
+    elif [[ "$MODEL_PATH" == *"e4b"* ]] || [[ "$MODEL_PATH" == *"E4B"* ]] || [[ "$MODEL_PATH" == *"4e4b"* ]]; then
+        python3 -m rlm_optimized.download_gemma4e4b
+        MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E4B-it-Q4_K_M.gguf"
     else
         python3 -m rlm_optimized.download_gemma
         MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"

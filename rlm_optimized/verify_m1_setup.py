@@ -83,11 +83,23 @@ def check_model() -> bool:
     """Check 2: Verify model file exists and size is correct."""
     print(f"\n{BOLD}[2/6] Model File{NC}")
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    model_path = os.path.join(project_root, "models", "gemma-4-E2B-it-Q4_K_M.gguf")
+
+    # Determine expected model file based on MODEL_NAME
+    is_e4b = any(k in MODEL_NAME.lower() for k in ("e4b", "4e4b", "4e4"))
+    target_filename = "gemma-4-E4B-it-Q4_K_M.gguf" if is_e4b else "gemma-4-E2B-it-Q4_K_M.gguf"
+    model_path = os.path.join(project_root, "models", target_filename)
+
+    # Check fallback models if target missing
+    if not os.path.exists(model_path):
+        for alt_file in ("gemma-4-E4B-it-Q4_K_M.gguf", "gemma-4-E2B-it-Q4_K_M.gguf", "qwen2.5-coder-7b-instruct-q4_k_m.gguf"):
+            alt_path = os.path.join(project_root, "models", alt_file)
+            if os.path.exists(alt_path) and os.path.getsize(alt_path) > 1_000_000_000:
+                model_path = alt_path
+                break
 
     if not os.path.exists(model_path):
         fail(f"Model not found: {model_path}")
-        info("Run: python3 -m rlm_optimized.download_gemma")
+        info("Run: python3 -m rlm_optimized.download_gemma4e4b  OR  python3 -m rlm_optimized.download_gemma")
         return False
 
     size_gb = os.path.getsize(model_path) / (1024 ** 3)

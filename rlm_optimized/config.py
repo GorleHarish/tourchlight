@@ -126,7 +126,7 @@ ALLOWED_MODULES = [
 
 
 def normalize_model_name(name: str, provider: str = "") -> str:
-    """Normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 E2B')."""
+    """Normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 E2B', 'gemma 4 4e4b')."""
     name_lower = name.lower().replace(" ", "").replace("-", "").replace("_", "").replace(":", "")
     if provider == "mlx" or "mlx" in name_lower:
         if "qwen" in name_lower or name_lower == "qwen2.5coder":
@@ -136,6 +136,8 @@ def normalize_model_name(name: str, provider: str = "") -> str:
                 return "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit"
             return "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"
         if "gemma" in name_lower:
+            if "4e4b" in name_lower or "4e4" in name_lower or "e4b" in name_lower:
+                return "mlx-community/gemma-4-E4B-it-4bit"
             if "4e2b" in name_lower or "4e2" in name_lower or "gemma4" in name_lower:
                 return "mlx-community/gemma-4-E2B-it-4bit"
             return "mlx-community/gemma-2-2b-it-4bit"
@@ -145,11 +147,13 @@ def normalize_model_name(name: str, provider: str = "") -> str:
         elif "3b" in name_lower:
             return "qwen2.5-coder-3b-instruct"
         return "qwen2.5-coder-7b-instruct"
+    if "gemma4e4b" in name_lower or "gemma4e4" in name_lower or "gemma44b" in name_lower or "4e4b" in name_lower or "e4b" in name_lower:
+        return "gemma-4-E4B-it"
     if "gemma4e2b" in name_lower or "gemma4" in name_lower or "gemma4e2" in name_lower:
         return "gemma-4-E2B-it"
     if "gemma2" in name_lower:
         return "gemma-2-2b-it"
-    elif name_lower in ("gemma4e4b", "gemma44b", "gemmae4b", "gemma4b", "gemma34b"):
+    elif name_lower in ("gemma34b", "gemma3"):
         return "gemma3:4b"
     return name
 
@@ -158,7 +162,9 @@ def list_available_models() -> list[dict[str, str]]:
     """Scan local models directory and returns available GGUF and MLX models."""
     models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
     available = [
-        {"name": "Gemma 4 E2B Instruct (4B TurboQuant)", "id": "gemma-4-E2B-it", "provider": "turbo"},
+        {"name": "Gemma 4 E2B Instruct (2B TurboQuant)", "id": "gemma-4-E2B-it", "provider": "turbo"},
+        {"name": "Gemma 4 E4B Instruct (4B TurboQuant)", "id": "gemma-4-E4B-it", "provider": "turbo"},
+        {"name": "Gemma 4 E4B Instruct (MLX Metal)", "id": "mlx-community/gemma-4-E4B-it-4bit", "provider": "mlx"},
         {"name": "Gemma 2 2B Instruct (MLX Metal)", "id": "mlx-community/gemma-2-2b-it-4bit", "provider": "mlx"},
         {"name": "Qwen 2.5 Coder 7B (TurboQuant)", "id": "qwen2.5-coder-7b-instruct", "provider": "turbo"},
         {"name": "Gemini 2.5 Flash (Cloud API)", "id": "gemini-2.5-flash", "provider": "gemini"},

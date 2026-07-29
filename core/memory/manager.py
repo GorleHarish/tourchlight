@@ -104,6 +104,8 @@ class TieredMemory:
         self.state = SessionState()
         self.messages: deque[Message] = deque(maxlen=config.max_messages)
         self._project_memory = project_memory
+        if self._project_memory:
+            self.load_project_memory()
         self._llm_extractor = None
         self._compressor = SelectiveCompressor(
             config=CompressionConfig(),
@@ -113,6 +115,44 @@ class TieredMemory:
         # even after compression. Max 2 files (FIFO eviction).
         self._pinned_files: deque[tuple[str, str]] = deque(maxlen=2)
         self._pinned_token_budget: int = config.pinned_token_budget
+
+    def load_project_memory(self) -> None:
+        """Load persistent project memory (.context-memory.json) into L0 working state."""
+        if not self._project_memory:
+            return
+        try:
+            data = self._project_memory.load()
+            if data:
+                for d in data.get("arch_decisions", []):
+                    if d and d not in self.state.decisions:
+                        self.state.decisions.append(d)
+                for f in data.get("files_modified", []):
+                    if f and f not in self.state.files_modified:
+                        self.state.files_modified.append(f)
+                for t in data.get("tech_stack", []):
+                    if t and t not in self.state.tech_stack:
+                        self.state.tech_stack.append(t)
+                for tf in data.get("tried_and_failed", []):
+                    if tf and tf not in self.state.tried_and_failed:
+                        self.state.tried_and_failed.append(tf)
+                for e in data.get("errors_seen", []):
+                    if e and e not in self.state.errors_seen:
+                        self.state.errors_seen.append(e)
+                for f in data.get("facts", []):
+                    if f and f not in self.state.decisions:
+                        self.state.decisions.append(f)
+        except Exception:
+            pass
+
+    def persist_to_project_memory(self) -> None:
+        """Persist L0 working state to disk in .context-memory.json."""
+        if not self._project_memory:
+            return
+        try:
+            self._project_memory.persist_session_state(self.state)
+        except Exception:
+            pass
+
 
     @property
     def total_tokens(self) -> int:
@@ -238,6 +278,48 @@ class TieredMemory:
     async def compress_recent_async(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0, force: bool = False) -> None:
         """Async wrapper for compress_recent."""
         self.compress_recent(summarizer_fn, preserve_first, force=force)
+
+    def compact_between_tasks(self, summarizer_fn: Optional[Callable] = None) -> None:
+        """Compact context between tasks while preserving continuous session state.
+
+        Unlike clear(), this retains SessionState (files_modified, errors_seen,
+        decisions, tech_stack, etc.) and pinned files, while compressing message
+        history into an L2 context summary so context budget remains under control
+        without losing debug and code improvement history.
+        """
+        if not self.messages:
+            return
+
+        older_messages = list(self.messages)
+        self.messages.clear()
+
+        summary_content = None
+        if summarizer_fn:
+            try:
+                summary_content = summarizer_fn(older_messages)
+            except Exception:
+                summary_content = None
+
+        if summary_content:
+            self.messages.append(Message(
+                role=MessageRole.SYSTEM,
+                content=f"[Continuous Session Summary of Prior Tasks]\n{summary_content}"
+            ))
+        else:
+            state_parts = []
+            if self.state.files_modified:
+                state_parts.append(f"Modified files: {', '.join(list(self.state.files_modified)[-5:])}")
+            if self.state.errors_seen:
+                state_parts.append(f"Errors seen: {', '.join(list(self.state.errors_seen)[-3:])}")
+            if self.state.decisions:
+                state_parts.append(f"Key decisions: {', '.join(list(self.state.decisions)[-3:])}")
+            
+            summary_text = "; ".join(state_parts) if state_parts else f"{len(older_messages)} prior turns"
+            self.messages.append(Message(
+                role=MessageRole.SYSTEM,
+                content=f"[Continuous Session Summary: {summary_text}]"
+            ))
+
 
     def get_context_for_llm(self, user_query: str = "", project_root: Optional[str] = None) -> list[dict]:
         """Build the message list for the LLM.
@@ -380,3 +462,6 @@ class TieredMemory:
         for err in error_matches[:2]:
             if err not in self.state.errors_seen:
                 self.state.errors_seen.append(err)
+
+        self.persist_to_project_memory()
+

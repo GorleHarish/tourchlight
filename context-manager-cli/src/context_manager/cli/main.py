@@ -193,11 +193,15 @@ class StreamingChatSession:
         self._params_locked: bool            = False
         self._current_phase: str             = "chat"
 
-        # ── Debate & Self-Critique Verifier ──────────────────────────────────────
-        if DebateVerifier is not None:
-            self.debate_verifier = DebateVerifier(self.client, enabled=True)
+        # ── Autonomous Harness Initialization ─────────────────────────────────────
+        if AutonomousHarness is not None:
+            try:
+                self.harness = AutonomousHarness(project_root=self.project_path, memory=self.memory)
+            except Exception:
+                self.harness = None
         else:
-            self.debate_verifier = None
+            self.harness = None
+
 
 
 
@@ -862,11 +866,13 @@ class StreamingChatSession:
             self._flash_preview(query)
         elif command in ("/tasks", "/goal", "/subagents"):
             if AutonomousHarness:
-                harness = AutonomousHarness(project_root=self.project_path, memory=self.memory)
+                harness = getattr(self, "harness", None) or AutonomousHarness(project_root=self.project_path, memory=self.memory)
+                harness.ensure_goal_spec_initialized()
                 summary = harness.get_status_summary()
                 dashboard.show_task_progress(summary)
             else:
                 dashboard.print_warning("AutonomousHarness is not available.")
+
         elif command == "/files":
             if self._index is None:
                 dashboard.print_warning("Flashlight not initialised.")

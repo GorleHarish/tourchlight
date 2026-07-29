@@ -28,5 +28,15 @@ else
     PROVIDER="lmstudio"
 fi
 
-exec python3 -m rlm_optimized.tui_app --provider "$PROVIDER" "$@"
+ARGS=()
+while [[ $# -gt 0 ]]; do
+    if [[ "$1" != -* ]]; then
+        ARGS+=("--model" "$1")
+    else
+        ARGS+=("$1")
+    fi
+    shift
+done
+
+exec python3 -m rlm_optimized.tui_app --provider "$PROVIDER" "${ARGS[@]}"
 

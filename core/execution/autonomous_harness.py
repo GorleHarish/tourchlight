@@ -63,6 +63,8 @@ class HarnessConfig:
     auto_git_commit: bool = True
     max_duration_seconds: int = 86400  # Default 24 hours
     check_interval_seconds: float = 1.0
+    preserve_continuous_context: bool = True  # Preserve continuous session context between sub-tasks
+
 
 
 class AutonomousHarness:
@@ -89,14 +91,34 @@ class AutonomousHarness:
         self.tasks_md_path = self.torchlight_dir / "tasks.md"
         self.torchlight_dir.mkdir(parents=True, exist_ok=True)
 
-        self.goal_spec: Optional[GoalSpec] = None
+        self.goal_spec: Optional[GoalSpec] = self.load_goal_spec()
         self._ensure_local_git()
         if self.memory and hasattr(self.memory, "config") and self.memory.config:
             set_ctx_window(self.memory.config.max_tokens)
 
+
     def _ensure_local_git(self) -> None:
         """Ensure target project has local git repository and persistent memory initialized."""
         ensure_project_initialized(self.project_root, create_git=True)
+
+    def ensure_goal_spec_initialized(self, title: Optional[str] = None, description: Optional[str] = None) -> GoalSpec:
+        """Ensure a goal spec exists on disk in .torchlight, initializing a default workspace goal if absent."""
+        spec = self.load_goal_spec()
+        if spec:
+            self.goal_spec = spec
+            return spec
+
+        safe_name = self.project_root.name.lower().replace(" ", "_")
+        return self.initialize_goal(
+            goal_id=f"goal_{safe_name}",
+            title=title or f"{self.project_root.name} Autonomous Goal",
+            description=description or "Continuous codebase maintenance, debugging, and feature development.",
+            tasks=[
+                {"id": "task_01", "description": "Audit codebase structure & symbols", "target_files": []},
+                {"id": "task_02", "description": "Verify test suite health & build status", "target_files": []},
+            ]
+        )
+
 
     def initialize_goal(self, goal_id: str, title: str, description: str, tasks: list[dict]) -> GoalSpec:
         task_specs = []
@@ -269,8 +291,15 @@ class AutonomousHarness:
         task.attempts += 1
         self.save_goal_spec()
 
-        # Step 1: Flush L0 message memory to keep context budget under control
-        self.memory.clear()
+        # Step 1: Manage message memory for continuous session execution
+        if getattr(self.config, "preserve_continuous_context", True):
+            if hasattr(self.memory, "compact_between_tasks"):
+                self.memory.compact_between_tasks()
+            else:
+                self.memory.clear()
+        else:
+            self.memory.clear()
+
 
         # Step 2: Inject system context + task prompt + inter-task pipeline memory
         prior_context = self._get_prior_verified_summaries(task)

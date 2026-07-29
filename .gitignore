@@ -12,3 +12,14 @@ venv/
 
 # Python build artifacts
 *.egg-info/
+
+# Model files & directories
+models/
+*.gguf
+*.gguf.*
+*.bin
+*.safetensors
+
+# Torchlight logs and runtime state
+.torchlight/
+.torchlight_history.log

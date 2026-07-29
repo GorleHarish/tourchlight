@@ -62,7 +62,8 @@ def test_context_flushing_during_micro_epoch():
         assert len(memory.messages) == 2
 
         fb = create_mock_feedback_loop(tmp_path, all_passed=True)
-        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb)
+        config = HarnessConfig(preserve_continuous_context=False)
+        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb, config=config)
 
         tasks = [{"id": "t1", "description": "Quick fix"}]
         harness.initialize_goal(goal_id="g1", title="Quick Goal", description="Fix issue", tasks=tasks)
@@ -72,9 +73,39 @@ def test_context_flushing_during_micro_epoch():
 
         assert success is True
         assert task.status == TaskStatus.VERIFIED
-        # Messages should contain only the system message + fresh task prompt
+        # Messages should contain only the system message + fresh task prompt when preserve_continuous_context=False
         assert len(memory.messages) == 2
         assert "GOAL: Quick Goal" in memory.messages[1].content
+
+
+def test_continuous_session_context_preservation():
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=2000))
+        memory.add_user_message("Debugging line 42")
+        memory.add_assistant_message("Fixed typo in solver.py")
+        memory.state.files_modified.append("solver.py")
+
+        assert len(memory.messages) == 2
+
+        fb = create_mock_feedback_loop(tmp_path, all_passed=True)
+        config = HarnessConfig(preserve_continuous_context=True)
+        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb, config=config)
+
+        tasks = [{"id": "t1", "description": "Continuous improvement"}]
+        harness.initialize_goal(goal_id="g1", title="Continuous Goal", description="Refactor code", tasks=tasks)
+
+        task = harness.goal_spec.tasks[0]
+        success = harness.run_micro_epoch(task)
+
+        assert success is True
+        assert task.status == TaskStatus.VERIFIED
+        # Continuous session retains summary of prior turns + state (files_modified) + fresh task
+        assert len(memory.messages) == 3
+        assert "solver.py" in memory.state.files_modified
+        user_msg = [m for m in memory.messages if str(m.role.value) == "user"][-1]
+        assert "GOAL: Continuous Goal" in user_msg.content
+
 
 
 def test_task_failure_and_retry_limit():

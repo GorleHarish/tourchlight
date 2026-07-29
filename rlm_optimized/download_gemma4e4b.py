@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Gemma 4 E4B (4E4B) Model Downloader for Torchlight.
+
+Downloads the Gemma 4 E4B Instruct GGUF model from Hugging Face for
+local inference via llama.cpp / TurboQuant on Apple Silicon & local setups.
+"""
+
 import os
 import sys
 import ssl
@@ -11,33 +18,19 @@ try:
 except AttributeError:
     pass
 
-E2B_URL = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf"
-E4B_URL = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf"
-
+MODEL_URL = "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf"
 DEST_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
-E2B_DEST = os.path.join(DEST_DIR, "gemma-4-E2B-it-Q4_K_M.gguf")
-E4B_DEST = os.path.join(DEST_DIR, "gemma-4-E4B-it-Q4_K_M.gguf")
+DEST_FILE = os.path.join(DEST_DIR, "gemma-4-E4B-it-Q4_K_M.gguf")
 
 
-def download_gemma(variant: str = "e2b", url: str = None, dest: str = None) -> str:
+def download_gemma4e4b(url: str = MODEL_URL, dest: str = DEST_FILE) -> str:
     os.makedirs(DEST_DIR, exist_ok=True)
-
-    variant_clean = str(variant).lower()
-    is_e4b = any(k in variant_clean for k in ("e4b", "4e4b", "4e4", "e4"))
-
-    if not url:
-        url = E4B_URL if is_e4b else E2B_URL
-    if not dest:
-        dest = E4B_DEST if is_e4b else E2B_DEST
-
-    model_label = "Gemma 4 E4B (4B)" if is_e4b else "Gemma 4 E2B (2B)"
-
     if os.path.exists(dest) and os.path.getsize(dest) > 1_000_000_000:
-        print(f"✅ {model_label} GGUF Model found at: {dest}")
+        print(f"✅ Gemma 4 E4B GGUF Model found at: {dest}")
         return dest
 
     tmp_dest = dest + ".part"
-    print(f"📥 {model_label} GGUF model downloading from Hugging Face...")
+    print("📥 Gemma 4 E4B GGUF model downloading from Hugging Face...")
     print(f"   URL: {url}")
     print(f"   Destination: {dest}\n")
 
@@ -85,6 +78,4 @@ def download_gemma(variant: str = "e2b", url: str = None, dest: str = None) -> s
 
 
 if __name__ == "__main__":
-    arg = sys.argv[1] if len(sys.argv) > 1 else "e2b"
-    download_gemma(variant=arg)
-
+    download_gemma4e4b()

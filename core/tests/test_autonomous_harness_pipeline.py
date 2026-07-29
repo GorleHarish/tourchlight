@@ -75,9 +75,10 @@ def test_inter_task_output_summary_injection():
         harness.run_micro_epoch(task2)
         
         # User message in memory should contain prior task summary context
-        user_msg = memory.messages[1].content
+        user_msg = [m for m in memory.messages if str(m.role.value) == "user"][-1].content
         assert "Prior Completed Sub-Tasks Context:" in user_msg
         assert "t1 (Direct Dependency): Create database schema" in user_msg
+
 
 
 def test_target_file_collision_detection():
