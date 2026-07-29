@@ -68,16 +68,16 @@ rlm_optimized/                              # TUI frontend
 - System prompt + Phase instructions: ~300 tokens
 - Dynamic L0 Working Memory Scratchpad: ~200 tokens
 - Tool syntax & skill schemas: ~300 tokens
-- Flashlight beam (3 files × 120 lines AST): ~1,500 tokens
+- Flashlight beam (2 files × 75 lines AST): ~600-750 tokens
 - Feedback loop & test traceback: ~400 tokens
-- **Available for conversation & active file pins: ~9,588 tokens (~78% headroom)**
+- **Available for conversation & active file pins: ~10,338 tokens (~84% headroom)**
 
 #### 2. 4k Model Fallback (4,096 Tokens)
 - System prompt: ~250 tokens
 - Tool syntax suffix: ~80 tokens
-- Flashlight beam (1 file × 50 lines AST): ~500 tokens
+- Flashlight beam (1 file × 25 lines AST): ~250 tokens
 - Dynamic L0 Scratchpad: ~200 tokens
-- **Available for conversation: ~3,066 tokens**
+- **Available for conversation: ~3,316 tokens**
 
 ### Agentic Loop
 1. `_detect_phase()` → plan|code|troubleshoot|chat
@@ -95,7 +95,7 @@ rlm_optimized/                              # TUI frontend
 - **Phase-Tailored System Prompting**: Dynamically injects phase-specific instructions for `plan`, `code`, `troubleshoot`, and `chat` alongside temperature presets.
 - **Dynamic L0 Working Memory Scratchpad**: Renders active goal, modified files, active errors, failing tests, and key decisions into system context on every turn.
 - **Anti-Symptom-Patching Directives**: Hardcoded directives in `SYSTEM_PROMPT` forbidding masking symptoms, swallowing exceptions, returning dummy fallbacks, or deleting assertions.
-- **Native AST Graph Engine**: Zero-dependency `graph_engine.py` replaces Kùzu DB. Stores graph at `.torchlight/graph.json` (never loaded into LLM context). Provides `query()`, `find_path()`, `get_subgraph()`, `get_structure()` with hard output caps to prevent context overflow
+- **Native AST Graph Engine**: Zero-dependency `graph_engine.py` replaces Kùzu DB. Stores graph at `.torchlight/graph.json` (never loaded into LLM context). Provides `query()` (enriched with line-level code previews), `find_path()`, `get_subgraph()`, `get_structure()` with hard output caps to prevent context overflow
 - **Lazy graph invalidation**: File edits invalidate the graph cache (`_graphs.pop()`), rebuilding only on next `SEARCH_AST` query — never eagerly during editing
 - **24-Hour Autonomous Harness**: Continuous micro-epoch runner (`AutonomousHarness`) driving file-backed goal specs (`.torchlight/goal_spec.json` & `.torchlight/tasks.md`), resetting conversation context (`L0`) between sub-tasks, and applying test-driven local Git checkpoints & auto-reverts (`git checkout -- .` + `git clean -fd`)
 - **Zero-Config Local Git Provisioning**: `AutonomousHarness` checks target project roots and automatically executes `git init` locally if missing
@@ -104,10 +104,10 @@ rlm_optimized/                              # TUI frontend
 - **12k context (8GB & TurboQuant base)**: Default CTX_SIZE=12288 across config and start scripts, KV cache ~0.3GB, override via `RLM_CTX_SIZE`
 - **85% context budget**: Headroom for system/tools/beam
 - **Phase-based inference**: code (temp=0.1), troubleshoot (temp=0.3), chat (temp=0.7)
-- **Surgical file reading**: SEARCH_AST → GREP → READ_SYMBOLS → READ_FILE(range/symbol)
+- **Surgical file reading**: SEARCH_AST (returns signatures + 5-line previews) → GREP → READ_SYMBOLS → READ_FILE(range/symbol)
 - **Inline code interception**: Code in chat → auto-WRITE_FILE
 - **Lazy skill loading**: AST scan at startup, import on first execute
-- **Context-scaled tool output**: READ_FILE caps at ~20% of window; SEARCH_AST caps subgraph at 40 edges, structure at 20 files
+- **Context-scaled tool output**: READ_FILE caps at ~20% of window; SEARCH_AST caps subgraph at 40 edges, structure at 20 files, query output at 40 total lines
 - **Zero-Context Harness Quality Engine**: Deterministic post-save code formatting (`ruff`, `black`, `prettier`, `gofmt`, `rustfmt`), POSIX whitespace normalization (preserving Makefile/Go tabs), multi-language syntax validation (Python AST, JSON, JS bracket balance), and stub detector operating in the Python harness layer with 0 LLM context overhead.
 - **Enhanced Web Browsing & Stealth Anti-Blocking Engine**: Multi-tier web retrieval (Jina Reader API → Stealth HTTP GET with `sec-ch-ua` browser headers → Remote Headless Playwright Chromium engine for 403/429/Cloudflare/JS SPAs), structure-preserving HTML parser (`StructurePreservingHTMLParser` preserving `<pre><code>` & `<table>` formatting), and version-locked query augmentation (`pyproject.toml` / `package.json` manifest inspector).
 - **Non-Verbose Code Output (3-Tier Output Discipline)**: Never dump raw code in assistant text. Code modifications occur via `WRITE_FILE`/`EDIT_FILE` tool payloads while chat responses state action, file path, line/function scope, and description. UI collapses tool payload args into clean status badges (`✓ ✏ Writing src/main.py`), reducing edit turn token usage by ~85% and preventing terminal screen buffer overflow.
