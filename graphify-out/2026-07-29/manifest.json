@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785322940.5166838,
-    "ast_hash": "5e9dd252410bfb22dba186e6b9187785",
+    "mtime": 1785323086.3565812,
+    "ast_hash": "846147e8210fb8c6270c923dc80af448",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -555,8 +555,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/download_gemma.py": {
-    "mtime": 1785322899.8327413,
-    "ast_hash": "6d8e30952813773b2f7fcea12e5acbd4",
+    "mtime": 1785323069.8289626,
+    "ast_hash": "901d3539b3b63f295c04e32146cd347a",
     "semantic_hash": ""
   },
   "rlm_optimized/download_qwen.py": {
@@ -655,8 +655,8 @@
     "semantic_hash": "a190080fc67cb478aee09561dc0cadfb"
   },
   "tui.sh": {
-    "mtime": 1785221933.3633866,
-    "ast_hash": "4c7fba12ce3ab7f9e0b014d90ba91dd5",
+    "mtime": 1785323058.147724,
+    "ast_hash": "6041130ef293c7492c4756bfb89ee7f6",
     "semantic_hash": ""
   },
   ".torchlight/graph.json": {
@@ -840,8 +840,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/download_gemma4e4b.py": {
-    "mtime": 1785322891.9204197,
-    "ast_hash": "8d6222446155e081095af5a0dc579079",
+    "mtime": 1785323050.3357437,
+    "ast_hash": "62f0b5cfb1b4ffc4e132391f7b917bf0",
     "semantic_hash": ""
   }
 }

@@ -1,7 +1,7 @@
 # Graph Report - tourchlight v1_i6  (2026-07-29)
 
 ## Corpus Check
-- 167 files · ~246,540 words
+- 167 files · ~246,811 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary

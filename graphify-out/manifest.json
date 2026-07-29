@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785323086.3565812,
-    "ast_hash": "846147e8210fb8c6270c923dc80af448",
+    "mtime": 1785331589.5570261,
+    "ast_hash": "ea32e1a1d375ddadb86aa7017c7ae07c",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1785265739.9604747,
-    "ast_hash": "3759aefcd461a33c01480e8022b96f6c",
+    "mtime": 1785331270.9426467,
+    "ast_hash": "1739743fc936bf490ff6e7428a293411",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -305,8 +305,8 @@
     "semantic_hash": "634c41eaca622a39df58aa713cd385bd"
   },
   "core/execution/autonomous_harness.py": {
-    "mtime": 1785268201.6420825,
-    "ast_hash": "9a39102b2ccbf4c25eaee908aa8eb544",
+    "mtime": 1785331266.2466009,
+    "ast_hash": "14e365f6b72220780a09c48cd9571ba8",
     "semantic_hash": ""
   },
   "core/execution/feedback_loop.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785268164.765382,
-    "ast_hash": "5b13ee37e2b7efcf5590d216cd3f0753",
+    "mtime": 1785331561.5836437,
+    "ast_hash": "11714d87f8095e624b7c8fe84d896205",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785312522.8975546,
-    "ast_hash": "0e10e6cdf1658373bcf9ba6ea199c0b3",
+    "mtime": 1785331570.722916,
+    "ast_hash": "05e22e38b42dcfc5d5735cebe90d650b",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -410,14 +410,14 @@
     "semantic_hash": "dee5e3e162e0430cbc604c61cf8acc6f"
   },
   "core/tests/test_autonomous_harness.py": {
-    "mtime": 1785098290.4469523,
-    "ast_hash": "41906ae62fbf98b87f004290c8c32d75",
-    "semantic_hash": "41906ae62fbf98b87f004290c8c32d75"
+    "mtime": 1785328842.5840662,
+    "ast_hash": "bd4d8c02aa99af697e1c4a289c522ad4",
+    "semantic_hash": ""
   },
   "core/tests/test_autonomous_harness_pipeline.py": {
-    "mtime": 1785143798.602915,
-    "ast_hash": "095a6477108e416c1a1c171d4d96c2ce",
-    "semantic_hash": "095a6477108e416c1a1c171d4d96c2ce"
+    "mtime": 1785328818.8980002,
+    "ast_hash": "4108ee6964f6545bf8f3d5b5be6a8561",
+    "semantic_hash": ""
   },
   "core/tests/test_classification.py": {
     "mtime": 1784893767.6023774,
@@ -659,11 +659,6 @@
     "ast_hash": "6041130ef293c7492c4756bfb89ee7f6",
     "semantic_hash": ""
   },
-  ".torchlight/graph.json": {
-    "mtime": 1785181444.7266245,
-    "ast_hash": "3fdd16b2e165ef15669d908cf5f6707d",
-    "semantic_hash": ""
-  },
   "core/flashlight/graph_engine.py": {
     "mtime": 1785181706.9276378,
     "ast_hash": "c200bc2cafa8e19e6d1fe9324ed3f893",
@@ -682,11 +677,6 @@
   ".agents/workflows/graphify.md": {
     "mtime": 1785180000.5117505,
     "ast_hash": "0bc020d491fca99550c1ea3de0a5f862",
-    "semantic_hash": ""
-  },
-  ".torchlight/GRAPH_REPORT.md": {
-    "mtime": 1785181444.7276661,
-    "ast_hash": "db52289926ddabae3765788929505b5b",
     "semantic_hash": ""
   },
   "AGENTS.md": {
@@ -842,6 +832,11 @@
   "rlm_optimized/download_gemma4e4b.py": {
     "mtime": 1785323050.3357437,
     "ast_hash": "62f0b5cfb1b4ffc4e132391f7b917bf0",
+    "semantic_hash": ""
+  },
+  "core/dashboard/web_server.py": {
+    "mtime": 1785331357.9617603,
+    "ast_hash": "f85667c921e29ce96b1afe95e81872f8",
     "semantic_hash": ""
   }
 }
