@@ -330,8 +330,8 @@
     "semantic_hash": "09574588768e55cd60539f5de1bca50b"
   },
   "core/flashlight/beam.py": {
-    "mtime": 1785356968.6494877,
-    "ast_hash": "18c70ea3d1498e8d86682cdbf40f8793",
+    "mtime": 1785225361.1507623,
+    "ast_hash": "03bec2808bc9a34c715f1072319b1462",
     "semantic_hash": ""
   },
   "core/flashlight/indexer.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785356953.7189202,
-    "ast_hash": "bed3972d6ccb2bb3a63bd14119cc4632",
+    "mtime": 1785332840.2763066,
+    "ast_hash": "1702e7a31c2c0ed4c4b32312e18f4aab",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785356936.8278878,
-    "ast_hash": "e64d1bc93fa408b687f6bf66ae949ee5",
+    "mtime": 1785331570.722916,
+    "ast_hash": "05e22e38b42dcfc5d5735cebe90d650b",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -530,8 +530,8 @@
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
-    "mtime": 1785356985.298782,
-    "ast_hash": "41facca88b0f592378ac8cb149db712c",
+    "mtime": 1785225406.4656904,
+    "ast_hash": "bffdd659f78256cadcef443809e56938",
     "semantic_hash": ""
   },
   "core/tools/schemas.py": {
@@ -660,8 +660,8 @@
     "semantic_hash": ""
   },
   "core/flashlight/graph_engine.py": {
-    "mtime": 1785356894.8567035,
-    "ast_hash": "28496b16a37ac4c6537d41946f7f0100",
+    "mtime": 1785181706.9276378,
+    "ast_hash": "c200bc2cafa8e19e6d1fe9324ed3f893",
     "semantic_hash": ""
   },
   "core/tests/test_graph_engine.py": {
@@ -847,16 +847,6 @@
   ".opencode/plugins/graphify.js": {
     "mtime": 1785333138.6277468,
     "ast_hash": "3ea725724bc8ebe483c9f13d6aa1124f",
-    "semantic_hash": ""
-  },
-  "context-manager-cli/agent_skills/html_games.py": {
-    "mtime": 1785349632.2974222,
-    "ast_hash": "b96106de4518546c2d8fca767328127d",
-    "semantic_hash": ""
-  },
-  "core/.context-memory.json": {
-    "mtime": 1785357022.307611,
-    "ast_hash": "63f8dc9cd2f251711c8b33b6a1696da3",
     "semantic_hash": ""
   }
 }
