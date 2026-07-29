@@ -121,4 +121,11 @@ def test_rlm_engine_parse_think_tags_and_mid_sentence_prevention():
     assert action == "final_answer"
     assert content == "your answer"
 
+    # 5. Server stop-token truncated <FINAL_ANSWER> tag (no closing </FINAL_ANSWER>)
+    resp5 = "Thinking about the query...\n<FINAL_ANSWER>The answer is 42."
+    action, thinking, content, _, _, _ = engine._parse_response(resp5)
+    assert action == "final_answer"
+    assert thinking == "Thinking about the query..."
+    assert content == "The answer is 42."
+
 

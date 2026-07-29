@@ -761,8 +761,8 @@ class RLMEngineOptimized:
             return explicit_thinking or cleaned_pre
 
         # 1. Check for <tool_call>...</tool_call> (standard tag for Qwen / Llama models)
-        tool_call_match = re.search(r'<tool_call>\s*(.*?)\s*</tool_call>', response, re.DOTALL | re.IGNORECASE)
-        if tool_call_match:
+        tool_call_match = re.search(r'<tool_call>\s*(.*?)(?:</tool_call>|$)', response, re.DOTALL | re.IGNORECASE)
+        if tool_call_match and tool_call_match.group(1).strip():
             raw_payload = tool_call_match.group(1).strip()
             thinking = _get_thinking(tool_call_match.start())
             parsed_json = _clean_and_parse_json(raw_payload)
@@ -778,10 +778,10 @@ class RLMEngineOptimized:
 
         # 2. Check for <TOOL name="...">JSON</TOOL> or <tool name="...">JSON</tool>
         tool_match = re.search(
-            r'<TOOL\s+name=["\'](\w+)["\']>\s*(.*?)\s*</TOOL>',
+            r'<TOOL\s+name=["\'](\w+)["\']>\s*(.*?)(?:</TOOL>|$)',
             response, re.DOTALL | re.IGNORECASE,
         )
-        if tool_match:
+        if tool_match and tool_match.group(2).strip():
             tool_name = tool_match.group(1).upper()
             raw_args = tool_match.group(2).strip()
             thinking = _get_thinking(tool_match.start())
@@ -790,10 +790,10 @@ class RLMEngineOptimized:
 
         # 2b. Check for <action>NAME {JSON}</action> — fallback shape when grammar is off
         action_tag_match = re.search(
-            r'<action>\s*(\w+)\s*(?:\{.*?\})?\s*</action>',
+            r'<action>\s*(\w+)\s*(?:\{.*?\})?(?:</action>|$)',
             response, re.DOTALL | re.IGNORECASE,
         )
-        if action_tag_match:
+        if action_tag_match and action_tag_match.group(1).strip():
             tool_name = action_tag_match.group(1).upper()
             thinking = _get_thinking(action_tag_match.start())
             # Try to extract JSON args from inside the tag
@@ -807,7 +807,7 @@ class RLMEngineOptimized:
 
         # 3. Check for <WRITE_FILE path="...">content</WRITE_FILE>
         write_tag_match = re.search(
-            r'<WRITE_FILE\s+path=["\']([^"\']+)["\']>\s*(.*?)\s*</WRITE_FILE>',
+            r'<WRITE_FILE\s+path=["\']([^"\']+)["\']>\s*(.*?)(?:</WRITE_FILE>|$)',
             response, re.DOTALL | re.IGNORECASE,
         )
         if write_tag_match:
@@ -838,8 +838,8 @@ class RLMEngineOptimized:
                 pass
 
         # 4. Check for <CODE>...</CODE>
-        code_match = re.search(r"<CODE>(.*?)</CODE>", response, re.DOTALL | re.IGNORECASE)
-        if code_match:
+        code_match = re.search(r"<CODE>(.*?)(?:</CODE>|$)", response, re.DOTALL | re.IGNORECASE)
+        if code_match and code_match.group(1).strip():
             content = code_match.group(1).strip()
             thinking = _get_thinking(code_match.start())
             
@@ -854,7 +854,7 @@ class RLMEngineOptimized:
             return ("code", thinking, content, [], None, None)
 
         # 5. Check for <SUB_QUERY>...</SUB_QUERY>
-        sub_query_matches = re.findall(r"<SUB_QUERY>(.*?)</SUB_QUERY>", response, re.DOTALL | re.IGNORECASE)
+        sub_query_matches = re.findall(r"<SUB_QUERY>(.*?)(?:</SUB_QUERY>|$)", response, re.DOTALL | re.IGNORECASE)
         if sub_query_matches:
             first_tag_pos = response.lower().find("<sub_query>")
             thinking = _get_thinking(first_tag_pos) if first_tag_pos != -1 else explicit_thinking
@@ -862,7 +862,7 @@ class RLMEngineOptimized:
                     [q.strip() for q in sub_query_matches[1:]], None, None)
 
         # 6. Check for <FINAL_ANSWER>...</FINAL_ANSWER>
-        final_match = re.search(r"<FINAL_ANSWER>(.*?)</FINAL_ANSWER>", response, re.DOTALL | re.IGNORECASE)
+        final_match = re.search(r"<FINAL_ANSWER>(.*?)(?:</FINAL_ANSWER>|$)", response, re.DOTALL | re.IGNORECASE)
         if final_match:
             raw_content = final_match.group(1).strip()
             pre_text = response[:final_match.start()].strip()

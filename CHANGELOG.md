@@ -6,11 +6,12 @@ All notable changes to Torchlight will be documented in this file.
 
 ### Fixed & Improved
 - **Robust Reasoning & Answer Tag Parsing**:
+  - **Server Stop-Token Truncation Handling**: Fixed tag regexes in `_parse_response` (`(?:</TAG>|$)`) to handle local llama.cpp / Ollama / API server stop-token behavior where closing tags like `</FINAL_ANSWER>` or `</TOOL>` are omitted by the server upon hitting stop sequences.
   - **Explicit `<think>` Block Extraction**: Isolated `<think>...</think>` and `<thought>...</thought>` reasoning tags emitted by reasoning models (Qwen 2.5, DeepSeek R1, Gemma) into the Reasoning UI block instead of leaking them into answer output.
   - **Mid-Sentence Tag Split Prevention**: Fixed an issue in `_parse_response` where `<FINAL_ANSWER>` tags mentioned mid-sentence (e.g., `"I will use <FINAL_ANSWER> to..."`) caused reasoning text to be truncated mid-sentence and sentence fragments assigned to the Final Answer panel.
   - **Direct Plain-Text Answer Support**: Non-tool conversational responses without explicit `<FINAL_ANSWER>` tags are now cleanly extracted as final answers, eliminating infinite thinking loop degradation and unnecessary prompt nudges.
   - **Template Placeholder Filtering**: Added filtering for template artifact tags like `<FINAL_ANSWER>your answer</FINAL_ANSWER>` copied from prompt examples.
-  - **Unit Test Coverage**: Added comprehensive test cases in `core/tests/test_rlm_engine.py` covering reasoning extraction, mid-sentence tag prevention, and direct text answer parsing (245 tests passing).
+  - **Unit Test Coverage**: Added comprehensive test cases in `core/tests/test_rlm_engine.py` covering reasoning extraction, mid-sentence tag prevention, stop-token truncation, and direct text answer parsing (245 tests passing).
 
 ## [v1.9.0] - 2026-07-29
 

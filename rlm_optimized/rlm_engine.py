@@ -256,9 +256,9 @@ class RLMEngine:
                 return f"{explicit_thinking}\n\n{cleaned_pre}"
             return explicit_thinking or cleaned_pre
 
-        code_match = re.search(r"<CODE>(.*?)</CODE>", response, re.DOTALL | re.IGNORECASE)
-        sub_query_match = re.search(r"<SUB_QUERY>(.*?)</SUB_QUERY>", response, re.DOTALL | re.IGNORECASE)
-        final_match = re.search(r"<FINAL_ANSWER>(.*?)</FINAL_ANSWER>", response, re.DOTALL | re.IGNORECASE)
+        code_match = re.search(r"<CODE>(.*?)(?:</CODE>|$)", response, re.DOTALL | re.IGNORECASE)
+        sub_query_match = re.search(r"<SUB_QUERY>(.*?)(?:</SUB_QUERY>|$)", response, re.DOTALL | re.IGNORECASE)
+        final_match = re.search(r"<FINAL_ANSWER>(.*?)(?:</FINAL_ANSWER>|$)", response, re.DOTALL | re.IGNORECASE)
 
         matches = []
         if code_match:
