@@ -2,6 +2,17 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.0.0] - 2026-07-29
+
+### Added & Improved
+- **Fault-Tolerant Diff Block Parsing**:
+  - **Missing Divider Auto-Recovery**: Enhanced `_parse_diff_block` in `core/tools/implementations.py` to recognize diff blocks where the model omitted the `=======` divider line between `<<<<<<< SEARCH` and `>>>>>>> REPLACE` tags.
+- **Graceful `EDIT_FILE` to `WRITE_FILE` Auto-Fallback**:
+  - **Full-Content Auto-Routing**: Automatically forwards `EDIT_FILE` calls passing full `content` or `code` arguments without `old_text` to `tool_write_file_impl`.
+  - **Non-Existent File Creation**: Automatically creates non-existent target files via `WRITE_FILE` when `EDIT_FILE` is called with new content or code instead of failing with `File not found`.
+- **Unit Test Coverage**:
+  - Added unit test cases (`test_parse_diff_block_missing_divider`, `test_edit_file_auto_fallback_to_write`) in `core/tests/test_diff_edit.py` verifying fault-tolerant parsing and auto-fallback routing (201 core tests passing).
+
 ## [v1.9.1] - 2026-07-29
 
 ### Fixed & Improved

@@ -802,6 +802,16 @@ def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
                 replace_part = after_div[:end_match.start()]
                 return _clean_segment(search_part), _clean_segment(replace_part)
 
+        # Option C: Model omitted ======= divider, putting >>>>>>> REPLACE directly between search and replace
+        rep_tag = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?\r?\n', after_search)
+        if rep_tag:
+            search_part = after_search[:rep_tag.start()]
+            after_rep = after_search[rep_tag.end():]
+            end_tag = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?', after_rep)
+            replace_part = after_rep[:end_tag.start()] if end_tag else after_rep
+            if search_part and replace_part:
+                return _clean_segment(search_part), _clean_segment(replace_part)
+
     # 2. String splitting fallback (legacy logic)
     search_marker = "<<<<<<< SEARCH"
     divide_marker = "======="
@@ -897,7 +907,18 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             return "EDIT_FILE requires a file path."
 
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
+
+        # Auto-fallback 1: If content/code was passed to EDIT_FILE without old_text or diff, treat as full file write via WRITE_FILE
+        if not old_text and not diff_attempted and not start_line and not symbol_name:
+            content_arg = args.get("content") or args.get("code") or args.get("text")
+            if content_arg:
+                return tool_write_file_impl({"path": path, "content": content_arg}, project_root)
+
         if not os.path.exists(p):
+            # Auto-fallback 2: If file does not exist and new_text/content is provided without old_text, auto-create via WRITE_FILE
+            content_arg = args.get("content") or args.get("code") or args.get("text") or new_text
+            if content_arg and not old_text and not diff_attempted:
+                return tool_write_file_impl({"path": path, "content": content_arg}, project_root)
             return f"File not found: {path}"
 
         with open(p, "r", encoding="utf-8") as f:

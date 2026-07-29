@@ -70,4 +70,16 @@ This document summarizes key learnings and design principles established during 
 - **Insight:** If system prompt templates omit registered tools from their pipeline lists, local LLMs will assume those tools do not exist even if schemas are present in runtime code.
 - **Principle:** Ensure single-source-of-truth tool pipeline declarations across all prompt templates (`core/prompts/system.py`, CLI `prompts.py`, `prompts_minimal.py`).
 
+---
+
+## 5. Tool Call Resilience & Fault-Tolerant Parsing
+
+### A. Defensive Auto-Routing & Graceful Fallbacks
+- **Insight:** LLMs occasionally invoke surgical tools like `EDIT_FILE` passing full `content` payloads or targeting new files without specifying `old_text`. Strict schema failures consume context turns and stall trajectory execution.
+- **Principle:** Automatically route ambiguous tool payloads (e.g. delegating `EDIT_FILE` calls with full content to `WRITE_FILE` or auto-creating target files) to preserve agent momentum.
+
+### B. Multi-Pattern Diff Block Parsing
+- **Insight:** Local and open-weight models frequently omit canonical diff markers (e.g., leaving out the `=======` divider line between `<<<<<<< SEARCH` and `>>>>>>> REPLACE`).
+- **Principle:** Implement multi-pattern fallback parsing in `_parse_diff_block()` that recognizes structural variations (missing `=======`, `>>>>>>>` dividers) to recover intent and execute edits cleanly.
+
 

@@ -211,3 +211,31 @@ def test_edit_file_diagnostic_nudge():
         assert "Edit failed:" in res
         assert "HINT" in res or "READ_FILE" in res
 
+
+def test_parse_diff_block_missing_divider():
+    text = """<<<<<<< SEARCH
+def foo():
+    return 1
+>>>>>>> REPLACE
+def foo():
+    return 2
+>>>>>>>"""
+    old_text, new_text = _parse_diff_block(text)
+    assert old_text == "def foo():\n    return 1"
+    assert new_text == "def foo():\n    return 2"
+
+
+def test_edit_file_auto_fallback_to_write():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Case A: EDIT_FILE called with content argument on new file
+        res = tool_edit_file_impl({"path": "new_file.py", "content": "print('hello')"}, project_root=tmpdir)
+        assert "Wrote" in res or "Created" in res or "written" in res.lower() or "Surgically" in res
+        with open(os.path.join(tmpdir, "new_file.py"), "r", encoding="utf-8") as f:
+            assert "hello" in f.read()
+
+        # Case B: EDIT_FILE called with new_text on new file without old_text
+        res2 = tool_edit_file_impl({"path": "new_file_2.py", "new_text": "x = 42"}, project_root=tmpdir)
+        assert "Wrote" in res2 or "Created" in res2 or "written" in res2.lower() or "Surgically" in res2
+        with open(os.path.join(tmpdir, "new_file_2.py"), "r", encoding="utf-8") as f:
+            assert "x = 42" in f.read()
+
