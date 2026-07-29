@@ -271,8 +271,11 @@ class ProjectGraph:
 
     # ── Traversal and Querying ────────────────────────────────────────────────
 
+    _MAX_SNIPPET_LINES = 5
+    _MAX_QUERY_OUTPUT_LINES = 40
+
     def query(self, search_term: str, top_k: int = 5) -> str:
-        """Search nodes matching search_term."""
+        """Search nodes matching search_term. Returns code snippets alongside names."""
         if not self.nodes:
             if not self.load():
                 self.build()
@@ -291,13 +294,44 @@ class ProjectGraph:
 
         # Cap at top_k to prevent context overflow
         capped = matches[:top_k]
-        lines = [f"Found {len(matches)} matching AST nodes for '{search_term}' (showing {len(capped)}):"]
+        output_lines = [f"Found {len(matches)} matching AST nodes for '{search_term}' (showing {len(capped)}):"]
+        total_lines_used = 1
+
         for m in capped:
             ntype = m.get("type", "node").upper()
-            file_loc = f"{m.get('file', m.get('id'))}:L{m.get('line_start', 1)}"
-            doc_str = f" - {m['docstring'][:80]}" if m.get("docstring") else ""
-            lines.append(f"  [{ntype}] {m.get('name')} ({file_loc}){doc_str}")
-        return "\n".join(lines)
+            file_rel = m.get("file", m.get("id", ""))
+            line_start = m.get("line_start", 1)
+            file_loc = f"{file_rel}:L{line_start}"
+            doc_str = f" — {m['docstring'][:80]}" if m.get("docstring") else ""
+            output_lines.append(f"  [{ntype}] {m.get('name')} ({file_loc}){doc_str}")
+            total_lines_used += 1
+
+            # Embed code snippet if we have budget and a file path
+            if total_lines_used < self._MAX_QUERY_OUTPUT_LINES and file_rel and ntype in ("FUNCTION", "CLASS"):
+                snippet = self._read_snippet(file_rel, line_start, m.get("line_end", line_start))
+                if snippet:
+                    for sl in snippet:
+                        output_lines.append(f"    {sl}")
+                        total_lines_used += 1
+                        if total_lines_used >= self._MAX_QUERY_OUTPUT_LINES:
+                            break
+
+        output_lines.append(f'  → Use READ_FILE("path:Symbol") for full body, or SEARCH_AST(action="subgraph") for dependencies.')
+        return "\n".join(output_lines)
+
+    def _read_snippet(self, rel_path: str, line_start: int, line_end: int) -> List[str]:
+        """Read a short code snippet from disk for a matched node."""
+        try:
+            abs_path = self.project_dir / rel_path
+            if not abs_path.exists():
+                return []
+            text = abs_path.read_text(errors="ignore")
+            lines = text.splitlines()
+            start = max(0, line_start - 1)
+            end = min(len(lines), start + self._MAX_SNIPPET_LINES)
+            return lines[start:end]
+        except Exception:
+            return []
 
     def find_path(self, source_name: str, target_name: str, max_depth: int = 10) -> str:
         """Find relationship path between source and target symbols."""

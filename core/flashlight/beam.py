@@ -24,14 +24,15 @@ MAX_LINES_PER_FILE = _DEFAULT_MAX_LINES
 
 
 def _beam_config_for_context(max_tokens: int) -> tuple[int, int, int]:
+    # Reduced snippet lengths (~40% smaller) to leave discovery space for SEARCH_AST
     if max_tokens <= 4096:
-        return 1, 40, 5
+        return 1, 25, 5
     elif max_tokens <= 8192:
-        return 2, 80, 8
+        return 2, 50, 6
     elif max_tokens <= 16384:
-        return 3, 120, 10
+        return 2, 75, 8
     else:
-        return 4, 180, 12
+        return 3, 110, 10
 
 
 class BeamResult:

@@ -1,0 +1,25 @@
+{
+  "facts": [
+    "Session on 2026-07-30: Summary text",
+    "Session on 2026-07-30: Summary"
+  ],
+  "arch_decisions": [],
+  "tried_and_failed": [],
+  "tech_stack": [],
+  "created": "2026-07-30T02:00:20.213170",
+  "last_updated": "2026-07-30T02:00:22.307410",
+  "needle_ledger": [],
+  "memory_objects": [],
+  "intent": "",
+  "current_task": "",
+  "next_steps": [],
+  "files_modified": [],
+  "files_read": [],
+  "decisions": [
+    "Session on 2026-07-30: Summary text"
+  ],
+  "failing_tests": [],
+  "errors_seen": [
+    "'return' outside function`. If you want function-style organization, define it AND call it AND print"
+  ]
+}

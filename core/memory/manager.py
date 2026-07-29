@@ -417,6 +417,13 @@ class TieredMemory:
     def predict_next_tools(self) -> list[str]:
         """Predict likely next tools based on current state."""
         tools = []
+        _EXPLORE_KEYWORDS = {"understand", "how", "what", "where", "find", "architecture",
+                             "depends", "explain", "structure", "callers", "relationship"}
+        intent_lower = (self.state.intent or self.state.current_task or "").lower()
+        # Suggest SEARCH_AST first for exploration or when no file is focused yet
+        if not self.state.active_file or not self.state.files_modified or \
+                any(kw in intent_lower for kw in _EXPLORE_KEYWORDS):
+            tools.append("SEARCH_AST")
         if self.state.active_file:
             tools.append("READ_FILE")
         if self.state.errors_seen:

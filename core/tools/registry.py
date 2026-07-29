@@ -383,8 +383,11 @@ def _create_default_registry() -> ToolRegistry:
          CONFIRM, tool_git_impl, cat="vcs")
 
     _reg("SEARCH_AST", "🗺️",
-         "Query AST Knowledge Graph: search symbols, find relationship paths, get subgraphs, view structure, or reindex. "
-         "Args: query, action (search|path|subgraph|structure|update|summary), target (for path), top_k (default: 5).",
+         "Search code symbols with code snippets. Returns function/class signatures and first 5 lines of code. "
+         "Use BEFORE READ_FILE to discover what to read. "
+         "Examples: SEARCH_AST(query='build'), SEARCH_AST(action='subgraph', query='ProjectGraph'), "
+         "SEARCH_AST(action='path', query='TieredMemory', target='Summarizer'), "
+         "SEARCH_AST(action='structure'). Actions: search|path|subgraph|structure|update|summary.",
          AUTO, tool_search_ast_impl, cat="core")
 
     _reg("INSPECT_WEB", "🕸️",
