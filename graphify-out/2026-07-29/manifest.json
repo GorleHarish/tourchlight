@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785299966.1952693,
-    "ast_hash": "6687fdf71981e9d3dd6c290eb9bb6452",
+    "mtime": 1785303005.3546362,
+    "ast_hash": "e29877c922f7ff3743f87551893ef8c1",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -440,8 +440,8 @@
     "semantic_hash": "d3348bb5f49f2dbe905a03f5d8805ddd"
   },
   "core/tests/test_diff_edit.py": {
-    "mtime": 1785228108.5997055,
-    "ast_hash": "fb54f28f9d4adacf16a6cf8d4ce8f51b",
+    "mtime": 1785302987.5558808,
+    "ast_hash": "6c433380ec320bec9bd0e6913f62c88a",
     "semantic_hash": ""
   },
   "core/tests/test_errors.py": {
@@ -525,8 +525,8 @@
     "semantic_hash": "e67c18b62ba4922e6367840ed2043c18"
   },
   "core/tools/implementations.py": {
-    "mtime": 1785228282.9644642,
-    "ast_hash": "b24e466466fa13cb945b47d3ee4d3b4b",
+    "mtime": 1785302957.4152396,
+    "ast_hash": "7bb7f73efb5209bd4f60eb61a4d8dbe7",
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
@@ -822,6 +822,11 @@
   "core/tests/test_prompts_and_memory.py": {
     "mtime": 1785265744.9785242,
     "ast_hash": "5ee6172bd18f143ccbedfae182ce5214",
+    "semantic_hash": ""
+  },
+  "core/tests/test_code_quality_harness.py": {
+    "mtime": 1785302937.3113241,
+    "ast_hash": "dd441de58fa5f8773ff595a8672a3a5c",
     "semantic_hash": ""
   }
 }
