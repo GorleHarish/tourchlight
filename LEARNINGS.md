@@ -82,4 +82,9 @@ This document summarizes key learnings and design principles established during 
 - **Insight:** Local and open-weight models frequently omit canonical diff markers (e.g., leaving out the `=======` divider line between `<<<<<<< SEARCH` and `>>>>>>> REPLACE`).
 - **Principle:** Implement multi-pattern fallback parsing in `_parse_diff_block()` that recognizes structural variations (missing `=======`, `>>>>>>>` dividers) to recover intent and execute edits cleanly.
 
+### C. Multi-Layer Natural Language Code Interception Guard
+- **Insight:** During reasoning or planning phases, LLMs often emit natural language prose containing backticks or code tags (e.g., `` ` tags if I were executing... ``). Without multi-layer validation, parsers misclassify this as executable code (`action="code"`), attempting `exec()` in the REPL sandbox and causing invalid syntax tracebacks.
+- **Principle:** Enforce a 3-layer validation pipeline: (1) `ast.parse` and prose frequency heuristic in `_parse_response()` to reclassify non-code inside `<CODE>` tags as `thinking`, (2) pre-execution syntax validation in the `solve_async` dispatch loop, and (3) a last-resort prose guard inside `REPLSandbox.execute()` to cleanly reject prose without syntax error exceptions.
+
+
 

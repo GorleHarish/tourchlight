@@ -1,6 +1,7 @@
 import os
 import io
 import sys
+import re
 import signal
 import traceback
 try:
@@ -313,6 +314,32 @@ class REPLSandbox:
                 os.chdir(cwd)
             except OSError:
                 pass
+
+        # Clean up any surrounding markdown code fences (e.g. ```python ... ```)
+        if isinstance(code, str):
+            code = re.sub(r'^\s*```(?:python|py)?\s*\n?', '', code, flags=re.IGNORECASE)
+            code = re.sub(r'\n?\s*```\s*$', '', code).strip()
+
+        # Pre-execution syntax & natural language check
+        import ast
+        try:
+            ast.parse(code)
+        except SyntaxError:
+            words = code.split()
+            prose_indicators = sum(1 for w in words if w.lower().strip("`'\",.") in {
+                'the', 'is', 'are', 'was', 'were', 'will', 'would', 'should',
+                'could', 'have', 'has', 'had', 'been', 'being', 'this', 'that',
+                'with', 'from', 'into', 'since', 'because', 'however', 'therefore',
+                'i', 'we', 'they', 'he', 'she', 'it', 'my', 'your', 'if', 'were',
+                'executing', 'here', 'generating', 'result', 'file', 'asking'
+            })
+            if len(words) > 3 and (prose_indicators / max(len(words), 1)) > 0.1:
+                result["error"] = "Content appears to be natural language/prose, not executable Python code."
+                try:
+                    os.chdir(old_cwd)
+                except OSError:
+                    pass
+                return result
 
         try:
             with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):

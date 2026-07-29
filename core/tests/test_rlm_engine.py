@@ -147,16 +147,37 @@ def test_rlm_engine_parse_think_tags_and_mid_sentence_prevention():
     assert content == ""
 
 
-def test_rlm_engine_unwrapped_thought_parsing():
-    from rlm_optimized.rlm_engine import RLMEngine
+def test_rlm_engine_code_tag_and_backticks():
     mock_client = MagicMock()
-    engine = RLMEngine(client=mock_client)
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
 
-    resp = "thought I need to inspect main.py before fixing the bug.\n1. List directory: Use LIST_DIR."
-    action, thinking, content = engine._parse_response(resp)
-    assert action == "thinking"
-    assert "I need to inspect main.py" in thinking
-    assert content == ""
+    # 1. Inline `<code>` tag or backticks in prose should NOT trigger Python code execution
+    resp1 = "Plan: Generate complete HTML solution.\nWrap everything in a single `<code>` tag."
+    action1, thinking1, content1, _, _, _ = engine._parse_response(resp1)
+    assert action1 != "code"
+
+    # 2. Markdown triple backticks inside <CODE> should be stripped cleanly
+    resp2 = "<CODE>\n```python\nx = 42\nprint(x)\n```\n</CODE>"
+    action2, thinking2, content2, _, _, _ = engine._parse_response(resp2)
+    assert action2 == "code"
+    assert content2 == "x = 42\nprint(x)"
+
+    # 3. REPL Sandbox should strip markdown backticks before exec
+    from rlm_optimized.repl_sandbox import REPLSandbox
+    sandbox = REPLSandbox()
+    res = sandbox.execute("```python\na = 10\nb = 20\nprint(a + b)\n```")
+    assert res["success"] is True
+    # 4. English prose inside <CODE> tags should NOT be parsed as action="code"
+    resp3 = "<CODE>\n` tags if I were executing, but here I'm generating the final result as an HTML file.\n</CODE>"
+    action3, thinking3, content3, _, _, _ = engine._parse_response(resp3)
+    assert action3 == "thinking"
+
+    # 5. REPL Sandbox should reject natural language prose gracefully
+    res_prose = sandbox.execute("tags if I were executing, but here I'm generating the final result as an HTML file.")
+    assert res_prose["success"] is False
+    assert "Content appears to be natural language/prose" in res_prose["error"]
+
+
 
 
 

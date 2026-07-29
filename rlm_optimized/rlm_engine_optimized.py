@@ -563,6 +563,31 @@ class RLMEngineOptimized:
                     messages.append({"role": "user", "content": feedback})
 
             elif action == "code":
+                # Validate content is actually executable code / syntax valid
+                import ast
+                is_valid = False
+                try:
+                    ast.parse(content)
+                    is_valid = True
+                except SyntaxError:
+                    if re.search(r'\b(?:def|class|import|from|return|if|for|while|const|let|var|function|val|var|fn)\b', content):
+                        is_valid = True
+
+                if not is_valid:
+                    step.action = "thinking"
+                    step.result = "(classified as reasoning — not executable code)"
+                    result.steps.append(step)
+                    if self.on_step:
+                        self.on_step(step)
+                    feedback = "Your response contained text inside code tags that was not valid code syntax. If you are planning or reasoning, continue with your next tool call."
+                    if use_memory:
+                        memory.add_assistant_message(response)
+                        memory.add_user_message(feedback)
+                    else:
+                        messages.append({"role": "assistant", "content": response})
+                        messages.append({"role": "user", "content": feedback})
+                    continue
+
                 # Check if code modifies files or executes system commands
                 modifies_files = bool(re.search(
                     r"\b(open\s*\(.*['\"][wa\+]|write_text|write_bytes|os\.remove|os\.unlink|"
@@ -846,9 +871,16 @@ class RLMEngineOptimized:
                 pass
 
         # 4. Check for <CODE>...</CODE>
-        code_match = re.search(r"<CODE>(.*?)(?:</CODE>|$)", response, re.DOTALL | re.IGNORECASE)
+        code_match = re.search(r"<CODE(?:\s+[^>]*)?>(.*?)(?:</CODE>|$)", response, re.DOTALL)
+        if not code_match:
+            code_match = re.search(r"(?<!`)<CODE(?:\s+[^>]*)?>(.*?)</(?:CODE|code)>", response, re.DOTALL | re.IGNORECASE)
+
         if code_match and code_match.group(1).strip():
             content = code_match.group(1).strip()
+            # Clean up any surrounding markdown code fences (e.g. ```python ... ```) inside <CODE>
+            content = re.sub(r'^\s*```(?:python|py)?\s*\n?', '', content, flags=re.IGNORECASE)
+            content = re.sub(r'\n?\s*```\s*$', '', content).strip()
+
             thinking = _get_thinking(code_match.start())
             
             # Check if code block specifies a target file writing intent (e.g. # file: path/foo.py or # filename: foo.py)
@@ -859,7 +891,31 @@ class RLMEngineOptimized:
                 cleaned_content = re.sub(r"^(?:#|//)\s*(?:file|filename|filepath|path)\s*:\s*[^\n\r]+\n?", "", content).strip()
                 return ("tool", thinking, f"WRITE_FILE({target_path})", [], "WRITE_FILE", {"path": target_path, "content": cleaned_content})
 
-            return ("code", thinking, content, [], None, None)
+            # Validate if content actually looks like executable code or code file declaration
+            import ast
+            is_valid_code = False
+            try:
+                ast.parse(content)
+                is_valid_code = True
+            except SyntaxError:
+                words = content.split()
+                prose_indicators = sum(1 for w in words if w.lower().strip("`'\",.") in {
+                    'the', 'is', 'are', 'was', 'were', 'will', 'would', 'should',
+                    'could', 'have', 'has', 'had', 'been', 'being', 'this', 'that',
+                    'with', 'from', 'into', 'since', 'because', 'however', 'therefore',
+                    'i', 'we', 'they', 'he', 'she', 'it', 'my', 'your', 'executing',
+                    'here', 'generating', 'result', 'file', 'asking'
+                })
+                is_prose = len(words) > 3 and (prose_indicators / max(len(words), 1)) > 0.1
+                if not is_prose and re.search(r'\b(?:def|class|import|from|return|const|let|function|fn)\b', content):
+                    is_valid_code = True
+
+            if is_valid_code:
+                return ("code", thinking, content, [], None, None)
+            else:
+                # Content inside <CODE> tag is natural language/prose, reclassify as thinking
+                thinking_text = f"{thinking}\n\n{content}".strip() if thinking else content
+                return ("thinking", thinking_text, "", [], None, None)
 
         # 5. Check for <SUB_QUERY>...</SUB_QUERY>
         sub_query_matches = re.findall(r"<SUB_QUERY>(.*?)(?:</SUB_QUERY>|$)", response, re.DOTALL | re.IGNORECASE)

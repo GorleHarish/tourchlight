@@ -264,7 +264,10 @@ class RLMEngine:
                 return f"{explicit_thinking}\n\n{cleaned_pre}"
             return explicit_thinking or cleaned_pre
 
-        code_match = re.search(r"<CODE>(.*?)(?:</CODE>|$)", response, re.DOTALL | re.IGNORECASE)
+        code_match = re.search(r"<CODE(?:\s+[^>]*)?>(.*?)(?:</CODE>|$)", response, re.DOTALL)
+        if not code_match:
+            code_match = re.search(r"(?<!`)<CODE(?:\s+[^>]*)?>(.*?)</(?:CODE|code)>", response, re.DOTALL | re.IGNORECASE)
+
         sub_query_match = re.search(r"<SUB_QUERY>(.*?)(?:</SUB_QUERY>|$)", response, re.DOTALL | re.IGNORECASE)
         final_match = re.search(r"<FINAL_ANSWER>(.*?)(?:</FINAL_ANSWER>|$)", response, re.DOTALL | re.IGNORECASE)
 
@@ -285,6 +288,9 @@ class RLMEngine:
             matches.sort(key=lambda x: x[1].start())
             first_action, match = matches[0]
             content = match.group(1).strip()
+            if first_action == "code":
+                content = re.sub(r'^\s*```(?:python|py)?\s*\n?', '', content, flags=re.IGNORECASE)
+                content = re.sub(r'\n?\s*```\s*$', '', content).strip()
             thinking = _get_thinking(match.start())
             return (first_action, thinking, content)
 

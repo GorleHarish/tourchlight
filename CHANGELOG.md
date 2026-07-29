@@ -10,6 +10,8 @@ All notable changes to Torchlight will be documented in this file.
   - **Smart Key Handling**: Intercepts `Enter` to submit the prompt and supports `Shift+Enter` for line breaks within multi-line prompts.
   - **Dynamic Input Auto-Sizing**: Refactored `tui_app.tcss` `#user-input` and `#input-row` styles to support responsive auto-height (min 3 lines, max 6 lines).
   - **Help Modal & Shortcut Documentation**: Updated the shortcuts help modal (`ShortcutsHelpModal`) to explicitly document `Enter` and `Shift+Enter` input behavior.
+- **Natural Language Code Interception Guard**:
+  - **Multi-Layer Validation**: Implemented a 3-layer guard preventing natural language prose/reasoning containing backticks from being parsed and executed as Python code in the REPL sandbox (`_parse_response` AST check + `solve_async` dispatch validation + `REPLSandbox` prose heuristic).
 
 ## [v2.0.0] - 2026-07-29
 
