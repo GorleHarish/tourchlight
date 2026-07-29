@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785313480.1550803,
-    "ast_hash": "61e17ac774ccdcd13c61c0516d3ca1de",
+    "mtime": 1785314381.2728188,
+    "ast_hash": "4e23cd7e7c924cba4cd441ee25058127",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -490,9 +490,9 @@
     "semantic_hash": ""
   },
   "core/tests/test_rlm_engine.py": {
-    "mtime": 1785009170.2318563,
-    "ast_hash": "d553122602391ede141fb5236902bd61",
-    "semantic_hash": "d553122602391ede141fb5236902bd61"
+    "mtime": 1785314354.378637,
+    "ast_hash": "a612069bffeb703247adade4c772cddb",
+    "semantic_hash": ""
   },
   "core/tests/test_schemas.py": {
     "mtime": 1784761506.8851135,
@@ -605,13 +605,13 @@
     "semantic_hash": "ebd7debed971dd448a6d438b2d9cd90d"
   },
   "rlm_optimized/rlm_engine.py": {
-    "mtime": 1785009142.9087834,
-    "ast_hash": "23ae1792e4c1d67058f0e6efb649a4f8",
-    "semantic_hash": "23ae1792e4c1d67058f0e6efb649a4f8"
+    "mtime": 1785314342.450282,
+    "ast_hash": "5b7d1f8b8bd2086d7c1c7006e7d1ca15",
+    "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785268171.664305,
-    "ast_hash": "74b30dcf8dda97255a8f8c64714d68d3",
+    "mtime": 1785314329.1831455,
+    "ast_hash": "e31b9e04636d67a088ebba9b5b2552eb",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -695,13 +695,13 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785312262.4827244,
-    "ast_hash": "7bcddcfe15531de4f85d465d965cf14d",
+    "mtime": 1785314394.1458437,
+    "ast_hash": "dd1953801a20d1055b9b4b8f50c9d2af",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
-    "mtime": 1785312269.6190875,
-    "ast_hash": "5ea597409a605bf6972bb6ef34230eb2",
+    "mtime": 1785313643.872702,
+    "ast_hash": "bb611fb0f279abdb282786b9f50fc5a3",
     "semantic_hash": ""
   },
   "README.md": {
