@@ -255,7 +255,10 @@ class RLMEngineOptimized:
         
         if TieredMemory and MemoryConfig:
             from .config import CTX_SIZE
-            memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE))
+            from pathlib import Path
+            from core.memory.persistence import ProjectMemory
+            pm = ProjectMemory(Path(self.project_root))
+            memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE), project_memory=pm)
             memory.add_system_message(build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192)))
             memory.add_user_message(task)
             self._memory = memory
@@ -404,10 +407,12 @@ class RLMEngineOptimized:
                         f.write(summary.strip() + "\n")
                         
                     try:
-                        if "ProjectMemory" in globals():
-                            from pathlib import Path
-                            pm = ProjectMemory(Path(self.project_root))
-                            pm.update(f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}")
+                        from pathlib import Path
+                        from core.memory.persistence import ProjectMemory
+                        pm = ProjectMemory(Path(self.project_root))
+                        pm.update(f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}")
+                        if use_memory and memory:
+                            memory.persist_to_project_memory()
                     except Exception as inner_e:
                         print(f"Failed to save to ProjectMemory (.context-memory.json): {inner_e}")
                 except Exception as e:

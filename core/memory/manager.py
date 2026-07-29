@@ -123,7 +123,7 @@ class TieredMemory:
         try:
             data = self._project_memory.load()
             if data:
-                for d in data.get("arch_decisions", []):
+                for d in data.get("arch_decisions", []) + data.get("decisions", []):
                     if d and d not in self.state.decisions:
                         self.state.decisions.append(d)
                 for f in data.get("files_modified", []):

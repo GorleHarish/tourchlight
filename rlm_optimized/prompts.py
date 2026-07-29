@@ -9,6 +9,7 @@ def build_system_prompt(project_root: str, compact: bool = False) -> str:
         compact: If True, use a shorter prompt (~100 tokens) to save
                  context budget on 8GB devices.
     """
+    import json
     memory_file = os.path.join(project_root, ".torchlight_memory.md")
     project_memory = ""
     if os.path.exists(memory_file):
@@ -17,6 +18,26 @@ def build_system_prompt(project_root: str, compact: bool = False) -> str:
                 content = f.read().strip()
                 if content:
                     project_memory = f"\n\n## Persistent Project Memory\n{content}\n"
+        except Exception:
+            pass
+
+    json_memory_file = os.path.join(project_root, ".context-memory.json")
+    if os.path.exists(json_memory_file):
+        try:
+            with open(json_memory_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                facts = data.get("facts", [])
+                decisions = data.get("arch_decisions", []) or data.get("decisions", [])
+                tech_stack = data.get("tech_stack", [])
+                parts = []
+                if facts:
+                    parts.append("Facts:\n" + "\n".join(f"- {fact}" for fact in facts[-10:]))
+                if decisions:
+                    parts.append("Key Decisions:\n" + "\n".join(f"- {d}" for d in decisions[-10:]))
+                if tech_stack:
+                    parts.append("Tech Stack:\n" + "\n".join(f"- {t}" for t in tech_stack))
+                if parts:
+                    project_memory += "\n\n## Persistent Project State (.context-memory.json)\n" + "\n\n".join(parts) + "\n"
         except Exception:
             pass
 

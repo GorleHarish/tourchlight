@@ -641,6 +641,10 @@ class StreamingChatSession:
                             "Review results and continue manually."
                         )
 
+                    # Persist session findings to .context-memory.json at turn conclusion
+                    if self.project_memory:
+                        self.project_memory.persist_session_state(self.memory.state)
+
                 except KeyboardInterrupt:
                     dashboard.print_info("\nGoodbye!")
                     break

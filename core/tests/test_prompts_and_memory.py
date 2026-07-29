@@ -62,3 +62,37 @@ def test_headroom_calculation():
     memory.add_user_message("Hello world " * 100)
     new_headroom = memory.get_available_headroom()
     assert new_headroom < headroom
+
+
+def test_persistent_memory_loading_and_prompt_inclusion():
+    import os
+    import tempfile
+    from pathlib import Path
+    from core.memory.persistence import ProjectMemory
+    from rlm_optimized.prompts import build_system_prompt
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pm = ProjectMemory(Path(tmpdir))
+        pm.update("Fact: Project uses SQLite for storage")
+        pm.update_tech_stack(["Python 3.9", "FastAPI"])
+
+        # 1. Verify system prompt includes persistent project memory
+        prompt = build_system_prompt(tmpdir)
+        assert "Persistent Project State (.context-memory.json)" in prompt
+        assert "Fact: Project uses SQLite for storage" in prompt
+        assert "Python 3.9" in prompt
+
+        # 2. Verify TieredMemory loads persistent state into SessionState
+        memory = TieredMemory(config=MemoryConfig(max_tokens=4000), project_memory=pm)
+        assert "Fact: Project uses SQLite for storage" in memory.state.decisions
+        assert "Python 3.9" in memory.state.tech_stack
+
+        # 3. Verify persistence on state save
+        memory.state.decisions.append("Decision: Adopt async workers")
+        memory.persist_to_project_memory()
+
+        # Reload in a new instance
+        pm2 = ProjectMemory(Path(tmpdir))
+        memory2 = TieredMemory(config=MemoryConfig(max_tokens=4000), project_memory=pm2)
+        assert "Decision: Adopt async workers" in memory2.state.decisions
+
