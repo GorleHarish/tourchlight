@@ -87,6 +87,7 @@ Both frontends import from `core/` with a `try/except ImportError` fallback to l
 - **Shared Core Library** — `core/` package with tools, API, memory, errors, compression, flashlight, execution, and prompts — reusable across frontends
 - **24-Hour Autonomous Goal Harness** — `AutonomousHarness` continuous micro-epoch daemon with disk task tracking (`.torchlight/tasks.md`), conversation context flushing between sub-tasks, test-driven Git save points, and auto-revert gates
 - **Zero-Config Local Git Provisioning** — Auto-checks target project roots and executes `git init` locally if absent
+- **Zero-Context Harness Quality Engine** — Deterministic post-save formatting (`ruff`/`black`, `prettier`, `gofmt`, `rustfmt`), multi-language syntax validation (Python AST, JSON, JS bracket balance), POSIX whitespace normalization, and stub detection operating with 0 LLM context overhead
 - **Structured Error Handling** — 7 error types (`ToolError`, `ParseError`, `ContextOverflowError`, `ConnectionError`, `SecurityError`, `ToolValidationError`, `TorchlightError`) with `RecoveryEngine` escalation ladder
 
 - **Tiered Memory** — L0-L3 hierarchy: active prompt → recent messages → compressed older turns → project memory

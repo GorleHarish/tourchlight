@@ -372,18 +372,30 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         return f"Error reading file: {e}"
 
 
-def _normalize_whitespace(content: str) -> str:
-    """Normalize mixed tabs to spaces, remove trailing line spaces, and ensure trailing newline."""
+def _normalize_whitespace(content: str, filename: str = "") -> str:
+    """Normalize mixed tabs to spaces (except Makefiles/TSV/Go), remove trailing line spaces, and ensure trailing newline."""
     if not content:
         return ""
+    ext = os.path.splitext(filename)[1].lower() if filename else ""
+    basename = os.path.basename(filename).lower() if filename else ""
+    preserve_tabs = ext in (".go", ".tsv", ".tab", ".mk") or basename in ("makefile", "gnumakefile")
+
     lines = content.splitlines()
-    normalized = [line.replace("\t", "    ").rstrip() for line in lines]
+    if preserve_tabs:
+        normalized = [line.rstrip() for line in lines]
+    else:
+        normalized = [line.replace("\t", "    ").rstrip() for line in lines]
     return "\n".join(normalized) + "\n"
 
 
-def _detect_stubs(content: str) -> Optional[str]:
+def _detect_stubs(content: str, filename: str = "") -> Optional[str]:
     """Scan content for suspicious lazy LLM stub/placeholder patterns."""
     if not content:
+        return None
+
+    # Skip stub check on test files to prevent false positives on test fixtures
+    basename = os.path.basename(filename).lower() if filename else ""
+    if any(kw in basename for kw in ("test_", "_test", ".test.", ".spec.")):
         return None
 
     stub_patterns = [
@@ -433,17 +445,26 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
         except Exception:
             pass
 
-    # 2. Web/JS/TS/JSON formatters: prettier
+    # 2. Web/JS/TS/JSON formatters: local or global prettier (no npx network prompts)
     elif ext in (".js", ".ts", ".jsx", ".tsx", ".json", ".css", ".html"):
-        try:
-            res = subprocess.run(
-                ["npx", "prettier", "--stdin-filepath", filename],
-                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
-            )
-            if res.returncode == 0 and res.stdout:
-                return res.stdout
-        except Exception:
-            pass
+        import shutil
+        prettier_bin = None
+        local_prettier = os.path.join(project_root, "node_modules", ".bin", "prettier")
+        if os.path.exists(local_prettier):
+            prettier_bin = [local_prettier]
+        elif shutil.which("prettier"):
+            prettier_bin = ["prettier"]
+
+        if prettier_bin:
+            try:
+                res = subprocess.run(
+                    prettier_bin + ["--stdin-filepath", filename],
+                    input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+                )
+                if res.returncode == 0 and res.stdout:
+                    return res.stdout
+            except Exception:
+                pass
 
     # 3. Go: gofmt
     elif ext == ".go":
@@ -469,7 +490,7 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
         except Exception:
             pass
 
-    return _normalize_whitespace(content)
+    return _normalize_whitespace(content, filename)
 
 
 def _check_syntax(content: str, filename: str) -> Optional[str]:
@@ -501,11 +522,16 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
         except Exception as e:
             return f"\n⚠️ JSON Syntax Warning: {e}"
 
-    # 3. Basic bracket balance check for JS/TS/C-like languages
+    # 3. Basic bracket balance check for JS/TS/C-like languages (filtering strings and comments)
     elif ext in (".js", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".java"):
+        # Strip comments and string literals to prevent false positives on bracket matching
+        cleaned = re.sub(r'//.*', '', content)
+        cleaned = re.sub(r'/\*[\s\S]*?\*/', '', cleaned)
+        cleaned = re.sub(r'([\'"`])(?:\\.|[^\\])*?\1', '', cleaned)
+
         stack = []
         matching = {')': '(', '}': '{', ']': '['}
-        for line_idx, line in enumerate(content.splitlines(), start=1):
+        for line_idx, line in enumerate(cleaned.splitlines(), start=1):
             for char in line:
                 if char in matching.values():
                     stack.append((char, line_idx))

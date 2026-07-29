@@ -2,6 +2,16 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v1.8.0] - 2026-07-29
+
+### Added & Improved
+- **Zero-Context Code Quality Harness**: Deterministic post-processing, formatting, and multi-language validation engine operating inside the Python harness layer without consuming LLM context tokens:
+  - **Format-on-Save (`_format_code_on_save`)**: Automatically runs local code formatters (`ruff format`/`black` for Python, `prettier` for JS/TS/JSON/CSS/HTML, `gofmt` for Go, `rustfmt` for Rust) on file write/edit tool execution with a 2-second timeout.
+  - **Multi-Language Syntax & Bracket Validator (`_check_syntax`)**: Inline AST/JSON/JS bracket parsing validating Python syntax, JSON structural integrity, and JS/TS/C bracket balancing (stripping string literals and comments).
+  - **Stub & Placeholder Detector (`_detect_stubs`)**: Scans written code for lazy LLM placeholder comments (`# TODO: implement`, `// ... existing code`, `pass # stub`) and appends warning notes to tool output to ensure complete implementation.
+  - **POSIX Whitespace & Tab Normalizer (`_normalize_whitespace`)**: Converts mixed tabs to 4 spaces, strips trailing line whitespace, and guarantees trailing newlines (strictly preserving tab indentation for `Makefile`, `Go`, `TSV`, and `.mk` files).
+  - **Harness Test Suite (`test_code_quality_harness.py`)**: Unit tests covering format-on-save, syntax validation, stub detection, Makefile tab preservation, and fuzzy edit matching.
+
 ## [v1.7.0] - 2026-07-29
 
 ### Added

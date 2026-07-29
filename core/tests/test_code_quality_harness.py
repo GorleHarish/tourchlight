@@ -88,6 +88,20 @@ def test_tool_write_file_integration():
         assert os.path.exists(file_path)
 
 
+def test_makefile_tab_preservation():
+    makefile_content = "all:\n\techo 'building'\n"
+    res = _normalize_whitespace(makefile_content, "Makefile")
+    assert "\techo" in res
+
+    res_go = _normalize_whitespace("package main\n\tfunc main() {}\n", "main.go")
+    assert "\tfunc" in res_go
+
+
+def test_check_syntax_js_string_literal_brackets():
+    js_code = 'const s = "closing brace } inside string";'
+    assert _check_syntax(js_code, "script.js") is None
+
+
 def test_tool_edit_file_integration():
     with tempfile.TemporaryDirectory() as tmpdir:
         file_path = os.path.join(tmpdir, "main.py")
@@ -106,3 +120,4 @@ def test_tool_edit_file_integration():
         with open(file_path, "r", encoding="utf-8") as f:
             edited_content = f.read()
         assert "world" in edited_content
+

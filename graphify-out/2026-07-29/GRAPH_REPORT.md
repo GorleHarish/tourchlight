@@ -1,7 +1,7 @@
 # Graph Report - tourchlight v1_i6  (2026-07-29)
 
 ## Corpus Check
-- 163 files · ~240,739 words
+- 163 files · ~240,772 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9e948a4e`
+- Built from commit: `e459209a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -730,10 +730,10 @@ Nodes (6): FileChange, Enum, Execution Feedback Loop for Torchlight.  Closes the
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
+- **Why does `TieredMemory` connect `TieredMemory` to `cli/main.py`, `.format_l0_scratchpad`, `AutonomousHarness`, `RLMEngine`, `rlm_engine_optimized.py`, `test_prompts_and_memory.py`, `MemoryConfig`, `SelectiveCompressor`, `autonomous_harness.py`, `core/memory/__init__.py`, `test_autonomous_harness_pipeline.py`, `test_context_budget_overflow.py`, `tool_edit_file_impl`, `.__init__`, `StreamingChatSession`, `RLMEngineOptimized`?**
+  _High betweenness centrality (0.075) - this node is a cross-community bridge._
 - **Why does `SkillResult` connect `SkillResult` to `UnifiedSkillRegistry`, `ProjectSnapshot`, `BaseSkill`, `TDDSkill`, `MarkdownDocumentSkill`, `PlanningSkill`, `discovery.py`, `TDDSkill`?**
   _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `TieredMemory` connect `TieredMemory` to `cli/main.py`, `.format_l0_scratchpad`, `AutonomousHarness`, `RLMEngine`, `rlm_engine_optimized.py`, `test_prompts_and_memory.py`, `MemoryConfig`, `SelectiveCompressor`, `autonomous_harness.py`, `core/memory/__init__.py`, `test_autonomous_harness_pipeline.py`, `test_context_budget_overflow.py`, `tool_edit_file_impl`, `.__init__`, `StreamingChatSession`, `RLMEngineOptimized`?**
-  _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **Why does `BaseSkill` connect `BaseSkill` to `UnifiedSkillRegistry`, `ProjectSnapshot`, `TDDSkill`, `MarkdownDocumentSkill`, `SkillResult`, `PlanningSkill`, `TDDSkill`?**
   _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `TieredMemory` (e.g. with `StreamingChatSession` and `AutonomousHarness`) actually correct?**
