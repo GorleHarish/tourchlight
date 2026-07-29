@@ -1500,26 +1500,14 @@ class TorchlightApp(App):
         self._remove_streaming()
 
         try:
-            # Thinking / reasoning
-            if step.thinking and step.thinking.strip() not in ("(forced)", ""):
-                trimmed = step.thinking.strip()
-                if len(trimmed) > 15000:
-                    trimmed = trimmed[:15000] + "\n... [Reasoning Truncated]"
-                escaped_thinking = escape(trimmed)
-                if Collapsible is not None:
-                    self._safe_mount(container, Collapsible(
-                        Static(escaped_thinking, classes="stream-text"),
-                        title="💭 Reasoning",
-                        collapsed=True
-                    ))
-                else:
-                    self._safe_mount(container, Static(Panel(
-                        escaped_thinking,
-                        title="💭 Reasoning",
-                        border_style="dim magenta",
-                    )))
+            has_thinking = bool(step.thinking and step.thinking.strip() not in ("(forced)", ""))
+            trimmed_thinking = ""
+            if has_thinking:
+                trimmed_thinking = step.thinking.strip()
+                if len(trimmed_thinking) > 15000:
+                    trimmed_thinking = trimmed_thinking[:15000] + "\n... [Reasoning Truncated]"
 
-            # Tool execution - Single Unified Card
+            # Tool execution - Single Unified Card (with embedded Rationale if present)
             if step.action == "tool":
                 label = step.tool_name or "TOOL"
                 display_args = dict(step.tool_args) if isinstance(step.tool_args, dict) else {}
@@ -1577,6 +1565,8 @@ class TorchlightApp(App):
                 card_title += status_str
 
                 body_parts = []
+                if trimmed_thinking:
+                    body_parts.append(f"[dim magenta]💭 Rationale:[/dim magenta]\n[dim]{escape(trimmed_thinking)}[/dim]")
                 if args_str:
                     body_parts.append(f"[dim]Args:[/dim]\n[dim]{escape(args_str)}[/dim]")
                 if res_raw:
@@ -1609,59 +1599,77 @@ class TorchlightApp(App):
                         pass
                     self._start_ast_indexing()
 
-            # Code execution
-            elif step.action == "code":
-                display_content = step.content
-                if len(display_content) > 10000:
-                    display_content = display_content[:10000] + "\n\n... [Output Truncated for UI Performance]"
-                self._safe_mount(container, Static(Panel(
-                    Syntax(display_content, "python", theme="monokai", line_numbers=True),
-                    title="⚡ Code Execution",
-                    border_style="cyan",
-                )))
-                if step.result:
-                    display_result = step.result
-                    if len(display_result) > 10000:
-                        display_result = display_result[:10000] + "\n... [Truncated]"
-                    style = "red" if step.result.startswith("ERROR") else "green"
-                    self._safe_mount(container, Static(Panel(
-                        Text(display_result),
-                        title="📤 Output",
-                        border_style=style,
-                    )))
+            else:
+                # Standalone Reasoning (for non-tool steps)
+                if has_thinking:
+                    escaped_thinking = escape(trimmed_thinking)
+                    step_title = f"💭 Step {step.step_number} Reasoning" if getattr(step, "step_number", None) else "💭 Reasoning"
+                    if Collapsible is not None:
+                        self._safe_mount(container, Collapsible(
+                            Static(escaped_thinking, classes="stream-text"),
+                            title=step_title,
+                            collapsed=True
+                        ))
+                    else:
+                        self._safe_mount(container, Static(Panel(
+                            escaped_thinking,
+                            title=step_title,
+                            border_style="dim magenta",
+                        )))
 
-            # Final answer
-            elif step.action == "final_answer":
-                display_content = step.content
-                if len(display_content) > 15000:
-                    display_content = display_content[:15000] + "\n\n... [Output Truncated for UI Performance]"
-                try:
-                    content = Markdown(display_content)
-                except Exception:
-                    content = Text(display_content)
-                self._safe_mount(container, Static(Panel(
-                    content,
-                    title="✅ Final Answer",
-                    border_style="bold green",
-                )))
-                self._chat_history.append({"role": "assistant", "content": step.content})
-
-            # Sub-queries
-            elif step.action == "sub_queries":
-                display_content = step.content
-                if len(display_content) > 10000:
-                    display_content = display_content[:10000] + "\n... [Truncated]"
-                self._safe_mount(container, Static(Panel(
-                    escape(display_content),
-                    title="🔄 Sub-Queries",
-                    border_style="yellow",
-                )))
-                if step.result and step.result != "DEPTH LIMIT REACHED":
+                # Code execution
+                if step.action == "code":
+                    display_content = step.content
+                    if len(display_content) > 10000:
+                        display_content = display_content[:10000] + "\n\n... [Output Truncated for UI Performance]"
                     self._safe_mount(container, Static(Panel(
-                        escape(step.result[:2000]),
-                        title="📥 Sub-Query Results",
-                        border_style="dim green",
+                        Syntax(display_content, "python", theme="monokai", line_numbers=True),
+                        title="⚡ Code Execution",
+                        border_style="cyan",
                     )))
+                    if step.result:
+                        display_result = step.result
+                        if len(display_result) > 10000:
+                            display_result = display_result[:10000] + "\n... [Truncated]"
+                        style = "red" if step.result.startswith("ERROR") else "green"
+                        self._safe_mount(container, Static(Panel(
+                            Text(display_result),
+                            title="📤 Output",
+                            border_style=style,
+                        )))
+
+                # Final answer
+                elif step.action == "final_answer":
+                    display_content = step.content
+                    if len(display_content) > 15000:
+                        display_content = display_content[:15000] + "\n\n... [Output Truncated for UI Performance]"
+                    try:
+                        content = Markdown(display_content)
+                    except Exception:
+                        content = Text(display_content)
+                    self._safe_mount(container, Static(Panel(
+                        content,
+                        title="✅ Final Answer",
+                        border_style="bold green",
+                    )))
+                    self._chat_history.append({"role": "assistant", "content": step.content})
+
+                # Sub-queries
+                elif step.action == "sub_queries":
+                    display_content = step.content
+                    if len(display_content) > 10000:
+                        display_content = display_content[:10000] + "\n... [Truncated]"
+                    self._safe_mount(container, Static(Panel(
+                        escape(display_content),
+                        title="🔄 Sub-Queries",
+                        border_style="yellow",
+                    )))
+                    if step.result and step.result != "DEPTH LIMIT REACHED":
+                        self._safe_mount(container, Static(Panel(
+                            escape(step.result[:2000]),
+                            title="📥 Sub-Query Results",
+                            border_style="dim green",
+                        )))
         except Exception:
             pass
 
