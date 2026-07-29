@@ -640,8 +640,8 @@
     "semantic_hash": "b1e6a896c2c08a849387079fcbc4e560"
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785318023.9352174,
-    "ast_hash": "4884ffaa62fca4d6bb1fd59443f07dc7",
+    "mtime": 1785319614.7628067,
+    "ast_hash": "e848aeb6a1bc850804af0b48eef457b5",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -695,8 +695,8 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785315529.1078627,
-    "ast_hash": "670ef0f213f8240321b76c8b1c4ae5d1",
+    "mtime": 1785319682.8487148,
+    "ast_hash": "a5f03761567b71553c11b37474b71ae1",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
