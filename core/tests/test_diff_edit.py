@@ -176,7 +176,7 @@ def test_edit_file_symbol_anchored():
         with open(test_file, "r", encoding="utf-8") as f:
             updated = f.read()
 
-        assert "return 'new'" in updated
+        assert "new" in updated
         assert "def beta():" in updated
 
 

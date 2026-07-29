@@ -372,9 +372,114 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         return f"Error reading file: {e}"
 
 
-def _check_syntax(content: str, filename: str) -> Optional[str]:
-    """Perform fast inline syntax validation for edited/written files."""
+def _normalize_whitespace(content: str) -> str:
+    """Normalize mixed tabs to spaces, remove trailing line spaces, and ensure trailing newline."""
+    if not content:
+        return ""
+    lines = content.splitlines()
+    normalized = [line.replace("\t", "    ").rstrip() for line in lines]
+    return "\n".join(normalized) + "\n"
+
+
+def _detect_stubs(content: str) -> Optional[str]:
+    """Scan content for suspicious lazy LLM stub/placeholder patterns."""
+    if not content:
+        return None
+
+    stub_patterns = [
+        (r'#\s*TODO:?\s*(?:implement|add logic|fill in)', "Python TODO stub"),
+        (r'#\s*\.\.\.\s*(?:rest|existing|code|remaining)', "Python code truncation stub"),
+        (r'//\s*\.\.\.\s*(?:rest|existing|code|implementation|remaining)', "JS/C code truncation stub"),
+        (r'/\*\s*\.\.\.\s*(?:rest|existing|code|remaining)\s*\*/', "C-style block stub"),
+        (r'pass\s*#\s*(?:stub|implement|todo|fill)', "Python pass stub"),
+        (r'throw new Error\(["\']Not implemented["\']\)', "Unimplemented error stub"),
+    ]
+
+    found = []
+    for pattern, name in stub_patterns:
+        if re.search(pattern, content, re.IGNORECASE):
+            found.append(name)
+
+    if found:
+        return f"\n⚠️ Stub Warning: Code contains placeholder stubs ({', '.join(found)}). Ensure full implementation is provided."
+    return None
+
+
+def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
+    """Format code deterministically post-save using local tools (ruff, black, prettier, gofmt, rustfmt)."""
+    if not content:
+        return content
+
     ext = os.path.splitext(filename)[1].lower()
+
+    # 1. Python formatters: ruff format or black
+    if ext == ".py":
+        try:
+            res = subprocess.run(
+                ["ruff", "format", "-"],
+                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+            )
+            if res.returncode == 0 and res.stdout:
+                return res.stdout
+        except Exception:
+            pass
+        try:
+            res = subprocess.run(
+                ["black", "-q", "-"],
+                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+            )
+            if res.returncode == 0 and res.stdout:
+                return res.stdout
+        except Exception:
+            pass
+
+    # 2. Web/JS/TS/JSON formatters: prettier
+    elif ext in (".js", ".ts", ".jsx", ".tsx", ".json", ".css", ".html"):
+        try:
+            res = subprocess.run(
+                ["npx", "prettier", "--stdin-filepath", filename],
+                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+            )
+            if res.returncode == 0 and res.stdout:
+                return res.stdout
+        except Exception:
+            pass
+
+    # 3. Go: gofmt
+    elif ext == ".go":
+        try:
+            res = subprocess.run(
+                ["gofmt"],
+                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+            )
+            if res.returncode == 0 and res.stdout:
+                return res.stdout
+        except Exception:
+            pass
+
+    # 4. Rust: rustfmt
+    elif ext == ".rs":
+        try:
+            res = subprocess.run(
+                ["rustfmt", "--emit", "stdout"],
+                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+            )
+            if res.returncode == 0 and res.stdout:
+                return res.stdout
+        except Exception:
+            pass
+
+    return _normalize_whitespace(content)
+
+
+def _check_syntax(content: str, filename: str) -> Optional[str]:
+    """Perform fast inline syntax validation for edited/written files across Python, JSON, JS/TS."""
+    if not content:
+        return None
+
+    ext = os.path.splitext(filename)[1].lower()
+
+    # 1. Python AST parsing
     if ext == ".py":
         import ast
         try:
@@ -385,6 +490,33 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
             return f"\n⚠️ Syntax Warning (line {line_no}): {msg}"
         except Exception as e:
             return f"\n⚠️ Syntax Warning: {e}"
+
+    # 2. JSON parsing
+    elif ext in (".json", ".jsonc"):
+        import json
+        try:
+            json.loads(content)
+        except json.JSONDecodeError as je:
+            return f"\n⚠️ JSON Syntax Warning (line {je.lineno}, col {je.colno}): {je.msg}"
+        except Exception as e:
+            return f"\n⚠️ JSON Syntax Warning: {e}"
+
+    # 3. Basic bracket balance check for JS/TS/C-like languages
+    elif ext in (".js", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".java"):
+        stack = []
+        matching = {')': '(', '}': '{', ']': '['}
+        for line_idx, line in enumerate(content.splitlines(), start=1):
+            for char in line:
+                if char in matching.values():
+                    stack.append((char, line_idx))
+                elif char in matching:
+                    if not stack or stack[-1][0] != matching[char]:
+                        return f"\n⚠️ Syntax Warning (line {line_idx}): Unmatched closing bracket '{char}'"
+                    stack.pop()
+        if stack:
+            unclosed_char, unclosed_line = stack[-1]
+            return f"\n⚠️ Syntax Warning (line {unclosed_line}): Unclosed bracket '{unclosed_char}'"
+
     return None
 
 
@@ -426,11 +558,15 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         parent_dir = os.path.dirname(p)
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
+        formatted_content = _format_code_on_save(content, p, project_root)
+        if formatted_content != content:
+            content = formatted_content
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
         line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
         syntax_note = _check_syntax(content, p) or ""
-        return f"Written {line_count} lines to {p}{syntax_note}"
+        stub_note = _detect_stubs(content) or ""
+        return f"Written {line_count} lines to {p}{syntax_note}{stub_note}"
     except Exception as e:
         return f"Error writing {p}: {e}"
 
@@ -594,10 +730,14 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 if new_text and not new_text.endswith("\n") and e_l < len(lines):
                     new_content += "\n"
                 new_content += "".join(lines[e_l:])
+                formatted_content = _format_code_on_save(new_content, p, project_root)
+                if formatted_content != new_content:
+                    new_content = formatted_content
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(new_content)
                 syntax_note = _check_syntax(new_content, p) or ""
-                return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{syntax_note}"
+                stub_note = _detect_stubs(new_content) or ""
+                return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{syntax_note}{stub_note}"
 
         # Line-bounded search window handling
         if start_line is not None and end_line is not None:
@@ -616,10 +756,14 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     if new_text and not new_text.endswith("\n") and e_idx < len(lines):
                         new_content += "\n"
                     new_content += "".join(lines[e_idx:])
+                formatted_content = _format_code_on_save(new_content, p, project_root)
+                if formatted_content != new_content:
+                    new_content = formatted_content
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(new_content)
                 syntax_note = _check_syntax(new_content, p) or ""
-                return f"Surgically edited {path} within line range {s_l}-{e_l}.{syntax_note}"
+                stub_note = _detect_stubs(new_content) or ""
+                return f"Surgically edited {path} within line range {s_l}-{e_l}.{syntax_note}{stub_note}"
             except ValueError:
                 pass
 
@@ -652,11 +796,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 return f"Edit failed: 'old_text' matches {count} locations. Provide line numbers (start_line/end_line) or more context to make it unique."
 
             new_content = content.replace(old_text, new_text)
+            formatted_content = _format_code_on_save(new_content, p, project_root)
+            if formatted_content != new_content:
+                new_content = formatted_content
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
 
             syntax_note = _check_syntax(new_content, p) or ""
-            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{syntax_note}"
+            stub_note = _detect_stubs(new_content) or ""
+            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{syntax_note}{stub_note}"
 
 
         # Helper: Normalize lines for line-based matching
@@ -701,9 +849,14 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += "".join(content_lines[best_end:])
 
+            formatted_content = _format_code_on_save(new_content, p, project_root)
+            if formatted_content != new_content:
+                new_content = formatted_content
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
-            return f"Surgically edited {path} (fuzzy replaced {len(old_norm)} lines ignoring whitespace)."
+            syntax_note = _check_syntax(new_content, p) or ""
+            stub_note = _detect_stubs(new_content) or ""
+            return f"Surgically edited {path} (fuzzy replaced {len(old_norm)} lines ignoring whitespace).{syntax_note}{stub_note}"
 
         # Tier 3: Ellipsis / Wildcard matching (e.g. header \n ... \n footer)
         old_raw_lines = [l.strip() for l in old_text.splitlines()]
