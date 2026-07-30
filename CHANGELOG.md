@@ -2,6 +2,21 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.3.0] - 2026-07-30
+
+### Added & Improved
+- **Unified Workspace Task Extraction Helper (`get_workspace_pending_tasks`)**:
+  - Added `core/tools/task_helpers.py` to extract pending tasks (`[ ]`, `[/]`, `[-]`, `[~]`, `pending`, `in_progress`) across `implementation_plan.md`, `.torchlight/tasks.md`, and `.torchlight/goal_spec.json`.
+- **`implementation_plan.md` Plan Execution & Verification Gate Enforcement**:
+  - Updated Verification Gate in `rlm_optimized/rlm_engine_optimized.py` to inspect `implementation_plan.md` via `get_workspace_pending_tasks()` and reject `<FINAL_ANSWER>` calls if open tasks exist.
+  - Enhanced rule #7 response parser (`is_planning_cot`) to classify `implementation_plan.md` references as `thinking`, preventing plain-text plan summaries from auto-converting to `<FINAL_ANSWER>`.
+- **System Scratchpad Task Visibility**:
+  - Updated `format_l0_scratchpad()` in `core/memory/manager.py` to inject `- Pending Tasks: ...` into `[L0 WORKING MEMORY SCRATCHPAD]` system prompt context when open tasks exist in `implementation_plan.md`.
+- **System Prompt Directives**:
+  - Updated `core/prompts/system.py` (`SYSTEM_PROMPT` & `PHASE_PROMPTS["plan"]`) and `rlm_optimized/prompts.py` to explicitly forbid delivering `<FINAL_ANSWER>` right after creating `implementation_plan.md`.
+- **Unit & Integration Test Coverage**:
+  - Added `core/tests/test_plan_execution_loop.py` verifying task parsing, scratchpad formatting, and Verification Gate rejections (218 core tests passing).
+
 ## [v2.2.0] - 2026-07-30
 
 ### Added & Improved
