@@ -2,6 +2,17 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.5.0] - 2026-07-30
+
+### Added & Improved
+- **Autonomous Playwright Web Outcome Inspection & Verification**:
+  - **Multi-Tiered Web Inspection Engine**: Extended `WebOutcomeInspector` in `core/execution/web_inspector.py` to capture Accessibility Tree (`ax_tree`) snapshots, DOM layout overflow warnings (`overflow_warnings`), interactive component counts (`buttons`, `inputs`, `links`), and HTML5 canvas pixel diagnostics (`BLANK_CANVAS`).
+  - **Interactive UI Action Sequences**: Added support for multi-step UI testing (`click`, `fill`, `type`, `key_press`, `hover`, `wait_for_selector`) in `_inspect_playwright()`.
+  - **Direct HTTP/HTTPS URL Inspection**: Enabled testing active dev servers (e.g., `http://localhost:5173`) alongside local static `.html` files.
+  - **Automated Feedback Loop Triggering**: Updated `ExecutionFeedbackLoop` in `core/execution/feedback_loop.py` to watch `.jsx`, `.tsx`, `.vue`, `.svelte`, `.css`, and `.js` files, with vendor directory exclusions (`node_modules`, `.venv`, `dist`, `build`, `.git`, `.torchlight`, `coverage`, `.next`).
+  - **Non-Vision Model Strategy (Qwen 2.5 Coder)**: Serialized visual, DOM, accessibility, and console signals into compact Markdown text (<300 tokens), enabling text-only models to inspect web execution outputs and self-correct autonomously.
+  - **Schema & Tool Registration**: Updated `INSPECT_WEB` schema in `core/tools/schemas.py` and `tool_inspect_web_impl()` in `core/tools/implementations.py` to expose interactive action steps.
+
 ## [v2.4.0] - 2026-07-30
 
 ### Added & Improved

@@ -113,6 +113,7 @@ flowchart TD
 
 - **Tiered Memory** — L0-L3 hierarchy: active prompt → recent messages → compressed older turns → project memory
 - **Selective Compression** — Four levels (FULL / COMPACT / SUMMARY / HINT) with needle preservation and context-aware selection
+- **Autonomous Playwright Web Outcome Inspection** — Ephemeral 3-tiered rendering (Playwright Chromium / Node JSDOM / Static Parser) capturing DOM snapshots, Accessibility Trees (`ax_tree`), console errors, 404s, layout overflow warnings, and interactive action sequences with <300 token Markdown summaries for non-vision models (e.g. Qwen 2.5 Coder)
 - **Phase-Based Inference** — Temperature and sampling tuned per task: code (temp=0.1), troubleshoot (temp=0.3), chat (temp=0.7)
 - **Unified Tool Registry** — 17 tools with schema validation, alias resolution, and AUTO/CONFIRM/REVIEW risk tiers
 - **Surgical File Reading** — GREP → READ_SYMBOLS → READ_FILE(range/symbol) keeps tool output small and relevant
@@ -154,7 +155,9 @@ core/
 │   ├── index.py             # SymbolIndex (Python/JS/TS/Go/Rust)
 │   └── beam.py              # Flashlight beam retrieval
 ├── execution/
-│   └── feedback_loop.py     # Auto-run tests after code changes
+│   ├── feedback_loop.py     # Auto-run tests & web inspector after code changes
+│   ├── web_inspector.py     # Ephemeral 3-tiered Playwright/JSDOM web inspector
+│   └── autonomous_harness.py# 24h autonomous goal harness & micro-epoch runner
 ├── prompts/
 │   └── system.py            # Unified system prompt
 └── __init__.py

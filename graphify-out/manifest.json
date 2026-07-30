@@ -680,13 +680,13 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785399434.7791922,
-    "ast_hash": "9f92d43c5ccba48aa6b981a3857723bb",
+    "mtime": 1785419102.4660287,
+    "ast_hash": "fe7dea55ff48ef78dc95ce272beaeabf",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785399415.7302947,
-    "ast_hash": "f9875456ecaa80781440c6e3a0a07808",
+    "mtime": 1785419052.3991895,
+    "ast_hash": "361cf0e20f2893d2e0a9a2da6578c2b0",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
@@ -695,8 +695,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1785399426.7632453,
-    "ast_hash": "a88ba1511d7fd93076df9ef46ecb43e3",
+    "mtime": 1785419076.796139,
+    "ast_hash": "7bf2163073cd72821df758b1a3cfac99",
     "semantic_hash": ""
   },
   "context-manager-cli/README.md": {

@@ -43,6 +43,7 @@ core/                          # Shared library (standalone package)
 │   └── graph_engine.py      # Native AST Knowledge Graph (pure Python)
 ├── execution/
 │   ├── feedback_loop.py     # Auto-run tests + lazy graph invalidation
+│   ├── web_inspector.py     # Ephemeral 3-tiered Playwright/JSDOM web outcome inspector
 │   ├── autonomous_harness.py # 24h continuous goal harness & micro-epoch runner
 │   └── run_harness.py       # CLI entry point for continuous runner
 └── prompts/
@@ -111,6 +112,7 @@ rlm_optimized/                              # TUI frontend
 - **Lazy skill loading**: AST scan at startup, import on first execute
 - **Context-scaled tool output**: READ_FILE caps at ~20% of window; SEARCH_AST caps subgraph at 40 edges, structure at 20 files, query output at 40 total lines
 - **Zero-Context Harness Quality Engine**: Deterministic post-save code formatting (`ruff`, `black`, `prettier`, `gofmt`, `rustfmt`), POSIX whitespace normalization (preserving Makefile/Go tabs), multi-language syntax validation (Python AST, JSON, JS bracket balance), and stub detector operating in the Python harness layer with 0 LLM context overhead.
+- **Autonomous Playwright Web Outcome Inspection**: Ephemeral 3-tiered rendering (Playwright Chromium → Node JSDOM → Static HTML Parser) capturing DOM snapshots, Accessibility Trees (`ax_tree`), console errors, 404s, layout overflow warnings, and interactive action sequences with <300 token Markdown summaries for non-vision models (e.g., Qwen 2.5 Coder).
 - **Enhanced Web Browsing & Stealth Anti-Blocking Engine**: Multi-tier web retrieval (Jina Reader API → Stealth HTTP GET with `sec-ch-ua` browser headers → Remote Headless Playwright Chromium engine for 403/429/Cloudflare/JS SPAs), structure-preserving HTML parser (`StructurePreservingHTMLParser` preserving `<pre><code>` & `<table>` formatting), and version-locked query augmentation (`pyproject.toml` / `package.json` manifest inspector).
 - **Non-Verbose Code Output (3-Tier Output Discipline)**: Never dump raw code in assistant text. Code modifications occur via `WRITE_FILE`/`EDIT_FILE` tool payloads while chat responses state action, file path, line/function scope, and description. UI collapses tool payload args into clean status badges (`✓ ✏ Writing src/main.py`), reducing edit turn token usage by ~85% and preventing terminal screen buffer overflow.
 - **Fault-Tolerant Tool Execution & Auto-Fallback**: `_parse_diff_block()` handles non-canonical diffs (missing `=======` dividers), and `EDIT_FILE` automatically delegates full `content` payloads or non-existent target files to `WRITE_FILE` to prevent unnecessary trajectory failures.
