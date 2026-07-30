@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785398374.3131316,
-    "ast_hash": "60f7404690df25f22bbe2a9b60633fde",
+    "mtime": 1785398569.0285842,
+    "ast_hash": "851e1568afda2c1721355804e0a98c56",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
@@ -872,6 +872,11 @@
   "core/tools/task_helpers.py": {
     "mtime": 1785398086.4607675,
     "ast_hash": "c6e6940f181400fac4777054cdef3699",
+    "semantic_hash": ""
+  },
+  ".agents/AGENTS.md": {
+    "mtime": 1785398561.9729857,
+    "ast_hash": "f6017e911e2abd08abf4e4ca05a2955b",
     "semantic_hash": ""
   }
 }
