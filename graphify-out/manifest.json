@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785358511.825401,
-    "ast_hash": "fb17cd510f08764374a457e0ac460370",
+    "mtime": 1785398106.887142,
+    "ast_hash": "3e5c28395b5113724e46540d9effed4a",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785356936.8278878,
-    "ast_hash": "e64d1bc93fa408b687f6bf66ae949ee5",
+    "mtime": 1785398096.3162947,
+    "ast_hash": "31e22094d4f89b5700f4071aa8fa6933",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -595,8 +595,8 @@
     "semantic_hash": "d46bff76decbce47ad4c0417cdf6c9c9"
   },
   "rlm_optimized/prompts.py": {
-    "mtime": 1785332782.9742463,
-    "ast_hash": "9d89168ddbecf2eab57db5b2532c78a5",
+    "mtime": 1785398143.3656018,
+    "ast_hash": "4f192b93fa986fbb8bb08c26bb9fea5b",
     "semantic_hash": ""
   },
   "rlm_optimized/repl_sandbox.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785332798.9344003,
-    "ast_hash": "233c820f9ab9d93a0158146d1ebbef18",
+    "mtime": 1785398131.9055798,
+    "ast_hash": "1a648dfda7796a6fb8c4ad0c327a3711",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -862,6 +862,16 @@
   "core/tests/test_scratchpad_enhancements.py": {
     "mtime": 1785358677.093423,
     "ast_hash": "ba27d93403c3749e1f555ef294aab4ac",
+    "semantic_hash": ""
+  },
+  "core/tests/test_plan_execution_loop.py": {
+    "mtime": 1785398301.5996175,
+    "ast_hash": "643422cb137150c3e6529319061fd5b8",
+    "semantic_hash": ""
+  },
+  "core/tools/task_helpers.py": {
+    "mtime": 1785398086.4607675,
+    "ast_hash": "c6e6940f181400fac4777054cdef3699",
     "semantic_hash": ""
   }
 }
