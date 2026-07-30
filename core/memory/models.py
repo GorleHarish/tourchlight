@@ -17,6 +17,12 @@ class MessageRole(Enum):
     TOOL_RESULT = "tool_result"
 
 
+class ExecutionMode(str, Enum):
+    CHAT = "chat"
+    GOAL = "goal"
+
+
+
 class ContentType(Enum):
     CODE = "code"
     ERROR = "error"
@@ -107,6 +113,9 @@ class SessionState:
     needle_ledger: list[MemoryNeedle] = field(default_factory=list)
     memory_objects: list[MemoryObject] = field(default_factory=list)
 
+    # Execution Mode (CHAT vs GOAL)
+    execution_mode: ExecutionMode = ExecutionMode.CHAT
+
     # Working set
     working_set: WorkingSetSnapshot = field(default_factory=WorkingSetSnapshot)
 
@@ -121,7 +130,9 @@ class ContextSnapshot:
     compressed_messages: int = 0
     active_file: str = ""
     current_phase: str = "chat"
+    execution_mode: str = "chat"
     tech_stack: list[str] = field(default_factory=list)
     errors_seen: list[str] = field(default_factory=list)
     files_modified: list[str] = field(default_factory=list)
     decisions: list[str] = field(default_factory=list)
+

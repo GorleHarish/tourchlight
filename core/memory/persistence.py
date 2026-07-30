@@ -150,7 +150,18 @@ def ensure_project_initialized(project_path: Union[Path, str], create_git: bool 
     if create_git:
         ensure_git_repository(path)
 
+    # 3. Ensure .gitignore contains .torchlight/ to prevent dirty git status
+    gitignore_file = path / ".gitignore"
+    try:
+        content = gitignore_file.read_text(encoding="utf-8") if gitignore_file.exists() else ""
+        if ".torchlight" not in content:
+            separator = "" if not content or content.endswith("\n") else "\n"
+            gitignore_file.write_text(content + f"{separator}.torchlight/\n", encoding="utf-8")
+    except Exception:
+        pass
+
     return path
+
 
 
 def init_new_project(project_path: Union[Path, str]) -> Path:

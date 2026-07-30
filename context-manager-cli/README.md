@@ -22,8 +22,13 @@ pip install -e .
 ## Usage
 
 ```bash
-# Start a chat session
-context chat
+# Start a lightweight Q&A chat session (no task files)
+context chat --mode chat
+
+# Start a Goal Mode session (disk task tracking in .torchlight/tasks.md)
+context goal "Implement authentication API"
+# OR
+context chat --mode goal
 
 # Match your model's context window
 context chat --max-tokens 4096
@@ -35,7 +40,8 @@ context chat --max-tokens 4096
 |--------|-------------|
 | `--url, -u` | LM Studio/Ollama API URL (default: http://localhost:1234/v1) |
 | `--model, -m` | Model name (auto-detected if omitted) |
-| `--max-tokens, -t` | Maximum context tokens (default: 8000) |
+| `--max-tokens, -t` | Maximum context tokens (default: 4096) |
+| `--mode, -mode` | Execution mode: `chat` (lightweight Q&A) or `goal` (task tracking & harness) |
 | `--no-stream` | Disable streaming responses |
 | `--project` | Set the project root for workspace-aware context |
 
@@ -45,6 +51,8 @@ context chat --max-tokens 4096
 |---------|-------------|
 | `/help` | Show available commands |
 | `/status` | Show context statistics (tokens, messages, memory) |
+| `/mode [chat|goal]` | View or switch execution mode (Chat vs Goal) |
+| `/tasks`, `/goal` | View active goal status and task progress |
 | `/stream` | Toggle streaming mode |
 | `/compress`, `/compact` | Manually trigger memory compression |
 | `/clear` | Clear all context |

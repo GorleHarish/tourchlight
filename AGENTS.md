@@ -115,6 +115,8 @@ rlm_optimized/                              # TUI frontend
 - **Non-Verbose Code Output (3-Tier Output Discipline)**: Never dump raw code in assistant text. Code modifications occur via `WRITE_FILE`/`EDIT_FILE` tool payloads while chat responses state action, file path, line/function scope, and description. UI collapses tool payload args into clean status badges (`✓ ✏ Writing src/main.py`), reducing edit turn token usage by ~85% and preventing terminal screen buffer overflow.
 - **Fault-Tolerant Tool Execution & Auto-Fallback**: `_parse_diff_block()` handles non-canonical diffs (missing `=======` dividers), and `EDIT_FILE` automatically delegates full `content` payloads or non-existent target files to `WRITE_FILE` to prevent unnecessary trajectory failures.
 - **Unified Workspace Task Extraction & Verification Gate**: `get_workspace_pending_tasks()` extracts open tasks across `implementation_plan.md`, `.torchlight/tasks.md`, and `goal_spec.json`. Verification Gate in engine blocks premature `<FINAL_ANSWER>` output while tasks remain uncompleted (`- [ ]`).
+- **Explicit Session Modes (`💬 Chat Mode` vs `🎯 Goal Mode`)**: Core support for `ExecutionMode` enum (`CHAT` vs `GOAL`). Chat Mode suppresses `.torchlight/goal_spec.json` & `tasks.md` creation for clean Q&A sessions. Goal Mode lazily initializes task graphs on demand. `ensure_project_initialized()` auto-patches `.gitignore` to include `.torchlight/`. CLI (`--mode`, `context goal`, `/mode`) and TUI (`SessionModePickerModal`, `Ctrl+G`, `/mode`) provide interactive selection with Rich/Textual tooltips.
+
 
 - **Structured errors**: 7 types with `RecoveryEngine` escalation ladder
 - **Fallback imports**: Frontends use `try/except ImportError` for backward compat

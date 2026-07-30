@@ -33,6 +33,7 @@ class WebInspectionResult:
     console_logs: List[str] = field(default_factory=list)
     failed_requests: List[str] = field(default_factory=list)
     dom_summary: Dict[str, Any] = field(default_factory=dict)
+    ax_tree: Optional[Dict[str, Any]] = None
     screenshot_path: Optional[str] = None
     error_summary: Optional[str] = None
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
@@ -65,9 +66,20 @@ class WebInspectionResult:
                 lines.append(f"- Canvases: {', '.join(self.dom_summary['canvases'])}")
             if "element_count" in self.dom_summary:
                 lines.append(f"- Total DOM Elements: {self.dom_summary['element_count']}")
+            if "interactive_elements" in self.dom_summary:
+                ie = self.dom_summary["interactive_elements"]
+                lines.append(f"- Interactive Elements: Buttons ({ie.get('buttons', 0)}), Inputs ({ie.get('inputs', 0)}), Links ({ie.get('links', 0)})")
+            if "overflow_warnings" in self.dom_summary and self.dom_summary["overflow_warnings"]:
+                lines.append(f"- ⚠️ Overflow Warnings: {', '.join(self.dom_summary['overflow_warnings'])}")
             if "text_preview" in self.dom_summary and self.dom_summary["text_preview"]:
                 preview = self.dom_summary["text_preview"][:150].replace("\n", " ")
                 lines.append(f"- Text Preview: *\"{preview}\"*")
+
+        if self.ax_tree:
+            lines.append("\n**Accessibility Tree Summary:**")
+            role = self.ax_tree.get("role", {}).get("value", "document") if isinstance(self.ax_tree, dict) else "document"
+            name = self.ax_tree.get("name", {}).get("value", "") if isinstance(self.ax_tree, dict) else ""
+            lines.append(f"- Root Role: `{role}` {f'({name})' if name else ''}")
 
         if self.screenshot_path:
             lines.append(f"\n**Screenshot Saved:** `{self.screenshot_path}`")
@@ -178,9 +190,25 @@ class WebOutcomeInspector:
         
         # Clamp wait_ms between 100ms and 10000ms (10 sec max) to prevent context/process hanging
         wait_ms = max(100, min(10000, wait_ms))
+        raw_path = str(file_path).strip()
+
+        # Handle direct HTTP/HTTPS URLs (e.g. local dev servers)
+        if raw_path.startswith(("http://", "https://")):
+            target_url = raw_path
+            path_obj = Path("remote_page.html")
+            res = self._inspect_playwright(target_url, path_obj, wait_ms, interact, take_screenshot)
+            if res is not None:
+                res.duration_ms = (time.time() - start_time) * 1000
+                return res
+            return WebInspectionResult(
+                url=target_url,
+                status="FAIL",
+                tier_used="none",
+                duration_ms=(time.time() - start_time) * 1000,
+                console_errors=[f"Failed to load remote URL: {target_url}"]
+            )
 
         # Separate query params/hash fragments from real disk path (e.g. index.html?v=1#canvas)
-        raw_path = str(file_path).strip()
         query_suffix = ""
         if "?" in raw_path or "#" in raw_path:
             split_char = "?" if "?" in raw_path else "#"
@@ -204,7 +232,6 @@ class WebOutcomeInspector:
         server = EphemeralHTTPServer(base_dir)
         server_url = server.start()
         target_url = f"{server_url}/{path_obj.name}{query_suffix}"
-
 
         try:
             # Try Tier 2: Playwright Headless Inspection
@@ -245,6 +272,7 @@ class WebOutcomeInspector:
         console_logs: List[str] = []
         failed_requests: List[str] = []
         screenshot_file: Optional[str] = None
+        ax_tree: Optional[Dict[str, Any]] = None
 
         try:
             with sync_playwright() as p:
@@ -269,12 +297,29 @@ class WebOutcomeInspector:
                     if interact:
                         for act in interact:
                             act_type = act.get("type")
+                            selector = act.get("selector", "body")
                             if act_type == "key_press":
                                 page.keyboard.press(act.get("key", "Space"))
                             elif act_type == "click":
-                                selector = act.get("selector", "body")
                                 if page.is_visible(selector):
                                     page.click(selector)
+                            elif act_type in ("fill", "type"):
+                                text = act.get("text", "")
+                                if page.is_visible(selector):
+                                    page.fill(selector, text)
+                            elif act_type == "hover":
+                                if page.is_visible(selector):
+                                    page.hover(selector)
+                            elif act_type == "wait_for_selector":
+                                try:
+                                    page.wait_for_selector(selector, timeout=act.get("timeout", 2000))
+                                except Exception:
+                                    console_errors.append(f"Timeout waiting for selector: {selector}")
+
+                    try:
+                        ax_tree = page.accessibility.snapshot()
+                    except Exception:
+                        ax_tree = None
 
                     dom_summary = page.evaluate("""() => {
                         const canvases = Array.from(document.querySelectorAll('canvas'));
@@ -297,12 +342,27 @@ class WebOutcomeInspector:
                         const canvasList = canvasDetails.map(c => 
                             `<canvas id="${c.id}" width="${c.width}" height="${c.height}">${c.isBlank ? ' [BLANK_CANVAS]' : ''}`
                         );
+
+                        const overflowWarnings = [];
+                        const bodyWidth = document.body ? document.body.clientWidth : 1024;
+                        document.querySelectorAll('*').forEach(el => {
+                            if (el.scrollWidth > bodyWidth + 50 && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') {
+                                overflowWarnings.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} (scrollWidth ${el.scrollWidth}px > body ${bodyWidth}px)`);
+                            }
+                        });
+
                         const bodyText = document.body ? document.body.innerText.trim().slice(0, 300) : '';
                         return {
                             title: document.title,
                             canvases: canvasList,
                             blank_canvas_detected: canvasDetails.length > 0 && canvasDetails.every(c => c.isBlank),
                             element_count: document.querySelectorAll('*').length,
+                            interactive_elements: {
+                                buttons: document.querySelectorAll('button, input[type="button"], input[type="submit"]').length,
+                                inputs: document.querySelectorAll('input, select, textarea').length,
+                                links: document.querySelectorAll('a[href]').length
+                            },
+                            overflow_warnings: overflowWarnings.slice(0, 3),
                             text_preview: bodyText
                         };
                     }""")
@@ -311,7 +371,6 @@ class WebOutcomeInspector:
                         console_errors.append("⚠️ Warning: Canvas element found but 0 pixels drawn (blank canvas). Check game loop or rendering code.")
 
                     if take_screenshot:
-
                         self.output_dir.mkdir(parents=True, exist_ok=True)
                         shot_filename = f"{file_path.stem}_inspect.png"
                         shot_path = self.output_dir / shot_filename
@@ -327,6 +386,7 @@ class WebOutcomeInspector:
                         console_logs=console_logs,
                         failed_requests=failed_requests,
                         dom_summary=dom_summary,
+                        ax_tree=ax_tree,
                         screenshot_path=screenshot_file
                     )
                 finally:

@@ -1979,6 +1979,7 @@ def tool_inspect_web_impl(args: dict, project_root: str) -> str:
     """Inspect runtime outcome of HTML/JS/CSS web pages or Canvas games."""
     path = str(args.get("path", "")).strip()
     wait_ms = int(args.get("wait_ms", 1500))
+    interact = args.get("interact")
 
     if not path:
         return "INSPECT_WEB requires 'path' parameter."
@@ -1989,7 +1990,7 @@ def tool_inspect_web_impl(args: dict, project_root: str) -> str:
     try:
         from core.execution.web_inspector import WebOutcomeInspector
         inspector = WebOutcomeInspector(output_dir=Path(project_root) / ".torchlight" / "screenshots")
-        res = inspector.inspect(file_path=str(full_path), wait_ms=wait_ms)
+        res = inspector.inspect(file_path=str(full_path) if not path.startswith(("http://", "https://")) else path, wait_ms=wait_ms, interact=interact)
         return res.to_markdown()
     except Exception as e:
         return f"Error during web outcome inspection: {e}"

@@ -448,6 +448,84 @@ class CopySelectionModal(ModalScreen[Optional[str]]):
                 self.dismiss(None)
 
 
+# ── Session Mode Picker Modal ──────────────────────────────────────────
+
+class SessionModePickerModal(ModalScreen[Optional[str]]):
+    """Modal dialog for selecting session execution mode (Chat vs Goal)."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+    ]
+
+    DEFAULT_CSS = """
+    SessionModePickerModal {
+        align: center middle;
+    }
+    #mode-dialog {
+        width: 74;
+        height: auto;
+        max-height: 85%;
+        background: $surface;
+        border: thick $accent;
+        padding: 1 2;
+    }
+    #mode-title {
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+    }
+    #mode-tooltip {
+        background: $boost;
+        color: $text-muted;
+        padding: 1;
+        margin: 1 0;
+        border: solid $accent;
+    }
+    .mode-btn {
+        margin: 1 0;
+        width: 1fr;
+    }
+    """
+
+    def __init__(self, current_mode: str = "chat"):
+        super().__init__()
+        self.current_mode = current_mode
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="mode-dialog"):
+            yield Static("⚙️ Select Torchlight Execution Mode", id="mode-title")
+            yield Static(
+                "Choose the operation mode for your session:\n\n"
+                "• 💬 Chat Mode: Fast, lightweight Q&A and ad-hoc edits. No disk task tracking files created.\n"
+                "• 🎯 Goal Mode: Continuous autonomous harness with disk-backed task graph (.torchlight/tasks.md).",
+                id="mode-desc"
+            )
+            yield Static(
+                "💡 Tooltip: Goal Mode initializes .torchlight/goal_spec.json and .torchlight/tasks.md "
+                "to track multi-epoch sub-tasks across context resets and enforce verification gates.",
+                id="mode-tooltip"
+            )
+            with Horizontal():
+                yield Button("💬 Chat Mode (Lightweight)", id="select-chat-btn", variant="primary", classes="mode-btn")
+                yield Button("🎯 Goal Mode (Harness)", id="select-goal-btn", variant="success", classes="mode-btn")
+            yield Button("Cancel", id="cancel-mode-btn", variant="default")
+
+    @on(Button.Pressed, "#select-chat-btn")
+    def select_chat(self) -> None:
+        self.dismiss("chat")
+
+    @on(Button.Pressed, "#select-goal-btn")
+    def select_goal(self) -> None:
+        self.dismiss("goal")
+
+    @on(Button.Pressed, "#cancel-mode-btn")
+    def cancel_btn(self) -> None:
+        self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+
 # ── Agent Status & Telemetry Modal ──────────────────────────────────────
 
 class AgentStatusModal(ModalScreen[None]):
@@ -687,6 +765,7 @@ class TorchlightApp(App):
         Binding("ctrl+k", "copy_last", "Copy Last", show=True),
         Binding("ctrl+o", "open_folder", "Open Folder", show=True),
         Binding("ctrl+m", "select_model", "Select Model", show=True),
+        Binding("ctrl+g", "select_mode", "Session Mode", show=True),
         Binding("ctrl+b", "toggle_sidebar", "Toggle Sidebar", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
         Binding("ctrl+p", "compact_context", "Compact Context", show=True),
@@ -1268,6 +1347,31 @@ class TorchlightApp(App):
         elif cmd in ("/status", "/telemetry"):
             self.action_toggle_status_modal()
 
+        elif cmd == "/mode":
+            if not arg:
+                self.action_select_mode()
+            else:
+                m_str = arg.lower().strip()
+                if m_str in ("chat", "goal"):
+                    from core.memory.models import ExecutionMode
+                    new_mode = ExecutionMode.GOAL if m_str == "goal" else ExecutionMode.CHAT
+                    if hasattr(self.engine.memory.state, "execution_mode"):
+                        self.engine.memory.state.execution_mode = new_mode
+                    if m_str == "goal":
+                        try:
+                            from core.execution.autonomous_harness import AutonomousHarness
+                            harness = AutonomousHarness(project_root=self.engine.project_root, memory=self.engine.memory)
+                            harness.ensure_goal_spec_initialized()
+                        except Exception:
+                            pass
+                        self.notify("Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)", severity="success", timeout=3)
+                    else:
+                        self.notify("Switched to Chat Mode (Lightweight Q&A)", severity="information", timeout=3)
+                    self.update_status_bar()
+                else:
+                    self.notify("Usage: /mode chat or /mode goal", severity="warning", timeout=3)
+
+
         elif cmd in ("/cd", "/workdir", "/open", "/browse"):
             if not arg:
                 await self.action_open_folder_picker()
@@ -1726,7 +1830,32 @@ class TorchlightApp(App):
                 else:
                     self.notify("Failed to copy turn", severity="error", timeout=3)
 
-        self.push_screen(CopySelectionModal(self._chat_history), _on_turn_selected)
+    def action_select_mode(self) -> None:
+        def _on_mode_selected(selected_mode: Optional[str]):
+            if selected_mode:
+                mem = getattr(self.engine, "memory", None)
+                from core.memory.models import ExecutionMode
+                new_mode = ExecutionMode.GOAL if selected_mode == "goal" else ExecutionMode.CHAT
+                if mem and hasattr(mem, "state") and hasattr(mem.state, "execution_mode"):
+                    mem.state.execution_mode = new_mode
+                
+                if selected_mode == "goal":
+                    try:
+                        from core.execution.autonomous_harness import AutonomousHarness
+                        harness = AutonomousHarness(project_root=self.engine.project_root, memory=mem)
+                        harness.ensure_goal_spec_initialized()
+                    except Exception:
+                        pass
+                    self.notify("Switched to Goal Mode (Task Graph in .torchlight/tasks.md)", severity="success", timeout=3)
+                else:
+                    self.notify("Switched to Chat Mode (Lightweight Q&A)", severity="information", timeout=3)
+                self.update_status_bar()
+
+        mem = getattr(self.engine, "memory", None)
+        current_m = getattr(getattr(mem, "state", None), "execution_mode", "chat")
+        m_str = current_m.value if hasattr(current_m, "value") else str(current_m or "chat")
+        self.push_screen(SessionModePickerModal(m_str), _on_mode_selected)
+
 
     def action_select_model(self) -> None:
         def _on_model_picked(selected: Optional[dict]):

@@ -2,7 +2,26 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.4.0] - 2026-07-30
+
+### Added & Improved
+- **Explicit Session Modes (`💬 Chat Mode` vs `🎯 Goal Mode`)**:
+  - **Core Model & Memory Control**: Added `ExecutionMode` enum (`CHAT`, `GOAL`) in `core/memory/models.py` attached to `SessionState` and `ContextSnapshot`.
+  - **Lazy Task Memory Initialization**: Chat Mode suppresses `.torchlight/goal_spec.json` and `.torchlight/tasks.md` creation for clean, uncluttered Q&A sessions. Goal Mode explicitly creates disk task tracking files on demand.
+  - **Zero-Config `.gitignore` Auto-Patching**: `ensure_project_initialized()` in `core/memory/persistence.py` automatically appends `.torchlight/` to the project `.gitignore` to prevent dirty working trees.
+- **CLI Mode Selection & Slash Commands**:
+  - **`--mode` Option**: Added `--mode` (`-m`) option to `context chat` (`context chat --mode chat` vs `context chat --mode goal`).
+  - **`context goal` Subcommand**: Added `context goal "<title>"` subcommand to launch directly into Goal Mode.
+  - **Runtime `/mode` Slash Command**: Added `/mode` slash command in interactive CLI sessions (`/mode chat`, `/mode goal`, `/mode`).
+  - **Interactive Rich Tooltips**: Formatted launcher and CLI help text with rich UX tooltips explaining Chat Mode vs Goal Mode.
+- **TUI Mode Picker Modal & Shortcut Controls**:
+  - **`SessionModePickerModal`**: Added interactive modal dialog in `rlm_optimized/tui_app.py` featuring mode options and inline explanatory tooltips.
+  - **Shortcut & Command Integration**: Added `Ctrl+G` shortcut binding and `/mode` slash command handler in TUI.
+- **Comprehensive Unit Testing**:
+  - Added `core/tests/test_session_modes.py` verifying mode isolation, suppression of task files in Chat Mode, initialization of task files in Goal Mode, and `.gitignore` patching (222 core tests + 46 CLI tests passing).
+
 ## [v2.3.0] - 2026-07-30
+
 
 ### Added & Improved
 - **Unified Workspace Task Extraction Helper (`get_workspace_pending_tasks`)**:

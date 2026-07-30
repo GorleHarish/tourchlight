@@ -182,11 +182,19 @@ class ExecutionFeedbackLoop:
         self._run_preflight_lint()
         test_cmd = self._detect_test_command()
         if not test_cmd:
-            # Check if any modified file is a web file (.html, .js, .css)
+            # Check if any modified file is a web file (.html, .js, .jsx, .ts, .tsx, .vue, .svelte, .css)
+            web_exts = (".html", ".js", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".css")
+            modified_web = [f for f in self._files_modified_since_test if f.endswith(web_exts)]
+            
             html_files = [f for f in self._files_modified_since_test if f.endswith(".html")]
-            if not html_files:
-                # Find any index.html or main html in project root
+            if not html_files and modified_web:
+                # Find any index.html or main html in project root or src directories
                 root_htmls = list(self.project_root.glob("*.html"))
+                if not root_htmls:
+                    ignored_dirs = {"node_modules", ".venv", "venv", ".git", "dist", "build", ".torchlight", "coverage", ".next"}
+                    all_htmls = [p for p in self.project_root.glob("**/*.html") if not any(part in ignored_dirs for part in p.parts)]
+                    if all_htmls:
+                        root_htmls = [all_htmls[0]]
                 if root_htmls:
                     html_files = [str(root_htmls[0])]
 
@@ -200,7 +208,7 @@ class ExecutionFeedbackLoop:
                     self._files_modified_since_test.clear()
                     
                     status = TestResultStatus.PASS if res.is_passed else TestResultStatus.FAIL
-                    tr = TestResult(name=html_files[0], status=status, error_message="\n".join(res.console_errors))
+                    tr = TestResult(name=html_files[0], status=status, error_message="\n".join(res.console_errors + res.failed_requests))
                     return TestRunResult(
                         command=f"INSPECT_WEB {html_files[0]}",
                         return_code=0 if res.is_passed else 1,

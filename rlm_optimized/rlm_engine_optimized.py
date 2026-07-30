@@ -136,11 +136,29 @@ class RLMEngineOptimized:
         else:
             self.debate_verifier = None
 
+        self._memory = None
         try:
             from core.execution.feedback_loop import ExecutionFeedbackLoop
             self.feedback_loop = ExecutionFeedbackLoop(project_root=Path(self.project_root))
         except Exception:
             self.feedback_loop = None
+
+    @property
+    def memory(self):
+        if self._memory is None and TieredMemory and MemoryConfig:
+            try:
+                from core.memory.persistence import ProjectMemory
+                from rlm_optimized.config import CTX_SIZE
+                pm = ProjectMemory(Path(self.project_root))
+                self._memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE), project_memory=pm)
+            except Exception:
+                pass
+        return self._memory
+
+    @memory.setter
+    def memory(self, val) -> None:
+        self._memory = val
+
 
 
     def set_project_root(self, project_root: str) -> None:

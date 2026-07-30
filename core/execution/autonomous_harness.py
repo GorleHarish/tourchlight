@@ -55,6 +55,8 @@ class GoalSpec:
     updated_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
 
+from core.memory.models import ExecutionMode
+
 @dataclass
 class HarnessConfig:
     max_epoch_steps: int = 10
@@ -64,6 +66,8 @@ class HarnessConfig:
     max_duration_seconds: int = 86400  # Default 24 hours
     check_interval_seconds: float = 1.0
     preserve_continuous_context: bool = True  # Preserve continuous session context between sub-tasks
+    mode: ExecutionMode = ExecutionMode.GOAL
+
 
 
 

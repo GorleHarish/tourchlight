@@ -137,13 +137,16 @@ class StreamingChatSession:
         max_tokens: int,
         stream: bool = True,
         project_dir: Optional[str] = None,
+        mode: str = "chat",
     ):
         if max_tokens <= 0:
             raise ValueError("max_tokens must be positive")
         if not base_url:
             raise ValueError("base_url cannot be empty")
 
+        self.mode = (mode or "chat").lower().strip()
         self.client = LMStudioClient(base_url=base_url, model=model)
+
         self._project_dir = Path(project_dir).resolve() if project_dir else Path.cwd()
         self.project_path = self._project_dir
         self.project_memory = ProjectMemory(self.project_path)
@@ -162,6 +165,10 @@ class StreamingChatSession:
             project_memory=self.project_memory,
             llm_client=self.client,   # enables LLM-powered state extraction at compression time
         )
+        if hasattr(self.memory.state, "execution_mode"):
+            from core.memory.models import ExecutionMode
+            self.memory.state.execution_mode = ExecutionMode.GOAL if self.mode == "goal" else ExecutionMode.CHAT
+
         self.compactor      = VerbatimCompactor(CompressionConfig())
         self.summarizer     = ConversationSummarizer()
         self.stream_enabled = stream
@@ -868,6 +875,24 @@ class StreamingChatSession:
         elif command == "/beam":
             query = arg.strip() or typer.prompt("Query for beam preview")
             self._flash_preview(query)
+        elif command == "/mode":
+            mode_arg = arg.strip().lower()
+            if mode_arg in ("chat", "goal"):
+                self.mode = mode_arg
+                if hasattr(self.memory.state, "execution_mode"):
+                    from core.memory.models import ExecutionMode
+                    self.memory.state.execution_mode = ExecutionMode.GOAL if mode_arg == "goal" else ExecutionMode.CHAT
+                if mode_arg == "goal" and AutonomousHarness:
+                    harness = getattr(self, "harness", None) or AutonomousHarness(project_root=self.project_path, memory=self.memory)
+                    harness.ensure_goal_spec_initialized()
+                    dashboard.print_success("Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)")
+                else:
+                    dashboard.print_success("Switched to Chat Mode (Lightweight Q&A & ad-hoc code edits)")
+            else:
+                current_label = "🎯 Goal Mode (Task tracking in .torchlight/tasks.md)" if self.mode == "goal" else "💬 Chat Mode (Lightweight Q&A)"
+                console.print(f"[bold cyan]Current Mode:[/bold cyan] {current_label}")
+                console.print("[dim]Usage: /mode chat  (Lightweight Q&A) | /mode goal  (Task tracking & Harness)[/dim]")
+
         elif command in ("/tasks", "/goal", "/subagents"):
             if AutonomousHarness:
                 harness = getattr(self, "harness", None) or AutonomousHarness(project_root=self.project_path, memory=self.memory)
@@ -876,6 +901,7 @@ class StreamingChatSession:
                 dashboard.show_task_progress(summary)
             else:
                 dashboard.print_warning("AutonomousHarness is not available.")
+
 
         elif command == "/files":
             if self._index is None:
@@ -995,7 +1021,7 @@ def chat(
                              help="LM Studio API URL"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name"),
     max_tokens: int = typer.Option(
-        4096,   # ← default changed from 8000 to 4096 for Qwen2.5-Coder-3B
+        4096,
         "--max-tokens", "-t",
         help="Context window size. Match your model's actual n_ctx in LM Studio (default: 4096).",
         min=100, max=200000,
@@ -1003,16 +1029,19 @@ def chat(
     no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming"),
     project: Optional[str] = typer.Option(None, "--project", "-p",
                                            help="Project directory (default: CWD)"),
+    mode: str = typer.Option("chat", "--mode", "-mode",
+                              help="Execution mode: 'chat' (lightweight Q&A) or 'goal' (task tracking & harness)"),
 ):
-    """Start an interactive chat session with context management and flashlight.
-
-    IMPORTANT: Set --max-tokens to match your model's context length in LM Studio.
-    For Qwen2.5-Coder-3B the default 4096 is correct.
-    For larger models: --max-tokens 8192 or --max-tokens 16384.
-    """
+    """Start an interactive chat session with context management and flashlight."""
     console.print("[bold cyan]Context Manager CLI — Torchlight[/bold cyan]")
     console.print(f"Connecting to: {url}")
     console.print(f"[dim]Context window: {max_tokens:,} tokens[/dim]")
+
+    m_str = (mode or "chat").lower().strip()
+    if m_str == "goal":
+        console.print("[bold green]🎯 Mode: Goal Mode[/bold green] [dim](Autonomous task tracking in .torchlight/tasks.md)[/dim]")
+    else:
+        console.print("[bold cyan]💬 Mode: Chat Mode[/bold cyan] [dim](Lightweight Q&A & ad-hoc code edits, no task files)[/dim]")
 
     if max_tokens <= _SMALL_CTX:
         console.print(
@@ -1022,9 +1051,31 @@ def chat(
 
     session = StreamingChatSession(
         base_url=url, model=model, max_tokens=max_tokens,
-        stream=not no_stream, project_dir=project,
+        stream=not no_stream, project_dir=project, mode=m_str,
     )
     asyncio.run(session.start())
+
+
+@app.command()
+def goal(
+    title: str = typer.Argument(..., help="Goal title or target feature description"),
+    url: str = typer.Option("http://localhost:1234/v1", "--url", "-u", help="LM Studio API URL"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name"),
+    max_tokens: int = typer.Option(4096, "--max-tokens", "-t", help="Context window size"),
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Project directory"),
+):
+    """Start an autonomous goal execution session driven by .torchlight task tracking."""
+    console.print(f"[bold green]🎯 Starting Goal Mode:[/bold green] {title}")
+    session = StreamingChatSession(
+        base_url=url, model=model, max_tokens=max_tokens,
+        stream=True, project_dir=project, mode="goal",
+    )
+    if AutonomousHarness:
+        harness = AutonomousHarness(project_root=session.project_path, memory=session.memory)
+        harness.ensure_goal_spec_initialized(title=title)
+        console.print("[dim]✓ Goal spec initialized in .torchlight/goal_spec.json & tasks.md[/dim]")
+    asyncio.run(session.start())
+
 
 
 @app.command()

@@ -225,13 +225,15 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "INSPECT_WEB": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Target HTML or JS file relative path"},
+            "path": {"type": "string", "description": "Target HTML/JS file relative path or HTTP URL"},
             "wait_ms": {"type": "integer", "description": "Wait time in ms for page load / game loop (default: 1500)"},
+            "interact": {"type": "array", "description": "List of action steps: [{'type': 'click'|'fill'|'key_press'|'hover'|'wait_for_selector', 'selector': '...', 'key': '...', 'text': '...'}]"},
         },
         "required": ["path"],
         "aliases": {
             "path": ["file", "filename", "filepath", "target", "url", "p"],
             "wait_ms": ["wait", "timeout", "delay"],
+            "interact": ["actions", "steps", "sequence"],
         },
     },
     "SAVE_MEMORY": {

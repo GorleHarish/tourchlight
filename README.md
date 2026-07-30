@@ -9,16 +9,22 @@ No GUI. No browser. No WebSocket server. Just your terminal and a local model.
 ## Quick Start
 
 ```bash
-# CLI frontend
+# CLI frontend (Chat Mode - lightweight Q&A)
 cd context-manager-cli
 ./run.sh
 
 # Or after pip install -e .
 context chat --max-tokens 4096
 
-# TUI frontend
+# Goal Mode (Autonomous task tracking in .torchlight/tasks.md)
+context goal "Refactor user authentication module"
+# OR
+context chat --mode goal
+
+# TUI frontend (Interactive Chat & Goal Mode toggle via Ctrl+G or /mode)
 cd rlm_optimized
 python tui_app.py
+
 ```
 
 ---
