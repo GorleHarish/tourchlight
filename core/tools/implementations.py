@@ -39,6 +39,14 @@ _SAFE_COMMANDS_SET = {
 _LONG_CMDS = ("pip install", "pip3 install", "npm install", "yarn", "cargo build",
               "gradle", "./gradlew", "mvn ", "make ", "cmake")
 
+_global_memory_mgr = None
+
+
+def set_memory_manager(mgr) -> None:
+    """Set global active TieredMemory instance for tool synchronization."""
+    global _global_memory_mgr
+    _global_memory_mgr = mgr
+
 
 # ── Symbol extraction patterns ────────────────────────────────────────────
 
@@ -1622,15 +1630,15 @@ def tool_web_verify_impl(args: dict, project_root: str) -> str:
 
 
 def tool_save_memory_impl(args: dict, project_root: str) -> str:
-    """SAVE_MEMORY — save a fact to project memory."""
-    fact = args.get("fact", "")
-    category = args.get("category", "fact")
+    """SAVE_MEMORY — save a fact, decision, or failed strategy to project memory."""
+    fact = args.get("entry") or args.get("fact", "")
+    category = args.get("category", "decision")
 
     if not fact or not fact.strip():
-        return "No fact provided."
+        return "No memory entry provided."
     fact = fact.strip()
     if len(fact) > 300:
-        return "Fact too long — keep under 300 chars."
+        return "Memory entry too long — keep under 300 chars."
 
     try:
         from ..memory.persistence import ProjectMemory
@@ -1640,6 +1648,8 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
         if "arch" in cat or "decision" in cat:
             if fact not in mem.get("arch_decisions", []):
                 mem.setdefault("arch_decisions", []).append(fact)
+            if fact not in mem.get("decisions", []):
+                mem.setdefault("decisions", []).append(fact)
             pm.save(mem)
         elif "fail" in cat or "tried" in cat:
             if fact not in mem.get("tried_and_failed", []):
@@ -1649,9 +1659,91 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
             pm.update_tech_stack([fact])
         else:
             pm.update(fact)
+
+        # Also sync active memory manager if initialized
+        if _global_memory_mgr is not None:
+            _global_memory_mgr.record_memory(fact, category=category)
+
         return f"Saved to project memory ({cat}): '{fact[:100]}'"
     except Exception as e:
         return f"Failed to write memory file: {e}"
+
+
+def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
+    """UPDATE_TASK_GRAPH — dynamically mutate sub-tasks in .torchlight/goal_spec.json."""
+    action = (args.get("action") or "").lower().strip()
+    task_id = args.get("task_id") or args.get("id", "")
+    description = args.get("description") or args.get("desc", "")
+    depends_on = args.get("depends_on") or args.get("deps", [])
+    target_files = args.get("target_files") or args.get("files", [])
+
+    if not action:
+        return "UPDATE_TASK_GRAPH requires 'action' argument (add_subtask, skip_task, update_status)."
+
+    g_path = Path(project_root) / ".torchlight" / "goal_spec.json"
+    if not g_path.exists():
+        return f"No active goal specification found at {g_path}. Initialize goal first."
+
+    try:
+        with open(g_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        tasks = data.get("tasks", [])
+        if action in ("add_subtask", "add_task"):
+            if not task_id:
+                task_id = f"task_{len(tasks) + 1}"
+            new_task = {
+                "id": task_id,
+                "description": description or f"Sub-task {task_id}",
+                "target_files": target_files if isinstance(target_files, list) else [target_files],
+                "depends_on": depends_on if isinstance(depends_on, list) else [depends_on],
+                "outputs_summary": None,
+                "status": "pending",
+                "attempts": 0,
+                "max_attempts": 3,
+                "failure_reasons": [],
+                "completed_at": None,
+            }
+            tasks.append(new_task)
+            data["tasks"] = tasks
+            with open(g_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            return f"Successfully added sub-task '{task_id}' to goal spec."
+
+        elif action in ("skip_task", "skip"):
+            if not task_id:
+                return "UPDATE_TASK_GRAPH action 'skip_task' requires 'task_id'."
+            found = False
+            for t in tasks:
+                if t.get("id") == task_id:
+                    t["status"] = "skipped"
+                    found = True
+                    break
+            if not found:
+                return f"Task '{task_id}' not found in goal spec."
+            with open(g_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            return f"Task '{task_id}' marked as SKIPPED."
+
+        elif action in ("update_status", "status"):
+            status_val = args.get("status", "pending")
+            found = False
+            for t in tasks:
+                if t.get("id") == task_id:
+                    t["status"] = status_val
+                    found = True
+                    break
+            if not found:
+                return f"Task '{task_id}' not found in goal spec."
+            with open(g_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            return f"Task '{task_id}' status updated to '{status_val}'."
+
+        else:
+            return f"Unsupported UPDATE_TASK_GRAPH action: {action}. Supported: add_subtask, skip_task, update_status."
+
+    except Exception as e:
+        return f"Failed to update task graph: {e}"
 
 
 def tool_format_code_impl(args: dict, project_root: str) -> str:

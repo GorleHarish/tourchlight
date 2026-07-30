@@ -340,19 +340,21 @@ class RLMEngineOptimized:
                         fb_ctx = self.feedback_loop.build_feedback_context()
                         rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE) to debug and resolve the failure."
 
-                    # 2. Check for pending goal sub-tasks in .torchlight/goal_spec.json
+                    # 2. Check for pending goal sub-tasks in workspace task files (implementation_plan.md, tasks.md, goal_spec.json)
                     else:
-                        g_json = os.path.join(self.project_root, ".torchlight", "goal_spec.json")
-                        if os.path.exists(g_json):
-                            try:
-                                with open(g_json, "r", encoding="utf-8") as f:
-                                    gdata = json.load(f)
-                                pending_tasks = [t for t in gdata.get("tasks", []) if t.get("status") in ("pending", "in_progress")]
-                                if pending_tasks:
-                                    task_descs = [f"- {t.get('id')}: {t.get('description')}" for t in pending_tasks[:3]]
-                                    rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nThe following sub-tasks in goal_spec.json are still PENDING or IN_PROGRESS:\n" + "\n".join(task_descs) + "\n\nContinue executing tool calls until all tasks are completed and verified before yielding <FINAL_ANSWER>."
-                            except Exception:
-                                pass
+                        try:
+                            from core.tools.task_helpers import get_workspace_pending_tasks
+                            pending_tasks = get_workspace_pending_tasks(self.project_root)
+                            if pending_tasks:
+                                task_descs = [f"- {t}" for t in pending_tasks[:3]]
+                                rejection_reason = (
+                                    "❌ [VERIFICATION GATE REJECTION]\n"
+                                    "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
+                                    + "\n".join(task_descs) +
+                                    "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                                )
+                        except Exception:
+                            pass
 
                 if rejection_reason:
                     self._final_answer_rejections = getattr(self, "_final_answer_rejections", 0) + 1
@@ -955,6 +957,7 @@ class RLMEngineOptimized:
         is_planning_cot = (
             bool(reasoning_prefix_match) or
             bool(re.search(r'\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|EXECUTE|RUN_COMMAND)\b', cleaned_body)) or
+            bool(re.search(r'implementation_plan\.md', cleaned_body, re.IGNORECASE)) or
             bool(re.match(r'^(?:1[\.\s]|step\s*1|first,|I\s+will\s+start|I\s+need\s+to\s+first)', cleaned_body, re.IGNORECASE))
         )
 

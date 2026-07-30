@@ -93,7 +93,9 @@ rlm_optimized/                              # TUI frontend
 ### Key Design Decisions
 - **Shared core library**: `core/` is standalone with `pyproject.toml`, both frontends import from it
 - **Phase-Tailored System Prompting**: Dynamically injects phase-specific instructions for `plan`, `code`, `troubleshoot`, and `chat` alongside temperature presets.
-- **Dynamic L0 Working Memory Scratchpad**: Renders active goal, modified files, active errors, failing tests, and key decisions into system context on every turn.
+- **Dynamic L0 Working Memory Scratchpad**: Renders active goal, modified files, active errors, failing tests, key decisions, and `tried_and_failed` anti-looping strategy logs into system context on every turn.
+- **Active Model Memory & Dynamic Task Re-Planning**: `SAVE_MEMORY` tool enables explicit logging of facts/decisions/failed strategies; `UPDATE_TASK_GRAPH` tool enables dynamic mid-trajectory task insertions (`add_subtask`), task skips (`skip_task`), and status mutations in `.torchlight/goal_spec.json`.
+- **AST-Driven Inter-Task Symbol Handoffs**: Automatically extracts newly created or modified function/class signatures via `SymbolIndex` upon task completion, enriching task output summaries for downstream epoch handoffs.
 - **Anti-Symptom-Patching Directives**: Hardcoded directives in `SYSTEM_PROMPT` forbidding masking symptoms, swallowing exceptions, returning dummy fallbacks, or deleting assertions.
 - **Native AST Graph Engine**: Zero-dependency `graph_engine.py` replaces Kùzu DB. Stores graph at `.torchlight/graph.json` (never loaded into LLM context). Provides `query()` (enriched with line-level code previews), `find_path()`, `get_subgraph()`, `get_structure()` with hard output caps to prevent context overflow
 - **Lazy graph invalidation**: File edits invalidate the graph cache (`_graphs.pop()`), rebuilding only on next `SEARCH_AST` query — never eagerly during editing
@@ -117,7 +119,7 @@ rlm_optimized/                              # TUI frontend
 - **Fallback imports**: Frontends use `try/except ImportError` for backward compat
 
 ### Tool Risk Tiers
-- **AUTO**: READ_FILE, GREP (ripgrep-powered), SEARCH_AST, WEB_*, DOC_*, SAVE_MEMORY, GIT (read ops: status/diff/log/show/branch/blame), safe shell commands
+- **AUTO**: READ_FILE, GREP (ripgrep-powered), SEARCH_AST, WEB_*, DOC_*, SAVE_MEMORY, UPDATE_TASK_GRAPH, GIT (read ops: status/diff/log/show/branch/blame), safe shell commands
 - **CONFIRM**: WRITE_FILE, EDIT_FILE, GIT (write ops: commit/add/restore/stash), pip/npm install, scripts
 - **REVIEW**: rm, git push/reset/rebase/merge/clean, sudo, destructive ops
 

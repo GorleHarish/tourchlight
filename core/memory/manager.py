@@ -376,19 +376,12 @@ class TieredMemory:
         parts = ["[L0 WORKING MEMORY SCRATCHPAD]"]
         if self.state.current_task:
             parts.append(f"- Active Goal: {self.state.current_task}")
-        elif project_root:
-            import os, json
-            g_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
-            if os.path.exists(g_path):
-                try:
-                    with open(g_path, "r", encoding="utf-8") as f:
-                        gdata = json.load(f)
-                    parts.append(f"- Active Goal: {gdata.get('title', 'Autonomous Goal')}")
-                    pending = [t.get('id') for t in gdata.get("tasks", []) if t.get("status") in ("pending", "in_progress")]
-                    if pending:
-                        parts.append(f"- Pending Tasks: {', '.join(pending[:5])}")
-                except Exception:
-                    pass
+
+        if project_root:
+            from core.tools.task_helpers import get_workspace_pending_tasks
+            pending = get_workspace_pending_tasks(project_root)
+            if pending:
+                parts.append(f"- Pending Tasks: {', '.join(pending[:5])}")
 
         if self.state.active_file:
             parts.append(f"- Active File: {self.state.active_file}")
@@ -400,10 +393,29 @@ class TieredMemory:
             parts.append(f"- Active Errors: {'; '.join(self.state.errors_seen[-3:])}")
         if self.state.decisions:
             parts.append(f"- Key Decisions: {'; '.join(self.state.decisions[-3:])}")
+        if self.state.tried_and_failed:
+            parts.append(f"- Tried & Failed: {'; '.join(self.state.tried_and_failed[-3:])}")
         
         if len(parts) == 1:
             return ""
         return "\n".join(parts)
+
+    def record_memory(self, entry: str, category: str = "decision") -> None:
+        """Record an explicit memory entry into SessionState and persist to project memory."""
+        cat_lower = category.lower().strip()
+        if cat_lower in ("tried_failed", "tried_and_failed", "failed"):
+            if entry not in self.state.tried_and_failed:
+                self.state.tried_and_failed.append(entry)
+        elif cat_lower in ("arch_decision", "architectural"):
+            if entry not in self.state.arch_decisions:
+                self.state.arch_decisions.append(entry)
+            if entry not in self.state.decisions:
+                self.state.decisions.append(entry)
+        else:
+            if entry not in self.state.decisions:
+                self.state.decisions.append(entry)
+
+        self.persist_to_project_memory()
 
     def get_available_headroom(self) -> int:
         """Calculate remaining token budget headroom before reaching max_tokens threshold."""

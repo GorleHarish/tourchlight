@@ -2,6 +2,22 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.2.0] - 2026-07-30
+
+### Added & Improved
+- **Dynamic L0 Working Memory Scratchpad Enhancements**:
+  - **Anti-Looping `tried_and_failed` Buffer**: Updated `format_l0_scratchpad()` in `core/memory/manager.py` to render `tried_and_failed[-3:]` entries directly in system prompt context, preventing local LLMs from repeating failed strategies or bad tool calls.
+  - **Memory Persistence Method**: Added `TieredMemory.record_memory()` to dynamically record facts, decisions, and failed strategies into active session state and sync with `.context-memory.json`.
+- **Model Memory Control Tool (`SAVE_MEMORY`)**:
+  - **Active Session Sync**: Enhanced `tool_save_memory_impl` in `core/tools/implementations.py` to accept `entry` parameter aliases and immediately update active `TieredMemory` state in addition to disk persistence.
+- **Dynamic Task Graph Updates (`UPDATE_TASK_GRAPH`)**:
+  - **Mid-Trajectory Re-Planning**: Added `UPDATE_TASK_GRAPH` tool (`tool_update_task_graph_impl`) enabling agents to dynamically add sub-tasks (`add_subtask`), skip tasks (`skip_task`), or modify statuses in `.torchlight/goal_spec.json`.
+  - **Schema & Risk Classification**: Registered `UPDATE_TASK_GRAPH` schema in `core/tools/schemas.py` and classified it under `AUTO` risk tier in `core/tools/classification.py`.
+- **AST-Driven Inter-Task Symbol Handoffs**:
+  - **Automatic Symbol Extraction**: Integrated `SymbolIndex` from `core.flashlight.indexer` into `AutonomousHarness.run_micro_epoch()` to automatically extract function/class signatures from target files upon task completion, enriching `TaskSpec.outputs_summary` for downstream epoch handoffs.
+- **Comprehensive Unit Test Coverage**:
+  - Added unit test suite `core/tests/test_scratchpad_enhancements.py` verifying scratchpad formatting, memory recording, `SAVE_MEMORY`, `UPDATE_TASK_GRAPH`, and AST symbol handoffs (213 core tests passing).
+
 ## [v2.1.0] - 2026-07-29
 
 ### Added & Improved

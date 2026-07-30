@@ -297,6 +297,7 @@ def _create_default_registry() -> ToolRegistry:
         tool_doc_search_impl,
         tool_web_verify_impl,
         tool_save_memory_impl,
+        tool_update_task_graph_impl,
         tool_format_code_impl,
         tool_verify_impl,
         tool_ask_user_impl,
@@ -394,6 +395,11 @@ def _create_default_registry() -> ToolRegistry:
          "Inspect runtime outcome of HTML/JS/CSS web pages or HTML5 games (captures console errors, 404s, DOM snapshot, screenshot). "
          "Args: path (required), wait_ms (default: 1500).",
          AUTO, tool_inspect_web_impl, cat="web")
+
+    _reg("UPDATE_TASK_GRAPH", "📋",
+         "Dynamically mutate sub-tasks in .torchlight/goal_spec.json. "
+         "Actions: add_subtask, skip_task, update_status. Args: action (required), task_id, description, target_files, depends_on.",
+         AUTO, tool_update_task_graph_impl, cat="core")
 
     return registry
 

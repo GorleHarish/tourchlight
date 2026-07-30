@@ -338,15 +338,41 @@ class AutonomousHarness:
                     success = True
                 else:
                     success = False
-                    task.failure_reasons.append(
-                        f"Tests failed ({test_result.passed} passed, {test_result.failed} failed)"
-                    )
+                    reason = f"Task {task.id} tests failed ({test_result.passed} passed, {test_result.failed} failed)"
+                    task.failure_reasons.append(reason)
+                    if hasattr(self.memory, "state") and hasattr(self.memory.state, "tried_and_failed"):
+                        if reason not in self.memory.state.tried_and_failed:
+                            self.memory.state.tried_and_failed.append(reason)
 
         # Step 5: Checkpoint or Revert
         if success:
             task.status = TaskStatus.VERIFIED
             task.completed_at = datetime.now().isoformat()
-            task.outputs_summary = f"Successfully completed '{task.description}' targeting {task.target_files}"
+            
+            # Enrich outputs_summary with AST symbol signatures from target files
+            symbol_summaries = []
+            if task.target_files:
+                try:
+                    from core.flashlight.indexer import SymbolIndex
+                    p_root = Path(self.project_root).resolve()
+                    index = SymbolIndex(project_dir=p_root)
+                    index.build()
+                    for tf in task.target_files:
+                        tf_path = (p_root / tf).resolve()
+                        try:
+                            rel_key = str(tf_path.relative_to(p_root))
+                        except ValueError:
+                            rel_key = tf
+                        entry = index.files.get(rel_key) or index.files.get(tf)
+                        if entry and entry.symbols:
+                            names = [s[0] if isinstance(s, (tuple, list)) else getattr(s, "name", str(s)) for s in entry.symbols[:5]]
+                            symbol_summaries.append(f"{rel_key} ({', '.join(names)})")
+                except Exception as e:
+                    logger.debug(f"AST symbol summary extraction skipped: {e}")
+
+            sym_str = f" [Symbols: {'; '.join(symbol_summaries)}]" if symbol_summaries else ""
+            task.outputs_summary = f"Completed '{task.description}' targeting {task.target_files}{sym_str}"
+
             if self.config.auto_git_commit:
                 self._git_commit(f"feat(torchlight-auto): pass task {task.id} - {task.description}")
         else:
