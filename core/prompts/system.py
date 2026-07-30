@@ -55,14 +55,15 @@ PHASE_PROMPTS = {
 - Before editing, run SEARCH_AST(query="<symbol>") to see function signatures, callers, and code snippets.
 - Prefer `EDIT_FILE` with surgical search/replace blocks or symbol targets over rewriting entire files.
 - Never print full raw code blocks in your text response; state what file/lines were changed and use tool payload.
+- For web pages/components, execute `INSPECT_WEB` or check post-edit execution feedback to verify rendering outcomes. Run project test commands after code changes to confirm fixes before concluding.
 """.strip(),
 
     "troubleshoot": """
 [PHASE: TROUBLESHOOTING & DEBUGGING]
-- Inspect full, un-truncated error logs and test tracebacks before formulating hypotheses.
+- Inspect full, un-truncated error logs, Playwright inspection summaries, and test tracebacks before formulating hypotheses.
 - Use SEARCH_AST(action="subgraph", query="<broken_symbol>") to find all callers/callees before patching.
 - Fix underlying contract violations rather than adding `try/except: pass` or returning dummy fallbacks.
-- Verify fixes by executing relevant test commands.
+- Verify fixes by executing relevant test commands or calling `INSPECT_WEB` for web apps.
 """.strip(),
 
     "chat": """

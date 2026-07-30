@@ -7106,8 +7106,8 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_skills_base_calculatorskill",
-      "community": 158,
-      "community_name": "CalculatorSkill",
+      "community": 5,
+      "community_name": "BaseSkill",
       "norm_label": "calculatorskill"
     },
     {
@@ -7117,8 +7117,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_skills_base_calculatorskill_eval",
-      "community": 158,
-      "community_name": "CalculatorSkill",
+      "community": 52,
+      "community_name": "SkillResult",
       "norm_label": "._eval()"
     },
     {
@@ -7128,8 +7128,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "expr",
-      "community": 158,
-      "community_name": "CalculatorSkill",
+      "community": 52,
+      "community_name": "SkillResult",
       "norm_label": "expr"
     },
     {
@@ -7150,8 +7150,8 @@
       "source_location": "L142",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_skills_base_calculatorskill_get_prompt",
-      "community": 158,
-      "community_name": "CalculatorSkill",
+      "community": 5,
+      "community_name": "BaseSkill",
       "norm_label": ".get_prompt()"
     },
     {
@@ -7425,8 +7425,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_skills_base_rationale_103",
-      "community": 158,
-      "community_name": "CalculatorSkill",
+      "community": 5,
+      "community_name": "BaseSkill",
       "norm_label": "evaluate a mathematical expression safely using python's ast."
     },
     {
@@ -14440,7 +14440,7 @@
       "label": "get_phase_system_prompt()",
       "file_type": "code",
       "source_file": "core/prompts/system.py",
-      "source_location": "L77",
+      "source_location": "L78",
       "_origin": "ast",
       "id": "core_prompts_system_get_phase_system_prompt",
       "community": 8,
@@ -14462,9 +14462,9 @@
       "label": "Generate phase-tailored system prompt by appending phase instructions.",
       "file_type": "rationale",
       "source_file": "core/prompts/system.py",
-      "source_location": "L78",
+      "source_location": "L79",
       "_origin": "ast",
-      "id": "core_prompts_system_rationale_78",
+      "id": "core_prompts_system_rationale_79",
       "community": 8,
       "community_name": "TieredMemory",
       "norm_label": "generate phase-tailored system prompt by appending phase instructions."
@@ -21296,7 +21296,7 @@
       "label": "._parse_response()",
       "file_type": "code",
       "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L796",
+      "source_location": "L792",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_parse_response",
       "community": 78,
@@ -21362,9 +21362,9 @@
       "label": "Parse the LLM response for action tags.         Returns: (action, thinking, cont",
       "file_type": "rationale",
       "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L797",
+      "source_location": "L793",
       "_origin": "ast",
-      "id": "rlm_optimized_rlm_engine_optimized_rationale_797",
+      "id": "rlm_optimized_rlm_engine_optimized_rationale_793",
       "community": 78,
       "community_name": "rlm_engine_optimized.py",
       "norm_label": "parse the llm response for action tags.         returns: (action, thinking, cont"
@@ -27315,8 +27315,8 @@
       "source_location": "L681",
       "_origin": "ast",
       "id": "context_manager_cli_documentation_memory_system_token_budget",
-      "community": 77,
-      "community_name": "Memory System Deep Dive",
+      "community": 139,
+      "community_name": "Token Budget",
       "norm_label": "token budget"
     },
     {
@@ -27326,8 +27326,8 @@
       "source_location": "L683",
       "_origin": "ast",
       "id": "context_manager_cli_documentation_memory_system_allocation_for_4k_context",
-      "community": 77,
-      "community_name": "Memory System Deep Dive",
+      "community": 139,
+      "community_name": "Token Budget",
       "norm_label": "allocation for 4k context"
     },
     {
@@ -27337,8 +27337,8 @@
       "source_location": "L711",
       "_origin": "ast",
       "id": "context_manager_cli_documentation_memory_system_auto_tuned_budgets_by_context_size",
-      "community": 77,
-      "community_name": "Memory System Deep Dive",
+      "community": 139,
+      "community_name": "Token Budget",
       "norm_label": "auto-tuned budgets by context size"
     },
     {
@@ -27480,8 +27480,8 @@
       "source_location": "L923",
       "_origin": "ast",
       "id": "context_manager_cli_documentation_memory_system_schema_reference",
-      "community": 139,
-      "community_name": "Schema Reference",
+      "community": 77,
+      "community_name": "Memory System Deep Dive",
       "norm_label": "schema reference"
     },
     {
@@ -27491,8 +27491,8 @@
       "source_location": "L925",
       "_origin": "ast",
       "id": "context_manager_cli_documentation_memory_system_context_memory_json_schema",
-      "community": 139,
-      "community_name": "Schema Reference",
+      "community": 77,
+      "community_name": "Memory System Deep Dive",
       "norm_label": "`.context-memory.json` schema"
     },
     {
@@ -27502,8 +27502,8 @@
       "source_location": "L976",
       "_origin": "ast",
       "id": "context_manager_cli_documentation_memory_system_session_file_schema",
-      "community": 139,
-      "community_name": "Schema Reference",
+      "community": 77,
+      "community_name": "Memory System Deep Dive",
       "norm_label": "session file schema"
     },
     {
@@ -62902,7 +62902,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "core/prompts/system.py",
-      "source_location": "L77",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "core_prompts_system",
@@ -62936,10 +62936,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "core/prompts/system.py",
-      "source_location": "L78",
+      "source_location": "L79",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "core_prompts_system_rationale_78",
+      "source": "core_prompts_system_rationale_79",
       "target": "core_prompts_system_get_phase_system_prompt",
       "confidence_score": 1.0
     },
@@ -71258,7 +71258,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L515",
+      "source_location": "L516",
       "weight": 1.0,
       "_origin": "ast",
       "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_solve_async",
@@ -75743,7 +75743,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L826",
+      "source_location": "L822",
       "weight": 1.0,
       "_origin": "ast",
       "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_parse_response",
@@ -75798,7 +75798,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L796",
+      "source_location": "L792",
       "weight": 1.0,
       "_origin": "ast",
       "source": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized",
@@ -76139,10 +76139,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "rlm_optimized/rlm_engine_optimized.py",
-      "source_location": "L797",
+      "source_location": "L793",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "rlm_optimized_rlm_engine_optimized_rationale_797",
+      "source": "rlm_optimized_rlm_engine_optimized_rationale_793",
       "target": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_parse_response",
       "confidence_score": 1.0
     },
@@ -84659,5 +84659,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a533c5c18d36d9dbb8c69da544b0110a37ec6b8b"
+  "built_at_commit": "331f64096b3deca4b0f5d7f7530dbe04790d3d3d"
 }

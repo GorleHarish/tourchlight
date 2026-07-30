@@ -390,10 +390,10 @@ class StreamingChatSession:
                     if fpath:
                         self.memory.refresh_pin(fpath, self.project_root)
                 
-                # Execution feedback: auto-run tests after code changes
+                # Execution feedback: auto-run tests or web inspector after code changes
                 test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
-                if test_result and not test_result.all_passed:
-                    # Add test feedback to memory
+                if test_result:
+                    # Add test or web feedback to memory context
                     feedback = self._feedback_loop.build_feedback_context()
                     if feedback:
                         self.memory.add_tool_result(feedback, tool_name="TEST_FEEDBACK")

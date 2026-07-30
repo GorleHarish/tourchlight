@@ -1,16 +1,16 @@
 # Graph Report - tourchlight v1_i6  (2026-07-30)
 
 ## Corpus Check
-- 175 files · ~125,843 words
+- 175 files · ~125,881 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2541 nodes · 4932 edges · 166 communities (144 shown, 22 thin omitted)
+- 2541 nodes · 4932 edges · 165 communities (143 shown, 22 thin omitted)
 - Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 373 edges (avg confidence: 0.55)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a533c5c1`
+- Built from commit: `331f6409`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -140,7 +140,7 @@
 - Memory Tiers
 - Persistence
 - test_phase_detection.py
-- Schema Reference
+- Token Budget
 - Retrieval System
 - ~350 tokens. Do NOT load other reference files in the same turn.
 - Profile: Run -> Profile app -> Memory tab
@@ -159,7 +159,6 @@
 - .handle
 - .format_l0_scratchpad
 - ._execute_tool_with_approval
-- CalculatorSkill
 - .action_tracker
 - ._calculate_metadata_overhead
 - Flashlight
@@ -195,7 +194,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (166 total, 22 thin omitted)
+## Communities (165 total, 22 thin omitted)
 
 ### Community 0 - "implementations.py"
 Cohesion: 0.08
@@ -218,8 +217,8 @@ Cohesion: 0.08
 Nodes (26): test_tool_registry_execute(), test_tool_registry_execute_unknown(), test_tool_registry_get(), test_tool_registry_register(), test_tool_registry_risk_level(), test_tool_registry_risk_level_run_command(), test_tool_result_failure(), test_tool_result_success() (+18 more)
 
 ### Community 5 - "BaseSkill"
-Cohesion: 0.10
-Nodes (20): ABC, BaseSkill, create_default_registry(), _extract_markdown_skill_metadata(), GitSkill, _LazySkill, MarkdownDocumentSkill, Skills — external / plugin capabilities.  Skills are DIFFERENT from core tools: (+12 more)
+Cohesion: 0.09
+Nodes (22): ABC, BaseSkill, CalculatorSkill, create_default_registry(), _extract_markdown_skill_metadata(), GitSkill, _LazySkill, MarkdownDocumentSkill (+14 more)
 
 ### Community 6 - "LMStudioClient"
 Cohesion: 0.08
@@ -406,8 +405,8 @@ Cohesion: 0.15
 Nodes (7): Track changes and test results across the session., Record a file change., Get all currently failing tests., Guess test file path from source file., Clear all working memory., Get a summary of current state., WorkingMemory
 
 ### Community 52 - "SkillResult"
-Cohesion: 0.23
-Nodes (6): Any, ReproSkill, Any, Synchronous wrapper for use from non-async contexts., Trigger real load on first call, then delegate., SkillResult
+Cohesion: 0.20
+Nodes (7): Any, ReproSkill, Any, Synchronous wrapper for use from non-async contexts., Trigger real load on first call, then delegate., SkillResult, expr
 
 ### Community 53 - "build_embedder"
 Cohesion: 0.19
@@ -507,7 +506,7 @@ Nodes (13): 1. Slash Command Verification, 2. Runtime Hardening, 3. Process Hygi
 
 ### Community 77 - "Memory System Deep Dive"
 Cohesion: 0.15
-Nodes (12): Allocation for 4k Context, Architecture Overview, Auto-tuned Budgets by Context Size, Auto-tuning, CLI Integration, Configuration Commands, Configuration Commands, File Locations (+4 more)
+Nodes (12): Architecture Overview, Auto-tuning, CLI Integration, Configuration Commands, Configuration Commands, `.context-memory.json` Schema, File Locations, Memory System Deep Dive (+4 more)
 
 ### Community 78 - "rlm_engine_optimized.py"
 Cohesion: 0.16
@@ -657,9 +656,9 @@ Nodes (4): Loading Session State, Persistence, Project Memory Persistence, Sessi
 Cohesion: 0.21
 Nodes (13): _make_session(), Create a StreamingChatSession with mocked heavy dependencies., Troubleshoot wins over code when both signals are present., Code phase should yield lower temperature than chat phase., Chat phase should have higher temperature than code phase., test_detect_chat_phase(), test_detect_code_phase(), test_detect_phase_empty_input() (+5 more)
 
-### Community 139 - "Schema Reference"
+### Community 139 - "Token Budget"
 Cohesion: 0.67
-Nodes (3): `.context-memory.json` Schema, Schema Reference, Session File Schema
+Nodes (3): Allocation for 4k Context, Auto-tuned Budgets by Context Size, Token Budget
 
 ### Community 140 - "Retrieval System"
 Cohesion: 0.67
@@ -696,10 +695,6 @@ Nodes (3): Build the message list for the LLM.          Pinned files and dynamic
 ### Community 157 - "._execute_tool_with_approval"
 Cohesion: 0.40
 Nodes (3): _risk_tier(), _tool_kind(), _tool_label()
-
-### Community 158 - "CalculatorSkill"
-Cohesion: 0.40
-Nodes (3): CalculatorSkill, Evaluate a mathematical expression safely using Python's AST., expr
 
 ### Community 161 - "Flashlight"
 Cohesion: 0.20

@@ -463,6 +463,7 @@ class RLMEngineOptimized:
                 # Read-only tools are exempt — re-reading a file is always
                 # legitimate (verify edits, context compression, refresh memory).
                 _READ_ONLY_TOOLS = {"READ_FILE", "READ_SYMBOLS", "LIST_DIR", "GREP",
+                                    "SEARCH_AST", "INSPECT_WEB", "UPDATE_TASK_GRAPH",
                                     "WEB_SEARCH", "WEB_FETCH", "DOC_SEARCH", "WEB_VERIFY",
                                     "GIT", "SAVE_MEMORY", "FORMAT_CODE", "VERIFY", "ASK_USER"}
                 canonical_args = json.dumps(tool_args, sort_keys=True, default=str)
@@ -547,20 +548,15 @@ class RLMEngineOptimized:
                             if fpath and hasattr(memory, "refresh_pin"):
                                 memory.refresh_pin(fpath, self.project_root)
 
-                    # Execution feedback: auto-run tests after code changes
-                    if self.feedback_loop and tool_name and tool_name.upper() in ("EDIT_FILE", "WRITE_FILE", "RUN_COMMAND"):
-                        test_run = self.feedback_loop.on_tool_executed(tool_name.upper(), tool_args, tool_result.output)
-                        if test_run and not test_run.all_passed:
-                            fb_ctx = self.feedback_loop.build_feedback_context()
-                            if fb_ctx:
-                                feedback += f"\n\n{fb_ctx}"
-
                     msg_type = "tool_result" if tool_result.success else "tool_error"
                     feedback = build_step_message(msg_type, tool_result.output)
-                    if self.feedback_loop and self.feedback_loop._last_test_result and not self.feedback_loop._last_test_result.all_passed:
+
+                    # Execution feedback: auto-run tests or web inspector after code changes
+                    if self.feedback_loop and tool_name and tool_name.upper() in ("EDIT_FILE", "WRITE_FILE", "RUN_COMMAND"):
+                        self.feedback_loop.on_tool_executed(tool_name.upper(), tool_args, tool_result.output)
                         fb_ctx = self.feedback_loop.build_feedback_context()
                         if fb_ctx:
-                            feedback += f"\n\n{fb_ctx}"
+                            feedback += f"\n\n[AUTOMATIC POST-EDIT EXECUTION FEEDBACK]\n{fb_ctx}"
 
                     if tool_result.success:
                         feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."

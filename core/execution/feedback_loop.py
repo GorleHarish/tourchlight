@@ -312,6 +312,7 @@ class ExecutionFeedbackLoop:
                     f"Recovery Hint: {hint}\n\n"
                     f"Surgical Failure Traceback:\n```\n{surgical_tb}\n```"
                 )
+            self._last_test_result = None  # Consume to prevent repeating stale feedback across turns
         if self._last_web_result:
             feedback_parts.append(self._last_web_result.to_markdown())
             self._last_web_result = None  # Consume to prevent repeating stale feedback across turns

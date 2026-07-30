@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785418719.4915335,
-    "ast_hash": "694f706c0e64a3fc0fd0dba04de57839",
+    "mtime": 1785422818.4356608,
+    "ast_hash": "5ffa8e2ee9e00544a95dd3e360f85278",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1785399242.3962183,
-    "ast_hash": "80c43506ebf00748a7a7696b82e582d9",
+    "mtime": 1785422782.0165129,
+    "ast_hash": "8078aa5aed23034652ffbafff81591bf",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -310,8 +310,8 @@
     "semantic_hash": ""
   },
   "core/execution/feedback_loop.py": {
-    "mtime": 1785418906.1022394,
-    "ast_hash": "f3fe78f1f3a3e73b219984c20b451900",
+    "mtime": 1785422789.487865,
+    "ast_hash": "8cce95dbfe3a8bc48eedceaf12d30148",
     "semantic_hash": ""
   },
   "core/execution/run_harness.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1785398096.3162947,
-    "ast_hash": "31e22094d4f89b5700f4071aa8fa6933",
+    "mtime": 1785422796.9817767,
+    "ast_hash": "df69430bfdbd3096d84bab0095d1cbb2",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785399573.018978,
-    "ast_hash": "bbd6047822668df598592f1aeee92058",
+    "mtime": 1785422772.4511251,
+    "ast_hash": "cfd5418855c80a72a3e7b39dc3fc61e3",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -680,13 +680,13 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785399434.7791922,
-    "ast_hash": "9f92d43c5ccba48aa6b981a3857723bb",
+    "mtime": 1785419102.4660287,
+    "ast_hash": "fe7dea55ff48ef78dc95ce272beaeabf",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1785399415.7302947,
-    "ast_hash": "f9875456ecaa80781440c6e3a0a07808",
+    "mtime": 1785419052.3991895,
+    "ast_hash": "361cf0e20f2893d2e0a9a2da6578c2b0",
     "semantic_hash": ""
   },
   "LEARNINGS.md": {
@@ -695,8 +695,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1785399426.7632453,
-    "ast_hash": "a88ba1511d7fd93076df9ef46ecb43e3",
+    "mtime": 1785419076.796139,
+    "ast_hash": "7bf2163073cd72821df758b1a3cfac99",
     "semantic_hash": ""
   },
   "context-manager-cli/README.md": {
