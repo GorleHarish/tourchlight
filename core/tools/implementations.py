@@ -51,12 +51,16 @@ def set_memory_manager(mgr) -> None:
 # ── Symbol extraction patterns ────────────────────────────────────────────
 
 _SYM_PATTERNS = [
-    (re.compile(r'^(?:async )?def\s+(\w+)\s*\(', re.MULTILINE), "fn"),
-    (re.compile(r'^class\s+(\w+)[:(]', re.MULTILINE), "class"),
-    (re.compile(r'^(?:export\s+)?(?:async\s+)?function\s+(\w+)', re.MULTILINE), "fn"),
-    (re.compile(r'^(?:export\s+)?class\s+(\w+)', re.MULTILINE), "class"),
+    (re.compile(r'^\s*(?:async\s+)?def\s+(\w+)(?:\[[^\]]+\])?\s*\(', re.MULTILINE), "fn"),
+    (re.compile(r'^\s*class\s+(\w+)\b', re.MULTILINE), "class"),
+    (re.compile(r'^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)', re.MULTILINE), "fn"),
+    (re.compile(r'^\s*(?:export\s+)?class\s+(\w+)', re.MULTILINE), "class"),
+    (re.compile(r'^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^\s=]+)\s*=>', re.MULTILINE), "fn"),
+    (re.compile(r'^\s*(?:export\s+)?interface\s+(\w+)', re.MULTILINE), "struct"),
     (re.compile(r'^\s*(?:pub\s+)?fn\s+(\w+)', re.MULTILINE), "fn"),
+    (re.compile(r'^\s*(?:pub\s+)?(?:struct|enum)\s+(\w+)', re.MULTILINE), "struct"),
     (re.compile(r'^\s*(?:fun)\s+(\w+)\s*\(', re.MULTILINE), "fn"),
+    (re.compile(r'^\s*type\s+(\w+)\s+struct', re.MULTILINE), "struct"),
 ]
 
 
@@ -67,11 +71,12 @@ def _extract_symbols(content: str, max_symbols: int = 40) -> list:
     for pattern, kind in _SYM_PATTERNS:
         for m in pattern.finditer(content):
             name = m.group(1)
-            if name in seen:
-                continue
             lineno = content[:m.start()].count("\n") + 1
+            key = (lineno, name)
+            if key in seen:
+                continue
             found.append((lineno, kind, name))
-            seen.add(name)
+            seen.add(key)
     found.sort(key=lambda x: x[0])
     return found[:max_symbols]
 
@@ -1223,8 +1228,8 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 def tool_read_symbols_impl(args: dict, project_root: str) -> str:
     """READ_SYMBOLS — show file structure without loading content."""
     try:
-        path = args.get("path", "")
-        if not path or path.strip() == "":
+        path = str(args.get("path", args.get("file", args.get("filename", args.get("filepath", ""))))).strip()
+        if not path:
             return "READ_SYMBOLS requires a file path. Use RUN_COMMAND('ls') to see directory contents."
 
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
@@ -1948,7 +1953,7 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
     if action in ("update", "reindex", "build"):
         gdict = graph.build()
         return f"✅ AST Graph re-indexed successfully: {gdict['node_count']} nodes, {gdict['edge_count']} edges saved to `.torchlight/graph.json`."
-    elif action in ("search", "query", "semantic"):
+    elif action in ("search", "query", "semantic", "signature", "signatures", "symbol", "symbols", "definition", "definitions"):
         if not query:
             return graph.get_structure()
         res = graph.query(query, top_k=top_k)
@@ -1965,7 +1970,7 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
             parts = query.split(",", 1)
             query, target = parts[0].strip(), parts[1].strip()
         return graph.find_path(query, target)
-    elif action == "subgraph":
+    elif action in ("subgraph", "sub_graph", "deps", "depend", "dependencies", "graph"):
         return graph.get_subgraph(query)
     elif action in ("structure", "project"):
         return graph.get_structure()

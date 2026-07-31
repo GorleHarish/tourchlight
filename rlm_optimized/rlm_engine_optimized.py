@@ -2,6 +2,7 @@ import re
 import os
 import json
 import asyncio
+from pathlib import Path
 from typing import Optional, Callable
 from dataclasses import dataclass, field
 from rlm_optimized.config import MAX_RECURSION_DEPTH, MAX_ITERATIONS_PER_LEVEL, MAX_THINKING_LOOPS, IS_8GB_DEVICE
@@ -111,7 +112,7 @@ class RLMEngineOptimized:
                  approval_fn: Optional[Callable[[str, str, dict], bool]] = None,
                  on_token: Optional[Callable[[str], None]] = None,
                  on_status_change: Optional[Callable[[dict], None]] = None,
-                 enable_debate: bool = True,
+                 enable_debate: bool = False,
                  debate_verifier: Optional[object] = None):
         if client is None:
             from rlm_optimized.llamacpp_client import LlamaCppClient
@@ -270,6 +271,8 @@ class RLMEngineOptimized:
 
     async def solve_async(self, task: str, depth: int = 0) -> SolveResult:
         result = SolveResult(answer="", depth=depth)
+        self._total_llm_calls = 0
+        self._final_answer_rejections = 0
         
         if TieredMemory and MemoryConfig:
             from .config import CTX_SIZE
@@ -298,7 +301,6 @@ class RLMEngineOptimized:
         _last_tool_key: Optional[tuple[str, str]] = None
         consecutive_duplicates = 0
         MAX_DUPLICATES = 3  # force-break after this many consecutive identical calls
-        self._final_answer_rejections = 0
 
         for iteration in range(MAX_ITERATIONS_PER_LEVEL):
             self._total_llm_calls += 1
@@ -345,8 +347,8 @@ class RLMEngineOptimized:
                 tool_args=tool_args,
             )
 
-            # Reset thinking counter when model produces an action
-            if action != "thinking":
+            # Reset thinking counter when model produces a non-thinking action
+            if action not in ("thinking", "rejected_final_answer"):
                 consecutive_thinking = 0
 
             if action == "final_answer":
@@ -354,7 +356,10 @@ class RLMEngineOptimized:
                 rejection_reason = None
                 if iteration < MAX_ITERATIONS_PER_LEVEL - 2 and getattr(self, "_final_answer_rejections", 0) < 2:
                     # 1. Check for failing post-edit tests
-                    if self.feedback_loop and self.feedback_loop._last_test_result and not self.feedback_loop._last_test_result.all_passed:
+                    has_failing = getattr(self.feedback_loop, "has_failing_tests", False) or (
+                        self.feedback_loop and self.feedback_loop._last_test_result and not self.feedback_loop._last_test_result.all_passed
+                    )
+                    if has_failing:
                         fb_ctx = self.feedback_loop.build_feedback_context()
                         rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE) to debug and resolve the failure."
 
@@ -376,7 +381,8 @@ class RLMEngineOptimized:
 
                 if rejection_reason:
                     self._final_answer_rejections = getattr(self, "_final_answer_rejections", 0) + 1
-                    step.result = "⚠️ Final answer rejected by Verification Gate."
+                    step.action = "rejected_final_answer"
+                    step.result = rejection_reason
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
@@ -661,7 +667,20 @@ class RLMEngineOptimized:
                     step.result = f"ERROR: {error_msg}"
                     last_code_output = None
                     feedback = build_step_message("code_error", error_msg)
-                    if consecutive_code_errors >= 3:
+                    if consecutive_code_errors >= 5:
+                        forced = f"Code execution failed {consecutive_code_errors} consecutive times: {error_msg}. Present your final findings using <FINAL_ANSWER>."
+                        step_forced = Step(
+                            step_number=iteration + 2, depth=depth,
+                            action="final_answer", thinking=f"(forced after {consecutive_code_errors} consecutive code errors)",
+                            content=forced, result=forced,
+                        )
+                        result.steps.append(step_forced)
+                        if self.on_step:
+                            self.on_step(step_forced)
+                        result.answer = forced
+                        result.total_llm_calls = self._total_llm_calls
+                        return result
+                    elif consecutive_code_errors >= 3:
                         feedback += "\n⚠️ Code execution has failed 3 times consecutively. Do not retry the same code. Change approach or return <FINAL_ANSWER>."
                     self._notify_status("TOOL_DONE", {"tool_name": "REPL_CODE", "success": False})
 
@@ -964,22 +983,29 @@ class RLMEngineOptimized:
         has_unclosed_tool_attempt = bool(re.search(r'<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b', cleaned_body, re.IGNORECASE))
 
         reasoning_prefix_match = re.match(
-            r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)',
+            r'^\s*(?:system\s+thought[:\s]*|thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)',
             response.strip(), re.IGNORECASE
         )
 
-        is_planning_cot = (
-            bool(reasoning_prefix_match) or
-            bool(re.search(r'\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|EXECUTE|RUN_COMMAND)\b', cleaned_body)) or
-            bool(re.search(r'implementation_plan\.md', cleaned_body, re.IGNORECASE)) or
-            bool(re.match(r'^(?:1[\.\s]|step\s*1|first,|I\s+will\s+start|I\s+need\s+to\s+first)', cleaned_body, re.IGNORECASE))
-        )
+        execution_intent = bool(re.search(
+            r'\b(?:I\s+will|let\s*me|I\s+need\s+to|going\s+to|will\s+start\s+by|create|write|inspect)\s+.*?\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|RUN_COMMAND|INSPECT_WEB|WEB_SEARCH|WEB_FETCH)\b',
+            cleaned_body, re.IGNORECASE
+        ))
+
+        plan_action_start = bool(re.match(
+            r'^(?:1[\.\s]|step\s*1|first,|I\s+will\s+start|I\s+need\s+to\s+first)\s*(?:I\s+will|let\s*me|use|call|run|create|write|read|inspect|list|search|find|edit|check|verify)',
+            cleaned_body, re.IGNORECASE
+        ))
+
+        has_plan_file = bool(re.search(r'implementation_plan\.md', cleaned_body, re.IGNORECASE))
+
+        is_planning_cot = bool(reasoning_prefix_match) or execution_intent or plan_action_start or has_plan_file
 
         if is_planning_cot and not has_unclosed_tool_attempt:
-            thinking_text = explicit_thinking or cleaned_body
+            combined_thinking = f"{explicit_thinking}\n\n{cleaned_body}".strip() if explicit_thinking else cleaned_body
             if reasoning_prefix_match:
-                thinking_text = re.sub(r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)', '', cleaned_body, flags=re.IGNORECASE).strip()
-            return ("thinking", thinking_text or cleaned_body, "", [], None, None)
+                combined_thinking = re.sub(r'^\s*(?:system\s+thought[:\s]*|thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)', '', combined_thinking, flags=re.IGNORECASE).strip()
+            return ("thinking", combined_thinking or cleaned_body, "", [], None, None)
 
         if not has_unclosed_tool_attempt and cleaned_body:
             if explicit_thinking:

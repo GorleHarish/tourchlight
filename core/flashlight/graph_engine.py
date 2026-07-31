@@ -65,7 +65,15 @@ class PyASTVisitor(ast.NodeVisitor):
     def _visit_func(self, node):
         parent_id = f"{self.rel_path}::{self._current_class}" if self._current_class else self.rel_path
         func_id = f"{parent_id}::{node.name}"
-        args = [arg.arg for arg in node.args.args]
+        posargs = [arg.arg for arg in getattr(node.args, "posonlyargs", [])]
+        normargs = [arg.arg for arg in node.args.args]
+        kwonly = [arg.arg for arg in getattr(node.args, "kwonlyargs", [])]
+        args = posargs + normargs
+        if getattr(node.args, "vararg", None):
+            args.append(f"*{node.args.vararg.arg}")
+        args.extend(kwonly)
+        if getattr(node.args, "kwarg", None):
+            args.append(f"**{node.args.kwarg.arg}")
         doc = ast.get_docstring(node) or ""
 
         self.functions.append({
@@ -133,7 +141,7 @@ class ProjectGraph:
                 if path.suffix not in SUPPORTED_EXTENSIONS:
                     continue
                 try:
-                    rel_path = str(path.relative_to(self.project_dir))
+                    rel_path = path.relative_to(self.project_dir).as_posix()
                     self._index_file(path, rel_path)
                 except Exception:
                     continue
@@ -280,7 +288,9 @@ class ProjectGraph:
             if not self.load():
                 self.build()
 
-        term = search_term.lower()
+        term = search_term.strip().lower()
+        if not term:
+            return self.get_structure()
         matches = []
 
         for nid, node in self.nodes.items():
@@ -342,8 +352,23 @@ class ProjectGraph:
             if not self.load():
                 self.build()
 
-        src_nodes = [nid for nid, n in self.nodes.items() if source_name.lower() in n.get("name", "").lower()]
-        tgt_nodes = [nid for nid, n in self.nodes.items() if target_name.lower() in n.get("name", "").lower()]
+        s_term = source_name.strip().lower()
+        t_term = target_name.strip().lower()
+
+        def _find_matches(term: str) -> List[str]:
+            exact_id = [nid for nid in self.nodes if nid.lower() == term]
+            if exact_id:
+                return exact_id
+            exact_name = [nid for nid, n in self.nodes.items() if n.get("name", "").lower() == term]
+            if exact_name:
+                return exact_name
+            return [
+                nid for nid, n in self.nodes.items()
+                if term in nid.lower() or term in n.get("name", "").lower()
+            ]
+
+        src_nodes = _find_matches(s_term)
+        tgt_nodes = _find_matches(t_term)
 
         if not src_nodes or not tgt_nodes:
             return f"Path search failed: '{source_name}' or '{target_name}' not found in AST index."
@@ -353,16 +378,18 @@ class ProjectGraph:
             f, t, etype = edge["from"], edge["to"], edge["type"]
             adj.setdefault(f, []).append((t, etype))
 
-        # BFS for shortest path with depth limit to prevent runaway traversal
         from collections import deque
         queue: deque = deque()
         queue.append((src_nodes[0], [src_nodes[0]], 0))
         visited = {src_nodes[0]}
         target_set = set(tgt_nodes)
+        target_names = {n.get("name", "").lower() for nid, n in self.nodes.items() if nid in target_set}
+        target_names.add(t_term)
 
         while queue:
             curr, path, depth = queue.popleft()
-            if curr in target_set:
+            curr_clean = curr.split("::")[-1].lower() if "::" in curr else curr.lower()
+            if curr in target_set or curr_clean in target_names or any(curr.endswith("::" + tn) for tn in target_names):
                 return f"Path found ({len(path)-1} hops):\n" + " -> ".join(path)
             if depth >= max_depth:
                 continue
@@ -382,18 +409,51 @@ class ProjectGraph:
                 self.build()
 
         matched_id = None
-        for nid, n in self.nodes.items():
-            if symbol_or_path.lower() in nid.lower() or symbol_or_path.lower() in n.get("name", "").lower():
+        term = symbol_or_path.lower()
+        # 1. Exact node ID match
+        for nid in self.nodes:
+            if nid.lower() == term:
                 matched_id = nid
                 break
+        # 2. Exact symbol name match
+        if not matched_id:
+            for nid, n in self.nodes.items():
+                if n.get("name", "").lower() == term:
+                    matched_id = nid
+                    break
+        # 3. Partial match fallback
+        if not matched_id:
+            for nid, n in self.nodes.items():
+                if term in nid.lower() or term in n.get("name", "").lower():
+                    matched_id = nid
+                    break
 
         if not matched_id:
             return f"Symbol or path '{symbol_or_path}' not found in AST graph."
 
         connected_edges = []
-        for e in self.edges:
-            if e["from"] == matched_id or e["to"] == matched_id:
-                connected_edges.append(e)
+        seen_edges = set()
+        current_level = {matched_id}
+        visited_nodes = {matched_id}
+
+        for _ in range(max_depth):
+            next_level = set()
+            for e in self.edges:
+                edge_key = (e["from"], e["to"], e["type"])
+                if edge_key in seen_edges:
+                    continue
+                if e["from"] in current_level or e["to"] in current_level:
+                    connected_edges.append(e)
+                    seen_edges.add(edge_key)
+                    if e["from"] not in visited_nodes:
+                        next_level.add(e["from"])
+                        visited_nodes.add(e["from"])
+                    if e["to"] not in visited_nodes:
+                        next_level.add(e["to"])
+                        visited_nodes.add(e["to"])
+            current_level = next_level
+            if not current_level:
+                break
 
         capped = connected_edges[:self._MAX_SUBGRAPH_EDGES]
         lines = [f"Subgraph for `{matched_id}` ({len(connected_edges)} connections, showing {len(capped)}):"]

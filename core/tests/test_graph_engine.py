@@ -94,3 +94,29 @@ class AuthService:
     res_search = registry.execute("SEARCH_AST", {"query": "AuthService", "action": "search"}, project_root=str(tmp_path))
     assert res_search.success
     assert "AuthService" in res_search.output
+
+
+def test_project_graph_advanced_signatures_and_paths(tmp_path: Path):
+    mod_py = tmp_path / "module.py"
+    mod_py.write_text("""
+class Processor:
+    def process(self, data, *args, flag=True, **kwargs):
+        pass
+""")
+    graph = ProjectGraph(tmp_path)
+    graph.build()
+
+    # Verify signature extraction
+    struct = graph.get_structure()
+    assert "*args" in struct
+    assert "flag" in struct
+    assert "**kwargs" in struct
+
+    # Path search with full node ID
+    path_res = graph.find_path("module.py::Processor", "process")
+    assert "Path found" in path_res
+
+    # Multi-hop subgraph exact match
+    subgraph_res = graph.get_subgraph("Processor", max_depth=2)
+    assert "Subgraph for `module.py::Processor`" in subgraph_res
+

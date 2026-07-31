@@ -7,15 +7,15 @@ from rlm_optimized.llamacpp_client import LlamaCppClient
 def test_rlm_engine_optimized_debate_verifier_initialization():
     mock_client = MagicMock()
     
-    # 1. Default initialization (should have debate_verifier)
+    # 1. Default initialization (debate_verifier disabled by default for fast performance)
     engine = RLMEngineOptimized(client=mock_client)
     assert hasattr(engine, "debate_verifier")
-    assert engine.debate_verifier is not None
+    assert engine.debate_verifier is None
 
-    # 2. Disabled debate
-    engine_disabled = RLMEngineOptimized(client=mock_client, enable_debate=False)
-    assert hasattr(engine_disabled, "debate_verifier")
-    assert engine_disabled.debate_verifier is None
+    # 2. Enabled debate
+    engine_enabled = RLMEngineOptimized(client=mock_client, enable_debate=True)
+    assert hasattr(engine_enabled, "debate_verifier")
+    assert engine_enabled.debate_verifier is not None
 
     # 3. Custom debate verifier injection
     custom_verifier = MagicMock()
@@ -176,6 +176,38 @@ def test_rlm_engine_code_tag_and_backticks():
     res_prose = sandbox.execute("tags if I were executing, but here I'm generating the final result as an HTML file.")
     assert res_prose["success"] is False
     assert "Content appears to be natural language/prose" in res_prose["error"]
+
+
+def test_rlm_engine_parse_system_thought_and_plan_prefix():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    # 1. System Thought prefix with Plan: header and INSPECT_WEB reference
+    resp = (
+        "SYSTEM Thought: The user wants me to build a complete single-file HTML5 Canvas Breakout game in breakout.html, "
+        "then perform a web inspection using Playwright simulation to test for runtime bugs and fix them iteratively.\n\n"
+        "Plan:\n1 Write the full HTML/CSS/JS game logic into breakout.html.\n"
+        "2 Simulate running the required inspection step via INSPECT_WEB.\n"
+        "I will start by creating breakout.html."
+    )
+    action, thinking, content, _, _, _ = engine._parse_response(resp)
+    assert action == "thinking"
+    assert "build a complete single-file HTML5 Canvas Breakout game" in thinking
+    assert "Plan:" in thinking
+
+    # 2. Q&A explanation mentioning READ_FILE (should NOT be classified as thinking)
+    resp_qa = "Here are the steps to use READ_FILE:\n1. Specify the path.\n2. Execute READ_FILE to inspect content."
+    action_qa, thinking_qa, content_qa, _, _, _ = engine._parse_response(resp_qa)
+    assert action_qa == "final_answer"
+    assert "Here are the steps to use READ_FILE" in content_qa
+
+    # 3. Conversational plan (e.g. learning plan) should NOT be trapped in thinking mode
+    resp_plan = "Plan for learning Python:\n1. Learn variables\n2. Learn functions"
+    action_plan, _, content_plan, _, _, _ = engine._parse_response(resp_plan)
+    assert action_plan == "final_answer"
+    assert "Plan for learning Python" in content_plan
+
+
 
 
 

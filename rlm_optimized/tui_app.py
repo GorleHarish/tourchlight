@@ -1555,13 +1555,22 @@ class TorchlightApp(App):
             widget = self._ensure_streaming_widget()
             display_text = self._streaming_text
             is_preparing = False
+            tool_info = ""
 
-            if "<TOOL" in display_text:
-                display_text = display_text.split("<TOOL")[0].strip()
+            if "<tool_call>" in display_text.lower():
+                parts = re.split(r"<tool_call>", display_text, flags=re.IGNORECASE)
+                display_text = parts[0].strip()
                 is_preparing = True
-            elif "<tool_call>" in display_text:
-                display_text = display_text.split("<tool_call>")[0].strip()
-                is_preparing = True
+                raw_payload = parts[1] if len(parts) > 1 else ""
+                try:
+                    name_match = re.search(r'"name"\s*:\s*"([^"]+)"', raw_payload)
+                    if name_match:
+                        t_name = name_match.group(1)
+                        target_match = re.search(r'"(?:path|file|cmd|command|pattern|query)"\s*:\s*"([^"]+)"', raw_payload)
+                        target_str = target_match.group(1) if target_match else ""
+                        tool_info = f": [bold yellow]{t_name}[/bold yellow]{f' ({escape(target_str)})' if target_str else ''}"
+                except Exception:
+                    pass
 
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
@@ -1570,7 +1579,7 @@ class TorchlightApp(App):
             if is_preparing:
                 if escaped:
                     escaped += "\n\n"
-                escaped += "[dim cyan]⚡ Preparing tool action...[/dim cyan]"
+                escaped += f"[dim cyan]⚡ Preparing tool action{tool_info}...[/dim cyan]"
 
             widget.update(escaped)
             self.call_after_refresh(self._scroll_chat_to_end)

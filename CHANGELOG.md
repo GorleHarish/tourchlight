@@ -12,6 +12,10 @@ All notable changes to Torchlight will be documented in this file.
   - **Automated Feedback Loop Triggering**: Updated `ExecutionFeedbackLoop` in `core/execution/feedback_loop.py` to watch `.jsx`, `.tsx`, `.vue`, `.svelte`, `.css`, and `.js` files, with vendor directory exclusions (`node_modules`, `.venv`, `dist`, `build`, `.git`, `.torchlight`, `coverage`, `.next`).
   - **Non-Vision Model Strategy (Qwen 2.5 Coder)**: Serialized visual, DOM, accessibility, and console signals into compact Markdown text (<300 tokens), enabling text-only models to inspect web execution outputs and self-correct autonomously.
   - **Schema & Tool Registration**: Updated `INSPECT_WEB` schema in `core/tools/schemas.py` and `tool_inspect_web_impl()` in `core/tools/implementations.py` to expose interactive action steps.
+- **Engine Feedback Message Assembly Fix**: Fixed variable overwrite bug in `rlm_optimized/rlm_engine_optimized.py` so auto-test and `INSPECT_WEB` results are cleanly appended to the assistant feedback context instead of being discarded.
+- **Read-Only Tool Exemptions**: Added `INSPECT_WEB`, `SEARCH_AST`, and `UPDATE_TASK_GRAPH` to `_READ_ONLY_TOOLS` in `rlm_optimized/rlm_engine_optimized.py`, eliminating false duplicate tool call warnings.
+- **Engine Performance & Latency Optimization**: Set `enable_debate: bool = False` by default in `RLMEngineOptimized.__init__`, bypassing the redundant 2nd LLM critique pass per turn to double tool execution speed for local models while preserving empirical Playwright & test verification.
+- **CLI & Feedback Loop Memory Sync**: Updated `context-manager-cli/src/context_manager/cli/main.py` and `core/execution/feedback_loop.py` to reliably consume test/web feedback and reset `_last_test_result` to prevent stale output repetition.
 
 ## [v2.4.0] - 2026-07-30
 

@@ -339,7 +339,7 @@ class AutonomousHarness:
             test_result = self.feedback_loop._run_tests()
             if test_result and test_result.command:
                 if test_result.all_passed:
-                    success = True
+                    success = success and True
                 else:
                     success = False
                     reason = f"Task {task.id} tests failed ({test_result.passed} passed, {test_result.failed} failed)"
@@ -383,7 +383,9 @@ class AutonomousHarness:
             if task.attempts >= task.max_attempts:
                 task.status = TaskStatus.FAILED
                 if self.config.revert_on_failure:
-                    self._git_revert()
+                    self._git_revert(task.target_files)
+            else:
+                task.status = TaskStatus.IN_PROGRESS
 
         self.save_goal_spec()
         return success
@@ -428,6 +430,8 @@ class AutonomousHarness:
                 if task.attempts >= task.max_attempts:
                     task.status = TaskStatus.FAILED
                     failed += 1
+                else:
+                    task.status = TaskStatus.PENDING
                 self.save_goal_spec()
 
         return {
@@ -513,9 +517,15 @@ class AutonomousHarness:
             logger.warning(f"Git commit failed: {e}")
             return False
 
-    def _git_revert(self) -> bool:
+    def _git_revert(self, target_files: Optional[list[str]] = None) -> bool:
         try:
             ensure_git_repository(self.project_root)
+            if target_files:
+                existing_targets = [tf for tf in target_files if (self.project_root / tf).exists()]
+                if existing_targets:
+                    subprocess.run(["git", "checkout", "--"] + existing_targets, cwd=str(self.project_root), check=False, capture_output=True)
+                    subprocess.run(["git", "clean", "-fd"] + existing_targets, cwd=str(self.project_root), check=False, capture_output=True)
+                    return True
             subprocess.run(["git", "checkout", "--", "."], cwd=str(self.project_root), check=True, capture_output=True)
             subprocess.run(["git", "clean", "-fd"], cwd=str(self.project_root), check=True, capture_output=True)
             return True

@@ -129,6 +129,15 @@ def display_step(step: Step):
         )
         console.print(answer_panel)
 
+    elif step.action == "rejected_final_answer":
+        rej_panel = Panel(
+            Markdown(step.result or step.content),
+            title=f"{indent}⚠️ Premature Final Answer Intercepted (Continuing Execution)",
+            border_style="yellow",
+            padding=(1, 2),
+        )
+        console.print(rej_panel)
+
     elif step.action == "thinking":
         console.print(f"{indent}[dim]{step.result}[/]")
 

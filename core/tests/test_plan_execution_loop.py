@@ -84,6 +84,9 @@ async def test_verification_gate_rejects_premature_final_answer():
 
         assert engine._final_answer_rejections >= 1
         assert res.answer is not None
+        # Verify that the first step action was recorded as rejected_final_answer
+        rejected_steps = [s for s in res.steps if s.action == "rejected_final_answer"]
+        assert len(rejected_steps) >= 1
 
 
 @pytest.mark.anyio

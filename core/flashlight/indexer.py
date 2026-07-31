@@ -24,10 +24,12 @@ import os
 
 _PY_FUNC_RE = re.compile(r'^(?:async )?def\s+(\w+)\s*\(')
 _PY_CLASS_RE = re.compile(r'^class\s+(\w+)')
-_JS_FUNC_RE = re.compile(r'(?:export\s+)?(?:async\s+)?function\s+(\w+)')
-_JS_CLASS_RE = re.compile(r'(?:export\s+)?class\s+(\w+)')
+_JS_FUNC_RE = re.compile(r'^(?:export\s+)?(?:async\s+)?function\s+(\w+)')
+_JS_CLASS_RE = re.compile(r'^(?:export\s+)?class\s+(\w+)')
+_JS_ARROW_RE = re.compile(r'^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^\s=]+)\s*=>')
+_TS_INTF_RE = re.compile(r'^(?:export\s+)?interface\s+(\w+)')
 _RS_FUNC_RE = re.compile(r'^\s*(?:pub\s+)?fn\s+(\w+)')
-_RS_STRUCT_RE = re.compile(r'^\s*(?:pub\s+)?struct\s+(\w+)')
+_RS_STRUCT_RE = re.compile(r'^\s*(?:pub\s+)?(?:struct|enum)\s+(\w+)')
 _GO_FUNC_RE = re.compile(r'^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(')
 _GO_STRUCT_RE = re.compile(r'^type\s+(\w+)\s+struct')
 
@@ -59,7 +61,7 @@ class SymbolIndex:
                 if path.suffix not in SUPPORTED_EXTENSIONS:
                     continue
                 try:
-                    rel = str(path.relative_to(self.project_dir))
+                    rel = path.relative_to(self.project_dir).as_posix()
                     mtime = path.stat().st_mtime
                     if rel in old_files and old_files[rel].mtime == mtime:
                         new_files[rel] = old_files[rel]
@@ -107,11 +109,11 @@ class SymbolIndex:
                 if stripped.startswith("import ") or stripped.startswith("from "):
                     imports.append(stripped)
             elif suffix in (".js", ".ts", ".jsx", ".tsx"):
-                m = _JS_FUNC_RE.match(stripped)
+                m = _JS_FUNC_RE.match(stripped) or _JS_ARROW_RE.match(stripped)
                 if m:
                     symbols.append((m.group(1), i, "function"))
                     continue
-                m = _JS_CLASS_RE.match(stripped)
+                m = _JS_CLASS_RE.match(stripped) or _TS_INTF_RE.match(stripped)
                 if m:
                     symbols.append((m.group(1), i, "class"))
                     continue

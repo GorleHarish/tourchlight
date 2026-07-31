@@ -123,8 +123,14 @@ class ExecutionFeedbackLoop:
         self.auto_run = auto_run
         self.timeout = timeout
         self._last_test_result: Optional[TestRunResult] = None
+        self._test_result_reported: bool = False
         self._last_web_result: Optional[Any] = None
         self._files_modified_since_test: set[str] = set()
+
+    @property
+    def has_failing_tests(self) -> bool:
+        """Return True if the most recent test run has failing or error tests."""
+        return self._last_test_result is not None and not self._last_test_result.all_passed
 
     def on_tool_executed(self, tool_name: str, params: dict, output: str) -> Optional[TestRunResult]:
         """Called after a tool is executed. Returns test results if tests were run."""
@@ -237,6 +243,7 @@ class ExecutionFeedbackLoop:
                 stdout=r.stdout, stderr=r.stderr,
             )
             self._last_test_result = result
+            self._test_result_reported = False
             return result
         except subprocess.TimeoutExpired:
             return TestRunResult(command=test_cmd, return_code=-1, duration_ms=self.timeout * 1000, results=[])
@@ -295,7 +302,7 @@ class ExecutionFeedbackLoop:
     def build_feedback_context(self) -> str:
         """Build feedback context string for the LLM with surgical error injection."""
         feedback_parts = []
-        if self._last_test_result:
+        if self._last_test_result and not self._test_result_reported:
             r = self._last_test_result
             if r.all_passed:
                 feedback_parts.append(f"✅ Tests: {r.passed} passed ({r.command})")
@@ -312,7 +319,7 @@ class ExecutionFeedbackLoop:
                     f"Recovery Hint: {hint}\n\n"
                     f"Surgical Failure Traceback:\n```\n{surgical_tb}\n```"
                 )
-            self._last_test_result = None  # Consume to prevent repeating stale feedback across turns
+            self._test_result_reported = True
         if self._last_web_result:
             feedback_parts.append(self._last_web_result.to_markdown())
             self._last_web_result = None  # Consume to prevent repeating stale feedback across turns
