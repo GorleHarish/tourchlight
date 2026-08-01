@@ -30,6 +30,7 @@ class InferenceParams:
     seed: int = -1  # -1 = random
     stop: list[str] = field(default_factory=list)
     use_grammar: Optional[bool] = None
+    allowed_tools: Optional[list[str]] = None
 
     def describe(self) -> str:
         """One-line description of current params."""
@@ -66,10 +67,11 @@ class InferenceParams:
 
     @classmethod
     def for_planning(cls) -> "InferenceParams":
-        """Reasoning through plans. Moderate creativity."""
+        """Reasoning through plans. Moderate creativity. Locks out WRITE_FILE to prevent hallucinated changes."""
         return cls(
             temperature=0.4, top_k=40, top_p=0.92,
             min_p=0.05, repeat_penalty=1.05, seed=-1,
+            allowed_tools=["SEARCH_AST", "GREP", "READ_FILE", "READ_SYMBOLS", "LIST_DIR", "RUN_COMMAND", "SAVE_MEMORY", "ASK_USER"]
         )
 
     @classmethod

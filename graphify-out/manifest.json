@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785485997.58233,
-    "ast_hash": "4a3b464cdd8e8856745bb037be2ee03a",
+    "mtime": 1785487171.128359,
+    "ast_hash": "0548390e406acb5e77b1832d69bb8e04",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -335,9 +335,9 @@
     "semantic_hash": ""
   },
   "core/flashlight/indexer.py": {
-    "mtime": 1785147425.3342416,
-    "ast_hash": "111d20c8a3c7272f683d78f0db1a0e8b",
-    "semantic_hash": "111d20c8a3c7272f683d78f0db1a0e8b"
+    "mtime": 1785487154.010458,
+    "ast_hash": "554cdb604c5a698595b7f77ef0f92488",
+    "semantic_hash": ""
   },
   "core/memory/__init__.py": {
     "mtime": 1784760879.1925929,
@@ -405,9 +405,9 @@
     "semantic_hash": ""
   },
   "core/tests/test_ast_tool.py": {
-    "mtime": 1784902114.9136853,
-    "ast_hash": "dee5e3e162e0430cbc604c61cf8acc6f",
-    "semantic_hash": "dee5e3e162e0430cbc604c61cf8acc6f"
+    "mtime": 1785487050.447673,
+    "ast_hash": "7bb407a01091b59f8cac061c0fb9de73",
+    "semantic_hash": ""
   },
   "core/tests/test_autonomous_harness.py": {
     "mtime": 1785328842.5840662,
@@ -525,8 +525,8 @@
     "semantic_hash": ""
   },
   "core/tools/implementations.py": {
-    "mtime": 1785418663.706399,
-    "ast_hash": "31fd37f9e8c4330f009618119ecee57c",
+    "mtime": 1785487133.87011,
+    "ast_hash": "6d08a89af997cceac47b80316218ede6",
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
@@ -660,13 +660,13 @@
     "semantic_hash": ""
   },
   "core/flashlight/graph_engine.py": {
-    "mtime": 1785356894.8567035,
-    "ast_hash": "28496b16a37ac4c6537d41946f7f0100",
+    "mtime": 1785487144.9701662,
+    "ast_hash": "d74c3e269f2946b565174ea6173837c8",
     "semantic_hash": ""
   },
   "core/tests/test_graph_engine.py": {
-    "mtime": 1785181437.2067733,
-    "ast_hash": "315157b5ac40196f348f818acb3c9db7",
+    "mtime": 1785487059.1323805,
+    "ast_hash": "8e6199c62e21755f41dfb9f7d04cc9c5",
     "semantic_hash": ""
   },
   ".agents/rules/graphify.md": {

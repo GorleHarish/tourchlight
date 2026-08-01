@@ -1397,8 +1397,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_api_lmstudio",
-      "community": 6,
-      "community_name": "LMStudioClient",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "lmstudio.py"
     },
     {
@@ -1837,7 +1837,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard",
-      "community": 150,
+      "community": 134,
       "community_name": "dashboard.py",
       "norm_label": "dashboard.py"
     },
@@ -1860,7 +1860,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_contextdashboard_init",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": ".__init__()"
     },
     {
@@ -2156,8 +2156,8 @@
       "source_location": "L296",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_actionentry_render",
-      "community": 151,
-      "community_name": "ActionEntry",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".render()"
     },
     {
@@ -2167,8 +2167,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "text",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "text"
     },
     {
@@ -2190,7 +2190,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_actiontracker_init",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": ".__init__()"
     },
     {
@@ -2201,7 +2201,7 @@
       "_origin": "ast",
       "id": "console",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "console"
     },
     {
@@ -2266,8 +2266,8 @@
       "source_location": "L408",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_actiontracker_action",
-      "community": 150,
-      "community_name": "dashboard.py",
+      "community": 9,
+      "community_name": "ActionTracker",
       "norm_label": ".action()"
     },
     {
@@ -2299,8 +2299,8 @@
       "source_location": "L450",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_actioncontext",
-      "community": 150,
-      "community_name": "dashboard.py",
+      "community": 9,
+      "community_name": "ActionTracker",
       "norm_label": "_actioncontext"
     },
     {
@@ -2310,8 +2310,8 @@
       "source_location": "L453",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_actioncontext_init",
-      "community": 150,
-      "community_name": "dashboard.py",
+      "community": 9,
+      "community_name": "ActionTracker",
       "norm_label": ".__init__()"
     },
     {
@@ -2431,8 +2431,8 @@
       "source_location": "L409",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_rationale_409",
-      "community": 150,
-      "community_name": "dashboard.py",
+      "community": 9,
+      "community_name": "ActionTracker",
       "norm_label": "per-action context manager:              with tracker.action(\"read_file\", \"src/f"
     },
     {
@@ -2442,8 +2442,8 @@
       "source_location": "L451",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_dashboard_rationale_451",
-      "community": 150,
-      "community_name": "dashboard.py",
+      "community": 9,
+      "community_name": "ActionTracker",
       "norm_label": "context manager returned by actiontracker.action()."
     },
     {
@@ -2464,8 +2464,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_get_phase_system_prompt",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "get_phase_system_prompt()"
     },
     {
@@ -2475,8 +2475,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_beam_budget",
-      "community": 160,
-      "community_name": ".__init__",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "_beam_budget()"
     },
     {
@@ -2530,8 +2530,8 @@
       "source_location": "L133",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_streamingchatsession_init",
-      "community": 160,
-      "community_name": ".__init__",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": ".__init__()"
     },
     {
@@ -2542,7 +2542,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_streamingchatsession_calculate_metadata_overhead",
       "community": 160,
-      "community_name": ".__init__",
+      "community_name": "._calculate_metadata_overhead",
       "norm_label": "._calculate_metadata_overhead()"
     },
     {
@@ -2574,8 +2574,8 @@
       "source_location": "L273",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_streamingchatsession_get_beam_block",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "._get_beam_block()"
     },
     {
@@ -2607,8 +2607,8 @@
       "source_location": "L323",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_streamingchatsession_detect_phase",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "._detect_phase()"
     },
     {
@@ -2618,8 +2618,8 @@
       "source_location": "L337",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_streamingchatsession_update_params",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "._update_params()"
     },
     {
@@ -2662,8 +2662,8 @@
       "source_location": "L663",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_streamingchatsession_build_messages",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "._build_messages()"
     },
     {
@@ -2816,8 +2816,8 @@
       "source_location": "L1119",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_sessions",
-      "community": 153,
-      "community_name": "goal",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "sessions()"
     },
     {
@@ -2838,8 +2838,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_rationale_84",
-      "community": 160,
-      "community_name": ".__init__",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "return (max_beam_files, max_lines_per_file) for the given context size."
     },
     {
@@ -2850,7 +2850,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_rationale_216",
       "community": 160,
-      "community_name": ".__init__",
+      "community_name": "._calculate_metadata_overhead",
       "norm_label": "estimate tokens consumed by system prompt, tools, and flashlight beam."
     },
     {
@@ -2860,8 +2860,8 @@
       "source_location": "L324",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_rationale_324",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "infer the current agent phase from user input and the last model response."
     },
     {
@@ -2871,8 +2871,8 @@
       "source_location": "L338",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_rationale_338",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "auto-switch _params based on detected phase.  no-op when locked."
     },
     {
@@ -2893,8 +2893,8 @@
       "source_location": "L664",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_rationale_664",
-      "community": 124,
-      "community_name": "._build_messages",
+      "community": 27,
+      "community_name": "StreamingChatSession",
       "norm_label": "build the final message list for the llm, respecting the context budget."
     },
     {
@@ -2959,8 +2959,8 @@
       "source_location": "L1123",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_cli_main_rationale_1123",
-      "community": 153,
-      "community_name": "goal",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "manage saved sessions."
     },
     {
@@ -3322,8 +3322,8 @@
       "source_location": "L147",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_compression_summarizer_conversationsummarizer",
-      "community": 33,
-      "community_name": "context_manager/compression/summarizer.py",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "conversationsummarizer"
     },
     {
@@ -3333,8 +3333,8 @@
       "source_location": "L155",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_compression_summarizer_conversationsummarizer_init",
-      "community": 33,
-      "community_name": "context_manager/compression/summarizer.py",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": ".__init__()"
     },
     {
@@ -3443,8 +3443,8 @@
       "source_location": "L148",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_compression_summarizer_rationale_148",
-      "community": 33,
-      "community_name": "context_manager/compression/summarizer.py",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "summarizer with llm-powered and rule-based fallback paths.      when an llm_clie"
     },
     {
@@ -4642,8 +4642,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "context_manager/memory/embeddings.py"
     },
     {
@@ -4653,8 +4653,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_embedder",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "embedder"
     },
     {
@@ -4664,8 +4664,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_py_protocol",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "protocol"
     },
     {
@@ -4675,8 +4675,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_embedder_embed_sync",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": ".embed_sync()"
     },
     {
@@ -4686,8 +4686,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_normalize",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "_normalize()"
     },
     {
@@ -4697,8 +4697,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_tokenize",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "_tokenize()"
     },
     {
@@ -4708,8 +4708,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_hashembedder",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "hashembedder"
     },
     {
@@ -4719,8 +4719,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_hashembedder_embed_sync",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": ".embed_sync()"
     },
     {
@@ -4730,8 +4730,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_providerembedder",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "providerembedder"
     },
     {
@@ -4741,8 +4741,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_providerembedder_embed_sync",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": ".embed_sync()"
     },
     {
@@ -4752,8 +4752,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_fallbackembedder",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "fallbackembedder"
     },
     {
@@ -4763,8 +4763,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_fallbackembedder_embed_sync",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": ".embed_sync()"
     },
     {
@@ -4774,8 +4774,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_build_embedder",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "build_embedder()"
     },
     {
@@ -4785,8 +4785,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_embeddings_py_any",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "any"
     },
     {
@@ -4818,8 +4818,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_parse_json_response",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "_parse_json_response()"
     },
     {
@@ -4829,8 +4829,8 @@
       "source_location": "L160",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_merge_into_state",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "_merge_into_state()"
     },
     {
@@ -4840,8 +4840,8 @@
       "source_location": "L210",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_llmstateextractor",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "llmstateextractor"
     },
     {
@@ -4851,8 +4851,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_llmstateextractor_init",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": ".__init__()"
     },
     {
@@ -4862,8 +4862,8 @@
       "source_location": "L232",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_llmstateextractor_extract_and_merge",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": ".extract_and_merge()"
     },
     {
@@ -4873,8 +4873,8 @@
       "source_location": "L299",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_llmstateextractor_stats",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": ".stats()"
     },
     {
@@ -4884,8 +4884,8 @@
       "source_location": "L303",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_llmstateextractor_reset_stats",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": ".reset_stats()"
     },
     {
@@ -4895,8 +4895,8 @@
       "source_location": "L306",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_llmstateextractor_repr",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -4928,8 +4928,8 @@
       "source_location": "L130",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_rationale_130",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "robustly extract a json object from the model's response.      local models some"
     },
     {
@@ -4939,8 +4939,8 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_rationale_161",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "merge the extracted json fields into the existing sessionstate.      strategy: l"
     },
     {
@@ -4950,8 +4950,8 @@
       "source_location": "L211",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_rationale_211",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "uses the local llm to extract structured sessionstate fields from a     conversa"
     },
     {
@@ -4961,8 +4961,8 @@
       "source_location": "L237",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_rationale_237",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "run llm extraction and merge findings into *state* in-place.          returns tr"
     },
     {
@@ -4972,8 +4972,8 @@
       "source_location": "L300",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_llm_extractor_rationale_300",
-      "community": 31,
-      "community_name": "LLMStateExtractor",
+      "community": 43,
+      "community_name": "context_manager/memory/manager.py",
       "norm_label": "return a copy of the call/hit/miss/error counters."
     },
     {
@@ -5016,8 +5016,8 @@
       "source_location": "L184",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_extract_file_paths",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "_extract_file_paths()"
     },
     {
@@ -5115,8 +5115,8 @@
       "source_location": "L242",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_evictingdeque_appendleft",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".appendleft()"
     },
     {
@@ -5137,8 +5137,8 @@
       "source_location": "L251",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_evictingdeque_extendleft",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".extendleft()"
     },
     {
@@ -5203,8 +5203,8 @@
       "source_location": "L409",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_configure_embedding_runtime",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": ".configure_embedding_runtime()"
     },
     {
@@ -5214,8 +5214,8 @@
       "source_location": "L416",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_get_role_bucket",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._get_role_bucket()"
     },
     {
@@ -5225,8 +5225,8 @@
       "source_location": "L424",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_update_token_breakdown_add",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._update_token_breakdown_add()"
     },
     {
@@ -5236,8 +5236,8 @@
       "source_location": "L429",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_update_token_breakdown_remove",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._update_token_breakdown_remove()"
     },
     {
@@ -5247,8 +5247,8 @@
       "source_location": "L434",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_reset_token_breakdown",
-      "community": 155,
-      "community_name": ".clear",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._reset_token_breakdown()"
     },
     {
@@ -5258,8 +5258,8 @@
       "source_location": "L438",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_on_message_evicted",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._on_message_evicted()"
     },
     {
@@ -5269,8 +5269,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_py_message",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "message"
     },
     {
@@ -5280,8 +5280,8 @@
       "source_location": "L442",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_get_compactor",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._get_compactor()"
     },
     {
@@ -5291,8 +5291,8 @@
       "source_location": "L450",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_compact_content",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._compact_content()"
     },
     {
@@ -5302,8 +5302,8 @@
       "source_location": "L460",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_add_message",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".add_message()"
     },
     {
@@ -5313,8 +5313,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_py_messagerole",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "messagerole"
     },
     {
@@ -5324,8 +5324,8 @@
       "source_location": "L480",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_prune_old_messages",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._prune_old_messages()"
     },
     {
@@ -5335,8 +5335,8 @@
       "source_location": "L499",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_add_user_message",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".add_user_message()"
     },
     {
@@ -5346,8 +5346,8 @@
       "source_location": "L502",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_add_assistant_message",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".add_assistant_message()"
     },
     {
@@ -5357,8 +5357,8 @@
       "source_location": "L505",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_add_tool_result",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".add_tool_result()"
     },
     {
@@ -5368,8 +5368,8 @@
       "source_location": "L521",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_pin_file",
-      "community": 132,
-      "community_name": "TieredMemory",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": ".pin_file()"
     },
     {
@@ -5390,8 +5390,8 @@
       "source_location": "L541",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_refresh_pin",
-      "community": 132,
-      "community_name": "TieredMemory",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": ".refresh_pin()"
     },
     {
@@ -5412,8 +5412,8 @@
       "source_location": "L557",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_clear_pins",
-      "community": 155,
-      "community_name": ".clear",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": ".clear_pins()"
     },
     {
@@ -5588,8 +5588,8 @@
       "source_location": "L875",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_update_state_from_message",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._update_state_from_message()"
     },
     {
@@ -5665,8 +5665,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "memoryobject",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "memoryobject"
     },
     {
@@ -5687,8 +5687,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "memoryneedle",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "memoryneedle"
     },
     {
@@ -5742,8 +5742,8 @@
       "source_location": "L1145",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_compress_recent",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".compress_recent()"
     },
     {
@@ -5753,8 +5753,8 @@
       "source_location": "L1190",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_compress_recent_async",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": ".compress_recent_async()"
     },
     {
@@ -5764,8 +5764,8 @@
       "source_location": "L1246",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_merge_summary_into_state",
-      "community": 41,
-      "community_name": "_EvictingDeque",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "._merge_summary_into_state()"
     },
     {
@@ -5775,8 +5775,8 @@
       "source_location": "L1332",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_tieredmemory_clear",
-      "community": 155,
-      "community_name": ".clear",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": ".clear()"
     },
     {
@@ -5852,8 +5852,8 @@
       "source_location": "L417",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_417",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "get the token breakdown bucket for a role."
     },
     {
@@ -5863,8 +5863,8 @@
       "source_location": "L425",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_425",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "add tokens to the token breakdown."
     },
     {
@@ -5874,8 +5874,8 @@
       "source_location": "L430",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_430",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "remove tokens from the token breakdown."
     },
     {
@@ -5885,8 +5885,8 @@
       "source_location": "L435",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_435",
-      "community": 155,
-      "community_name": ".clear",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "reset token breakdown to zero."
     },
     {
@@ -5896,8 +5896,8 @@
       "source_location": "L481",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_481",
-      "community": 47,
-      "community_name": "._update_state_from_message",
+      "community": 132,
+      "community_name": "TieredMemory",
       "norm_label": "remove oldest non-system messages to stay under max_messages limit."
     },
     {
@@ -5907,8 +5907,8 @@
       "source_location": "L522",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_522",
-      "community": 132,
-      "community_name": "TieredMemory",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": "pin a recently-read file so it survives compression.          if the file is alr"
     },
     {
@@ -5929,8 +5929,8 @@
       "source_location": "L542",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_542",
-      "community": 132,
-      "community_name": "TieredMemory",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": "re-read an edited file from disk and update its pin in memory."
     },
     {
@@ -5951,8 +5951,8 @@
       "source_location": "L558",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_manager_rationale_558",
-      "community": 155,
-      "community_name": ".clear",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": "remove all pinned files."
     },
     {
@@ -6072,8 +6072,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_models_sessionstate",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": "sessionstate"
     },
     {
@@ -6105,8 +6105,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence",
-      "community": 18,
-      "community_name": "ProjectMemory",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "context_manager/memory/persistence.py"
     },
     {
@@ -6117,7 +6117,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_ensure_git_repository",
       "community": 104,
-      "community_name": "ensure_project_initialized",
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "ensure_git_repository()"
     },
     {
@@ -6128,7 +6128,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_py_path",
       "community": 104,
-      "community_name": "ensure_project_initialized",
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "path"
     },
     {
@@ -6139,7 +6139,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_ensure_project_initialized",
       "community": 104,
-      "community_name": "ensure_project_initialized",
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "ensure_project_initialized()"
     },
     {
@@ -6150,7 +6150,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_init_new_project",
       "community": 104,
-      "community_name": "ensure_project_initialized",
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "init_new_project()"
     },
     {
@@ -6160,8 +6160,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_sessionpersistence",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": "sessionpersistence"
     },
     {
@@ -6171,8 +6171,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_sessionpersistence_init",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": ".__init__()"
     },
     {
@@ -6182,8 +6182,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_sessionpersistence_save_session",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": ".save_session()"
     },
     {
@@ -6193,8 +6193,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_sessionpersistence_load_session",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 21,
+      "community_name": "ProjectMemory",
       "norm_label": ".load_session()"
     },
     {
@@ -6204,8 +6204,8 @@
       "source_location": "L243",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_sessionpersistence_list_sessions",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 21,
+      "community_name": "ProjectMemory",
       "norm_label": ".list_sessions()"
     },
     {
@@ -6215,8 +6215,8 @@
       "source_location": "L265",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_sessionpersistence_delete_session",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 104,
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": ".delete_session()"
     },
     {
@@ -6238,7 +6238,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_projectmemory_init",
       "community": 104,
-      "community_name": "ensure_project_initialized",
+      "community_name": "context_manager/memory/persistence.py",
       "norm_label": ".__init__()"
     },
     {
@@ -6336,8 +6336,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_persistence_py_sessionstate",
-      "community": 43,
-      "community_name": "context_manager/memory/manager.py",
+      "community": 21,
+      "community_name": "ProjectMemory",
       "norm_label": "sessionstate"
     },
     {
@@ -6644,8 +6644,8 @@
       "source_location": "L338",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_selective_compression_create_progressive_compressor",
-      "community": 7,
-      "community_name": "TokenCounter",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": "create_progressive_compressor()"
     },
     {
@@ -6776,8 +6776,8 @@
       "source_location": "L342",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_memory_selective_compression_rationale_342",
-      "community": 7,
-      "community_name": "TokenCounter",
+      "community": 41,
+      "community_name": "_EvictingDeque",
       "norm_label": "create a compressor tuned for the given context window.      always pass the sha"
     },
     {
@@ -8030,8 +8030,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_init",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "context_manager/tools/__init__.py"
     },
     {
@@ -8052,8 +8052,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_classify_command",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "classify_command()"
     },
     {
@@ -8074,8 +8074,8 @@
       "source_location": "L130",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_set_ctx_window",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "set_ctx_window()"
     },
     {
@@ -8261,8 +8261,8 @@
       "source_location": "L855",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_tool_web_fetch",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "tool_web_fetch()"
     },
     {
@@ -8305,8 +8305,8 @@
       "source_location": "L965",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_tool_save_memory",
-      "community": 53,
-      "community_name": "build_embedder",
+      "community": 6,
+      "community_name": "LMStudioClient",
       "norm_label": "tool_save_memory()"
     },
     {
@@ -8327,8 +8327,8 @@
       "source_location": "L1026",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretool",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "coretool"
     },
     {
@@ -8338,8 +8338,8 @@
       "source_location": "L1034",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretool_is_dangerous",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".is_dangerous()"
     },
     {
@@ -8349,8 +8349,8 @@
       "source_location": "L1038",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "coretoolregistry"
     },
     {
@@ -8360,8 +8360,8 @@
       "source_location": "L1039",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_init",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".__init__()"
     },
     {
@@ -8371,8 +8371,8 @@
       "source_location": "L1042",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_register",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".register()"
     },
     {
@@ -8382,8 +8382,8 @@
       "source_location": "L1045",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_get",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".get()"
     },
     {
@@ -8393,8 +8393,8 @@
       "source_location": "L1048",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_names",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".names()"
     },
     {
@@ -8404,8 +8404,8 @@
       "source_location": "L1051",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_all",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".all()"
     },
     {
@@ -8415,8 +8415,8 @@
       "source_location": "L1054",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_icons",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".icons()"
     },
     {
@@ -8426,8 +8426,8 @@
       "source_location": "L1057",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_dangerous_tools",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".dangerous_tools()"
     },
     {
@@ -8437,8 +8437,8 @@
       "source_location": "L1060",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_risk_level_for",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".risk_level_for()"
     },
     {
@@ -8448,8 +8448,8 @@
       "source_location": "L1072",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_coretoolregistry_execute",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": ".execute()"
     },
     {
@@ -8481,8 +8481,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "context_manager_cli_src_context_manager_tools_core_rationale_131",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "tell the tool layer what context window the current model has."
     },
     {
@@ -8933,7 +8933,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_task_dashboard",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_task_dashboard.py"
     },
     {
@@ -8944,7 +8944,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_task_dashboard_test_render_task_progress_empty",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_render_task_progress_empty()"
     },
     {
@@ -8955,7 +8955,7 @@
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_task_dashboard_test_render_task_progress_with_tasks",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_render_task_progress_with_tasks()"
     },
     {
@@ -9097,8 +9097,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_tools_core.py"
     },
     {
@@ -9108,8 +9108,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_classify_safe_command",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_classify_safe_command()"
     },
     {
@@ -9119,8 +9119,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_classify_destructive_command",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_classify_destructive_command()"
     },
     {
@@ -9130,8 +9130,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_classify_install_command",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_classify_install_command()"
     },
     {
@@ -9141,8 +9141,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_classify_unknown_command",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_classify_unknown_command()"
     },
     {
@@ -9152,8 +9152,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_classify_empty_command",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_classify_empty_command()"
     },
     {
@@ -9163,8 +9163,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_core_registry_register",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_core_registry_register()"
     },
     {
@@ -9174,8 +9174,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_core_registry_get_unknown",
-      "community": 50,
-      "community_name": "CoreToolRegistry",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_core_registry_get_unknown()"
     },
     {
@@ -9207,8 +9207,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_core_registry_risk_level",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_core_registry_risk_level()"
     },
     {
@@ -9218,8 +9218,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_core_registry_execute",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_core_registry_execute()"
     },
     {
@@ -9229,8 +9229,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_core_registry_execute_unknown",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_core_registry_execute_unknown()"
     },
     {
@@ -9240,8 +9240,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_core_registry_dangerous_tools",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_core_registry_dangerous_tools()"
     },
     {
@@ -9251,8 +9251,8 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "context_manager_cli_tests_test_tools_core_test_set_ctx_window",
-      "community": 51,
-      "community_name": "test_tools_core.py",
+      "community": 22,
+      "community_name": "core.py",
       "norm_label": "test_set_ctx_window()"
     },
     {
@@ -10252,8 +10252,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_debate_init",
-      "community": 25,
-      "community_name": "DebateVerifier",
+      "community": 51,
+      "community_name": "verifier.py",
       "norm_label": "debate/__init__.py"
     },
     {
@@ -10263,8 +10263,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_debate_init_rationale_1",
-      "community": 25,
-      "community_name": "DebateVerifier",
+      "community": 51,
+      "community_name": "verifier.py",
       "norm_label": "debate & self-critique verification module for torchlight."
     },
     {
@@ -10274,8 +10274,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_debate_prompts",
-      "community": 25,
-      "community_name": "DebateVerifier",
+      "community": 51,
+      "community_name": "verifier.py",
       "norm_label": "debate/prompts.py"
     },
     {
@@ -10285,8 +10285,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_debate_prompts_rationale_1",
-      "community": 25,
-      "community_name": "DebateVerifier",
+      "community": 51,
+      "community_name": "verifier.py",
       "norm_label": "system and user prompt templates for llm debate & self-critique verification."
     },
     {
@@ -10296,8 +10296,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_debate_verifier",
-      "community": 25,
-      "community_name": "DebateVerifier",
+      "community": 51,
+      "community_name": "verifier.py",
       "norm_label": "verifier.py"
     },
     {
@@ -10329,8 +10329,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "core_debate_verifier_debateverifier_init",
-      "community": 29,
-      "community_name": "LLMClient",
+      "community": 25,
+      "community_name": "DebateVerifier",
       "norm_label": ".__init__()"
     },
     {
@@ -10395,8 +10395,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_debate_verifier_rationale_1",
-      "community": 25,
-      "community_name": "DebateVerifier",
+      "community": 51,
+      "community_name": "verifier.py",
       "norm_label": "debateverifier implementation: orchestrates adversarial critique and refinement"
     },
     {
@@ -11022,8 +11022,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_execution_init",
-      "community": 149,
-      "community_name": "TaskSpec",
+      "community": 14,
+      "community_name": "WebOutcomeInspector",
       "norm_label": "core/execution/__init__.py"
     },
     {
@@ -11044,8 +11044,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_taskstatus",
-      "community": 149,
-      "community_name": "TaskSpec",
+      "community": 116,
+      "community_name": "test_autonomous_harness_pipeline.py",
       "norm_label": "taskstatus"
     },
     {
@@ -11055,8 +11055,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_py_str",
-      "community": 149,
-      "community_name": "TaskSpec",
+      "community": 116,
+      "community_name": "test_autonomous_harness_pipeline.py",
       "norm_label": "str"
     },
     {
@@ -11066,8 +11066,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_py_enum",
-      "community": 149,
-      "community_name": "TaskSpec",
+      "community": 116,
+      "community_name": "test_autonomous_harness_pipeline.py",
       "norm_label": "enum"
     },
     {
@@ -11078,7 +11078,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_taskspec",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "taskspec"
     },
     {
@@ -11089,7 +11089,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_goalspec",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "goalspec"
     },
     {
@@ -11100,7 +11100,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_harnessconfig",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "harnessconfig"
     },
     {
@@ -11110,7 +11110,7 @@
       "source_location": "L74",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness",
-      "community": 1,
+      "community": 149,
       "community_name": "AutonomousHarness",
       "norm_label": "autonomousharness"
     },
@@ -11121,8 +11121,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_init",
-      "community": 154,
-      "community_name": ".__init__",
+      "community": 149,
+      "community_name": "AutonomousHarness",
       "norm_label": ".__init__()"
     },
     {
@@ -11132,8 +11132,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_py_path",
-      "community": 154,
-      "community_name": ".__init__",
+      "community": 149,
+      "community_name": "AutonomousHarness",
       "norm_label": "path"
     },
     {
@@ -11143,8 +11143,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tieredmemory",
-      "community": 154,
-      "community_name": ".__init__",
+      "community": 149,
+      "community_name": "AutonomousHarness",
       "norm_label": "tieredmemory"
     },
     {
@@ -11154,8 +11154,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_py_executionfeedbackloop",
-      "community": 154,
-      "community_name": ".__init__",
+      "community": 149,
+      "community_name": "AutonomousHarness",
       "norm_label": "executionfeedbackloop"
     },
     {
@@ -11165,8 +11165,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_ensure_local_git",
-      "community": 154,
-      "community_name": ".__init__",
+      "community": 149,
+      "community_name": "AutonomousHarness",
       "norm_label": "._ensure_local_git()"
     },
     {
@@ -11177,7 +11177,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_ensure_goal_spec_initialized",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".ensure_goal_spec_initialized()"
     },
     {
@@ -11188,7 +11188,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_initialize_goal",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".initialize_goal()"
     },
     {
@@ -11199,7 +11199,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_load_goal_spec",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".load_goal_spec()"
     },
     {
@@ -11210,7 +11210,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_save_goal_spec",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".save_goal_spec()"
     },
     {
@@ -11221,7 +11221,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_get_runnable_pending_tasks",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "._get_runnable_pending_tasks()"
     },
     {
@@ -11232,7 +11232,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_validate_file_collisions",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "._validate_file_collisions()"
     },
     {
@@ -11243,7 +11243,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_get_prior_verified_summaries",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "._get_prior_verified_summaries()"
     },
     {
@@ -11254,7 +11254,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_run_micro_epoch",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".run_micro_epoch()"
     },
     {
@@ -11265,7 +11265,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_run_daemon",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".run_daemon()"
     },
     {
@@ -11276,7 +11276,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_get_status_summary",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": ".get_status_summary()"
     },
     {
@@ -11287,7 +11287,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_git_commit",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "._git_commit()"
     },
     {
@@ -11298,7 +11298,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_autonomousharness_git_revert",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "._git_revert()"
     },
     {
@@ -11319,7 +11319,7 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_75",
-      "community": 1,
+      "community": 149,
       "community_name": "AutonomousHarness",
       "norm_label": "autonomous harness engine driving long-running continuous execution."
     },
@@ -11330,8 +11330,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_105",
-      "community": 154,
-      "community_name": ".__init__",
+      "community": 149,
+      "community_name": "AutonomousHarness",
       "norm_label": "ensure target project has local git repository and persistent memory initialized"
     },
     {
@@ -11342,7 +11342,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_109",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "ensure a goal spec exists on disk in .torchlight, initializing a default workspa"
     },
     {
@@ -11353,7 +11353,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_242",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "return pending tasks whose dependencies are all verified."
     },
     {
@@ -11364,7 +11364,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_255",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "return list of target files that collide with active or failed tasks."
     },
     {
@@ -11375,7 +11375,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_268",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "construct inter-task memory prompt summarizing prior verified tasks and dependen"
     },
     {
@@ -11386,7 +11386,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_286",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "run a single micro-epoch for a target task."
     },
     {
@@ -11397,7 +11397,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_394",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "run continuous autonomous daemon until completion or timeout."
     },
     {
@@ -11408,7 +11408,7 @@
       "_origin": "ast",
       "id": "core_execution_autonomous_harness_rationale_446",
       "community": 149,
-      "community_name": "TaskSpec",
+      "community_name": "AutonomousHarness",
       "norm_label": "return structured status summary of current goal and sub-agent tasks."
     },
     {
@@ -11748,8 +11748,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_execution_run_harness",
-      "community": 1,
-      "community_name": "AutonomousHarness",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "run_harness.py"
     },
     {
@@ -11759,8 +11759,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "core_execution_run_harness_main",
-      "community": 1,
-      "community_name": "AutonomousHarness",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "main()"
     },
     {
@@ -11770,8 +11770,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_execution_run_harness_rationale_1",
-      "community": 1,
-      "community_name": "AutonomousHarness",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "cli entry point to launch the torchlight 24-hour autonomous harness."
     },
     {
@@ -12771,8 +12771,8 @@
       "source_location": "L443",
       "_origin": "ast",
       "id": "core_flashlight_graph_engine_get_project_graph",
-      "community": 39,
-      "community_name": "ProjectGraph",
+      "community": 0,
+      "community_name": "implementations.py",
       "norm_label": "get_project_graph()"
     },
     {
@@ -12903,8 +12903,8 @@
       "source_location": "L444",
       "_origin": "ast",
       "id": "core_flashlight_graph_engine_rationale_444",
-      "community": 39,
-      "community_name": "ProjectGraph",
+      "community": 0,
+      "community_name": "implementations.py",
       "norm_label": "get or create the projectgraph instance for a given root directory."
     },
     {
@@ -13277,7 +13277,7 @@
       "source_location": "L158",
       "_origin": "ast",
       "id": "core_memory_manager_tieredmemory_total_tokens",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": ".total_tokens()"
     },
@@ -13431,8 +13431,8 @@
       "source_location": "L324",
       "_origin": "ast",
       "id": "core_memory_manager_tieredmemory_get_context_for_llm",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 45,
+      "community_name": "test_plan_execution_loop.py",
       "norm_label": ".get_context_for_llm()"
     },
     {
@@ -13442,8 +13442,8 @@
       "source_location": "L374",
       "_origin": "ast",
       "id": "core_memory_manager_tieredmemory_format_l0_scratchpad",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 45,
+      "community_name": "test_plan_execution_loop.py",
       "norm_label": ".format_l0_scratchpad()"
     },
     {
@@ -13475,8 +13475,8 @@
       "source_location": "L425",
       "_origin": "ast",
       "id": "core_memory_manager_tieredmemory_build_critical_context",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 45,
+      "community_name": "test_plan_execution_loop.py",
       "norm_label": ".build_critical_context()"
     },
     {
@@ -13706,8 +13706,8 @@
       "source_location": "L325",
       "_origin": "ast",
       "id": "core_memory_manager_rationale_325",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 45,
+      "community_name": "test_plan_execution_loop.py",
       "norm_label": "build the message list for the llm.          pinned files and dynamic l0 scratch"
     },
     {
@@ -13717,8 +13717,8 @@
       "source_location": "L375",
       "_origin": "ast",
       "id": "core_memory_manager_rationale_375",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 45,
+      "community_name": "test_plan_execution_loop.py",
       "norm_label": "format current sessionstate into a dynamic l0 working memory scratchpad for syst"
     },
     {
@@ -13750,8 +13750,8 @@
       "source_location": "L426",
       "_origin": "ast",
       "id": "core_memory_manager_rationale_426",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 45,
+      "community_name": "test_plan_execution_loop.py",
       "norm_label": "build critical context block from session state."
     },
     {
@@ -14356,7 +14356,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "core/memory/token_counter.py"
     },
     {
@@ -14367,7 +14367,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_tokencounter",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "tokencounter"
     },
     {
@@ -14378,7 +14378,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_tokencounter_init",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": ".__init__()"
     },
     {
@@ -14389,7 +14389,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_tokencounter_count",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": ".count()"
     },
     {
@@ -14400,7 +14400,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_tokencounter_estimate",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "._estimate()"
     },
     {
@@ -14411,7 +14411,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_tokencounter_truncate",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": ".truncate()"
     },
     {
@@ -14422,7 +14422,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_get_token_counter",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "get_token_counter()"
     },
     {
@@ -14433,7 +14433,7 @@
       "_origin": "ast",
       "id": "core_memory_token_counter_rationale_1",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "token counting for torchlight.  uses tiktoken when available, falls back to a wo"
     },
     {
@@ -14454,8 +14454,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_prompts_system",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "system.py"
     },
     {
@@ -14465,8 +14465,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "core_prompts_system_get_phase_system_prompt",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "get_phase_system_prompt()"
     },
     {
@@ -14476,8 +14476,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_prompts_system_rationale_1",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "unified system prompts for torchlight.  single source of truth for all frontends"
     },
     {
@@ -14487,8 +14487,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "core_prompts_system_rationale_79",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "generate phase-tailored system prompt by appending phase instructions."
     },
     {
@@ -14699,8 +14699,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "core_tests_test_api_test_llamacpp_client_context_size_error",
-      "community": 66,
-      "community_name": "LlamaCppClient",
+      "community": 17,
+      "community_name": "InferenceParams",
       "norm_label": "test_llamacpp_client_context_size_error()"
     },
     {
@@ -14721,7 +14721,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "core_tests_test_ast_tool_test_search_ast_schema_validation",
-      "community": 34,
+      "community": 53,
       "community_name": "get_tool_registry",
       "norm_label": "test_search_ast_schema_validation()"
     },
@@ -14755,7 +14755,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_autonomous_harness.py"
     },
     {
@@ -14766,7 +14766,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_create_mock_feedback_loop",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "create_mock_feedback_loop()"
     },
     {
@@ -14777,7 +14777,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_py_path",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "path"
     },
     {
@@ -14788,7 +14788,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_py_executionfeedbackloop",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "executionfeedbackloop"
     },
     {
@@ -14799,7 +14799,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_goal_initialization_and_persistence",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_goal_initialization_and_persistence()"
     },
     {
@@ -14810,7 +14810,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_context_flushing_during_micro_epoch",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_context_flushing_during_micro_epoch()"
     },
     {
@@ -14821,7 +14821,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_continuous_session_context_preservation",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_continuous_session_context_preservation()"
     },
     {
@@ -14832,7 +14832,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_task_failure_and_retry_limit",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_task_failure_and_retry_limit()"
     },
     {
@@ -14843,7 +14843,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_daemon_loop_completion",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_daemon_loop_completion()"
     },
     {
@@ -14854,7 +14854,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_auto_git_init_and_clean_commit",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_auto_git_init_and_clean_commit()"
     },
     {
@@ -14865,7 +14865,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_test_get_status_summary",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "test_get_status_summary()"
     },
     {
@@ -14876,7 +14876,7 @@
       "_origin": "ast",
       "id": "core_tests_test_autonomous_harness_rationale_1",
       "community": 1,
-      "community_name": "AutonomousHarness",
+      "community_name": "test_autonomous_harness.py",
       "norm_label": "unit tests for autonomousharness module."
     },
     {
@@ -16096,8 +16096,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "core_tests_test_implementations_test_read_symbols_impl",
-      "community": 13,
-      "community_name": "test_implementations.py",
+      "community": 0,
+      "community_name": "implementations.py",
       "norm_label": "test_read_symbols_impl()"
     },
     {
@@ -16107,8 +16107,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "core_tests_test_implementations_test_list_dir_impl",
-      "community": 0,
-      "community_name": "implementations.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "test_list_dir_impl()"
     },
     {
@@ -16306,7 +16306,7 @@
       "_origin": "ast",
       "id": "core_tests_test_markup_escaping",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_markup_escaping.py"
     },
     {
@@ -16317,7 +16317,7 @@
       "_origin": "ast",
       "id": "core_tests_test_markup_escaping_test_escape_raw_brackets_and_json",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_escape_raw_brackets_and_json()"
     },
     {
@@ -16328,7 +16328,7 @@
       "_origin": "ast",
       "id": "core_tests_test_markup_escaping_test_action_entry_markup_safety",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_action_entry_markup_safety()"
     },
     {
@@ -16339,7 +16339,7 @@
       "_origin": "ast",
       "id": "core_tests_test_markup_escaping_test_action_tracker_print_action_safety",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_action_tracker_print_action_safety()"
     },
     {
@@ -16350,7 +16350,7 @@
       "_origin": "ast",
       "id": "core_tests_test_markup_escaping_test_tui_markup_escaping_safety",
       "community": 134,
-      "community_name": "Console",
+      "community_name": "dashboard.py",
       "norm_label": "test_tui_markup_escaping_safety()"
     },
     {
@@ -16415,8 +16415,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "test_model_normalization.py"
     },
     {
@@ -16426,8 +16426,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_normalize_gemma_4_4e4b_variants",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "test_normalize_gemma_4_4e4b_variants()"
     },
     {
@@ -16437,8 +16437,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_normalize_gemma_4_e2b_variants",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "test_normalize_gemma_4_e2b_variants()"
     },
     {
@@ -16448,8 +16448,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_normalize_mlx_gemma_4_4e4b",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "test_normalize_mlx_gemma_4_4e4b()"
     },
     {
@@ -16459,8 +16459,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_list_available_models_includes_gemma4e4b",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "test_list_available_models_includes_gemma4e4b()"
     },
     {
@@ -16679,7 +16679,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "core_tests_test_plan_execution_loop_py_anyio",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "anyio"
     },
@@ -16690,7 +16690,7 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "core_tests_test_plan_execution_loop_test_verification_gate_rejects_premature_final_answer",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_verification_gate_rejects_premature_final_answer()"
     },
@@ -16701,7 +16701,7 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "core_tests_test_plan_execution_loop_test_verification_gate_allows_final_answer_when_all_done",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_verification_gate_allows_final_answer_when_all_done()"
     },
@@ -16844,8 +16844,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "test_prompts_and_memory.py"
     },
     {
@@ -16855,8 +16855,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_test_phase_system_prompt_generation",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "test_phase_system_prompt_generation()"
     },
     {
@@ -16866,8 +16866,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_test_anti_symptom_patching_directive",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "test_anti_symptom_patching_directive()"
     },
     {
@@ -16877,8 +16877,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_test_l0_scratchpad_formatting",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "test_l0_scratchpad_formatting()"
     },
     {
@@ -16888,8 +16888,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_test_headroom_calculation",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "test_headroom_calculation()"
     },
     {
@@ -16899,8 +16899,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_test_persistent_memory_loading_and_prompt_inclusion",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "test_persistent_memory_loading_and_prompt_inclusion()"
     },
     {
@@ -16910,8 +16910,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_rationale_1",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "unit tests for phase-tailored system prompts, anti-symptom-patching rules, and l"
     },
     {
@@ -17042,8 +17042,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "core_tests_test_registry_test_tool_result_success",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "test_tool_result_success()"
     },
     {
@@ -17053,8 +17053,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "core_tests_test_registry_test_tool_result_failure",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "test_tool_result_failure()"
     },
     {
@@ -17130,7 +17130,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "core_tests_test_registry_test_get_tool_registry",
-      "community": 34,
+      "community": 53,
       "community_name": "get_tool_registry",
       "norm_label": "test_get_tool_registry()"
     },
@@ -17141,7 +17141,7 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "core_tests_test_registry_test_tool_registry_preview_dry_run",
-      "community": 34,
+      "community": 53,
       "community_name": "get_tool_registry",
       "norm_label": "test_tool_registry_preview_dry_run()"
     },
@@ -17152,7 +17152,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine.py"
     },
@@ -17163,7 +17163,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_optimized_debate_verifier_initialization",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_optimized_debate_verifier_initialization()"
     },
@@ -17174,7 +17174,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_client_chat_protocol_methods",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_client_chat_protocol_methods()"
     },
@@ -17185,7 +17185,7 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_debate_verifier_error_resilience",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_debate_verifier_error_resilience()"
     },
@@ -17197,7 +17197,7 @@
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_solve_method",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_solve_method()"
     },
     {
@@ -17207,7 +17207,7 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_optimized_code_execution",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_optimized_code_execution()"
     },
@@ -17218,7 +17218,7 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_optimized_none_tool_name",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_optimized_none_tool_name()"
     },
@@ -17229,7 +17229,7 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_parse_think_tags_and_mid_sentence_prevention",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_parse_think_tags_and_mid_sentence_prevention()"
     },
@@ -17240,7 +17240,7 @@
       "source_location": "L150",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_code_tag_and_backticks",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_code_tag_and_backticks()"
     },
@@ -17251,7 +17251,7 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "core_tests_test_rlm_engine_test_rlm_engine_parse_system_thought_and_plan_prefix",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "test_rlm_engine_parse_system_thought_and_plan_prefix()"
     },
@@ -17263,7 +17263,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_schemas.py"
     },
     {
@@ -17274,7 +17274,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas_test_tool_schemas_exist",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_tool_schemas_exist()"
     },
     {
@@ -17285,7 +17285,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas_test_validate_tool_call_valid",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_validate_tool_call_valid()"
     },
     {
@@ -17296,7 +17296,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas_test_validate_tool_call_alias",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_validate_tool_call_alias()"
     },
     {
@@ -17307,7 +17307,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas_test_validate_tool_call_missing_required",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_validate_tool_call_missing_required()"
     },
     {
@@ -17318,7 +17318,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas_test_validate_tool_call_unknown_tool",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_validate_tool_call_unknown_tool()"
     },
     {
@@ -17329,7 +17329,7 @@
       "_origin": "ast",
       "id": "core_tests_test_schemas_test_get_openai_tools_schema",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "test_get_openai_tools_schema()"
     },
     {
@@ -17339,8 +17339,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements",
-      "community": 8,
-      "community_name": "MemoryConfig",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "test_scratchpad_enhancements.py"
     },
     {
@@ -17350,8 +17350,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements_test_l0_scratchpad_includes_tried_and_failed",
-      "community": 8,
-      "community_name": "MemoryConfig",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "test_l0_scratchpad_includes_tried_and_failed()"
     },
     {
@@ -17361,8 +17361,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements_test_tiered_memory_record_memory",
-      "community": 8,
-      "community_name": "MemoryConfig",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "test_tiered_memory_record_memory()"
     },
     {
@@ -17372,7 +17372,7 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements_test_save_memory_tool",
-      "community": 34,
+      "community": 53,
       "community_name": "get_tool_registry",
       "norm_label": "test_save_memory_tool()"
     },
@@ -17383,8 +17383,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements_test_update_task_graph_tool",
-      "community": 8,
-      "community_name": "MemoryConfig",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "test_update_task_graph_tool()"
     },
     {
@@ -17394,8 +17394,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements_test_autonomous_harness_ast_symbol_handoff",
-      "community": 8,
-      "community_name": "MemoryConfig",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "test_autonomous_harness_ast_symbol_handoff()"
     },
     {
@@ -17405,8 +17405,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_scratchpad_enhancements_rationale_1",
-      "community": 8,
-      "community_name": "MemoryConfig",
+      "community": 110,
+      "community_name": "TieredMemory",
       "norm_label": "unit tests for torchlight scratchpad and task harness enhancements."
     },
     {
@@ -17582,7 +17582,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "core/tests/test_token_counter.py"
     },
     {
@@ -17593,7 +17593,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter_test_token_counter_basic",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "test_token_counter_basic()"
     },
     {
@@ -17604,7 +17604,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter_test_token_counter_empty",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "test_token_counter_empty()"
     },
     {
@@ -17615,7 +17615,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter_test_token_counter_truncate_short",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "test_token_counter_truncate_short()"
     },
     {
@@ -17626,7 +17626,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter_test_token_counter_truncate_long",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "test_token_counter_truncate_long()"
     },
     {
@@ -17637,7 +17637,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter_test_get_token_counter_caching",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "test_get_token_counter_caching()"
     },
     {
@@ -17648,7 +17648,7 @@
       "_origin": "ast",
       "id": "core_tests_test_token_counter_test_get_token_counter_different_models",
       "community": 118,
-      "community_name": "TokenCounter",
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "test_get_token_counter_different_models()"
     },
     {
@@ -17856,8 +17856,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "core_tests_test_web_inspector_test_inspect_web_tool_registration",
-      "community": 34,
-      "community_name": "get_tool_registry",
+      "community": 14,
+      "community_name": "WebOutcomeInspector",
       "norm_label": "test_inspect_web_tool_registration()"
     },
     {
@@ -17879,7 +17879,7 @@
       "_origin": "ast",
       "id": "core_tools_init",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "core/tools/__init__.py"
     },
     {
@@ -17999,8 +17999,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "core_tools_implementations_resolve_path",
-      "community": 0,
-      "community_name": "implementations.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "_resolve_path()"
     },
     {
@@ -18010,8 +18010,8 @@
       "source_location": "L112",
       "_origin": "ast",
       "id": "core_tools_implementations_truncate",
-      "community": 0,
-      "community_name": "implementations.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "_truncate()"
     },
     {
@@ -18043,8 +18043,8 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "core_tools_implementations_read_budget_for_ctx",
-      "community": 171,
-      "community_name": "test_context_budget_overflow.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "_read_budget_for_ctx()"
     },
     {
@@ -18296,8 +18296,8 @@
       "source_location": "L1223",
       "_origin": "ast",
       "id": "core_tools_implementations_tool_read_symbols_impl",
-      "community": 13,
-      "community_name": "test_implementations.py",
+      "community": 0,
+      "community_name": "implementations.py",
       "norm_label": "tool_read_symbols_impl()"
     },
     {
@@ -18307,8 +18307,8 @@
       "source_location": "L1268",
       "_origin": "ast",
       "id": "core_tools_implementations_tool_list_dir_impl",
-      "community": 0,
-      "community_name": "implementations.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "tool_list_dir_impl()"
     },
     {
@@ -18549,8 +18549,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "core_tools_implementations_rationale_92",
-      "community": 0,
-      "community_name": "implementations.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "resolve a path relative to project root, handling ~ and absolute paths."
     },
     {
@@ -18582,8 +18582,8 @@
       "source_location": "L140",
       "_origin": "ast",
       "id": "core_tools_implementations_rationale_140",
-      "community": 171,
-      "community_name": "test_context_budget_overflow.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "return (max_lines, max_chars) for the current context window."
     },
     {
@@ -18747,8 +18747,8 @@
       "source_location": "L1224",
       "_origin": "ast",
       "id": "core_tools_implementations_rationale_1224",
-      "community": 13,
-      "community_name": "test_implementations.py",
+      "community": 0,
+      "community_name": "implementations.py",
       "norm_label": "read_symbols \u2014 show file structure without loading content."
     },
     {
@@ -18758,8 +18758,8 @@
       "source_location": "L1269",
       "_origin": "ast",
       "id": "core_tools_implementations_rationale_1269",
-      "community": 0,
-      "community_name": "implementations.py",
+      "community": 13,
+      "community_name": "test_implementations.py",
       "norm_label": "list_dir \u2014 list directory contents."
     },
     {
@@ -18967,8 +18967,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "core_tools_registry_toolresult",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "toolresult"
     },
     {
@@ -18978,8 +18978,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "core_tools_registry_toolresult_str",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".__str__()"
     },
     {
@@ -19044,8 +19044,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "core_tools_registry_toolregistry_get",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".get()"
     },
     {
@@ -19099,8 +19099,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "core_tools_registry_toolregistry_validate",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".validate()"
     },
     {
@@ -19110,8 +19110,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "core_tools_registry_toolregistry_risk_level_for",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".risk_level_for()"
     },
     {
@@ -19121,8 +19121,8 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "core_tools_registry_toolregistry_execute",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".execute()"
     },
     {
@@ -19132,8 +19132,8 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "core_tools_registry_toolregistry_preview_dry_run",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".preview_dry_run()"
     },
     {
@@ -19143,8 +19143,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "core_tools_registry_toolregistry_execute_batch",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": ".execute_batch()"
     },
     {
@@ -19165,7 +19165,7 @@
       "source_location": "L277",
       "_origin": "ast",
       "id": "core_tools_registry_get_tool_registry",
-      "community": 34,
+      "community": 53,
       "community_name": "get_tool_registry",
       "norm_label": "get_tool_registry()"
     },
@@ -19198,8 +19198,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_19",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "structured result from tool execution."
     },
     {
@@ -19242,8 +19242,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_64",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "get a tool definition by name."
     },
     {
@@ -19297,8 +19297,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_84",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "validate a tool call against its schema.          returns (is_valid, error_msg,"
     },
     {
@@ -19308,8 +19308,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_97",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "get the risk tier for a tool call.          for run_command, dynamically classif"
     },
     {
@@ -19319,8 +19319,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_111",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "execute a tool by name with given arguments.          validates args, executes,"
     },
     {
@@ -19330,8 +19330,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_162",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "generate a dry-run preview string for a tool call without executing mutations."
     },
     {
@@ -19341,8 +19341,8 @@
       "source_location": "L187",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_187",
-      "community": 4,
-      "community_name": "ToolRegistry",
+      "community": 31,
+      "community_name": "ToolResult",
       "norm_label": "execute multiple tool calls in parallel when safe (auto risk level).         fal"
     },
     {
@@ -19363,7 +19363,7 @@
       "source_location": "L278",
       "_origin": "ast",
       "id": "core_tools_registry_rationale_278",
-      "community": 34,
+      "community": 53,
       "community_name": "get_tool_registry",
       "norm_label": "get or create the global tool registry."
     },
@@ -19386,7 +19386,7 @@
       "_origin": "ast",
       "id": "core_tools_schemas",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "schemas.py"
     },
     {
@@ -19397,7 +19397,7 @@
       "_origin": "ast",
       "id": "core_tools_schemas_validate_tool_call",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "validate_tool_call()"
     },
     {
@@ -19408,7 +19408,7 @@
       "_origin": "ast",
       "id": "core_tools_schemas_get_openai_tools_schema",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "get_openai_tools_schema()"
     },
     {
@@ -19419,7 +19419,7 @@
       "_origin": "ast",
       "id": "core_tools_schemas_rationale_1",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "tool schemas and validation for torchlight.  defines openai-compatible json sche"
     },
     {
@@ -19430,7 +19430,7 @@
       "_origin": "ast",
       "id": "core_tools_schemas_rationale_276",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "validate a tool call against its schema and resolve parameter aliases.      retu"
     },
     {
@@ -19441,7 +19441,7 @@
       "_origin": "ast",
       "id": "core_tools_schemas_rationale_315",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "generate openai-style tools list for function calling."
     },
     {
@@ -19495,8 +19495,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": "ast_indexer.py"
     },
     {
@@ -19506,8 +19506,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_init_db",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": "init_db()"
     },
     {
@@ -19517,8 +19517,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": "indexvisitor"
     },
     {
@@ -19528,8 +19528,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor_init",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": ".__init__()"
     },
     {
@@ -19539,8 +19539,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor_get_source_code",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": ".get_source_code()"
     },
     {
@@ -19550,8 +19550,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor_visit_classdef",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": ".visit_classdef()"
     },
     {
@@ -19561,8 +19561,8 @@
       "source_location": "L73",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor_visit_functiondef",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": ".visit_functiondef()"
     },
     {
@@ -19572,8 +19572,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor_visit_asyncfunctiondef",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": ".visit_asyncfunctiondef()"
     },
     {
@@ -19583,8 +19583,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_indexvisitor_handle_function",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": "._handle_function()"
     },
     {
@@ -19594,8 +19594,8 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_index_directory",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": "index_directory()"
     },
     {
@@ -19605,8 +19605,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "rlm_optimized_ast_indexer_rationale_11",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 50,
+      "community_name": "IndexVisitor",
       "norm_label": "initialize the kuzu graph database with the ast schema and vector embeddings."
     },
     {
@@ -19803,8 +19803,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_config",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "config.py"
     },
     {
@@ -19814,8 +19814,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "rlm_optimized_config_detect_apple_silicon_ram",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "_detect_apple_silicon_ram()"
     },
     {
@@ -19825,8 +19825,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "rlm_optimized_config_detect_chip",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "_detect_chip()"
     },
     {
@@ -19836,8 +19836,8 @@
       "source_location": "L128",
       "_origin": "ast",
       "id": "rlm_optimized_config_normalize_model_name",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "normalize_model_name()"
     },
     {
@@ -19847,8 +19847,8 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "rlm_optimized_config_list_available_models",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "list_available_models()"
     },
     {
@@ -19880,8 +19880,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_9",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "detect total ram in gb on macos."
     },
     {
@@ -19891,8 +19891,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_17",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "detect apple silicon chip name (e.g., 'apple m1')."
     },
     {
@@ -19902,8 +19902,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_129",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 e2b', 'gemma 4"
     },
     {
@@ -19913,8 +19913,8 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_162",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "scan local models directory and returns available gguf and mlx models."
     },
     {
@@ -19946,8 +19946,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_42",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "# note: previously this defaulted to ollama's port (11434) even when provider"
     },
     {
@@ -20210,8 +20210,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_main",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "rlm_optimized/main.py"
     },
     {
@@ -20221,8 +20221,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "rlm_optimized_main_get_depth_style",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "get_depth_style()"
     },
     {
@@ -20232,8 +20232,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "rlm_optimized_main_display_step",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "display_step()"
     },
     {
@@ -20243,8 +20243,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "rlm_optimized_main_py_step",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "step"
     },
     {
@@ -20254,8 +20254,8 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "rlm_optimized_main_print_banner",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "print_banner()"
     },
     {
@@ -20265,8 +20265,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "rlm_optimized_main_print_help",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "print_help()"
     },
     {
@@ -20276,8 +20276,8 @@
       "source_location": "L142",
       "_origin": "ast",
       "id": "rlm_optimized_main_create_client",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "create_client()"
     },
     {
@@ -20287,8 +20287,8 @@
       "source_location": "L165",
       "_origin": "ast",
       "id": "rlm_optimized_main_run_interactive",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "run_interactive()"
     },
     {
@@ -20298,8 +20298,8 @@
       "source_location": "L246",
       "_origin": "ast",
       "id": "rlm_optimized_main_run_single_task",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "run_single_task()"
     },
     {
@@ -20309,8 +20309,8 @@
       "source_location": "L253",
       "_origin": "ast",
       "id": "rlm_optimized_main_main",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "main()"
     },
     {
@@ -20320,8 +20320,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "main_optimized.py"
     },
     {
@@ -20331,8 +20331,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_get_depth_style",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_depth_style()"
     },
     {
@@ -20342,8 +20342,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_display_step",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "display_step()"
     },
     {
@@ -20353,8 +20353,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_py_step",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "step"
     },
     {
@@ -20364,8 +20364,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_approval_prompt",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "approval_prompt()"
     },
     {
@@ -20375,8 +20375,8 @@
       "source_location": "L168",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_print_banner",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "print_banner()"
     },
     {
@@ -20386,8 +20386,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_create_client",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "create_client()"
     },
     {
@@ -20397,8 +20397,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_run_interactive",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "run_interactive()"
     },
     {
@@ -20408,8 +20408,8 @@
       "source_location": "L258",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_run_single_task",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "run_single_task()"
     },
     {
@@ -20419,8 +20419,8 @@
       "source_location": "L265",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_amain",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "amain()"
     },
     {
@@ -20430,8 +20430,8 @@
       "source_location": "L296",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_main",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "main()"
     },
     {
@@ -20441,8 +20441,8 @@
       "source_location": "L147",
       "_origin": "ast",
       "id": "rlm_optimized_main_optimized_rationale_147",
-      "community": 108,
-      "community_name": "main_optimized.py",
+      "community": 19,
+      "community_name": "RLMEngineOptimized",
       "norm_label": "interactive approval for confirm/review tier tools."
     },
     {
@@ -20453,7 +20453,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "memory_monitor.py"
     },
     {
@@ -20464,7 +20464,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_get_memory_pressure",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "get_memory_pressure()"
     },
     {
@@ -20475,7 +20475,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_is_memory_safe",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "is_memory_safe()"
     },
     {
@@ -20486,7 +20486,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_format_memory_status",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "format_memory_status()"
     },
     {
@@ -20497,7 +20497,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_rationale_1",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "memory pressure monitor for macos apple silicon.  provides real-time memory pres"
     },
     {
@@ -20508,7 +20508,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_rationale_14",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "get current macos memory pressure level and stats.      returns:         dict wi"
     },
     {
@@ -20519,7 +20519,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_rationale_85",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "quick check: is it safe to run inference without swap thrashing?      args:"
     },
     {
@@ -20530,7 +20530,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_memory_monitor_rationale_102",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "return a human-readable one-line memory status string."
     },
     {
@@ -20540,8 +20540,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client",
-      "community": 26,
-      "community_name": "config.py",
+      "community": 54,
+      "community_name": "tui_app.py",
       "norm_label": "ollama_client.py"
     },
     {
@@ -20551,8 +20551,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": "ollamaclient"
     },
     {
@@ -20562,8 +20562,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_init",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".__init__()"
     },
     {
@@ -20573,8 +20573,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_is_running",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".is_running()"
     },
     {
@@ -20584,8 +20584,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_is_model_available",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".is_model_available()"
     },
     {
@@ -20595,8 +20595,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_query",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".query()"
     },
     {
@@ -20606,8 +20606,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_stream_query",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".stream_query()"
     },
     {
@@ -20617,8 +20617,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_chat_with_history",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".chat_with_history()"
     },
     {
@@ -20628,8 +20628,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_stream_chat_with_history",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".stream_chat_with_history()"
     },
     {
@@ -20639,8 +20639,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_chat",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".chat()"
     },
     {
@@ -20650,8 +20650,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_ollamaclient_chat_stream",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": ".chat_stream()"
     },
     {
@@ -20661,8 +20661,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_rationale_88",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": "async implementation of chat protocol method required by llmclient / debateverif"
     },
     {
@@ -20672,8 +20672,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client_rationale_94",
-      "community": 54,
-      "community_name": "tui_app.py",
+      "community": 47,
+      "community_name": "OllamaClient",
       "norm_label": "async streaming implementation required by llmclient protocol."
     },
     {
@@ -20683,8 +20683,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_prompts",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "rlm_optimized/prompts.py"
     },
     {
@@ -20694,8 +20694,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "rlm_optimized_prompts_build_system_prompt",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "build_system_prompt()"
     },
     {
@@ -20705,8 +20705,8 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "rlm_optimized_prompts_build_step_message",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "build_step_message()"
     },
     {
@@ -20716,8 +20716,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "rlm_optimized_prompts_rationale_5",
-      "community": 72,
-      "community_name": "test_prompts_and_memory.py",
+      "community": 8,
+      "community_name": "MemoryConfig",
       "norm_label": "build the system prompt for the coding agent.      args:         project_root: t"
     },
     {
@@ -20728,7 +20728,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "repl_sandbox.py"
     },
     {
@@ -20739,7 +20739,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_resolve_ast_db_path",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "_resolve_ast_db_path()"
     },
     {
@@ -20750,7 +20750,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_ast_db_missing_message",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "_ast_db_missing_message()"
     },
     {
@@ -20761,7 +20761,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_encoder",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "_get_encoder()"
     },
     {
@@ -20772,7 +20772,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_kuzuconnectionpool",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "_kuzuconnectionpool"
     },
     {
@@ -20783,7 +20783,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_kuzuconnectionpool_init",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".__init__()"
     },
     {
@@ -20794,7 +20794,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_kuzuconnectionpool_get_instance",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".get_instance()"
     },
     {
@@ -20805,7 +20805,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_kuzuconnectionpool_get_connection",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".get_connection()"
     },
     {
@@ -20816,7 +20816,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_kuzuconnectionpool_close",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".close()"
     },
     {
@@ -20827,7 +20827,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_kuzu_connection",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_kuzu_connection()"
     },
     {
@@ -20838,7 +20838,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_project_structure",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_project_structure()"
     },
     {
@@ -20849,7 +20849,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_class_signature",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_class_signature()"
     },
     {
@@ -20860,7 +20860,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_function_ast",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_function_ast()"
     },
     {
@@ -20871,7 +20871,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_function_source",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_function_source()"
     },
     {
@@ -20882,7 +20882,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_semantic_search",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "semantic_search()"
     },
     {
@@ -20893,7 +20893,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_get_local_subgraph",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "get_local_subgraph()"
     },
     {
@@ -20904,7 +20904,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_timeouterror",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "timeouterror"
     },
     {
@@ -20915,7 +20915,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_py_exception",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "exception"
     },
     {
@@ -20926,7 +20926,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_timeout_handler",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "_timeout_handler()"
     },
     {
@@ -20937,7 +20937,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "replsandbox"
     },
     {
@@ -20948,7 +20948,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_init",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".__init__()"
     },
     {
@@ -20959,7 +20959,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_set_project_root",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".set_project_root()"
     },
     {
@@ -20970,7 +20970,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_build_namespace",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "._build_namespace()"
     },
     {
@@ -20981,7 +20981,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_safe_import",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "._safe_import()"
     },
     {
@@ -20992,7 +20992,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_execute",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".execute()"
     },
     {
@@ -21003,7 +21003,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_reset",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".reset()"
     },
     {
@@ -21014,7 +21014,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_get_variables",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".get_variables()"
     },
     {
@@ -21025,7 +21025,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_replsandbox_set_llm_query_fn",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": ".set_llm_query_fn()"
     },
     {
@@ -21036,7 +21036,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_rationale_19",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "resolve the ast graph db path relative to the active project_root \u2014     never th"
     },
     {
@@ -21047,7 +21047,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_rationale_40",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "singleton manager for active kuzu graph database connections."
     },
     {
@@ -21058,7 +21058,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_repl_sandbox_rationale_242",
       "community": 19,
-      "community_name": "REPLSandbox",
+      "community_name": "RLMEngineOptimized",
       "norm_label": "update the active project root (e.g. after /cd) so the ast         knowledge-gra"
     },
     {
@@ -21068,8 +21068,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "rlm_engine.py"
     },
     {
@@ -21079,8 +21079,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_step",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "step"
     },
     {
@@ -21090,8 +21090,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_solveresult",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "solveresult"
     },
     {
@@ -21101,8 +21101,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_rlmengine",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "rlmengine"
     },
     {
@@ -21112,8 +21112,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_rlmengine_init",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": ".__init__()"
     },
     {
@@ -21123,8 +21123,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_rlmengine_sandbox_llm_query",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "._sandbox_llm_query()"
     },
     {
@@ -21134,8 +21134,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_rlmengine_solve",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": ".solve()"
     },
     {
@@ -21145,8 +21145,8 @@
       "source_location": "L246",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_rlmengine_parse_response",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "._parse_response()"
     },
     {
@@ -21156,8 +21156,8 @@
       "source_location": "L325",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_rlmengine_reset",
-      "community": 19,
-      "community_name": "REPLSandbox",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": ".reset()"
     },
     {
@@ -21167,8 +21167,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "rlm_engine_optimized.py"
     },
     {
@@ -21178,8 +21178,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_step",
-      "community": 62,
-      "community_name": "Step",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "step"
     },
     {
@@ -21189,8 +21189,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_solveresult",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": "solveresult"
     },
     {
@@ -21200,8 +21200,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_clean_and_parse_json",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "_clean_and_parse_json()"
     },
     {
@@ -21211,7 +21211,7 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "rlmengineoptimized"
     },
@@ -21222,8 +21222,8 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_init",
-      "community": 62,
-      "community_name": "Step",
+      "community": 66,
+      "community_name": "LlamaCppClient",
       "norm_label": ".__init__()"
     },
     {
@@ -21233,8 +21233,8 @@
       "source_location": "L148",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_memory",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 18,
+      "community_name": "ProjectMemory",
       "norm_label": ".memory()"
     },
     {
@@ -21244,8 +21244,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "setter",
-      "community": 110,
-      "community_name": "TieredMemory",
+      "community": 18,
+      "community_name": "ProjectMemory",
       "norm_label": "setter"
     },
     {
@@ -21255,8 +21255,8 @@
       "source_location": "L165",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_set_project_root",
-      "community": 15,
-      "community_name": "RLMEngineOptimized",
+      "community": 18,
+      "community_name": "ProjectMemory",
       "norm_label": ".set_project_root()"
     },
     {
@@ -21266,7 +21266,7 @@
       "source_location": "L177",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_notify_status",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "._notify_status()"
     },
@@ -21277,7 +21277,7 @@
       "source_location": "L190",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_sandbox_llm_query",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "._sandbox_llm_query()"
     },
@@ -21288,7 +21288,7 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_repair_stop_tokens",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "._repair_stop_tokens()"
     },
@@ -21299,7 +21299,7 @@
       "source_location": "L212",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_stream_llm",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "._stream_llm()"
     },
@@ -21310,7 +21310,7 @@
       "source_location": "L261",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_compact_context",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": ".compact_context()"
     },
@@ -21321,8 +21321,8 @@
       "source_location": "L272",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_solve_async",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": ".solve_async()"
     },
     {
@@ -21332,8 +21332,8 @@
       "source_location": "L811",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_parse_response",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "._parse_response()"
     },
     {
@@ -21343,8 +21343,8 @@
       "source_location": "L166",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_166",
-      "community": 15,
-      "community_name": "RLMEngineOptimized",
+      "community": 18,
+      "community_name": "ProjectMemory",
       "norm_label": "switch the active workspace, keeping the sandbox's ast-graph         lookups (ge"
     },
     {
@@ -21354,7 +21354,7 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_178",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "notify listeners of real-time background status and action telemetry."
     },
@@ -21365,7 +21365,7 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_204",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "re-append closing tags that were consumed as stop tokens by llama-server."
     },
@@ -21376,7 +21376,7 @@
       "source_location": "L213",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_213",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "stream llm response token-by-token cleanly without thread deadlocks."
     },
@@ -21387,7 +21387,7 @@
       "source_location": "L262",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_262",
-      "community": 15,
+      "community": 19,
       "community_name": "RLMEngineOptimized",
       "norm_label": "manually compact context memory and return (before, after, freed)."
     },
@@ -21398,8 +21398,8 @@
       "source_location": "L812",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_812",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "parse the llm response for action tags.         returns: (action, thinking, cont"
     },
     {
@@ -21642,7 +21642,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tool_schemas",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "tool_schemas.py"
     },
     {
@@ -21653,7 +21653,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tool_schemas_get_openai_tools_schema",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "get_openai_tools_schema()"
     },
     {
@@ -21663,8 +21663,8 @@
       "source_location": "L247",
       "_origin": "ast",
       "id": "rlm_optimized_tool_schemas_validate_and_normalize_tool_call",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "validate_and_normalize_tool_call()"
     },
     {
@@ -21675,7 +21675,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tool_schemas_rationale_1",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "schema definitions and validation for slm tool calls. ensures small language mod"
     },
     {
@@ -21686,7 +21686,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tool_schemas_rationale_229",
       "community": 34,
-      "community_name": "get_tool_registry",
+      "community_name": "validate_tool_call",
       "norm_label": "generate openai-style tools list for function calling / structured schema enforc"
     },
     {
@@ -21696,8 +21696,8 @@
       "source_location": "L248",
       "_origin": "ast",
       "id": "rlm_optimized_tool_schemas_rationale_248",
-      "community": 125,
-      "community_name": "cli/main.py",
+      "community": 118,
+      "community_name": "rlm_engine_optimized.py",
       "norm_label": "validate tool call against schema and normalize parameter aliases.          retu"
     },
     {
@@ -21763,7 +21763,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": "approvalmodal"
     },
     {
@@ -21774,7 +21774,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_init",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".__init__()"
     },
     {
@@ -21807,7 +21807,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_on_mount",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".on_mount()"
     },
     {
@@ -21818,7 +21818,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_action_allow",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".action_allow()"
     },
     {
@@ -21829,7 +21829,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_action_deny",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".action_deny()"
     },
     {
@@ -21851,7 +21851,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_on_allow",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".on_allow()"
     },
     {
@@ -21862,7 +21862,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_on_deny",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".on_deny()"
     },
     {
@@ -21884,7 +21884,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_folderpickermodal_init",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".__init__()"
     },
     {
@@ -22093,7 +22093,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_copyselectionmodal",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": "copyselectionmodal"
     },
     {
@@ -22104,7 +22104,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_copyselectionmodal_init",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".__init__()"
     },
     {
@@ -22148,7 +22148,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_sessionmodepickermodal_init",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".__init__()"
     },
     {
@@ -22225,7 +22225,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentstatusmodal_init",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".__init__()"
     },
     {
@@ -22346,7 +22346,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_init",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": ".__init__()"
     },
     {
@@ -22455,8 +22455,8 @@
       "source_location": "L1064",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_on_compact_btn_clicked",
-      "community": 38,
-      "community_name": "on",
+      "community": 40,
+      "community_name": "TorchlightApp",
       "norm_label": ".on_compact_btn_clicked()"
     },
     {
@@ -22785,8 +22785,8 @@
       "source_location": "L2047",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_on_stop_engine_btn",
-      "community": 38,
-      "community_name": "on",
+      "community": 40,
+      "community_name": "TorchlightApp",
       "norm_label": ".on_stop_engine_btn()"
     },
     {
@@ -22819,7 +22819,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_handle_approval",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": "._handle_approval()"
     },
     {
@@ -22973,7 +22973,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_121",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": "modal dialog for tool & file modification approval."
     },
     {
@@ -23006,7 +23006,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_398",
       "community": 62,
-      "community_name": "Step",
+      "community_name": "ApprovalModal",
       "norm_label": "modal dialog to select and copy specific messages, code blocks, or text turns."
     },
     {
@@ -23138,7 +23138,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "verify_m1_setup.py"
     },
     {
@@ -23149,7 +23149,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_ok",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "ok()"
     },
     {
@@ -23160,7 +23160,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_fail",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "fail()"
     },
     {
@@ -23171,7 +23171,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_warn",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "warn()"
     },
     {
@@ -23182,7 +23182,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_info",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "info()"
     },
     {
@@ -23193,7 +23193,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_check_hardware",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check_hardware()"
     },
     {
@@ -23204,7 +23204,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_check_model",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check_model()"
     },
     {
@@ -23215,7 +23215,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_check_llama_server_binary",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check_llama_server_binary()"
     },
     {
@@ -23226,7 +23226,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_check_memory",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check_memory()"
     },
     {
@@ -23237,7 +23237,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_check_server_health",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check_server_health()"
     },
     {
@@ -23248,7 +23248,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_check_inference",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check_inference()"
     },
     {
@@ -23259,7 +23259,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_main",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "main()"
     },
     {
@@ -23270,7 +23270,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_rationale_52",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check 1: detect hardware."
     },
     {
@@ -23281,7 +23281,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_rationale_83",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check 2: verify model file exists and size is correct."
     },
     {
@@ -23292,7 +23292,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_rationale_115",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check 3: verify llama-server is available."
     },
     {
@@ -23303,7 +23303,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_rationale_142",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check 4: check memory pressure."
     },
     {
@@ -23314,7 +23314,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_rationale_160",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check 5: test if llama-server is running."
     },
     {
@@ -23325,7 +23325,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_verify_m1_setup_rationale_182",
       "community": 26,
-      "community_name": "config.py",
+      "community_name": "verify_m1_setup.py",
       "norm_label": "check 6: run a quick inference test."
     },
     {
@@ -24271,6 +24271,193 @@
       "community": 107,
       "community_name": "Torchlight \u2014 Terminal AI Coding Agent",
       "norm_label": "error handling"
+    },
+    {
+      "label": "bug.md",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "bug",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug.md"
+    },
+    {
+      "label": "Torchlight Agent & Loop Bug Registry (`bug.md`)",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "bug_torchlight_agent_loop_bug_registry_bug_md",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "torchlight agent & loop bug registry (`bug.md`)"
+    },
+    {
+      "label": "Summary of Tracked Bugs",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "bug_summary_of_tracked_bugs",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "summary of tracked bugs"
+    },
+    {
+      "label": "Detailed Bug Reports & Resolutions",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "bug_detailed_bug_reports_resolutions",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "detailed bug reports & resolutions"
+    },
+    {
+      "label": "BUG-01: `_total_llm_calls` Counter Accumulation Across Sessions",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L28",
+      "_origin": "ast",
+      "id": "bug_bug_01_total_llm_calls_counter_accumulation_across_sessions",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-01: `_total_llm_calls` counter accumulation across sessions"
+    },
+    {
+      "label": "BUG-02: Verification Gate Premature Answer Bypass via Rejection State",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L34",
+      "_origin": "ast",
+      "id": "bug_bug_02_verification_gate_premature_answer_bypass_via_rejection_state",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-02: verification gate premature answer bypass via rejection state"
+    },
+    {
+      "label": "BUG-03: Autonomous Harness Daemon Infinite Loop on Exception",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L40",
+      "_origin": "ast",
+      "id": "bug_bug_03_autonomous_harness_daemon_infinite_loop_on_exception",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-03: autonomous harness daemon infinite loop on exception"
+    },
+    {
+      "label": "BUG-04: Consecutive Code Error Loop Unbounded Retries",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "bug_bug_04_consecutive_code_error_loop_unbounded_retries",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-04: consecutive code error loop unbounded retries"
+    },
+    {
+      "label": "BUG-05: Unimported `Path` Silently Disables Feedback Loop",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L52",
+      "_origin": "ast",
+      "id": "bug_bug_05_unimported_path_silently_disables_feedback_loop",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-05: unimported `path` silently disables feedback loop"
+    },
+    {
+      "label": "BUG-06: Stale Verification Gate Gatekeeping on Test Failure Reset",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L58",
+      "_origin": "ast",
+      "id": "bug_bug_06_stale_verification_gate_gatekeeping_on_test_failure_reset",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-06: stale verification gate gatekeeping on test failure reset"
+    },
+    {
+      "label": "BUG-07: Read-Only Tool Interleaving Counter Laundering",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L64",
+      "_origin": "ast",
+      "id": "bug_bug_07_read_only_tool_interleaving_counter_laundering",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-07: read-only tool interleaving counter laundering"
+    },
+    {
+      "label": "BUG-08: LLM Step Failure Overwritten by Passing Pre-Existing Tests",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L70",
+      "_origin": "ast",
+      "id": "bug_bug_08_llm_step_failure_overwritten_by_passing_pre_existing_tests",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-08: llm step failure overwritten by passing pre-existing tests"
+    },
+    {
+      "label": "BUG-09: `consecutive_thinking` Loop Reset via Rejected Tags",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L76",
+      "_origin": "ast",
+      "id": "bug_bug_09_consecutive_thinking_loop_reset_via_rejected_tags",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-09: `consecutive_thinking` loop reset via rejected tags"
+    },
+    {
+      "label": "BUG-10: Missing Total Streaming LLM Response Timeout",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L82",
+      "_origin": "ast",
+      "id": "bug_bug_10_missing_total_streaming_llm_response_timeout",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-10: missing total streaming llm response timeout"
+    },
+    {
+      "label": "BUG-11: Unscoped Project-Wide `git clean -fd` in Micro-Epoch Revert",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L88",
+      "_origin": "ast",
+      "id": "bug_bug_11_unscoped_project_wide_git_clean_fd_in_micro_epoch_revert",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-11: unscoped project-wide `git clean -fd` in micro-epoch revert"
+    },
+    {
+      "label": "BUG-12: `RecoveryEngine` Disconnect from Agentic Loop",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L94",
+      "_origin": "ast",
+      "id": "bug_bug_12_recoveryengine_disconnect_from_agentic_loop",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "bug-12: `recoveryengine` disconnect from agentic loop"
+    },
+    {
+      "label": "Verification",
+      "file_type": "document",
+      "source_file": "bug.md",
+      "source_location": "L102",
+      "_origin": "ast",
+      "id": "bug_verification",
+      "community": 15,
+      "community_name": "Detailed Bug Reports & Resolutions",
+      "norm_label": "verification"
     },
     {
       "label": "context-manager-cli/README.md",
@@ -80994,6 +81181,182 @@
       "_origin": "ast",
       "source": "readme_architecture",
       "target": "readme_web_browsing_stealth_anti_blocking_architecture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug",
+      "target": "bug_torchlight_agent_loop_bug_registry_bug_md",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_torchlight_agent_loop_bug_registry_bug_md",
+      "target": "bug_detailed_bug_reports_resolutions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_torchlight_agent_loop_bug_registry_bug_md",
+      "target": "bug_summary_of_tracked_bugs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L102",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_torchlight_agent_loop_bug_registry_bug_md",
+      "target": "bug_verification",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_01_total_llm_calls_counter_accumulation_across_sessions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L34",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_02_verification_gate_premature_answer_bypass_via_rejection_state",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L40",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_03_autonomous_harness_daemon_infinite_loop_on_exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_04_consecutive_code_error_loop_unbounded_retries",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_05_unimported_path_silently_disables_feedback_loop",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L58",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_06_stale_verification_gate_gatekeeping_on_test_failure_reset",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L64",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_07_read_only_tool_interleaving_counter_laundering",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L70",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_08_llm_step_failure_overwritten_by_passing_pre_existing_tests",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L76",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_09_consecutive_thinking_loop_reset_via_rejected_tags",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L82",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_10_missing_total_streaming_llm_response_timeout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L88",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_11_unscoped_project_wide_git_clean_fd_in_micro_epoch_revert",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "bug.md",
+      "source_location": "L94",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "bug_detailed_bug_reports_resolutions",
+      "target": "bug_bug_12_recoveryengine_disconnect_from_agentic_loop",
       "confidence_score": 1.0
     },
     {

@@ -65,7 +65,7 @@ class HarnessConfig:
     auto_git_commit: bool = True
     max_duration_seconds: int = 86400  # Default 24 hours
     check_interval_seconds: float = 1.0
-    preserve_continuous_context: bool = True  # Preserve continuous session context between sub-tasks
+    preserve_continuous_context: bool = False  # Preserve continuous session context between sub-tasks
     mode: ExecutionMode = ExecutionMode.GOAL
 
 
@@ -116,10 +116,13 @@ class AutonomousHarness:
         return self.initialize_goal(
             goal_id=f"goal_{safe_name}",
             title=title or f"{self.project_root.name} Autonomous Goal",
-            description=description or "Continuous codebase maintenance, debugging, and feature development.",
+            description=description or title or "Continuous codebase maintenance, debugging, and feature development.",
             tasks=[
-                {"id": "task_01", "description": "Audit codebase structure & symbols", "target_files": []},
-                {"id": "task_02", "description": "Verify test suite health & build status", "target_files": []},
+                {
+                    "id": "plan_01",
+                    "description": "Analyze goal requirements, review architecture via SEARCH_AST, and use UPDATE_TASK_GRAPH to formulate a detailed, test-driven execution plan",
+                    "target_files": []
+                },
             ]
         )
 
@@ -305,13 +308,37 @@ class AutonomousHarness:
             self.memory.clear()
 
 
+        # Step 1.5: Pre-load Flashlight symbols for target files to avoid LLM needing an extra SEARCH_AST step
+        symbol_summaries = []
+        if task.target_files:
+            try:
+                from core.flashlight.indexer import SymbolIndex
+                p_root = Path(self.project_root).resolve()
+                index = SymbolIndex(project_dir=p_root)
+                index.build()
+                for tf in task.target_files:
+                    tf_path = (p_root / tf).resolve()
+                    try:
+                        rel_key = str(tf_path.relative_to(p_root))
+                    except ValueError:
+                        rel_key = tf
+                    entry = index.files.get(rel_key) or index.files.get(tf)
+                    if entry and entry.symbols:
+                        names = [s[0] if isinstance(s, (tuple, list)) else getattr(s, "name", str(s)) for s in entry.symbols]
+                        symbol_summaries.append(f"- {rel_key}: {', '.join(names)}")
+            except Exception as e:
+                logger.debug(f"Pre-load AST symbol summary skipped: {e}")
+
         # Step 2: Inject system context + task prompt + inter-task pipeline memory
         prior_context = self._get_prior_verified_summaries(task)
         prompt_parts = [
             f"GOAL: {self.goal_spec.title}",
+            f"GOAL DESCRIPTION: {self.goal_spec.description}",
             f"SUB-TASK ({task.id}): {task.description}",
             f"Target Files: {', '.join(task.target_files)}",
         ]
+        if symbol_summaries:
+            prompt_parts.append(f"Pre-loaded Symbols in Target Files:\n" + "\n".join(symbol_summaries))
         if task.depends_on:
             prompt_parts.append(f"Dependencies: {', '.join(task.depends_on)}")
         if prior_context:

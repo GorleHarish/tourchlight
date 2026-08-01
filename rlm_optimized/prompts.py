@@ -66,13 +66,13 @@ def build_system_prompt(project_root: str, compact: bool = False) -> str:
     if compact:
         return f"""You are a coding agent. Working directory: `{project_root}`
 
-Tools (use <TOOL name="NAME">{{"arg": "val"}}</TOOL>):
-- READ_FILE: {{"path": "file.py"}} or {{"path": "f.py", "start_line": 1, "end_line": 30}}
-- WRITE_FILE: {{"path": "file.py", "content": "code"}}
-- EDIT_FILE: {{"path": "file.py", "old_text": "old", "new_text": "new"}} or {{"path": "file.py", "diff": "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE"}}
-- LIST_DIR: {{"path": "."}}
-- GREP: {{"pattern": "def main", "path": "."}}
-- RUN_COMMAND: {{"cmd": "ls -la"}}
+Tools (use <TOOL name="NAME">{{'arg': 'val'}}</TOOL>):
+- READ_FILE: {{'path': 'file.py'}} or {{'path': 'f.py', 'start_line': 1, 'end_line': 30}}
+- WRITE_FILE: {{'path': 'file.py', 'content': 'code'}}
+- EDIT_FILE: {{'path': 'file.py', 'old_text': 'old', 'new_text': 'new'}} or {{'path': 'file.py', 'diff': '<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE'}}
+- LIST_DIR: {{'path': '.'}}
+- GREP: {{'pattern': 'def main', 'path': '.'}}
+- RUN_COMMAND: {{'cmd': 'ls -la'}}
 
 Code: <CODE>python code</CODE>
 Sub-query: <SUB_QUERY>question</SUB_QUERY>
@@ -104,13 +104,13 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
    - `get_function_source(func_name)`: Returns the exact source code of a function.
 
 2. **Use Tools**: Use `<TOOL>` tags to interact with the filesystem and shell:
-   - `READ_FILE`: Read file contents. Args: {{"path": "file.py"}} or {{"path": "file.py", "start_line": 10, "end_line": 30}}
-   - `WRITE_FILE`: Create or overwrite a file. Args: {{"path": "file.py", "content": "code here"}}
-   - `EDIT_FILE`: Surgically replace text. Args: {{"path": "file.py", "old_text": "old", "new_text": "new"}} or {{"path": "file.py", "diff": "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE"}}
-   - `LIST_DIR`: List directory contents. Args: {{"path": "."}}
-   - `GREP`: Search for patterns in code. Args: {{"pattern": "def main", "path": "."}}
-   - `RUN_COMMAND`: Execute a shell command. Args: {{"cmd": "ls -la"}}
-   - `SEARCH_AST`: Search AST Knowledge Graph (semantic vector search, class signatures, function source/AST, subgraphs). Args: {{"query": "ClassName", "action": "signature"}}
+   - `READ_FILE`: Read file contents. Args: {{'path': 'file.py'}} or {{'path': 'file.py', 'start_line': 10, 'end_line': 30}}
+   - `WRITE_FILE`: Create or overwrite a file. Args: {{'path': 'file.py', 'content': 'code here'}}
+   - `EDIT_FILE`: Surgically replace text. Args: {{'path': 'file.py', 'old_text': 'old', 'new_text': 'new'}} or {{'path': 'file.py', 'diff': '<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE'}}
+   - `LIST_DIR`: List directory contents. Args: {{'path': '.'}}
+   - `GREP`: Search for patterns in code. Args: {{'pattern': 'def main', 'path': '.'}}
+   - `RUN_COMMAND`: Execute a shell command. Args: {{'cmd': 'ls -la'}}
+   - `SEARCH_AST`: Search AST Knowledge Graph (semantic vector search, class signatures, function source/AST, subgraphs). Args: {{'query': 'ClassName', 'action': 'signature'}}
 
 3. **Recursive Self-Call**: Wrap a sub-question in `<SUB_QUERY>` tags to spawn a new reasoning instance.
 
@@ -119,7 +119,7 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
 ## Rules
 
 - Use exactly ONE action tag per response. Choose the most appropriate:
-  - `<TOOL name="TOOL_NAME">{{\\"arg\\": \\"value\\"}}</TOOL>` — to read/write files, run commands, search code
+  - `<TOOL name="TOOL_NAME">{{'arg': 'value'}}</TOOL>` — to read/write files, run commands, search code
   - `<CODE>python code here</CODE>` — to compute, analyze, or process data
   - `<SUB_QUERY>specific sub-question</SUB_QUERY>` — to delegate a sub-problem
   - `<FINAL_ANSWER>your complete answer</FINAL_ANSWER>` — when done

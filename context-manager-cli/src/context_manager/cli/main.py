@@ -680,6 +680,7 @@ class StreamingChatSession:
         small   = self.max_tokens <= _SMALL_CTX
         phase   = self._detect_phase(user_query)
         base_prompt = get_phase_system_prompt(phase)
+        allowed_tools = PRESETS[phase].allowed_tools if phase in PRESETS else None
 
         # ── System message — base prompt + optional tool syntax ───────────────
         if small:
@@ -691,15 +692,15 @@ class StreamingChatSession:
             system_content = base_prompt + cli_suffix
         else:
             tool_instruct = (
-                f"\n\n{self.skills.get_all_prompts(max_tokens=self.max_tokens)}\n"
+                f"\n\n{self.skills.get_all_prompts(max_tokens=self.max_tokens, allowed_tools=allowed_tools)}\n"
                 "To use a skill, output EXACTLY:\n<tool_call>\n"
-                "{\"name\": \"skill_name\", \"arguments\": {\"param\": \"value\"}}\n</tool_call>"
+                "{'name': 'skill_name', 'arguments': {'param': 'value'}}\n</tool_call>"
             )
             cli_suffix = (
                 "\n\n## Tool Calling Syntax (CLI):\n"
                 "Output EXACTLY this at the END of your response:\n"
                 "<tool_call>\n"
-                '{"name": "skill_name", "arguments": {"param": "value"}}\n'
+                "{'name': 'skill_name', 'arguments': {'param': 'value'}}\n"
                 "</tool_call>\n"
                 "Tool calls MUST be last. Only ONE tool call per turn.\n"
             )
@@ -1072,7 +1073,7 @@ def goal(
     )
     if AutonomousHarness:
         harness = AutonomousHarness(project_root=session.project_path, memory=session.memory)
-        harness.ensure_goal_spec_initialized(title=title)
+        harness.ensure_goal_spec_initialized(title=title, description=title)
         console.print("[dim]✓ Goal spec initialized in .torchlight/goal_spec.json & tasks.md[/dim]")
     asyncio.run(session.start())
 

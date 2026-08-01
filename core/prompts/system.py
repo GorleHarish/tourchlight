@@ -35,7 +35,7 @@ CRITICAL: Do NOT skip SEARCH_AST and jump straight to READ_FILE. SEARCH_AST retu
 
 [OUTPUT FORMAT]
 Provide concise reasoning (under 40 words), then output tool call at end:
-<tool_call>{"name": "TOOL_NAME", "arguments": {"arg": "value"}}</tool_call>
+<tool_call>{'name': 'TOOL_NAME', 'arguments': {'arg': 'value'}}</tool_call>
 """.strip()
 
 

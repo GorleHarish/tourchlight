@@ -883,5 +883,10 @@
     "mtime": 1785399326.8495748,
     "ast_hash": "f394247ec20b3a53f85acfdad1a6f1b7",
     "semantic_hash": ""
+  },
+  "bug.md": {
+    "mtime": 1785486078.515629,
+    "ast_hash": "a22547486cd3a72e72d1b56feaa39e5a",
+    "semantic_hash": ""
   }
 }

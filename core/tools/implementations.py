@@ -1459,7 +1459,7 @@ def _grep_python(pattern: str, path: str, project_root: str) -> str:
 def tool_run_command_impl(args: dict, project_root: str) -> str:
     """RUN_COMMAND — execute a shell command."""
     cmd = args.get("cmd", "")
-    timeout = 180 if any(cmd.strip().startswith(c) for c in _LONG_CMDS) else 60
+    timeout = 180 if any(cmd.strip().startswith(c) for c in _LONG_CMDS) else 30
 
     try:
         r = subprocess.run(

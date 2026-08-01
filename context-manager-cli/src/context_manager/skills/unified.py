@@ -49,9 +49,9 @@ class UnifiedSkillRegistry(SkillRegistry):
     }
 
     # Compact protocol for small context
-    _COMPACT_PROTOCOL = 'Format: <tool_call>{"name": "TOOL", "arguments": {"k": "v"}}</tool_call>'
+    _COMPACT_PROTOCOL = "Format: <tool_call>{'name': 'TOOL', 'arguments': {'k': 'v'}}</tool_call>"
 
-    def get_all_prompts(self, max_tokens: int = 0) -> str:
+    def get_all_prompts(self, max_tokens: int = 0, allowed_tools: Optional[List[str]] = None) -> str:
         """
         Condensed tool documentation injected into the system prompt.
         
@@ -63,8 +63,9 @@ class UnifiedSkillRegistry(SkillRegistry):
         if max_tokens <= 4096:
             # Ultra-compact for small context
             prompts = ["## TOOLS", self._COMPACT_PROTOCOL, ""]
-            for desc in self._COMPACT_TOOLS.values():
-                prompts.append(f"- {desc}")
+            for name, desc in self._COMPACT_TOOLS.items():
+                if allowed_tools is None or name in allowed_tools:
+                    prompts.append(f"- {desc}")
             prompts.extend([
                 "",
                 "## SKILLS",
@@ -76,11 +77,12 @@ class UnifiedSkillRegistry(SkillRegistry):
         # Medium/Large context: full tool list
         prompts = [
             "## TOOLS",
-            'Format: <tool_call>{"name": "TOOL_NAME", "arguments": {"key": "value"}}</tool_call>',
+            "Format: <tool_call>{'name': 'TOOL_NAME', 'arguments': {'key': 'value'}}</tool_call>",
             ""
         ]
         for t in self._core_reg.all():
-            prompts.append(f"- {t.name}: {t.description}")
+            if allowed_tools is None or t.name in allowed_tools:
+                prompts.append(f"- {t.name}: {t.description}")
 
         skills = self.list_skills()
         if not skills:
