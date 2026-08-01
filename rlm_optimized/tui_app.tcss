@@ -39,6 +39,138 @@ Footer {
     width: 1fr;
 }
 
+/* ── VS Code / Antigravity Style Multi-Tab Split Layout ───────────────── */
+
+#main-ide-container {
+    height: 1fr;
+    width: 1fr;
+}
+
+#explorer-sidebar {
+    width: 28;
+    height: 100%;
+    background: $surface;
+    border-right: heavy $primary;
+    padding: 0 0;
+}
+
+#editor-split-pane {
+    width: 3fr;
+    height: 100%;
+    border-right: heavy $primary;
+    background: $background;
+}
+
+#tab-bar-header {
+    height: 1;
+    background: $panel;
+    border-bottom: solid $primary;
+}
+
+#tab-buttons-container {
+    width: 1fr;
+    height: 1;
+    overflow-x: auto;
+}
+
+.tab-item-active {
+    height: 1;
+    width: auto;
+    background: $surface;
+    border-bottom: solid $primary;
+    margin-right: 1;
+}
+
+.tab-item-inactive {
+    height: 1;
+    width: auto;
+    background: $panel;
+    margin-right: 1;
+}
+
+.tab-label-btn {
+    height: 1;
+    min-width: 6;
+    padding: 0 1;
+    border: none;
+    background: transparent;
+    color: $primary;
+    text-style: bold;
+}
+
+.tab-label-btn:hover {
+    color: $accent;
+}
+
+.tab-close-btn {
+    height: 1;
+    min-width: 3;
+    padding: 0 0;
+    border: none;
+    background: transparent;
+    color: $foreground-muted;
+}
+
+.tab-close-btn:hover {
+    color: $error;
+    background: $panel;
+}
+
+#toggle-split-btn {
+    width: auto;
+    height: 1;
+    min-width: 6;
+    padding: 0 1;
+    border: none;
+    background: $surface;
+    color: $accent;
+    text-style: bold;
+}
+
+#editor-content-area {
+    height: 1fr;
+    padding: 0 1;
+    background: $background;
+}
+
+#agent-split-pane {
+    width: 2fr;
+    height: 100%;
+    background: $background;
+}
+
+#terminal-header-bar {
+    height: 1;
+    background: $panel;
+    padding: 0 1;
+    border-bottom: solid $primary;
+}
+
+#terminal-header-bar .panel-header-title {
+    width: 1fr;
+    content-align: left middle;
+    background: transparent;
+    border-bottom: none;
+}
+
+#prompt-symbol {
+    width: 2;
+    height: 3;
+    color: $primary;
+    text-style: bold;
+    content-align: center middle;
+}
+
+#context-meter-bar {
+    height: 1;
+    min-height: 1;
+    background: $surface;
+    padding: 0 1;
+    color: $foreground;
+    text-style: bold;
+    border-top: solid $panel;
+}
+
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
 
 #sidebar {
@@ -224,6 +356,13 @@ TextArea:disabled {
     padding: 0 1;
     color: $primary;
     text-style: bold;
+}
+
+#status-right {
+    width: auto;
+    padding: 0 1;
+    color: $foreground;
+    text-align: right;
 }
 
 #help-btn {

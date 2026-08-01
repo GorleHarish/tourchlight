@@ -535,7 +535,7 @@ class RLMEngineOptimized:
 
                 if approved:
                     self._notify_status("TOOL", {"tool_name": tool_name, "args": tool_args, "depth": depth})
-                    tool_result = registry.execute(tool_name, tool_args, self.project_root)
+                    tool_result = await asyncio.to_thread(registry.execute, tool_name, tool_args, self.project_root)
                     step.result = tool_result.output
                     result.steps.append(step)
                     if self.on_step:
@@ -559,8 +559,8 @@ class RLMEngineOptimized:
 
                     # Execution feedback: auto-run tests or web inspector after code changes
                     if self.feedback_loop and tool_name and tool_name.upper() in ("EDIT_FILE", "WRITE_FILE", "RUN_COMMAND"):
-                        self.feedback_loop.on_tool_executed(tool_name.upper(), tool_args, tool_result.output)
-                        fb_ctx = self.feedback_loop.build_feedback_context()
+                        await asyncio.to_thread(self.feedback_loop.on_tool_executed, tool_name.upper(), tool_args, tool_result.output)
+                        fb_ctx = await asyncio.to_thread(self.feedback_loop.build_feedback_context)
                         if fb_ctx:
                             feedback += f"\n\n[AUTOMATIC POST-EDIT EXECUTION FEEDBACK]\n{fb_ctx}"
 
@@ -637,7 +637,7 @@ class RLMEngineOptimized:
                 if approved:
                     self._notify_status("TOOL", {"tool_name": "REPL_CODE", "depth": depth})
                     async with sandbox_lock:
-                        exec_result = self.sandbox.execute(content, cwd=self.project_root)
+                        exec_result = await asyncio.to_thread(self.sandbox.execute, content, cwd=self.project_root)
                 else:
                     self._notify_status("TOOL_DENIED", {"tool_name": "REPL_CODE"})
                     exec_result = {"success": False, "error": "Code execution denied by user", "stdout": "", "stderr": ""}

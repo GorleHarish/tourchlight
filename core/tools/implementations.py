@@ -1459,7 +1459,27 @@ def _grep_python(pattern: str, path: str, project_root: str) -> str:
 def tool_run_command_impl(args: dict, project_root: str) -> str:
     """RUN_COMMAND — execute a shell command."""
     cmd = args.get("cmd", "")
-    timeout = 180 if any(cmd.strip().startswith(c) for c in _LONG_CMDS) else 30
+    cmd_clean = cmd.strip()
+
+    # Intercept accidental internal AST tool or Python function calls routed to RUN_COMMAND
+    if "get_project_structure" in cmd_clean:
+        return tool_search_ast_impl({"action": "structure"}, project_root)
+
+    if cmd_clean.startswith("semantic_search"):
+        import re
+        match = re.search(r'semantic_search\((?:query_string=)?["\'](.*?)["\']', cmd_clean)
+        q = match.group(1) if match else cmd_clean.replace("semantic_search", "").strip("() '\"")
+        return tool_search_ast_impl({"action": "search", "query": q}, project_root)
+
+    if cmd_clean.startswith("SEARCH_AST"):
+        import re
+        match = re.search(r'SEARCH_AST\((.*?)\)', cmd_clean, re.IGNORECASE)
+        payload = match.group(1) if match else ""
+        if "structure" in payload.lower():
+            return tool_search_ast_impl({"action": "structure"}, project_root)
+        return tool_search_ast_impl({"action": "search", "query": payload}, project_root)
+
+    timeout = 180 if any(cmd_clean.startswith(c) for c in _LONG_CMDS) else 30
 
     try:
         r = subprocess.run(
@@ -1972,7 +1992,7 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
         return graph.find_path(query, target)
     elif action in ("subgraph", "sub_graph", "deps", "depend", "dependencies", "graph"):
         return graph.get_subgraph(query)
-    elif action in ("structure", "project"):
+    elif action in ("structure", "project", "get_project_structure", "get_structure"):
         return graph.get_structure()
     elif action in ("summary", "info"):
         return f"Project AST Graph: {graph.graph_file}\nNodes: {len(graph.nodes)} | Edges: {len(graph.edges)}"

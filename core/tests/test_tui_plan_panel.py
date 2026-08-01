@@ -176,6 +176,38 @@ async def test_torchlight_app_headless_run():
         app = TorchlightApp(engine=engine, model_name="qwen2.5-coder-7b-instruct", provider_name="llama-cpp")
         async with app.run_test() as pilot:
             assert app.model_name == "qwen2.5-coder-7b-instruct"
+            # Verify VS Code Split IDE layout widgets exist
+            explorer = app.query_one("#explorer-sidebar")
+            editor_split = app.query_one("#editor-split-pane")
+            agent_split = app.query_one("#agent-split-pane")
+            context_bar = app.query_one("#context-meter-bar")
+            compact_btn = app.query_one("#compact-btn")
+            assert explorer is not None
+            assert editor_split is not None
+            assert agent_split is not None
+            assert context_bar is not None
+            assert compact_btn is not None
+            
+            # Verify input state toggle preserves clickable Stop button
+            app._set_input_enabled(False)
+            btn = app.query_one("#send-btn")
+            assert btn.disabled is False
+            assert "STOP" in str(btn.label).upper()
+            
+            app._set_input_enabled(True)
+            assert btn.disabled is False
+            assert "SEND" in str(btn.label).upper()
             await pilot.pause()
     except (ImportError, ModuleNotFoundError) as e:
         pytest.skip(f"Textual not installed in test environment: {e}")
+
+def test_copy_selection_modal_composes():
+    try:
+        from rlm_optimized.tui_app import CopySelectionModal
+        history = [{"role": "user", "content": "hello"}, {"role": "assistant", "content": "hi"}]
+        modal = CopySelectionModal(history)
+        children = list(modal.compose())
+        assert len(children) > 0
+    except ImportError:
+        pytest.skip("textual not installed in test environment")
+

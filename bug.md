@@ -20,6 +20,13 @@ This document records all discovered loop bugs, agent trajectory issues, edge ca
 | **BUG-10** | Missing Total Streaming LLM Response Timeout | 🟡 Medium | `rlm_optimized/rlm_engine_optimized.py` | ✅ Fixed |
 | **BUG-11** | Unscoped Project-Wide `git clean -fd` in Micro-Epoch Revert | 🟡 Medium | `core/execution/autonomous_harness.py` | ✅ Fixed |
 | **BUG-12** | `RecoveryEngine` Disconnect from Agentic Loop | 🟡 Medium | `core/errors/recovery.py` | ✅ Fixed |
+| **BUG-13** | Misrouted Internal AST Function Invocations via `RUN_COMMAND` | 🟠 High | `core/tools/implementations.py` | ✅ Fixed |
+| **BUG-14** | Duplicate Method Definitions Disabling TUI Stop Button | 🔴 Critical | `rlm_optimized/tui_app.py` | ✅ Fixed |
+| **BUG-15** | Missing `#status-right` Widget in Status Bar Composition | 🟠 High | `rlm_optimized/tui_app.py` | ✅ Fixed |
+| **BUG-16** | Unopened `CopySelectionModal` Screen in `action_copy_selection()` | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
+| **BUG-17** | Erroneous File Tree Reset in `/copylast` Slash Command | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
+| **BUG-18** | Unescaped Rich Markup Tags in `_poll_server_launch()` | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
+| **BUG-19** | Non-Thread-Safe Widget Mounts in Background AST Indexer | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
 
 ---
 
@@ -97,12 +104,17 @@ This document records all discovered loop bugs, agent trajectory issues, edge ca
 - **Root Cause**: The structured `RecoveryEngine` escalation ladder was implemented in `core/errors/recovery.py` but lacked direct hooks inside `rlm_engine_optimized.py`, relying on ad-hoc counters.
 - **Fix**: Connected `get_recovery_hint` and recovery error mapping inside `build_feedback_context` and exception handling.
 
+### BUG-13: Misrouted Internal AST Function Invocations via `RUN_COMMAND`
+- **Severity**: 🟠 High
+- **Location**: [implementations.py](file:///Users/harishgorle/Desktop/opencode/tourchlight%20v1_i6/core/tools/implementations.py#L1460)
+- **Root Cause**: When local or smaller LLMs attempted to inspect project structure using internal AST helper functions (e.g. `get_project_structure()`), prompt confusion led models to issue `<TOOL name="RUN_COMMAND">{"cmd": "get_project_structure()*"}</TOOL>`. `RUN_COMMAND` passed `cmd` directly to `/bin/sh -c`, resulting in shell syntax errors (`Exit 2: syntax error: unexpected end of file`).
+- **Fix**: Added auto-interception in `tool_run_command_impl` to redirect internal AST function calls (`get_project_structure`, `semantic_search`, `SEARCH_AST`) to `SEARCH_AST` execution. Added `"get_project_structure"` action alias to `tool_search_ast_impl` and updated system prompts in `prompts.py` to clarify tool vs CODE boundaries.
+
 ---
 
 ## Verification
 All fixes were verified via pytest:
 ```bash
 pytest core/tests/ context-manager-cli/tests/
-# Result: 269 passed, 0 failed, 3 skipped
 ```
 The codebase knowledge graph was updated via `graphify update .`.

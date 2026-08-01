@@ -10,6 +10,7 @@ import asyncio
 import argparse
 from pathlib import Path
 from typing import Optional
+import hashlib
 
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Vertical, Horizontal, Container
@@ -749,6 +750,52 @@ _TORCHLIGHT_THEME = Theme(
     },
 )
 
+_MATRIX_PHOSPHOR_THEME = Theme(
+    name="matrix-phosphor",
+    primary="#00ff66",
+    accent="#00e575",
+    foreground="#00ff87",
+    background="#060b08",
+    surface="#0d1410",
+    panel="#121c16",
+    success="#00ff66",
+    warning="#ffcc00",
+    error="#ff4444",
+    dark=True,
+    variables={
+        "footer-key-foreground": "#00ff66",
+        "footer-background": "#0d1410",
+        "footer-description-foreground": "#00aa44",
+        "block-hover-background": "#14241a",
+        "block-cursor-background": "#00ff66",
+        "block-cursor-foreground": "#060b08",
+        "input-cursor-background": "#00ff66",
+        "input-cursor-foreground": "#060b08",
+        "input-selection-background": "#005522",
+        "button-color-foreground": "#060b08",
+        "button-foreground": "#00ff66",
+        "button-focus-text-style": "bold",
+        "text-primary": "#00ff66",
+        "text-success": "#00ff87",
+        "text-warning": "#ffcc00",
+        "text-error": "#ff4444",
+        "text": "#00ff87",
+        "primary-muted": "#003314",
+        "success-muted": "#003314",
+        "warning-muted": "#332a00",
+        "error-muted": "#330000",
+        "border": "#00aa44",
+        "border-blurred": "#005522",
+        "scrollbar": "#00aa44",
+        "scrollbar-hover": "#00ff66",
+        "scrollbar-active": "#00ff87",
+        "scrollbar-background": "#060b08",
+        "scrollbar-background-hover": "#0d1410",
+        "scrollbar-background-active": "#0d1410",
+        "scrollbar-corner-color": "#060b08",
+    },
+)
+
 
 class TorchlightApp(App):
     """Codex / Tiny-Brain 2 Style Agent IDE TUI."""
@@ -826,56 +873,52 @@ class TorchlightApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
-        with Horizontal(id="body-container"):
-            with Vertical(id="sidebar"):
-                yield Static("Engine Control", classes="sidebar-section-title")
-                with Horizontal(id="engine-btn-bar-1"):
-                    yield Button("Start", id="start-engine-btn", variant="success")
-                    yield Button("Restart", id="restart-engine-btn", variant="warning")
-                    yield Button("Stop", id="stop-engine-btn", variant="error")
-                with Horizontal(id="engine-btn-bar-2"):
-                    yield Button("Kill Session", id="kill-session-btn", variant="error")
-                yield Static(classes="sidebar-divider")
-                yield Static("Workspace Explorer", classes="sidebar-section-title")
+        with Horizontal(id="main-ide-container"):
+            # 1. Left Explorer Sidebar (Files, System Health, Plan)
+            with Vertical(id="explorer-sidebar"):
+                yield Static("EXPLORER", classes="panel-header-title")
                 yield DirectoryTree(self.engine.project_root, id="file-tree")
-                yield Static(classes="sidebar-divider")
                 if Collapsible is not None:
                     yield Collapsible(
-                        Static(self._build_meta_text(), id="meta-panel"),
-                        title="⚙️ System Status",
+                        Static(self._build_system_health_text(), id="system-health-panel"),
+                        title="⚙️ System Health",
+                        collapsed=False,
+                        id="health-collapsible",
+                    )
+                    yield Collapsible(
+                        Static(self._build_plan_text(), id="plan-panel"),
+                        title="📋 Implementation Plan",
                         collapsed=True,
-                        id="meta-collapsible"
+                        id="plan-collapsible",
                     )
                 else:
-                    yield Static("System Status", classes="sidebar-section-title")
-                    yield Static(self._build_meta_text(), id="meta-panel")
-                yield Static(classes="sidebar-divider")
-                yield Static("📋 Implementation Plan", classes="sidebar-section-title")
-                yield Static(self._build_plan_text(), id="plan-panel")
-            with Vertical(id="chat-pane"):
-                yield Horizontal(
-                    Static("", id="status-left"),
-                    Button("⌨️ Shortcuts & Help", id="help-btn", variant="default"),
-                    id="status-bar",
-                )
+                    yield Static("System Health", classes="sidebar-section-title")
+                    yield Static(self._build_system_health_text(), id="system-health-panel")
+
+            # 2. Left Split Pane: Multi-Tab Document & Code Editor
+            with Vertical(id="editor-split-pane"):
+                with Horizontal(id="tab-bar-header"):
+                    yield Horizontal(id="tab-buttons-container")
+                    yield Button("◧ Split", id="toggle-split-btn", variant="default")
+                yield VerticalScroll(id="editor-content-area")
+
+            # 3. Right Split Pane: Agent Terminal & Chat Trajectory
+            with Vertical(id="agent-split-pane"):
+                with Horizontal(id="terminal-header-bar"):
+                    yield Static("TERMINAL / AGENT", classes="panel-header-title")
+                    yield Button(
+                        f"🤖 {escape(self.model_name)} ▾",
+                        id="input-model-badge",
+                        variant="default"
+                    )
+                    yield Button("🗜️ Compact", id="compact-btn", variant="warning")
+                    yield Button("⌨️ Help", id="help-btn", variant="default")
                 yield VerticalScroll(id="chat-container")
+
+                # Bottom Command Input Row
                 with Vertical(id="input-area"):
-                    with Horizontal(id="input-header-bar"):
-                        yield Button(
-                            f"🤖 {escape(self.model_name)} ▾",
-                            id="input-model-badge",
-                            variant="default"
-                        )
-                        yield Button(
-                            "🗜️ Compact",
-                            id="compact-btn",
-                            variant="default"
-                        )
-                        yield Static(
-                            self._build_context_progress_text(),
-                            id="context-progress-badge"
-                        )
                     with Horizontal(id="input-row"):
+                        yield Static("> ", id="prompt-symbol")
                         yield TextArea(
                             "",
                             id="user-input",
@@ -884,9 +927,225 @@ class TorchlightApp(App):
                             soft_wrap=True,
                             tab_behavior="indent",
                         )
-                        yield Button("Send", id="send-btn", variant="primary")
+                        yield Button("SEND ↗", id="send-btn", variant="primary")
                         yield Static("", id="input-spinner")
+
+        # Bottom Context Progress Meter
+        yield Static(self._build_context_progress_text(), id="context-meter-bar")
         yield Footer()
+
+    def open_file_tab(self, file_path: str) -> None:
+        try:
+            if not os.path.exists(file_path):
+                return
+            filename = os.path.basename(file_path)
+            ext = os.path.splitext(file_path)[1].lower().lstrip(".")
+            lang_map = {
+                "py": "python",
+                "js": "javascript",
+                "ts": "typescript",
+                "json": "json",
+                "md": "markdown",
+                "html": "html",
+                "css": "css",
+                "sh": "bash",
+            }
+            lang = lang_map.get(ext, "text")
+
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                content_text = f.read(100000)
+
+            self._open_tabs[file_path] = {
+                "filename": filename,
+                "content": content_text,
+                "lang": lang,
+            }
+            self._active_tab_path = file_path
+
+            # Ensure split editor pane is displayed when opening files
+            try:
+                editor_pane = self.query_one("#editor-split-pane")
+                editor_pane.display = True
+            except Exception:
+                pass
+
+            self._refresh_editor_split_view()
+            self.notify(f"Opened {filename} in Editor view", severity="information", timeout=2)
+        except Exception as e:
+            self.notify(f"Could not open file: {e}", severity="error", timeout=3)
+
+    def close_file_tab(self, file_path: str) -> None:
+        if file_path in self._open_tabs:
+            del self._open_tabs[file_path]
+            if self._active_tab_path == file_path:
+                remaining = list(self._open_tabs.keys())
+                self._active_tab_path = remaining[-1] if remaining else None
+            self._refresh_editor_split_view()
+
+    def _get_tab_hash(self, file_path: str) -> str:
+        return hashlib.md5(file_path.encode("utf-8")).hexdigest()[:10]
+
+    def _refresh_editor_split_view(self) -> None:
+        try:
+            tab_container = self.query_one("#tab-buttons-container")
+            content_area = self.query_one("#editor-content-area")
+
+            tab_container.remove_children()
+            for path, info in self._open_tabs.items():
+                is_active = (path == self._active_tab_path)
+                fn = info["filename"]
+                h = self._get_tab_hash(path)
+
+                tab_box = Horizontal(classes="tab-item-active" if is_active else "tab-item-inactive")
+                tab_box.mount(Button(f"📄 {fn}", id=f"tsel_{h}", classes="tab-label-btn"))
+                tab_box.mount(Button("✕", id=f"tcls_{h}", classes="tab-close-btn"))
+                tab_container.mount(tab_box)
+
+            content_area.remove_children()
+            if self._active_tab_path and self._active_tab_path in self._open_tabs:
+                info = self._open_tabs[self._active_tab_path]
+                content_area.mount(Static(Panel(
+                    Syntax(info["content"], info["lang"], theme="monokai", line_numbers=True),
+                    title=f"📄 Editor: {escape(info['filename'])}",
+                    border_style="cyan",
+                )))
+            elif os.path.exists(os.path.join(self.engine.project_root, "walkthrough.md")):
+                wt_path = os.path.join(self.engine.project_root, "walkthrough.md")
+                with open(wt_path, "r", encoding="utf-8", errors="replace") as f:
+                    wt_text = f.read(50000)
+                content_area.mount(Static(Panel(
+                    Syntax(wt_text, "markdown", theme="monokai", line_numbers=True),
+                    title="📄 Editor: walkthrough.md",
+                    border_style="cyan",
+                )))
+            else:
+                content_area.mount(Static("[dim]Select a file from EXPLORER tree to view in Editor[/dim]"))
+        except Exception:
+            pass
+
+    @on(DirectoryTree.FileSelected, "#file-tree")
+    def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+        file_path = str(event.path)
+        if not os.path.isfile(file_path):
+            return
+        self.open_file_tab(file_path)
+
+    @on(Button.Pressed, "#toggle-split-btn")
+    def on_toggle_split_btn(self) -> None:
+        try:
+            editor_pane = self.query_one("#editor-split-pane")
+            editor_pane.display = not editor_pane.display
+            status = "shown" if editor_pane.display else "hidden"
+            self.notify(f"Editor split pane {status}", severity="information", timeout=2)
+        except Exception:
+            pass
+
+    @on(Button.Pressed)
+    def on_tab_action_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id or ""
+        if not (btn_id.startswith("tsel_") or btn_id.startswith("tcls_")):
+            return
+
+        h_target = btn_id.split("_", 1)[1]
+        matching_path = None
+        for path in self._open_tabs.keys():
+            if self._get_tab_hash(path) == h_target:
+                matching_path = path
+                break
+
+        if not matching_path:
+            return
+
+        if btn_id.startswith("tcls_"):
+            self.close_file_tab(matching_path)
+        else:
+            self._active_tab_path = matching_path
+            self._refresh_editor_split_view()
+
+    def _build_system_health_text(self) -> str:
+        cpu_pct = 0
+        ram_pct = 0
+        ram_detail = ""
+
+        try:
+            import psutil
+            cpu_val = psutil.cpu_percent(interval=None)
+            if cpu_val == 0.0:
+                cpu_val = psutil.cpu_percent(interval=0.03)
+            cpu_pct = min(100, max(0, int(round(cpu_val))))
+
+            vm = psutil.virtual_memory()
+            ram_pct = min(100, max(0, int(round(vm.percent))))
+            used_gb = vm.used / (1024 ** 3)
+            total_gb = vm.total / (1024 ** 3)
+            ram_detail = f" ({used_gb:.1f}/{total_gb:.1f} GB)"
+        except Exception:
+            try:
+                load1, _, _ = os.getloadavg()
+                cpu_count = os.cpu_count() or 1
+                cpu_pct = min(100, int((load1 / cpu_count) * 100))
+            except Exception:
+                cpu_pct = 0
+
+            try:
+                import subprocess
+                p = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=2)
+                lines = p.stdout.splitlines()
+                pages = {}
+                for line in lines[1:]:
+                    parts = line.split(":")
+                    if len(parts) == 2:
+                        key = parts[0].strip()
+                        val = int(parts[1].strip().rstrip("."))
+                        pages[key] = val
+                page_size = 4096
+                free = (pages.get("Pages free", 0) + pages.get("Pages speculative", 0)) * page_size
+                active = pages.get("Pages active", 0) * page_size
+                wired = pages.get("Pages wired down", 0) * page_size
+                compressed = pages.get("Pages occupied by compressor", 0) * page_size
+                used = active + wired + compressed
+                total = used + free + (pages.get("Pages inactive", 0) * page_size)
+                ram_pct = int((used / total) * 100) if total > 0 else 0
+            except Exception:
+                ram_pct = 0
+
+        # Context Token Calculation
+        mem = getattr(self.engine, "_memory", None)
+        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
+            tokens_est = mem.total_tokens
+        else:
+            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+            
+        ctx_max = CTX_SIZE
+        ctx_pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
+
+        def make_ascii_bar(pct: int, width: int = 10) -> str:
+            filled = min(width, max(0, int(round((pct / 100.0) * width))))
+            return "█" * filled + "░" * (width - filled)
+
+        cpu_bar = make_ascii_bar(cpu_pct)
+        ram_bar = make_ascii_bar(ram_pct)
+        ctx_bar = make_ascii_bar(ctx_pct, width=10)
+
+        cpu_color = "green" if cpu_pct < 75 else "yellow" if cpu_pct < 90 else "red"
+        ram_color = "green" if ram_pct < 75 else "yellow" if ram_pct < 90 else "red"
+        ctx_color = "green" if ctx_pct < 50 else "yellow" if ctx_pct < 75 else "red"
+
+        active_procs = ["agent_1", "agent_2", "agent_3"] if getattr(self, "_is_running", False) else ["agent_1"]
+        proc_count = len(active_procs)
+        proc_lines = []
+        for idx, proc in enumerate(active_procs):
+            branch = "└── " if idx == proc_count - 1 else "├── "
+            proc_lines.append(f"  {branch}[cyan]{proc}[/cyan]")
+        proc_str = "\n".join(proc_lines)
+
+        return (
+            f"[bold {cpu_color}]CPU:[/] [{cpu_bar}] [bold {cpu_color}]{cpu_pct}%[/bold {cpu_color}]\n"
+            f"[bold {ram_color}]RAM:[/] [{ram_bar}] [bold {ram_color}]{ram_pct}%[/bold {ram_color}]{ram_detail}\n"
+            f"[bold {ctx_color}]CTX:[/] [{ctx_bar}] [bold {ctx_color}]{ctx_pct}%[/bold {ctx_color}] [dim]({tokens_est:,}/{ctx_max:,})[/dim]\n\n"
+            f"[bold white]ACTIVE PROCESSES:[/] [bold yellow]{proc_count}[/bold yellow]\n"
+            f"{proc_str}"
+        )
 
     def _build_plan_text(self) -> str:
         project_root = getattr(self.engine, "project_root", os.getcwd())
@@ -986,18 +1245,11 @@ class TorchlightApp(App):
             
         ctx_max = CTX_SIZE
         pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
-        bar_width = 10
+        bar_width = 30
         filled = min(bar_width, int(round((pct / 100.0) * bar_width)))
         bar = "█" * filled + "░" * (bar_width - filled)
 
-        if pct < 50:
-            color = "green"
-        elif pct < 75:
-            color = "yellow"
-        else:
-            color = "red"
-
-        return f"[dim]Context:[/] [{color}]{bar}[/{color}] [bold {color}]{pct}%[/bold {color}] [dim]({tokens_est:,}/{ctx_max:,})[/dim]"
+        return f"[bold green]Context:[/] [{bar}] [bold green]{pct}%[/bold green] [dim]({tokens_est:,}/{ctx_max:,})[/dim]"
 
     def _build_meta_text(self) -> str:
         mem = getattr(self.engine, "_memory", None)
@@ -1064,6 +1316,10 @@ class TorchlightApp(App):
     def on_compact_btn_clicked(self) -> None:
         self.action_compact_context()
 
+    @on(Button.Pressed, "#health-compact-btn")
+    def on_health_compact_btn_clicked(self) -> None:
+        self.action_compact_context()
+
     async def _submit_user_input(self) -> None:
         """Extract text from the TextArea, clear it, and dispatch."""
         try:
@@ -1115,12 +1371,12 @@ class TorchlightApp(App):
             spinner = self.query_one("#input-spinner")
             inp.disabled = not enabled
             if not enabled:
-                btn.label = "⏹ Stop"
+                btn.label = "⏹ STOP"
                 btn.variant = "error"
                 btn.disabled = False
                 spinner.update("[bold cyan]●[/]")
             else:
-                btn.label = "Send"
+                btn.label = "SEND ↗"
                 btn.variant = "primary"
                 btn.disabled = False
                 spinner.update("")
@@ -1158,10 +1414,11 @@ class TorchlightApp(App):
     def on_mount(self) -> None:
         try:
             self.register_theme(_TORCHLIGHT_THEME)
-            self.theme = "torchlight"
+            self.register_theme(_MATRIX_PHOSPHOR_THEME)
+            self.theme = "matrix-phosphor"
         except Exception:
             try:
-                self.theme = "textual-dark"
+                self.theme = "torchlight"
             except Exception:
                 pass
 
@@ -1241,42 +1498,6 @@ class TorchlightApp(App):
     def on_resize(self) -> None:
         self._apply_responsive_layout()
 
-    async def _submit_user_input(self) -> None:
-        """Extract text from the TextArea, clear it, and dispatch."""
-        try:
-            inp = self.query_one("#user-input", TextArea)
-        except Exception:
-            return
-        user_text = inp.text.strip()
-        if not user_text or self._is_running:
-            return
-
-        inp.clear()
-
-        # Handle Slash Commands
-        if user_text.startswith("/"):
-            await self._handle_slash_command(user_text)
-            return
-
-        # Show user message
-        self._chat_history.append({"role": "user", "content": user_text})
-        container = self.query_one("#chat-container")
-        self._safe_mount(container, Static(Panel(
-            escape(user_text),
-            title="You",
-            border_style="bright_blue",
-        )))
-
-        # Run agent
-        self._run_agent(user_text)
-
-    @on(Button.Pressed, "#send-btn")
-    async def on_send_button(self) -> None:
-        if self._is_running:
-            self.stop_current_agent()
-            return
-        await self._submit_user_input()
-
     async def on_key(self, event) -> None:
         """Enter submits the prompt; Shift+Enter inserts a newline."""
         if event.key == "enter":
@@ -1289,20 +1510,6 @@ class TorchlightApp(App):
                 event.prevent_default()
                 event.stop()
                 await self._submit_user_input()
-
-    def _set_input_enabled(self, enabled: bool) -> None:
-        try:
-            inp = self.query_one("#user-input", TextArea)
-            btn = self.query_one("#send-btn")
-            spinner = self.query_one("#input-spinner")
-            inp.disabled = not enabled
-            btn.disabled = not enabled
-            if not enabled:
-                spinner.update("[bold cyan]>[/]")
-            else:
-                spinner.update("")
-        except Exception:
-            pass
 
     # ── Slash Command Handler ───────────────────────────────────────────
 
@@ -1418,9 +1625,6 @@ class TorchlightApp(App):
 
         elif cmd == "/copylast":
             self.action_copy_last()
-            tree = self.query_one("#file-tree", DirectoryTree)
-            tree.path = self.engine.project_root
-            self.notify("File tree refreshed", severity="information", timeout=2)
 
         else:
             self.notify(f"Unknown command: {cmd}. Type /help for list.", severity="error", timeout=3)
@@ -1566,9 +1770,12 @@ class TorchlightApp(App):
                     name_match = re.search(r'"name"\s*:\s*"([^"]+)"', raw_payload)
                     if name_match:
                         t_name = name_match.group(1)
-                        target_match = re.search(r'"(?:path|file|cmd|command|pattern|query)"\s*:\s*"([^"]+)"', raw_payload)
+                        target_match = re.search(r'"(?:path|file|file_path|cmd|command|pattern|query)"\s*:\s*"([^"]+)"', raw_payload)
                         target_str = target_match.group(1) if target_match else ""
-                        tool_info = f": [bold yellow]{t_name}[/bold yellow]{f' ({escape(target_str)})' if target_str else ''}"
+                        if t_name in ("WRITE_FILE", "EDIT_FILE"):
+                            tool_info = f": [bold green]Writing code to file[/bold green]{f' [cyan]{escape(target_str)}[/cyan]' if target_str else ''}"
+                        else:
+                            tool_info = f": [bold yellow]{t_name}[/bold yellow]{f' ({escape(target_str)})' if target_str else ''}"
                 except Exception:
                     pass
 
@@ -1831,13 +2038,14 @@ class TorchlightApp(App):
                 self.notify("Failed to copy selection", severity="error", timeout=3)
             return
 
-        # 2. If no text highlighted on screen, present turn selection modal
         def _on_turn_selected(content: Optional[str]):
             if content:
                 if copy_to_clipboard(content):
                     self.notify("Turn copied to clipboard", severity="information", timeout=2)
                 else:
                     self.notify("Failed to copy turn", severity="error", timeout=3)
+
+        self.push_screen(CopySelectionModal(self._chat_history), _on_turn_selected)
 
     def action_select_mode(self) -> None:
         def _on_mode_selected(selected_mode: Optional[str]):
@@ -1933,11 +2141,11 @@ class TorchlightApp(App):
         target = self.engine.project_root
         
         def mount_static(msg: str):
-            container.mount(Static(msg))
+            self._safe_mount(container, Static(msg))
             
         self.call_from_thread(
             mount_static,
-            f"  [bold yellow]🧠 Indexing AST knowledge graph for {target} ... this may take a while.[/]"
+            f"  [bold yellow]🧠 Indexing AST knowledge graph for {escape(target)} ... this may take a while.[/]"
         )
         try:
             from rlm_optimized.ast_indexer import index_directory
@@ -1969,7 +2177,7 @@ class TorchlightApp(App):
                 self.update_sidebar_meta()
                 if hasattr(self, "_conn_banner_widget") and self._conn_banner_widget:
                     self._conn_banner_widget.update(
-                        f"  [bold green]Connected to {self.provider_name} ({self.model_name}) on port {port}[/]\n"
+                        f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {port}[/]\n"
                     )
                 self.notify(f"Engine server active on port {port}", severity="information", timeout=2)
                 return

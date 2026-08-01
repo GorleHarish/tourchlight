@@ -57,3 +57,18 @@ def test_search_ast_action_aliases(tmp_path):
     res_deps = tool_search_ast_impl({"action": "deps", "query": "foo.py"}, str(tmp_path))
     assert "Subgraph" in res_deps
 
+    res_struct = tool_search_ast_impl({"action": "get_project_structure"}, str(tmp_path))
+    assert isinstance(res_struct, str)
+
+
+def test_run_command_intercept_ast_functions(tmp_path):
+    from core.tools.implementations import tool_run_command_impl
+    (tmp_path / "bar.py").write_text("class DemoClass:\n    pass\n", encoding="utf-8")
+
+    # When LLM sends "get_project_structure()*" to RUN_COMMAND
+    res = tool_run_command_impl({"cmd": "get_project_structure()*"}, str(tmp_path))
+    assert "Exit 2" not in res
+    assert "syntax error" not in res
+    assert "bar.py" in res or "DemoClass" in res or "Structure" in res or "Project" in res
+
+
