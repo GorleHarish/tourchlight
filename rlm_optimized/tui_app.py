@@ -527,6 +527,71 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
         self.dismiss(None)
 
 
+# ── File Action Modal (OS Tool Selector) ────────────────────────────────
+
+class FileActionModal(ModalScreen[str]):
+    """Modal dialog presenting OS options when a file is selected in the Explorer tree."""
+
+    BINDINGS = [
+        ("escape", "action_cancel", "Cancel"),
+    ]
+
+    DEFAULT_CSS = """
+    FileActionModal {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.7);
+    }
+    #file-action-dialog {
+        width: 62;
+        height: auto;
+        padding: 1 2;
+        background: $panel;
+        border: thick $primary;
+    }
+    .file-action-title {
+        text-align: center;
+        margin-bottom: 1;
+    }
+    .file-action-btn {
+        width: 100%;
+        margin-top: 1;
+    }
+    """
+
+    def __init__(self, file_path: str):
+        super().__init__()
+        self.file_path = os.path.abspath(file_path)
+        self.filename = os.path.basename(self.file_path)
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="file-action-dialog"):
+            yield Static(
+                f"[bold cyan]📄 {escape(self.filename)}[/bold cyan]\n"
+                f"[dim]{escape(self.file_path)}[/dim]",
+                classes="file-action-title"
+            )
+            yield Button("🚀 Open with System Default App", id="act-open-system", variant="primary", classes="file-action-btn")
+            yield Button("📝 Open in VS Code / Editor", id="act-open-code", variant="success", classes="file-action-btn")
+            yield Button("📋 Copy Absolute File Path", id="act-copy-path", variant="default", classes="file-action-btn")
+            yield Button("✕ Cancel", id="act-cancel", variant="error", classes="file-action-btn")
+
+    @on(Button.Pressed, "#act-open-system")
+    def action_open_system(self) -> None:
+        self.dismiss("system")
+
+    @on(Button.Pressed, "#act-open-code")
+    def action_open_code(self) -> None:
+        self.dismiss("code")
+
+    @on(Button.Pressed, "#act-copy-path")
+    def action_copy_path(self) -> None:
+        self.dismiss("copy")
+
+    @on(Button.Pressed, "#act-cancel")
+    def action_cancel(self) -> None:
+        self.dismiss("cancel")
+
+
 # ── Agent Status & Telemetry Modal ──────────────────────────────────────
 
 class AgentStatusModal(ModalScreen[None]):
@@ -838,6 +903,9 @@ class TorchlightApp(App):
         self._agent_state: str = "IDLE"
         self._agent_events: list[dict] = []
         self._server_starting: bool = False
+        self._open_tabs: dict[str, dict] = {}
+        self._active_tab_path: Optional[str] = None
+        self._split_editor_visible: bool = True
 
     def _handle_status_change(self, payload: dict) -> None:
         import datetime
@@ -895,17 +963,10 @@ class TorchlightApp(App):
                     yield Static("System Health", classes="sidebar-section-title")
                     yield Static(self._build_system_health_text(), id="system-health-panel")
 
-            # 2. Left Split Pane: Multi-Tab Document & Code Editor
-            with Vertical(id="editor-split-pane"):
-                with Horizontal(id="tab-bar-header"):
-                    yield Horizontal(id="tab-buttons-container")
-                    yield Button("◧ Split", id="toggle-split-btn", variant="default")
-                yield VerticalScroll(id="editor-content-area")
-
-            # 3. Right Split Pane: Agent Terminal & Chat Trajectory
+            # 2. Main Right Area: Agent Terminal, Reasoning Trajectory & Logs
             with Vertical(id="agent-split-pane"):
                 with Horizontal(id="terminal-header-bar"):
-                    yield Static("TERMINAL / AGENT", classes="panel-header-title")
+                    yield Static("TERMINAL / REASONING & AGENT LOG", classes="panel-header-title")
                     yield Button(
                         f"🤖 {escape(self.model_name)} ▾",
                         id="input-model-badge",
@@ -934,45 +995,69 @@ class TorchlightApp(App):
         yield Static(self._build_context_progress_text(), id="context-meter-bar")
         yield Footer()
 
+    def open_tab(self, file_path: str) -> None:
+        self.open_file_tab(file_path)
+
+    def open_file(self, file_path: str) -> None:
+        self.open_file_tab(file_path)
+
     def open_file_tab(self, file_path: str) -> None:
         try:
-            if not os.path.exists(file_path):
+            abs_path = os.path.abspath(file_path)
+            if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
+                self.notify(f"File not found: {escape(file_path)}", severity="warning", timeout=2)
                 return
-            filename = os.path.basename(file_path)
-            ext = os.path.splitext(file_path)[1].lower().lstrip(".")
-            lang_map = {
-                "py": "python",
-                "js": "javascript",
-                "ts": "typescript",
-                "json": "json",
-                "md": "markdown",
-                "html": "html",
-                "css": "css",
-                "sh": "bash",
-            }
-            lang = lang_map.get(ext, "text")
 
-            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                content_text = f.read(100000)
+            filename = os.path.basename(abs_path)
 
-            self._open_tabs[file_path] = {
-                "filename": filename,
-                "content": content_text,
-                "lang": lang,
-            }
-            self._active_tab_path = file_path
+            def _on_action_choice(choice: Optional[str]) -> None:
+                if not choice or choice == "cancel":
+                    return
 
-            # Ensure split editor pane is displayed when opening files
-            try:
-                editor_pane = self.query_one("#editor-split-pane")
-                editor_pane.display = True
-            except Exception:
-                pass
+                if choice == "system":
+                    try:
+                        if sys.platform == "darwin":
+                            subprocess.Popen(["open", abs_path])
+                        elif sys.platform == "win32":
+                            os.startfile(abs_path)
+                        else:
+                            subprocess.Popen(["xdg-open", abs_path])
+                        self.notify(f"🚀 Opened {filename} with default app", severity="information", timeout=2)
+                    except Exception as err:
+                        self.notify(f"Could not open file: {err}", severity="error", timeout=3)
 
-            self._refresh_editor_split_view()
-            self.notify(f"Opened {filename} in Editor view", severity="information", timeout=2)
+                elif choice == "code":
+                    try:
+                        subprocess.Popen(["code", abs_path])
+                        self.notify(f"📝 Opened {filename} in VS Code", severity="information", timeout=2)
+                    except Exception:
+                        try:
+                            if sys.platform == "darwin":
+                                subprocess.Popen(["open", abs_path])
+                            else:
+                                subprocess.Popen(["xdg-open", abs_path])
+                            self.notify(f"🚀 Opened {filename} with default app", severity="information", timeout=2)
+                        except Exception as err:
+                            self.notify(f"Could not launch editor: {err}", severity="error", timeout=3)
+
+                elif choice == "copy":
+                    try:
+                        if sys.platform == "darwin":
+                            p = subprocess.Popen(["pbcopy"], stdin=subprocess.PIPE)
+                            p.communicate(abs_path.encode("utf-8"))
+                        elif sys.platform == "win32":
+                            p = subprocess.Popen(["clip"], stdin=subprocess.PIPE)
+                            p.communicate(abs_path.encode("utf-16"))
+                        else:
+                            p = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
+                            p.communicate(abs_path.encode("utf-8"))
+                        self.notify(f"📋 Copied path: {filename}", severity="information", timeout=2)
+                    except Exception:
+                        self.notify(f"Path: {abs_path}", severity="information", timeout=4)
+
+            self.push_screen(FileActionModal(abs_path), _on_action_choice)
         except Exception as e:
-            self.notify(f"Could not open file: {e}", severity="error", timeout=3)
+            self.notify(f"File action error: {e}", severity="warning", timeout=2)
 
     def close_file_tab(self, file_path: str) -> None:
         if file_path in self._open_tabs:
@@ -989,46 +1074,27 @@ class TorchlightApp(App):
         try:
             tab_container = self.query_one("#tab-buttons-container")
             content_area = self.query_one("#editor-content-area")
-
-            tab_container.remove_children()
-            for path, info in self._open_tabs.items():
-                is_active = (path == self._active_tab_path)
-                fn = info["filename"]
-                h = self._get_tab_hash(path)
-
-                tab_box = Horizontal(classes="tab-item-active" if is_active else "tab-item-inactive")
-                tab_box.mount(Button(f"📄 {fn}", id=f"tsel_{h}", classes="tab-label-btn"))
-                tab_box.mount(Button("✕", id=f"tcls_{h}", classes="tab-close-btn"))
-                tab_container.mount(tab_box)
-
-            content_area.remove_children()
-            if self._active_tab_path and self._active_tab_path in self._open_tabs:
-                info = self._open_tabs[self._active_tab_path]
-                content_area.mount(Static(Panel(
-                    Syntax(info["content"], info["lang"], theme="monokai", line_numbers=True),
-                    title=f"📄 Editor: {escape(info['filename'])}",
-                    border_style="cyan",
-                )))
-            elif os.path.exists(os.path.join(self.engine.project_root, "walkthrough.md")):
-                wt_path = os.path.join(self.engine.project_root, "walkthrough.md")
-                with open(wt_path, "r", encoding="utf-8", errors="replace") as f:
-                    wt_text = f.read(50000)
-                content_area.mount(Static(Panel(
-                    Syntax(wt_text, "markdown", theme="monokai", line_numbers=True),
-                    title="📄 Editor: walkthrough.md",
-                    border_style="cyan",
-                )))
-            else:
-                content_area.mount(Static("[dim]Select a file from EXPLORER tree to view in Editor[/dim]"))
         except Exception:
-            pass
-
-    @on(DirectoryTree.FileSelected, "#file-tree")
-    def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:
-        file_path = str(event.path)
-        if not os.path.isfile(file_path):
             return
-        self.open_file_tab(file_path)
+
+    @on(DirectoryTree.FileSelected)
+    def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:
+        path = getattr(event, "path", None)
+        if not path:
+            return
+        abs_path = os.path.abspath(str(path))
+        if os.path.isfile(abs_path):
+            self.open_file_tab(abs_path)
+
+    @on(DirectoryTree.NodeSelected)
+    def on_node_selected(self, event: DirectoryTree.NodeSelected) -> None:
+        node = getattr(event, "node", None)
+        if node and hasattr(node, "data") and node.data:
+            path = getattr(node.data, "path", None)
+            if path:
+                abs_path = os.path.abspath(str(path))
+                if os.path.isfile(abs_path):
+                    self.open_file_tab(abs_path)
 
     @on(Button.Pressed, "#toggle-split-btn")
     def on_toggle_split_btn(self) -> None:
@@ -1281,6 +1347,16 @@ class TorchlightApp(App):
 
     def update_sidebar_meta(self) -> None:
         try:
+            shp = self.query_one("#system-health-panel")
+            shp.update(self._build_system_health_text())
+        except Exception:
+            pass
+        try:
+            cmb = self.query_one("#context-meter-bar")
+            cmb.update(self._build_context_progress_text())
+        except Exception:
+            pass
+        try:
             mp = self.query_one("#meta-panel")
             mp.update(self._build_meta_text())
         except Exception:
@@ -1423,6 +1499,11 @@ class TorchlightApp(App):
                 pass
 
         try:
+            self.call_after_refresh(self._refresh_editor_split_view)
+        except Exception:
+            pass
+
+        try:
             container = self.query_one("#chat-container")
 
             # Welcome banner - 3-step quick start
@@ -1465,7 +1546,7 @@ class TorchlightApp(App):
                 pass
 
         try:
-            self.set_interval(3.0, self._auto_refresh_engine_status)
+            self.set_interval(1.0, self._auto_refresh_engine_status)
         except Exception:
             pass
 
@@ -1913,20 +1994,23 @@ class TorchlightApp(App):
             else:
                 # Standalone Reasoning (for non-tool steps)
                 if has_thinking:
-                    escaped_thinking = escape(trimmed_thinking)
-                    step_title = f"💭 Step {step.step_number} Reasoning" if getattr(step, "step_number", None) else "💭 Reasoning"
-                    if Collapsible is not None:
-                        self._safe_mount(container, Collapsible(
-                            Static(escaped_thinking, classes="stream-text"),
-                            title=step_title,
-                            collapsed=True
-                        ))
-                    else:
-                        self._safe_mount(container, Static(Panel(
-                            escaped_thinking,
-                            title=step_title,
-                            border_style="dim magenta",
-                        )))
+                    raw_check = trimmed_thinking.strip()
+                    is_raw_dict = (raw_check.startswith("{") and raw_check.endswith("}")) or (raw_check.startswith("(") and raw_check.endswith(")"))
+                    if not is_raw_dict and len(raw_check) > 5 and not raw_check.startswith("{'path'"):
+                        escaped_thinking = escape(trimmed_thinking)
+                        step_title = f"💭 Step {step.step_number} Reasoning" if getattr(step, "step_number", None) else "💭 Reasoning"
+                        if Collapsible is not None:
+                            self._safe_mount(container, Collapsible(
+                                Static(escaped_thinking, classes="stream-text"),
+                                title=step_title,
+                                collapsed=True
+                            ))
+                        else:
+                            self._safe_mount(container, Static(Panel(
+                                escaped_thinking,
+                                title=step_title,
+                                border_style="dim magenta",
+                            )))
 
                 # Code execution
                 if step.action == "code":
@@ -2135,35 +2219,14 @@ class TorchlightApp(App):
 
     @work(thread=True)
     def _start_ast_indexing(self) -> None:
-        """Build the AST knowledge graph for the current project_root in a
-        background thread (blocking: walks all files + runs embeddings)."""
-        container = self.query_one("#chat-container")
+        """Build the AST knowledge graph silently in background thread."""
         target = self.engine.project_root
-        
-        def mount_static(msg: str):
-            self._safe_mount(container, Static(msg))
-            
-        self.call_from_thread(
-            mount_static,
-            f"  [bold yellow]🧠 Indexing AST knowledge graph for {escape(target)} ... this may take a while.[/]"
-        )
         try:
             from rlm_optimized.ast_indexer import index_directory
             index_directory(target)
-            self.call_from_thread(
-                mount_static,
-                f"  [bold green]✓ AST knowledge graph indexed for {target}[/]"
-            )
-        except ImportError as e:
-            self.call_from_thread(
-                mount_static,
-                f"  [bold red]✗ Missing dependency for indexing: {e}. Run `pip install kuzu sentence-transformers`.[/]"
-            )
-        except Exception as e:
-            self.call_from_thread(
-                mount_static,
-                f"  [bold red]✗ Indexing failed:[/] {escape(str(e))}"
-            )
+            self.call_from_thread(self.notify, f"✓ AST graph indexed for {os.path.basename(target)}", severity="information", timeout=2)
+        except Exception:
+            pass
 
     @work
     async def _poll_server_launch(self) -> None:
@@ -2374,9 +2437,17 @@ class TorchlightApp(App):
         self.push_screen(FolderPickerModal(self.engine.project_root), _on_picker_result)
 
     def action_toggle_sidebar(self) -> None:
-        sidebar = self.query_one("#sidebar")
-        self._show_sidebar = not self._show_sidebar
-        sidebar.display = self._show_sidebar
+        try:
+            sidebar = self.query_one("#explorer-sidebar")
+            self._show_sidebar = not self._show_sidebar
+            sidebar.display = self._show_sidebar
+        except Exception:
+            try:
+                sidebar = self.query_one("#sidebar")
+                self._show_sidebar = not self._show_sidebar
+                sidebar.display = self._show_sidebar
+            except Exception:
+                pass
 
     def action_cycle_theme(self) -> None:
         themes = ["torchlight", "textual-dark", "textual-light", "nord", "gruvbox", "solarized-light", "solarized-dark"]

@@ -129,8 +129,17 @@ Footer {
 
 #editor-content-area {
     height: 1fr;
-    padding: 0 1;
+    padding: 0 0;
     background: $background;
+}
+
+#active-editor-view {
+    width: 1fr;
+    height: 1fr;
+    min-height: 20;
+    background: $background;
+    color: $foreground;
+    border: none;
 }
 
 #agent-split-pane {
@@ -148,9 +157,29 @@ Footer {
 
 #terminal-header-bar .panel-header-title {
     width: 1fr;
+    height: 1;
     content-align: left middle;
     background: transparent;
     border-bottom: none;
+}
+
+#input-model-badge, #compact-btn, #help-btn {
+    width: auto;
+    height: 1;
+    margin-left: 1;
+    padding: 0 1;
+    border: none;
+    text-style: bold;
+}
+
+#compact-btn {
+    background: $warning;
+    color: #000000;
+}
+
+#compact-btn:hover {
+    background: $accent;
+    color: #000000;
 }
 
 #prompt-symbol {
