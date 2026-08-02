@@ -20,7 +20,10 @@ fi
 
 export COLORTERM="${COLORTERM:-truecolor}"
 export TERM="${TERM:-xterm-256color}"
-export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
+# Put both the CLI package and the shared `core/` library (one level up) on the
+# path so feedback-loop / verification-gate fixes from core are used instead of
+# the stale local fallbacks.
+export PYTHONPATH="$(pwd)/src:$(pwd)/..:${PYTHONPATH:-}"
 
 # Load .env if it exists (dotenv inside the app does this too, but exporting
 # here means CLI commands launched from this script also see the variables).

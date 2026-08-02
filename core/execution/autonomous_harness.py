@@ -472,6 +472,47 @@ class AutonomousHarness:
         self.save_goal_spec()
         return success
 
+    def evaluate_candidate_branches(
+        self, task: TaskSpec, candidates: list[dict]
+    ) -> Optional[dict]:
+        """Tree-of-Thoughts / Branching Evaluator: evaluate candidate implementation options
+        and return the best-scoring candidate based on zero-context quality gates."""
+        if not candidates:
+            return None
+
+        best_candidate = None
+        best_score = -999.0
+
+        for cand in candidates:
+            code_patch = cand.get("patch", "")
+            target_file = cand.get("file", "")
+            score = 100.0
+
+            # 1. Bracket balance & syntax validation
+            open_b = code_patch.count("{") + code_patch.count("(") + code_patch.count("[")
+            close_b = code_patch.count("}") + code_patch.count(")") + code_patch.count("]")
+            if open_b != close_b:
+                score -= 40.0
+
+            # 2. Python AST validation if target is python
+            if target_file.endswith(".py") and code_patch:
+                try:
+                    import ast
+                    ast.parse(code_patch)
+                except Exception:
+                    score -= 50.0
+
+            # 3. Stub detection penalty
+            if "TODO" in code_patch or "pass  # placeholder" in code_patch:
+                score -= 15.0
+
+            cand["score"] = score
+            if score > best_score:
+                best_score = score
+                best_candidate = cand
+
+        return best_candidate
+
     def run_daemon(self) -> dict:
         """Run continuous autonomous daemon until completion or timeout."""
         if not self.goal_spec:

@@ -67,17 +67,17 @@ rlm_optimized/                              # TUI frontend
 
 #### 1. 12k Context (TurboQuant Base — 12,288 Tokens)
 - System prompt + Phase instructions: ~300 tokens
-- Dynamic L0 Working Memory Scratchpad: ~200 tokens
+- Dynamic L0 Working Memory Scratchpad: adaptive, ~150-1200 tokens (headroom-scaled via `ContextBudget`; expands to surface more memory when context is idle, shrinks under pressure)
 - Tool syntax & skill schemas: ~300 tokens
 - Flashlight beam (2 files × 75 lines AST): ~600-750 tokens
 - Feedback loop & test traceback: ~400 tokens
-- **Available for conversation & active file pins: ~10,338 tokens (~84% headroom)**
+- **Available for conversation & active file pins: ~10,338 tokens (~84% headroom, minus any expanded L0)**
 
 #### 2. 4k Model Fallback (4,096 Tokens)
 - System prompt: ~250 tokens
 - Tool syntax suffix: ~80 tokens
 - Flashlight beam (1 file × 25 lines AST): ~250 tokens
-- Dynamic L0 Scratchpad: ~200 tokens
+- Dynamic L0 Scratchpad: adaptive, shrinks toward ~150 tokens under pressure
 - **Available for conversation: ~3,316 tokens**
 
 ### Agentic Loop

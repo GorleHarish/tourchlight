@@ -12,10 +12,15 @@ from typing import Any, Optional
 import subprocess
 import re
 import logging
+import concurrent.futures
 
 from core.errors.types import TestFailureError
 
 logger = logging.getLogger(__name__)
+
+_speculative_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix="TorchlightSpeculativeRunner"
+)
 
 
 class TestResultStatus(Enum):
@@ -154,6 +159,7 @@ class ExecutionFeedbackLoop:
         self._test_result_reported: bool = False
         self._last_web_result: Optional[Any] = None
         self._files_modified_since_test: set[str] = set()
+        self._speculative_future: Optional[concurrent.futures.Future] = None
 
     @property
     def has_failing_tests(self) -> bool:
@@ -178,11 +184,16 @@ class ExecutionFeedbackLoop:
             if path:
                 self._files_modified_since_test.add(path)
                 try:
-                    from core.flashlight.graph_engine import _graphs
+                    from core.flashlight.graph_engine import update_project_graph_file
 
-                    # Invalidate cached graph so it rebuilds lazily on next query
-                    root_key = str(self.project_root)
-                    _graphs.pop(root_key, None)
+                    # Incrementally update AST graph nodes/edges for modified file
+                    update_project_graph_file(str(self.project_root), path)
+                except Exception:
+                    pass
+
+                # Launch speculative background test execution for zero-latency feedback
+                try:
+                    self._speculative_future = _speculative_executor.submit(self._run_tests_internal)
                 except Exception:
                     pass
 
@@ -200,12 +211,7 @@ class ExecutionFeedbackLoop:
     def verify_pending_changes(self) -> bool:
         """Freshly verify any modified-but-unverified files and return True if
         everything passes. Returns True immediately when there is nothing pending
-        to verify (no edits, or the latest edits already verified passing).
-
-        A project with nothing runnable to verify is treated as passing (there is
-        nothing to block on). This is the single entry point both frontends use
-        before accepting a final answer, keeping the verification gate in parity
-        with the actual on-disk state."""
+        to verify (no edits, or the latest edits already verified passing)."""
         if not self.enabled or not self._files_modified_since_test:
             return True
         result = self._run_tests()
@@ -237,6 +243,17 @@ class ExecutionFeedbackLoop:
             pass
 
     def _run_tests(self) -> TestRunResult:
+        """Fetch speculative background test result if running, else execute tests synchronously."""
+        if self._speculative_future is not None:
+            try:
+                fut = self._speculative_future
+                self._speculative_future = None
+                return fut.result(timeout=self.timeout)
+            except Exception:
+                pass
+        return self._run_tests_internal()
+
+    def _run_tests_internal(self) -> TestRunResult:
         """Detect and run the project's test suite or web inspector."""
         self._run_preflight_lint()
         test_cmd = self._detect_test_command()

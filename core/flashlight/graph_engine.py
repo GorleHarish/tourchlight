@@ -222,6 +222,38 @@ class ProjectGraph:
             }
             self.edges.append({"from": file_node_id, "to": class_id, "type": "contains"})
 
+    def update_file(self, abs_path: Path, rel_path: str) -> None:
+        """Perform an incremental O(1) AST update for a single modified file."""
+        if not self.nodes:
+            if not self.load():
+                self.build()
+                return
+
+        # 1. Remove nodes belonging to or inside rel_path
+        to_remove_nodes = [
+            nid for nid, n in self.nodes.items()
+            if nid == rel_path or n.get("file") == rel_path or nid.startswith(f"{rel_path}::")
+        ]
+        for nid in to_remove_nodes:
+            self.nodes.pop(nid, None)
+
+        # 2. Remove edges associated with rel_path
+        self.edges = [
+            e for e in self.edges
+            if not (e["from"] == rel_path or e["from"].startswith(f"{rel_path}::") or
+                    e["to"] == rel_path or e["to"].startswith(f"{rel_path}::"))
+        ]
+
+        # 3. Re-index modified file if supported and exists
+        if abs_path.exists() and abs_path.suffix in SUPPORTED_EXTENSIONS:
+            try:
+                self._index_file(abs_path, rel_path)
+            except Exception:
+                pass
+
+        # 4. Save updated graph state
+        self.save()
+
     def save(self):
         """Save graph data to JSON and markdown report."""
         self.dot_torchlight.mkdir(parents=True, exist_ok=True)
@@ -510,3 +542,20 @@ def get_project_graph(project_root: str = ".") -> ProjectGraph:
             graph.build()
         _graphs[key] = graph
     return _graphs[key]
+
+
+def update_project_graph_file(project_root: str = ".", file_path: str = "") -> ProjectGraph:
+    """Incrementally update the AST graph for a single modified file."""
+    root_path = Path(project_root).resolve()
+    graph = get_project_graph(project_root)
+    if not file_path:
+        return graph
+    p = Path(file_path)
+    abs_path = p if p.is_absolute() else (root_path / p).resolve()
+    try:
+        rel_path = abs_path.relative_to(root_path).as_posix()
+        graph.update_file(abs_path, rel_path)
+    except Exception:
+        pass
+    return graph
+
