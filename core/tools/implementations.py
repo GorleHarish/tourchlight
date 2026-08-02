@@ -21,6 +21,7 @@ import httpx
 # ── Constants ──────────────────────────────────────────────────────────────
 
 _MAX_TOOL_OUTPUT = 4000
+_REJECT_ON_STUB_DEFAULT = True
 _SAFE_COMMANDS_SET = {
     "ls",
     "la",
@@ -898,6 +899,200 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
     return None
 
 
+def _detect_truncation_stubs(content: str, filename: str = "") -> Optional[str]:
+    """Detect truncation-style stubs (code cut off / intentionally unimplemented).
+
+    These indicate the model failed to produce a complete implementation and
+    are treated as hard errors by the write gate (unlike benign TODO comments).
+    """
+    if not content:
+        return None
+    basename = os.path.basename(filename).lower() if filename else ""
+    if any(kw in basename for kw in ("test_", "_test", ".test.", ".spec.")):
+        return None
+    truncation_patterns = [
+        (
+            r"#\s*\.\.\.\s*(?:rest|existing|code|remaining)",
+            "Python code truncation stub",
+        ),
+        (
+            r"//\s*\.\.\.\s*(?:rest|existing|code|implementation|remaining)",
+            "JS/C code truncation stub",
+        ),
+        (
+            r"/\*\s*\.\.\.\s*(?:rest|existing|code|remaining)\s*\*/",
+            "C-style block stub",
+        ),
+        (r'throw new Error\(["\']Not implemented["\']\)', "Unimplemented error stub"),
+    ]
+    found = []
+    for pattern, name in truncation_patterns:
+        if re.search(pattern, content, re.IGNORECASE):
+            found.append(name)
+    if found:
+        return (
+            f"\n🚫 Incomplete Code Detected: content contains placeholder truncation stubs "
+            f"({', '.join(found)}). Provide the full implementation."
+        )
+    return None
+
+
+def _auto_repair(content: str, filename: str, project_root: str) -> Optional[str]:
+    """Apply safe auto-fixes (ruff check --fix, E/F rules) to in-memory content.
+
+    Returns repaired content or None when no repair tool is available.
+    """
+    ext = os.path.splitext(filename)[1].lower()
+    if ext != ".py":
+        return None
+    try:
+        res = subprocess.run(
+            [
+                "ruff",
+                "check",
+                "--fix",
+                "--select",
+                "E,F",
+                "--stdin-filename",
+                filename,
+                "-",
+            ],
+            input=content,
+            text=True,
+            capture_output=True,
+            timeout=5,
+            cwd=project_root,
+        )
+        if res.returncode in (0, 1) and res.stdout:
+            return res.stdout
+    except Exception:
+        pass
+    return None
+
+
+def _check_compile(content: str, filename: str, project_root: str) -> Optional[str]:
+    """Stricter compile gate: compile() for Python, node --check for plain JS.
+
+    Catches errors ast.parse misses (e.g. 'return' outside a function).
+    Returns an error message or None when the content compiles / can't be checked.
+    """
+    if not content:
+        return None
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext == ".py":
+        try:
+            compile(content, filename, "exec")
+        except SyntaxError as se:
+            line_no = getattr(se, "lineno", "?")
+            msg = getattr(se, "msg", str(se))
+            return f"compile error (line {line_no}): {msg}"
+        except (ValueError, TypeError, RecursionError) as e:
+            return f"compile error: {e}"
+
+    elif ext in (".js", ".mjs", ".cjs"):
+        import shutil
+        import tempfile
+
+        node_bin = shutil.which("node")
+        if not node_bin:
+            return None
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w", suffix=ext, delete=False, encoding="utf-8"
+            ) as tf:
+                tf.write(content)
+                tmp_path = tf.name
+            res = subprocess.run(
+                [node_bin, "--check", tmp_path],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                cwd=project_root,
+            )
+            if res.returncode != 0:
+                stderr = (res.stderr or "").strip()
+                return f"node syntax error: {stderr[:400]}"
+        except Exception:
+            return None
+        finally:
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+
+    return None
+
+
+def _validate_and_repair(
+    content: str,
+    filename: str,
+    project_root: str,
+    *,
+    force: bool = False,
+    reject_on_stub: bool = True,
+) -> Tuple[str, str]:
+    """Validate code before it is written; auto-repair when possible.
+
+    Returns a (status, payload) tuple:
+      - ("ok", content)    → content is validated (and possibly repaired/formatted)
+      - ("error", message) → message is a user-facing error; the file must NOT be written
+
+    `force=True` bypasses the syntax/compile/stub gates (scaffolding escape hatch)
+    while still running formatting.
+    """
+    if not content or not content.strip():
+        return "ok", content
+
+    # 1. Auto-repair (safe ruff fixes), then deterministic formatting
+    repaired = _auto_repair(content, filename, project_root)
+    if repaired is not None and repaired != content:
+        content = repaired
+    formatted = _format_code_on_save(content, filename, project_root)
+    if formatted != content:
+        content = formatted
+
+    if not force:
+        # 2. Fast syntax validation
+        syntax_note = _check_syntax(content, filename)
+        if syntax_note:
+            detail = syntax_note.replace("\n⚠️ Syntax Warning", "").strip()
+            return (
+                "error",
+                (
+                    f"Error: Syntax error in {os.path.basename(filename)}: {detail}. "
+                    f"File NOT written. Fix the code and retry, or pass force=true to write anyway."
+                ),
+            )
+
+        # 3. Compile gate (catches what ast.parse misses, e.g. 'return' outside function)
+        compile_note = _check_compile(content, filename, project_root)
+        if compile_note:
+            return (
+                "error",
+                (
+                    f"Error: Syntax error in {os.path.basename(filename)}: {compile_note}. "
+                    f"File NOT written. Fix the code and retry, or pass force=true to write anyway."
+                ),
+            )
+
+        # 4. Truncation stub gate
+        if reject_on_stub:
+            trunc_note = _detect_truncation_stubs(content, filename)
+            if trunc_note:
+                return (
+                    "error",
+                    (
+                        f"Error: {trunc_note.strip()} File NOT written. "
+                        f"Provide the full implementation, or pass force=true to write anyway."
+                    ),
+                )
+
+    return "ok", content
+
+
 def tool_write_file_impl(args: dict, project_root: str) -> str:
     """WRITE_FILE — create or overwrite a file."""
     if not isinstance(args, dict):
@@ -950,17 +1145,21 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         parent_dir = os.path.dirname(p)
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
-        formatted_content = _format_code_on_save(content, p, project_root)
-        if formatted_content != content:
-            content = formatted_content
+        force = bool(args.get("force", False))
+        reject_on_stub = bool(args.get("reject_on_stub", _REJECT_ON_STUB_DEFAULT))
+        status, payload = _validate_and_repair(
+            content, p, project_root, force=force, reject_on_stub=reject_on_stub
+        )
+        if status != "ok":
+            return payload
+        content = payload
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
         line_count = content.count("\n") + (
             1 if content and not content.endswith("\n") else 0
         )
-        syntax_note = _check_syntax(content, p) or ""
         stub_note = _detect_stubs(content) or ""
-        return f"Written {line_count} lines to {p}{syntax_note}{stub_note}"
+        return f"Written {line_count} lines to {p}{stub_note}"
     except Exception as e:
         return f"Error writing {p}: {e}"
 
@@ -1096,6 +1295,8 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         symbol_name = (
             args.get("symbol") or args.get("symbol_name") or args.get("function")
         )
+        force = bool(args.get("force", False))
+        reject_on_stub = bool(args.get("reject_on_stub", _REJECT_ON_STUB_DEFAULT))
 
         # Parse line range suffix from path (e.g. "path/to/file.py:20-45")
         if ":" in path and not os.path.exists(
@@ -1169,14 +1370,20 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 if new_text and not new_text.endswith("\n") and e_l < len(lines):
                     new_content += "\n"
                 new_content += "".join(lines[e_l:])
-                formatted_content = _format_code_on_save(new_content, p, project_root)
-                if formatted_content != new_content:
-                    new_content = formatted_content
+                status, payload = _validate_and_repair(
+                    new_content,
+                    p,
+                    project_root,
+                    force=force,
+                    reject_on_stub=reject_on_stub,
+                )
+                if status != "ok":
+                    return payload
+                new_content = payload
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(new_content)
-                syntax_note = _check_syntax(new_content, p) or ""
                 stub_note = _detect_stubs(new_content) or ""
-                return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{syntax_note}{stub_note}"
+                return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{stub_note}"
 
         # Line-bounded search window handling
         if start_line is not None and end_line is not None:
@@ -1203,14 +1410,20 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     if new_text and not new_text.endswith("\n") and e_idx < len(lines):
                         new_content += "\n"
                     new_content += "".join(lines[e_idx:])
-                formatted_content = _format_code_on_save(new_content, p, project_root)
-                if formatted_content != new_content:
-                    new_content = formatted_content
+                status, payload = _validate_and_repair(
+                    new_content,
+                    p,
+                    project_root,
+                    force=force,
+                    reject_on_stub=reject_on_stub,
+                )
+                if status != "ok":
+                    return payload
+                new_content = payload
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(new_content)
-                syntax_note = _check_syntax(new_content, p) or ""
                 stub_note = _detect_stubs(new_content) or ""
-                return f"Surgically edited {path} within line range {s_l}-{e_l}.{syntax_note}{stub_note}"
+                return f"Surgically edited {path} within line range {s_l}-{e_l}.{stub_note}"
             except ValueError:
                 pass
 
@@ -1243,15 +1456,17 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 return f"Edit failed: 'old_text' matches {count} locations. Provide line numbers (start_line/end_line) or more context to make it unique."
 
             new_content = content.replace(old_text, new_text)
-            formatted_content = _format_code_on_save(new_content, p, project_root)
-            if formatted_content != new_content:
-                new_content = formatted_content
+            status, payload = _validate_and_repair(
+                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            )
+            if status != "ok":
+                return payload
+            new_content = payload
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
 
-            syntax_note = _check_syntax(new_content, p) or ""
             stub_note = _detect_stubs(new_content) or ""
-            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{syntax_note}{stub_note}"
+            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{stub_note}"
 
         # Helper: Normalize lines for line-based matching
         def normalize_line(l):
@@ -1301,14 +1516,16 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += "".join(content_lines[best_end:])
 
-            formatted_content = _format_code_on_save(new_content, p, project_root)
-            if formatted_content != new_content:
-                new_content = formatted_content
+            status, payload = _validate_and_repair(
+                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            )
+            if status != "ok":
+                return payload
+            new_content = payload
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
-            syntax_note = _check_syntax(new_content, p) or ""
             stub_note = _detect_stubs(new_content) or ""
-            return f"Surgically edited {path} (fuzzy replaced {len(old_norm)} lines ignoring whitespace).{syntax_note}{stub_note}"
+            return f"Surgically edited {path} (fuzzy replaced {len(old_norm)} lines ignoring whitespace).{stub_note}"
 
         # Tier 3: Ellipsis / Wildcard matching (e.g. header \n ... \n footer)
         old_raw_lines = [l.strip() for l in old_text.splitlines()]
@@ -1366,6 +1583,16 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                             new_content += "\n"
                         new_content += "".join(content_lines[tail_match_idx:])
 
+                        status, payload = _validate_and_repair(
+                            new_content,
+                            p,
+                            project_root,
+                            force=force,
+                            reject_on_stub=reject_on_stub,
+                        )
+                        if status != "ok":
+                            return payload
+                        new_content = payload
                         with open(p, "w", encoding="utf-8") as f:
                             f.write(new_content)
                         return f"Surgically edited {path} (wildcard replaced block from line {head_match_idx + 1} to {tail_match_idx})."
@@ -1395,6 +1622,16 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         new_content += "\n"
                     new_content += "".join(content_lines[l_idx + 1 :])
 
+                    status, payload = _validate_and_repair(
+                        new_content,
+                        p,
+                        project_root,
+                        force=force,
+                        reject_on_stub=reject_on_stub,
+                    )
+                    if status != "ok":
+                        return payload
+                    new_content = payload
                     with open(p, "w", encoding="utf-8") as f:
                         f.write(new_content)
                     return f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})."
@@ -1424,6 +1661,12 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += "".join(content_lines[best_diff_end:])
 
+            status, payload = _validate_and_repair(
+                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            )
+            if status != "ok":
+                return payload
+            new_content = payload
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
             return f"Surgically edited {path} (similarity replaced block with {int(best_ratio * 100)}% match at lines {best_diff_start + 1}-{best_diff_end})."
@@ -1463,6 +1706,12 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += content[line_end:]
 
+            status, payload = _validate_and_repair(
+                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            )
+            if status != "ok":
+                return payload
+            new_content = payload
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
             return f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})."
@@ -2132,21 +2381,37 @@ def tool_format_code_impl(args: dict, project_root: str) -> str:
 
 
 def tool_verify_impl(args: dict, project_root: str) -> str:
-    """VERIFY — verify a file exists and optionally contains expected content."""
+    """VERIFY — verify a file exists and optionally contains expected content or compiles.
+
+    `compile: true` runs the same syntax + compile gates used by WRITE_FILE/EDIT_FILE,
+    letting the agent self-check before reporting completion.
+    """
     try:
         path = args.get("path", "")
         expected_snippet = args.get("expected_snippet")
+        do_compile = bool(args.get("compile", False))
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
         if not os.path.exists(p):
             return f"Verification FAILED: File does not exist at {path}"
+        with open(p, "r", encoding="utf-8") as f:
+            content = f.read()
+        notes = []
         if expected_snippet:
-            with open(p, "r", encoding="utf-8") as f:
-                content = f.read()
             if expected_snippet in content:
-                return f"Verification SUCCESS: Found expected content in {path}"
+                notes.append("expected content found")
             else:
                 return f"Verification WARNING: File exists but expected snippet was NOT found in {path}"
-        return f"Verification SUCCESS: File exists at {path}"
+        if do_compile:
+            syntax_note = _check_syntax(content, p)
+            if syntax_note:
+                detail = syntax_note.replace("\n⚠️ Syntax Warning", "").strip()
+                return f"Verification FAILED: Syntax error in {path}: {detail}"
+            compile_note = _check_compile(content, p, project_root)
+            if compile_note:
+                return f"Verification FAILED: Syntax error in {path}: {compile_note}"
+            notes.append("compile check passed")
+        suffix = (f" ({'; '.join(notes)})") if notes else ""
+        return f"Verification SUCCESS: File exists at {path}{suffix}"
     except Exception as e:
         return f"Verification ERROR: {e}"
 

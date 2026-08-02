@@ -1,3 +1,5 @@
+import subprocess
+
 import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -88,11 +90,13 @@ core/test_demo.py:5: AssertionError
         mock_run.stderr = ""
 
         with patch("subprocess.run", return_value=mock_run):
-            test_run = loop.on_tool_executed("EDIT_FILE", {"path": "main.py", "content": "bad code"}, "Success")
+            test_run = loop.on_tool_executed(
+                "EDIT_FILE", {"path": "main.py", "content": "bad code"}, "Success"
+            )
 
             assert test_run is not None
             assert not test_run.all_passed
-            
+
             err = loop.get_test_failure_error()
             assert isinstance(err, TestFailureError)
             assert "AssertionError" in err.surgical_traceback
@@ -118,3 +122,176 @@ def test_scoped_test_command_detection(tmp_path):
     cmd = loop._detect_test_command()
     assert "pytest core/tests/test_feature.py" in cmd
 
+
+def test_all_passed_uses_exit_code():
+    """Quiet runners (e.g. `pytest -q`) produce no per-test markers; exit code
+    must be authoritative so a clean run is not misreported as failing."""
+    passed = TestRunResult(
+        command="python -m pytest -q",
+        return_code=0,
+        duration_ms=10.0,
+        results=[],
+        ran=True,
+    )
+    assert passed.all_passed
+    failed = TestRunResult(
+        command="python -m pytest",
+        return_code=2,
+        duration_ms=10.0,
+        results=[],
+        ran=True,
+    )
+    assert not failed.all_passed
+    with_fail_result = TestRunResult(
+        command="python -m pytest",
+        return_code=0,
+        duration_ms=10.0,
+        results=[TestResult(name="t", status=TestResultStatus.FAIL)],
+        ran=True,
+    )
+    assert not with_fail_result.all_passed
+
+
+def test_no_test_command_is_not_failing(tmp_path):
+    """Project with nothing to verify must not trip the verification gate."""
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True, auto_run=True)
+    loop._files_modified_since_test.add("src/main.py")
+    result = loop._run_tests()
+    assert result is not None
+    assert result.command == ""
+    assert not result.ran
+    assert not result.all_passed
+    assert loop._last_test_result is result
+    assert not loop.has_failing_tests
+    assert loop.get_test_failure_error() is None
+    assert loop.build_feedback_context() == ""
+    assert not loop._files_modified_since_test
+
+
+def test_timeout_records_failing_result(tmp_path):
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True, auto_run=True)
+    loop._files_modified_since_test.add("src/main.py")
+
+    def _raise_timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd="python -m pytest", timeout=60)
+
+    with (
+        patch.object(loop, "_detect_test_command", return_value="python -m pytest"),
+        patch("subprocess.run", side_effect=_raise_timeout),
+    ):
+        result = loop._run_tests()
+
+    assert result.ran
+    assert result.return_code == -1
+    assert not result.all_passed
+    assert result.results[0].name == "test_timeout"
+    assert loop._last_test_result is result
+    assert loop.has_failing_tests
+    err = loop.get_test_failure_error()
+    assert err is not None
+    assert err.failing_tests == ["test_timeout"]
+    ctx = loop.build_feedback_context()
+    assert "[POST-EDIT TEST FAILURE DETECTED]" in ctx
+    assert "timed out" in ctx
+
+
+def test_run_exception_records_failing_result(tmp_path):
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True, auto_run=True)
+    loop._files_modified_since_test.add("src/main.py")
+
+    with (
+        patch.object(loop, "_detect_test_command", return_value="python -m pytest"),
+        patch("subprocess.run", side_effect=RuntimeError("boom")),
+    ):
+        result = loop._run_tests()
+
+    assert result.ran
+    assert result.return_code == -1
+    assert not result.all_passed
+    assert result.results[0].name == "test_run_error"
+    assert loop.has_failing_tests
+    assert loop.get_test_failure_error().failing_tests == ["test_run_error"]
+    assert "Test run crashed" in loop.build_feedback_context()
+
+
+def test_has_failing_tests_respects_ran(tmp_path):
+    """A stored non-run must never be reported as failing, regardless of exit code."""
+    loop = ExecutionFeedbackLoop(project_root=tmp_path)
+    loop._last_test_result = TestRunResult(
+        command="", return_code=-1, duration_ms=0, results=[], ran=False
+    )
+    assert not loop.has_failing_tests
+    loop._last_test_result = TestRunResult(
+        command="pytest", return_code=-1, duration_ms=0, results=[], ran=True
+    )
+    assert loop.has_failing_tests
+    loop._last_test_result = TestRunResult(
+        command="pytest", return_code=0, duration_ms=0, results=[], ran=True
+    )
+    assert not loop.has_failing_tests
+
+
+def test_verify_pending_changes_nothing_pending(tmp_path):
+    """No dirty files → nothing to verify → passes even if a prior run failed."""
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    loop._last_test_result = TestRunResult(
+        command="pytest", return_code=1, duration_ms=0, results=[], ran=True
+    )
+    assert loop.verify_pending_changes() is True
+
+
+def test_verify_pending_changes_runs_fresh_tests(tmp_path):
+    """Dirty files trigger a fresh run; a failing fresh run reports False and
+    keeps the dirty set as an unverified-changes signal."""
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    loop._files_modified_since_test.add("src/main.py")
+    mock_run = MagicMock()
+    mock_run.returncode = 1
+    mock_run.stdout = "Traceback: boom"
+    mock_run.stderr = ""
+    with (
+        patch.object(loop, "_detect_test_command", return_value="python -m pytest"),
+        patch("subprocess.run", return_value=mock_run),
+    ):
+        assert loop.verify_pending_changes() is False
+    assert loop.has_failing_tests
+    assert "src/main.py" in loop._files_modified_since_test
+
+
+def test_verify_pending_changes_nothing_to_run_passes(tmp_path):
+    """A project with nothing runnable to verify must not block the gate."""
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    loop._files_modified_since_test.add("src/main.py")
+    assert loop.verify_pending_changes() is True
+    assert not loop._files_modified_since_test
+
+
+def test_failing_run_keeps_dirty_set(tmp_path):
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    loop._files_modified_since_test.add("src/main.py")
+    mock_run = MagicMock()
+    mock_run.returncode = 1
+    mock_run.stdout = "Traceback: boom"
+    mock_run.stderr = ""
+    with (
+        patch.object(loop, "_detect_test_command", return_value="python -m pytest"),
+        patch("subprocess.run", return_value=mock_run),
+    ):
+        loop._run_tests()
+    assert "src/main.py" in loop._files_modified_since_test
+
+
+def test_passing_run_clears_dirty_set(tmp_path):
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    loop._files_modified_since_test.add("src/main.py")
+    mock_run = MagicMock()
+    mock_run.returncode = 0
+    mock_run.stdout = "1 passed"
+    mock_run.stderr = ""
+    with (
+        patch.object(loop, "_detect_test_command", return_value="python -m pytest"),
+        patch("subprocess.run", return_value=mock_run),
+    ):
+        loop._run_tests()
+    assert loop._files_modified_since_test == set()
+    assert not loop.has_failing_tests

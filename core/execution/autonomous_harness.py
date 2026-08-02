@@ -57,6 +57,7 @@ class GoalSpec:
 
 from core.memory.models import ExecutionMode
 
+
 @dataclass
 class HarnessConfig:
     max_epoch_steps: int = 10
@@ -65,10 +66,10 @@ class HarnessConfig:
     auto_git_commit: bool = True
     max_duration_seconds: int = 86400  # Default 24 hours
     check_interval_seconds: float = 1.0
-    preserve_continuous_context: bool = False  # Preserve continuous session context between sub-tasks
+    preserve_continuous_context: bool = (
+        False  # Preserve continuous session context between sub-tasks
+    )
     mode: ExecutionMode = ExecutionMode.GOAL
-
-
 
 
 class AutonomousHarness:
@@ -87,7 +88,9 @@ class AutonomousHarness:
         self.project_root = Path(project_root).resolve()
         self.memory = memory
         self.llm_engine_step_fn = llm_engine_step_fn
-        self.feedback_loop = feedback_loop or ExecutionFeedbackLoop(project_root=self.project_root)
+        self.feedback_loop = feedback_loop or ExecutionFeedbackLoop(
+            project_root=self.project_root
+        )
         self.config = config or HarnessConfig()
 
         self.torchlight_dir = self.project_root / ".torchlight"
@@ -100,12 +103,13 @@ class AutonomousHarness:
         if self.memory and hasattr(self.memory, "config") and self.memory.config:
             set_ctx_window(self.memory.config.max_tokens)
 
-
     def _ensure_local_git(self) -> None:
         """Ensure target project has local git repository and persistent memory initialized."""
         ensure_project_initialized(self.project_root, create_git=True)
 
-    def ensure_goal_spec_initialized(self, title: Optional[str] = None, description: Optional[str] = None) -> GoalSpec:
+    def ensure_goal_spec_initialized(
+        self, title: Optional[str] = None, description: Optional[str] = None
+    ) -> GoalSpec:
         """Ensure a goal spec exists on disk in .torchlight, initializing a default workspace goal if absent."""
         spec = self.load_goal_spec()
         if spec:
@@ -116,34 +120,39 @@ class AutonomousHarness:
         return self.initialize_goal(
             goal_id=f"goal_{safe_name}",
             title=title or f"{self.project_root.name} Autonomous Goal",
-            description=description or title or "Continuous codebase maintenance, debugging, and feature development.",
+            description=description
+            or title
+            or "Continuous codebase maintenance, debugging, and feature development.",
             tasks=[
                 {
                     "id": "plan_01",
                     "description": "Analyze goal requirements, review architecture via SEARCH_AST, and use UPDATE_TASK_GRAPH to formulate a detailed, test-driven execution plan",
-                    "target_files": []
+                    "target_files": [],
                 },
-            ]
+            ],
         )
 
-
-    def initialize_goal(self, goal_id: str, title: str, description: str, tasks: list[dict]) -> GoalSpec:
+    def initialize_goal(
+        self, goal_id: str, title: str, description: str, tasks: list[dict]
+    ) -> GoalSpec:
         task_specs = []
         for i, t in enumerate(tasks):
-            t_id = t.get("id", f"task_{i+1:02d}")
+            t_id = t.get("id", f"task_{i + 1:02d}")
             desc = t.get("description", "")
             files = t.get("target_files", [])
             deps = t.get("depends_on", [])
             outputs = t.get("outputs_summary")
             max_att = t.get("max_attempts", self.config.max_task_attempts)
-            task_specs.append(TaskSpec(
-                id=t_id,
-                description=desc,
-                target_files=files,
-                depends_on=deps,
-                outputs_summary=outputs,
-                max_attempts=max_att,
-            ))
+            task_specs.append(
+                TaskSpec(
+                    id=t_id,
+                    description=desc,
+                    target_files=files,
+                    depends_on=deps,
+                    outputs_summary=outputs,
+                    max_attempts=max_att,
+                )
+            )
 
         self.goal_spec = GoalSpec(
             goal_id=goal_id,
@@ -167,18 +176,20 @@ class AutonomousHarness:
                 except ValueError:
                     status = TaskStatus.PENDING
 
-                tasks.append(TaskSpec(
-                    id=t["id"],
-                    description=t["description"],
-                    target_files=t.get("target_files") or [],
-                    depends_on=t.get("depends_on") or [],
-                    outputs_summary=t.get("outputs_summary"),
-                    status=status,
-                    attempts=t.get("attempts", 0),
-                    max_attempts=t.get("max_attempts", 3),
-                    failure_reasons=t.get("failure_reasons") or [],
-                    completed_at=t.get("completed_at"),
-                ))
+                tasks.append(
+                    TaskSpec(
+                        id=t["id"],
+                        description=t["description"],
+                        target_files=t.get("target_files") or [],
+                        depends_on=t.get("depends_on") or [],
+                        outputs_summary=t.get("outputs_summary"),
+                        status=status,
+                        attempts=t.get("attempts", 0),
+                        max_attempts=t.get("max_attempts", 3),
+                        failure_reasons=t.get("failure_reasons") or [],
+                        completed_at=t.get("completed_at"),
+                    )
+                )
             self.goal_spec = GoalSpec(
                 goal_id=data["goal_id"],
                 title=data["title"],
@@ -232,8 +243,18 @@ class AutonomousHarness:
             "## Tasks Breakdown\n",
         ]
         for t in self.goal_spec.tasks:
-            checkbox = "[x]" if t.status == TaskStatus.VERIFIED else ("[-]" if t.status in (TaskStatus.FAILED, TaskStatus.SKIPPED) else "[ ]")
-            md_lines.append(f"- {checkbox} **{t.id}**: {t.description} (`{t.status.value}` - attempts: {t.attempts}/{t.max_attempts})")
+            checkbox = (
+                "[x]"
+                if t.status == TaskStatus.VERIFIED
+                else (
+                    "[-]"
+                    if t.status in (TaskStatus.FAILED, TaskStatus.SKIPPED)
+                    else "[ ]"
+                )
+            )
+            md_lines.append(
+                f"- {checkbox} **{t.id}**: {t.description} (`{t.status.value}` - attempts: {t.attempts}/{t.max_attempts})"
+            )
             if t.target_files:
                 md_lines.append(f"  - Target Files: {', '.join(t.target_files)}")
             if t.failure_reasons:
@@ -245,7 +266,9 @@ class AutonomousHarness:
         """Return pending tasks whose dependencies are all VERIFIED."""
         if not self.goal_spec:
             return []
-        verified_ids = {t.id for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED}
+        verified_ids = {
+            t.id for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED
+        }
         runnable = []
         for t in self.goal_spec.tasks:
             if t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS):
@@ -271,7 +294,9 @@ class AutonomousHarness:
         """Construct inter-task memory prompt summarizing prior verified tasks and dependencies."""
         if not self.goal_spec:
             return ""
-        verified_tasks = [t for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED]
+        verified_tasks = [
+            t for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED
+        ]
         if not verified_tasks:
             return ""
 
@@ -288,7 +313,7 @@ class AutonomousHarness:
     def run_micro_epoch(self, task: TaskSpec) -> bool:
         """Run a single micro-epoch for a target task."""
         logger.info(f"Starting micro-epoch for task: {task.id}")
-        
+
         # Check for file collisions
         collisions = self._validate_file_collisions(task)
         if collisions:
@@ -307,12 +332,12 @@ class AutonomousHarness:
         else:
             self.memory.clear()
 
-
         # Step 1.5: Pre-load Flashlight symbols for target files to avoid LLM needing an extra SEARCH_AST step
         symbol_summaries = []
         if task.target_files:
             try:
                 from core.flashlight.indexer import SymbolIndex
+
                 p_root = Path(self.project_root).resolve()
                 index = SymbolIndex(project_dir=p_root)
                 index.build()
@@ -324,7 +349,12 @@ class AutonomousHarness:
                         rel_key = tf
                     entry = index.files.get(rel_key) or index.files.get(tf)
                     if entry and entry.symbols:
-                        names = [s[0] if isinstance(s, (tuple, list)) else getattr(s, "name", str(s)) for s in entry.symbols]
+                        names = [
+                            s[0]
+                            if isinstance(s, (tuple, list))
+                            else getattr(s, "name", str(s))
+                            for s in entry.symbols
+                        ]
                         symbol_summaries.append(f"- {rel_key}: {', '.join(names)}")
             except Exception as e:
                 logger.debug(f"Pre-load AST symbol summary skipped: {e}")
@@ -338,7 +368,9 @@ class AutonomousHarness:
             f"Target Files: {', '.join(task.target_files)}",
         ]
         if symbol_summaries:
-            prompt_parts.append(f"Pre-loaded Symbols in Target Files:\n" + "\n".join(symbol_summaries))
+            prompt_parts.append(
+                f"Pre-loaded Symbols in Target Files:\n" + "\n".join(symbol_summaries)
+            )
         if task.depends_on:
             prompt_parts.append(f"Dependencies: {', '.join(task.depends_on)}")
         if prior_context:
@@ -348,7 +380,9 @@ class AutonomousHarness:
 
         prompt = "\n".join(prompt_parts) + "\n"
 
-        self.memory.add_system_message("You are Torchlight continuous autonomous agent.")
+        self.memory.add_system_message(
+            "You are Torchlight continuous autonomous agent."
+        )
         self.memory.add_user_message(prompt)
 
         # Step 3: Run LLM execution engine step loop up to max_epoch_steps
@@ -361,30 +395,40 @@ class AutonomousHarness:
                 task.failure_reasons.append(str(e))
                 success = False
 
-        # Step 4: Verify via feedback loop tests
+        # Step 4: Verify via feedback loop tests. Only gate task success on tests
+        # when the task actually produced unverified changes or there are failing
+        # tests — passing pre-existing tests must never mask an LLM step failure
+        # (BUG-08), and unrelated failures must not override a clean no-change task.
         if self.feedback_loop and self.feedback_loop.enabled:
-            test_result = self.feedback_loop._run_tests()
-            if test_result and test_result.command:
-                if test_result.all_passed:
-                    success = success and True
-                else:
-                    success = False
-                    reason = f"Task {task.id} tests failed ({test_result.passed} passed, {test_result.failed} failed)"
-                    task.failure_reasons.append(reason)
-                    if hasattr(self.memory, "state") and hasattr(self.memory.state, "tried_and_failed"):
-                        if reason not in self.memory.state.tried_and_failed:
-                            self.memory.state.tried_and_failed.append(reason)
+            if (
+                self.feedback_loop._files_modified_since_test
+                or self.feedback_loop.has_failing_tests
+            ):
+                test_result = self.feedback_loop._run_tests()
+                if test_result and test_result.command:
+                    if test_result.all_passed:
+                        success = success and True
+                    else:
+                        success = False
+                        reason = f"Task {task.id} tests failed ({test_result.passed} passed, {test_result.failed} failed)"
+                        task.failure_reasons.append(reason)
+                        if hasattr(self.memory, "state") and hasattr(
+                            self.memory.state, "tried_and_failed"
+                        ):
+                            if reason not in self.memory.state.tried_and_failed:
+                                self.memory.state.tried_and_failed.append(reason)
 
         # Step 5: Checkpoint or Revert
         if success:
             task.status = TaskStatus.VERIFIED
             task.completed_at = datetime.now().isoformat()
-            
+
             # Enrich outputs_summary with AST symbol signatures from target files
             symbol_summaries = []
             if task.target_files:
                 try:
                     from core.flashlight.indexer import SymbolIndex
+
                     p_root = Path(self.project_root).resolve()
                     index = SymbolIndex(project_dir=p_root)
                     index.build()
@@ -396,16 +440,27 @@ class AutonomousHarness:
                             rel_key = tf
                         entry = index.files.get(rel_key) or index.files.get(tf)
                         if entry and entry.symbols:
-                            names = [s[0] if isinstance(s, (tuple, list)) else getattr(s, "name", str(s)) for s in entry.symbols[:5]]
+                            names = [
+                                s[0]
+                                if isinstance(s, (tuple, list))
+                                else getattr(s, "name", str(s))
+                                for s in entry.symbols[:5]
+                            ]
                             symbol_summaries.append(f"{rel_key} ({', '.join(names)})")
                 except Exception as e:
                     logger.debug(f"AST symbol summary extraction skipped: {e}")
 
-            sym_str = f" [Symbols: {'; '.join(symbol_summaries)}]" if symbol_summaries else ""
-            task.outputs_summary = f"Completed '{task.description}' targeting {task.target_files}{sym_str}"
+            sym_str = (
+                f" [Symbols: {'; '.join(symbol_summaries)}]" if symbol_summaries else ""
+            )
+            task.outputs_summary = (
+                f"Completed '{task.description}' targeting {task.target_files}{sym_str}"
+            )
 
             if self.config.auto_git_commit:
-                self._git_commit(f"feat(torchlight-auto): pass task {task.id} - {task.description}")
+                self._git_commit(
+                    f"feat(torchlight-auto): pass task {task.id} - {task.description}"
+                )
         else:
             if task.attempts >= task.max_attempts:
                 task.status = TaskStatus.FAILED
@@ -422,7 +477,9 @@ class AutonomousHarness:
         if not self.goal_spec:
             self.load_goal_spec()
         if not self.goal_spec:
-            raise ValueError("No goal spec found. Call initialize_goal() or create .torchlight/goal_spec.json first.")
+            raise ValueError(
+                "No goal spec found. Call initialize_goal() or create .torchlight/goal_spec.json first."
+            )
 
         start_time = datetime.now()
         completed = 0
@@ -436,9 +493,14 @@ class AutonomousHarness:
 
             runnable_tasks = self._get_runnable_pending_tasks()
             if not runnable_tasks:
-                pending_any = any(t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS) for t in self.goal_spec.tasks)
+                pending_any = any(
+                    t.status in (TaskStatus.PENDING, TaskStatus.IN_PROGRESS)
+                    for t in self.goal_spec.tasks
+                )
                 if pending_any:
-                    logger.warning("Pending tasks exist but their dependencies are not verified. Stopping daemon.")
+                    logger.warning(
+                        "Pending tasks exist but their dependencies are not verified. Stopping daemon."
+                    )
                 else:
                     logger.info("All tasks completed or processed.")
                 break
@@ -463,9 +525,15 @@ class AutonomousHarness:
 
         return {
             "total_tasks": len(self.goal_spec.tasks),
-            "verified": sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED),
-            "failed": sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.FAILED),
-            "pending": sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.PENDING),
+            "verified": sum(
+                1 for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED
+            ),
+            "failed": sum(
+                1 for t in self.goal_spec.tasks if t.status == TaskStatus.FAILED
+            ),
+            "pending": sum(
+                1 for t in self.goal_spec.tasks if t.status == TaskStatus.PENDING
+            ),
             "elapsed_seconds": (datetime.now() - start_time).total_seconds(),
         }
 
@@ -491,8 +559,12 @@ class AutonomousHarness:
             }
 
         total = len(self.goal_spec.tasks)
-        verified = sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED)
-        in_progress = sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.IN_PROGRESS)
+        verified = sum(
+            1 for t in self.goal_spec.tasks if t.status == TaskStatus.VERIFIED
+        )
+        in_progress = sum(
+            1 for t in self.goal_spec.tasks if t.status == TaskStatus.IN_PROGRESS
+        )
         pending = sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.PENDING)
         failed = sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.FAILED)
         skipped = sum(1 for t in self.goal_spec.tasks if t.status == TaskStatus.SKIPPED)
@@ -501,16 +573,18 @@ class AutonomousHarness:
 
         task_list = []
         for t in self.goal_spec.tasks:
-            task_list.append({
-                "id": t.id,
-                "description": t.description,
-                "status": t.status.value,
-                "attempts": t.attempts,
-                "max_attempts": t.max_attempts,
-                "target_files": t.target_files,
-                "failure_reasons": t.failure_reasons,
-                "completed_at": t.completed_at,
-            })
+            task_list.append(
+                {
+                    "id": t.id,
+                    "description": t.description,
+                    "status": t.status.value,
+                    "attempts": t.attempts,
+                    "max_attempts": t.max_attempts,
+                    "target_files": t.target_files,
+                    "failure_reasons": t.failure_reasons,
+                    "completed_at": t.completed_at,
+                }
+            )
 
         return {
             "goal_id": self.goal_spec.goal_id,
@@ -532,13 +606,28 @@ class AutonomousHarness:
         try:
             ensure_git_repository(self.project_root)
             # Check if there are modified or untracked changes
-            status = subprocess.run(["git", "status", "--porcelain"], cwd=str(self.project_root), capture_output=True, text=True)
+            status = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=str(self.project_root),
+                capture_output=True,
+                text=True,
+            )
             if not status.stdout.strip():
                 logger.info("Git working tree clean, nothing to commit.")
                 return True
 
-            subprocess.run(["git", "add", "."], cwd=str(self.project_root), check=True, capture_output=True)
-            subprocess.run(["git", "commit", "-m", message], cwd=str(self.project_root), check=True, capture_output=True)
+            subprocess.run(
+                ["git", "add", "."],
+                cwd=str(self.project_root),
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-m", message],
+                cwd=str(self.project_root),
+                check=True,
+                capture_output=True,
+            )
             return True
         except Exception as e:
             logger.warning(f"Git commit failed: {e}")
@@ -548,15 +637,36 @@ class AutonomousHarness:
         try:
             ensure_git_repository(self.project_root)
             if target_files:
-                existing_targets = [tf for tf in target_files if (self.project_root / tf).exists()]
+                existing_targets = [
+                    tf for tf in target_files if (self.project_root / tf).exists()
+                ]
                 if existing_targets:
-                    subprocess.run(["git", "checkout", "--"] + existing_targets, cwd=str(self.project_root), check=False, capture_output=True)
-                    subprocess.run(["git", "clean", "-fd"] + existing_targets, cwd=str(self.project_root), check=False, capture_output=True)
+                    subprocess.run(
+                        ["git", "checkout", "--"] + existing_targets,
+                        cwd=str(self.project_root),
+                        check=False,
+                        capture_output=True,
+                    )
+                    subprocess.run(
+                        ["git", "clean", "-fd"] + existing_targets,
+                        cwd=str(self.project_root),
+                        check=False,
+                        capture_output=True,
+                    )
                     return True
-            subprocess.run(["git", "checkout", "--", "."], cwd=str(self.project_root), check=True, capture_output=True)
-            subprocess.run(["git", "clean", "-fd"], cwd=str(self.project_root), check=True, capture_output=True)
+            subprocess.run(
+                ["git", "checkout", "--", "."],
+                cwd=str(self.project_root),
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "clean", "-fd"],
+                cwd=str(self.project_root),
+                check=True,
+                capture_output=True,
+            )
             return True
         except Exception as e:
             logger.warning(f"Git revert failed: {e}")
             return False
-

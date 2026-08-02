@@ -7,19 +7,57 @@ import json
 import tempfile
 
 from core.memory.manager import TieredMemory, MemoryConfig
-from core.execution.feedback_loop import ExecutionFeedbackLoop, TestRunResult, TestResult, TestResultStatus
+from core.execution.feedback_loop import (
+    ExecutionFeedbackLoop,
+    TestRunResult,
+    TestResult,
+    TestResultStatus,
+)
 from core.execution.autonomous_harness import (
-    AutonomousHarness, TaskStatus, TaskSpec, GoalSpec, HarnessConfig
+    AutonomousHarness,
+    TaskStatus,
+    TaskSpec,
+    GoalSpec,
+    HarnessConfig,
 )
 
 
-def create_mock_feedback_loop(tmp_path: Path, all_passed: bool = True) -> ExecutionFeedbackLoop:
+def create_mock_feedback_loop(
+    tmp_path: Path, all_passed: bool = True
+) -> ExecutionFeedbackLoop:
     fb = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    status = TestResultStatus.PASS if all_passed else TestResultStatus.FAIL
+
     def mock_run():
-        status = TestResultStatus.PASS if all_passed else TestResultStatus.FAIL
-        res = TestResult(name="test_sample", status=status)
-        return TestRunResult(command="pytest", return_code=0 if all_passed else 1, duration_ms=10.0, results=[res])
+        result = TestRunResult(
+            command="pytest",
+            return_code=0 if all_passed else 1,
+            duration_ms=10.0,
+            results=[TestResult(name="test_sample", status=status)],
+            ran=True,
+        )
+        # Mirror real feedback-loop semantics: passing runs clear the dirty set,
+        # failing runs keep it as a durable "unverified changes" signal.
+        fb._last_test_result = result
+        if all_passed:
+            fb._files_modified_since_test.clear()
+        else:
+            fb._files_modified_since_test.add("mock_src.py")
+        return result
+
     fb._run_tests = mock_run
+
+    # Pre-seed state as it appears right after the LLM step's own auto-run:
+    # passing runs leave a clean verified state; failing runs leave unverified edits.
+    fb._last_test_result = TestRunResult(
+        command="pytest",
+        return_code=0 if all_passed else 1,
+        duration_ms=10.0,
+        results=[TestResult(name="test_sample", status=status)],
+        ran=True,
+    )
+    if not all_passed:
+        fb._files_modified_since_test.add("mock_src.py")
     return fb
 
 
@@ -30,10 +68,23 @@ def test_goal_initialization_and_persistence():
         harness = AutonomousHarness(project_root=tmp_path, memory=memory)
 
         tasks = [
-            {"id": "t1", "description": "Add async support", "target_files": ["api.py"]},
-            {"id": "t2", "description": "Add unit tests", "target_files": ["test_api.py"]},
+            {
+                "id": "t1",
+                "description": "Add async support",
+                "target_files": ["api.py"],
+            },
+            {
+                "id": "t2",
+                "description": "Add unit tests",
+                "target_files": ["test_api.py"],
+            },
         ]
-        goal = harness.initialize_goal(goal_id="g1", title="Async Refactor", description="Convert to async", tasks=tasks)
+        goal = harness.initialize_goal(
+            goal_id="g1",
+            title="Async Refactor",
+            description="Convert to async",
+            tasks=tasks,
+        )
 
         assert goal.goal_id == "g1"
         assert len(goal.tasks) == 2
@@ -63,10 +114,14 @@ def test_context_flushing_during_micro_epoch():
 
         fb = create_mock_feedback_loop(tmp_path, all_passed=True)
         config = HarnessConfig(preserve_continuous_context=False)
-        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb, config=config)
+        harness = AutonomousHarness(
+            project_root=tmp_path, memory=memory, feedback_loop=fb, config=config
+        )
 
         tasks = [{"id": "t1", "description": "Quick fix"}]
-        harness.initialize_goal(goal_id="g1", title="Quick Goal", description="Fix issue", tasks=tasks)
+        harness.initialize_goal(
+            goal_id="g1", title="Quick Goal", description="Fix issue", tasks=tasks
+        )
 
         task = harness.goal_spec.tasks[0]
         success = harness.run_micro_epoch(task)
@@ -90,10 +145,17 @@ def test_continuous_session_context_preservation():
 
         fb = create_mock_feedback_loop(tmp_path, all_passed=True)
         config = HarnessConfig(preserve_continuous_context=True)
-        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb, config=config)
+        harness = AutonomousHarness(
+            project_root=tmp_path, memory=memory, feedback_loop=fb, config=config
+        )
 
         tasks = [{"id": "t1", "description": "Continuous improvement"}]
-        harness.initialize_goal(goal_id="g1", title="Continuous Goal", description="Refactor code", tasks=tasks)
+        harness.initialize_goal(
+            goal_id="g1",
+            title="Continuous Goal",
+            description="Refactor code",
+            tasks=tasks,
+        )
 
         task = harness.goal_spec.tasks[0]
         success = harness.run_micro_epoch(task)
@@ -107,17 +169,22 @@ def test_continuous_session_context_preservation():
         assert "GOAL: Continuous Goal" in user_msg.content
 
 
-
 def test_task_failure_and_retry_limit():
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=2000))
         fb = create_mock_feedback_loop(tmp_path, all_passed=False)
-        config = HarnessConfig(max_task_attempts=2, auto_git_commit=False, revert_on_failure=False)
-        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb, config=config)
+        config = HarnessConfig(
+            max_task_attempts=2, auto_git_commit=False, revert_on_failure=False
+        )
+        harness = AutonomousHarness(
+            project_root=tmp_path, memory=memory, feedback_loop=fb, config=config
+        )
 
         tasks = [{"id": "t1", "description": "Failing task", "max_attempts": 2}]
-        harness.initialize_goal(goal_id="g1", title="Failing Goal", description="Test failure", tasks=tasks)
+        harness.initialize_goal(
+            goal_id="g1", title="Failing Goal", description="Test failure", tasks=tasks
+        )
 
         task = harness.goal_spec.tasks[0]
 
@@ -135,19 +202,57 @@ def test_task_failure_and_retry_limit():
         assert len(task.failure_reasons) == 2
 
 
+def test_no_change_task_skips_test_gate():
+    """A task that made no code changes must not be reverted by unrelated /
+    pre-existing test failures: the test gate only applies when the feedback
+    loop shows unverified edits or currently failing tests."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_path = Path(tmp_dir)
+        memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=2000))
+        fb = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+
+        def mock_run():
+            return TestRunResult(
+                command="pytest",
+                return_code=1,
+                duration_ms=10.0,
+                results=[TestResult(name="t", status=TestResultStatus.FAIL)],
+                ran=True,
+            )
+
+        fb._run_tests = mock_run
+        config = HarnessConfig(auto_git_commit=False, revert_on_failure=False)
+        harness = AutonomousHarness(
+            project_root=tmp_path, memory=memory, feedback_loop=fb, config=config
+        )
+        tasks = [{"id": "t1", "description": "Planning only"}]
+        harness.initialize_goal(
+            goal_id="g1", title="Plan", description="No code", tasks=tasks
+        )
+
+        task = harness.goal_spec.tasks[0]
+        success = harness.run_micro_epoch(task)
+        assert success is True
+        assert task.status == TaskStatus.VERIFIED
+
+
 def test_daemon_loop_completion():
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=2000))
         fb = create_mock_feedback_loop(tmp_path, all_passed=True)
         config = HarnessConfig(auto_git_commit=False)
-        harness = AutonomousHarness(project_root=tmp_path, memory=memory, feedback_loop=fb, config=config)
+        harness = AutonomousHarness(
+            project_root=tmp_path, memory=memory, feedback_loop=fb, config=config
+        )
 
         tasks = [
             {"id": "t1", "description": "Task 1"},
             {"id": "t2", "description": "Task 2"},
         ]
-        harness.initialize_goal(goal_id="g1", title="Daemon Goal", description="Test daemon", tasks=tasks)
+        harness.initialize_goal(
+            goal_id="g1", title="Daemon Goal", description="Test daemon", tasks=tasks
+        )
 
         results = harness.run_daemon()
 
@@ -186,7 +291,9 @@ def test_get_status_summary():
             {"id": "t1", "description": "Setup DB", "target_files": ["db.py"]},
             {"id": "t2", "description": "Add routes", "target_files": ["api.py"]},
         ]
-        harness.initialize_goal(goal_id="g100", title="DB & API Goal", description="Build API", tasks=tasks)
+        harness.initialize_goal(
+            goal_id="g100", title="DB & API Goal", description="Build API", tasks=tasks
+        )
         harness.goal_spec.tasks[0].status = TaskStatus.VERIFIED
 
         summary = harness.get_status_summary()
@@ -198,5 +305,3 @@ def test_get_status_summary():
         assert summary["progress_pct"] == 50.0
         assert summary["tasks"][0]["id"] == "t1"
         assert summary["tasks"][0]["status"] == "verified"
-
-

@@ -28,10 +28,17 @@ def test_anti_symptom_patching_directive():
     assert "Never resolve errors by masking symptoms" in SYSTEM_PROMPT
 
 
+def test_verification_gate_parity_in_system_prompt():
+    assert "UNRESOLVED TEST FAILURES" in SYSTEM_PROMPT
+    assert "UNVERIFIED CHANGES" in SYSTEM_PROMPT
+    assert "re-verifies your pending changes" in SYSTEM_PROMPT
+    assert "REVERT your broken edits" in SYSTEM_PROMPT
+
+
 def test_l0_scratchpad_formatting():
     config = MemoryConfig(max_tokens=4000)
     memory = TieredMemory(config=config)
-    
+
     # Initially empty
     assert memory.format_l0_scratchpad() == ""
 
@@ -54,7 +61,7 @@ def test_l0_scratchpad_formatting():
 def test_headroom_calculation():
     config = MemoryConfig(max_tokens=4000)
     memory = TieredMemory(config=config)
-    
+
     headroom = memory.get_available_headroom()
     assert headroom > 0
     assert headroom <= 4000
@@ -95,4 +102,3 @@ def test_persistent_memory_loading_and_prompt_inclusion():
         pm2 = ProjectMemory(Path(tmpdir))
         memory2 = TieredMemory(config=MemoryConfig(max_tokens=4000), project_memory=pm2)
         assert "Decision: Adopt async workers" in memory2.state.decisions
-

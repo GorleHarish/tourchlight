@@ -10,9 +10,38 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Callable
 
-from .models import Message, MessageRole, SessionState, ContextSnapshot, MemoryNeedle, MemoryObject, WorkingSetSnapshot
+from .models import (
+    Message,
+    MessageRole,
+    SessionState,
+    ContextSnapshot,
+    MemoryNeedle,
+    MemoryObject,
+    WorkingSetSnapshot,
+)
 from .token_counter import TokenCounter, get_token_counter
-from .selective_compression import SelectiveCompressor, CompressionConfig, CompressionLevel
+from .budget import ContextBudget
+from .selective_compression import (
+    SelectiveCompressor,
+    CompressionConfig,
+    CompressionLevel,
+)
+
+
+# L0 scratchpad hygiene limits. These bound the dynamic working-memory block
+# injected into system context every turn so it stays small for 7B-class models
+# (~400 tokens worst case) regardless of how much state accumulates.
+_SCRATCHPAD_MAX_CHARS = 1600
+_SCRATCHPAD_ENTRY_LIMIT = 120
+_SCRATCHPAD_HEADER = "[L0 WORKING MEMORY SCRATCHPAD]"
+
+
+def _scratchpad_clean(entry, limit: int = _SCRATCHPAD_ENTRY_LIMIT) -> str:
+    """Flatten whitespace/newlines and truncate a scratchpad entry to a bounded length."""
+    flat = " ".join(str(entry).split())
+    if len(flat) > limit:
+        return flat[: limit - 3].rstrip() + "..."
+    return flat
 
 
 @dataclass
@@ -36,6 +65,7 @@ class MemoryConfig:
     def auto_tune(cls, max_tokens: int, metadata_overhead: int = 0) -> "MemoryConfig":
         try:
             import psutil
+
             available_ram_gb = psutil.virtual_memory().available / (1024**3)
         except ImportError:
             available_ram_gb = 8
@@ -60,31 +90,51 @@ class MemoryConfig:
 
         if max_tokens <= 2000:
             return cls(
-                max_tokens=history_budget, recent_window=1,
-                recent_tokens=int(history_budget * 0.4), pinned_token_budget=200, compression_threshold=0.5,
-                summary_trigger_tokens=int(history_budget * 0.4), message_compact_threshold=200,
-                metadata_overhead=metadata_overhead, max_messages=max_messages,
+                max_tokens=history_budget,
+                recent_window=1,
+                recent_tokens=int(history_budget * 0.4),
+                pinned_token_budget=200,
+                compression_threshold=0.5,
+                summary_trigger_tokens=int(history_budget * 0.4),
+                message_compact_threshold=200,
+                metadata_overhead=metadata_overhead,
+                max_messages=max_messages,
             )
         elif max_tokens <= 4000:
             return cls(
-                max_tokens=history_budget, recent_window=2,
-                recent_tokens=int(history_budget * 0.35), pinned_token_budget=300, compression_threshold=0.6,
-                summary_trigger_tokens=int(history_budget * 0.5), message_compact_threshold=300,
-                metadata_overhead=metadata_overhead, max_messages=max_messages,
+                max_tokens=history_budget,
+                recent_window=2,
+                recent_tokens=int(history_budget * 0.35),
+                pinned_token_budget=300,
+                compression_threshold=0.6,
+                summary_trigger_tokens=int(history_budget * 0.5),
+                message_compact_threshold=300,
+                metadata_overhead=metadata_overhead,
+                max_messages=max_messages,
             )
         elif max_tokens <= 8000:
             return cls(
-                max_tokens=history_budget, recent_window=3,
-                recent_tokens=int(history_budget * 0.25), pinned_token_budget=600, compression_threshold=0.7,
-                summary_trigger_tokens=int(history_budget * 0.75), message_compact_threshold=500,
-                metadata_overhead=metadata_overhead, max_messages=max_messages,
+                max_tokens=history_budget,
+                recent_window=3,
+                recent_tokens=int(history_budget * 0.25),
+                pinned_token_budget=600,
+                compression_threshold=0.7,
+                summary_trigger_tokens=int(history_budget * 0.75),
+                message_compact_threshold=500,
+                metadata_overhead=metadata_overhead,
+                max_messages=max_messages,
             )
         else:
             return cls(
-                max_tokens=history_budget, recent_window=5,
-                recent_tokens=int(history_budget * 0.2), pinned_token_budget=1000, compression_threshold=0.7,
-                summary_trigger_tokens=int(history_budget * 0.75), message_compact_threshold=800,
-                metadata_overhead=metadata_overhead, max_messages=max_messages,
+                max_tokens=history_budget,
+                recent_window=5,
+                recent_tokens=int(history_budget * 0.2),
+                pinned_token_budget=1000,
+                compression_threshold=0.7,
+                summary_trigger_tokens=int(history_budget * 0.75),
+                message_compact_threshold=800,
+                metadata_overhead=metadata_overhead,
+                max_messages=max_messages,
             )
 
 
@@ -97,8 +147,13 @@ class TieredMemory:
     - L3: Persistent project memory
     """
 
-    def __init__(self, config: MemoryConfig, tokenizer: Optional[TokenCounter] = None,
-                 project_memory=None, llm_client=None):
+    def __init__(
+        self,
+        config: MemoryConfig,
+        tokenizer: Optional[TokenCounter] = None,
+        project_memory=None,
+        llm_client=None,
+    ):
         self.config = config
         self.tokenizer = tokenizer or get_token_counter()
         self.state = SessionState()
@@ -153,7 +208,6 @@ class TieredMemory:
         except Exception:
             pass
 
-
     @property
     def total_tokens(self) -> int:
         msg_tokens = sum(self.tokenizer.count(m.content) for m in self.messages)
@@ -161,27 +215,52 @@ class TieredMemory:
         return msg_tokens + pinned_tokens
 
     def add_system_message(self, content: str) -> None:
-        msg = Message(role=MessageRole.SYSTEM, content=content, token_count=self.tokenizer.count(content))
+        msg = Message(
+            role=MessageRole.SYSTEM,
+            content=content,
+            token_count=self.tokenizer.count(content),
+        )
         self.messages.append(msg)
         self._update_state_from_message(msg)
 
     def add_user_message(self, content: str) -> None:
-        msg = Message(role=MessageRole.USER, content=content, token_count=self.tokenizer.count(content))
+        msg = Message(
+            role=MessageRole.USER,
+            content=content,
+            token_count=self.tokenizer.count(content),
+        )
         self.messages.append(msg)
         self._update_state_from_message(msg)
 
     def add_assistant_message(self, content: str) -> None:
-        msg = Message(role=MessageRole.ASSISTANT, content=content, token_count=self.tokenizer.count(content))
+        msg = Message(
+            role=MessageRole.ASSISTANT,
+            content=content,
+            token_count=self.tokenizer.count(content),
+        )
         self.messages.append(msg)
         self._update_state_from_message(msg)
 
     def add_tool_result(self, content: str, tool_name: str = "") -> None:
         msg = Message(
-            role=MessageRole.TOOL_RESULT, content=content,
+            role=MessageRole.TOOL_RESULT,
+            content=content,
             token_count=self.tokenizer.count(content),
             metadata={"tool_name": tool_name},
         )
         self.messages.append(msg)
+
+    def get_effective_budget(self) -> ContextBudget:
+        """Return headroom-aware budget allocations for the current turn.
+
+        Budgets expand with free context (more L0 memory, larger pins) and
+        shrink under pressure, so no reserved context sits idle.
+        """
+        return ContextBudget(
+            max_tokens=self.config.max_tokens,
+            used_tokens=self.total_tokens,
+            base_pinned_tokens=self.config.pinned_token_budget,
+        )
 
     def pin_file(self, path: str, content: str) -> None:
         """Pin a recently-read file slice so it survives compression without bloating context.
@@ -189,15 +268,16 @@ class TieredMemory:
         If the file is already pinned, update its content. Otherwise add it
         to the FIFO queue (oldest evicted when full).
         """
-        # Truncate content to fit inside token budget if necessary
+        # Truncate content to the headroom-aware pinned budget if necessary
+        budget_tokens = self.get_effective_budget().pinned_tokens
         tokens = self.tokenizer.count(content)
-        if tokens > self._pinned_token_budget:
+        if tokens > budget_tokens:
             lines = content.splitlines()
             truncated_lines = []
             current_tokens = 0
             for line in lines:
                 l_tokens = self.tokenizer.count(line + "\n")
-                if current_tokens + l_tokens > self._pinned_token_budget:
+                if current_tokens + l_tokens > budget_tokens:
                     truncated_lines.append("... [truncated to fit context budget] ...")
                     break
                 truncated_lines.append(line)
@@ -216,15 +296,20 @@ class TieredMemory:
         """Remove a file from pinned memory if deleted or stale."""
         self._pinned_files = deque(
             [(p, c) for p, c in self._pinned_files if p != path],
-            maxlen=self._pinned_files.maxlen
+            maxlen=self._pinned_files.maxlen,
         )
 
     def refresh_pin(self, path: str, project_root: str) -> None:
         """Re-read an edited file from disk and update its pin in memory."""
         try:
             from core.tools.implementations import tool_read_file_impl
+
             res = tool_read_file_impl({"path": path}, project_root)
-            if res and not res.startswith("Error") and not res.startswith("File not found"):
+            if (
+                res
+                and not res.startswith("Error")
+                and not res.startswith("File not found")
+            ):
                 self.pin_file(path, res)
             else:
                 self.unpin_file(path)
@@ -250,32 +335,56 @@ class TieredMemory:
             return False
         return ratio > self.config.compression_threshold
 
-    def compress_recent(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0, force: bool = False) -> None:
+    def compress_recent(
+        self,
+        summarizer_fn: Optional[Callable] = None,
+        preserve_first: int = 0,
+        force: bool = False,
+    ) -> None:
         """Compress older messages, preserving the first N messages."""
         min_messages = 1 if force else (self.config.recent_window + preserve_first)
         if len(self.messages) <= min_messages:
             return
-        
+
         window_size = 1 if force else self.config.recent_window
         recent = list(self.messages)[-window_size:] if window_size > 0 else []
         preserved = list(self.messages)[:preserve_first]
-        older = list(self.messages)[preserve_first:-window_size] if window_size > 0 else list(self.messages)[preserve_first:]
-        
+        older = (
+            list(self.messages)[preserve_first:-window_size]
+            if window_size > 0
+            else list(self.messages)[preserve_first:]
+        )
+
         if older:
             self.messages.clear()
             for msg in preserved:
                 self.messages.append(msg)
-                
+
             if summarizer_fn:
                 summary = summarizer_fn(older)
-                self.messages.append(Message(role=MessageRole.SYSTEM, content=f"[Context summary of older turns]\n{summary}"))
+                self.messages.append(
+                    Message(
+                        role=MessageRole.SYSTEM,
+                        content=f"[Context summary of older turns]\n{summary}",
+                    )
+                )
             else:
-                self.messages.append(Message(role=MessageRole.SYSTEM, content=f"[Context compacted. {len(older)} turns omitted to save memory.]"))
-                
+                self.messages.append(
+                    Message(
+                        role=MessageRole.SYSTEM,
+                        content=f"[Context compacted. {len(older)} turns omitted to save memory.]",
+                    )
+                )
+
             for msg in recent:
                 self.messages.append(msg)
 
-    async def compress_recent_async(self, summarizer_fn: Optional[Callable] = None, preserve_first: int = 0, force: bool = False) -> None:
+    async def compress_recent_async(
+        self,
+        summarizer_fn: Optional[Callable] = None,
+        preserve_first: int = 0,
+        force: bool = False,
+    ) -> None:
         """Async wrapper for compress_recent."""
         self.compress_recent(summarizer_fn, preserve_first, force=force)
 
@@ -301,27 +410,42 @@ class TieredMemory:
                 summary_content = None
 
         if summary_content:
-            self.messages.append(Message(
-                role=MessageRole.SYSTEM,
-                content=f"[Continuous Session Summary of Prior Tasks]\n{summary_content}"
-            ))
+            self.messages.append(
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content=f"[Continuous Session Summary of Prior Tasks]\n{summary_content}",
+                )
+            )
         else:
             state_parts = []
             if self.state.files_modified:
-                state_parts.append(f"Modified files: {', '.join(list(self.state.files_modified)[-5:])}")
+                state_parts.append(
+                    f"Modified files: {', '.join(list(self.state.files_modified)[-5:])}"
+                )
             if self.state.errors_seen:
-                state_parts.append(f"Errors seen: {', '.join(list(self.state.errors_seen)[-3:])}")
+                state_parts.append(
+                    f"Errors seen: {', '.join(list(self.state.errors_seen)[-3:])}"
+                )
             if self.state.decisions:
-                state_parts.append(f"Key decisions: {', '.join(list(self.state.decisions)[-3:])}")
-            
-            summary_text = "; ".join(state_parts) if state_parts else f"{len(older_messages)} prior turns"
-            self.messages.append(Message(
-                role=MessageRole.SYSTEM,
-                content=f"[Continuous Session Summary: {summary_text}]"
-            ))
+                state_parts.append(
+                    f"Key decisions: {', '.join(list(self.state.decisions)[-3:])}"
+                )
 
+            summary_text = (
+                "; ".join(state_parts)
+                if state_parts
+                else f"{len(older_messages)} prior turns"
+            )
+            self.messages.append(
+                Message(
+                    role=MessageRole.SYSTEM,
+                    content=f"[Continuous Session Summary: {summary_text}]",
+                )
+            )
 
-    def get_context_for_llm(self, user_query: str = "", project_root: Optional[str] = None) -> list[dict]:
+    def get_context_for_llm(
+        self, user_query: str = "", project_root: Optional[str] = None
+    ) -> list[dict]:
         """Build the message list for the LLM.
 
         Pinned files and dynamic L0 Scratchpad are injected into system context
@@ -330,27 +454,34 @@ class TieredMemory:
         """
         context = []
         pinned_injected = False
+        pinned_budget = self.get_effective_budget().pinned_tokens
         l0_scratchpad = self.format_l0_scratchpad(project_root=project_root)
 
         for msg in self.messages:
-            role = msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
+            role = (
+                msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
+            )
             context.append({"role": role, "content": msg.content})
             # Inject L0 Scratchpad and pinned files after the first system message
             if not pinned_injected and role == "system":
                 if l0_scratchpad:
                     context.append({"role": "system", "content": l0_scratchpad})
                 if self._pinned_files:
-                    pinned_lines = ["[Pinned file contents — use for EDIT_FILE old_text:]"]
+                    pinned_lines = [
+                        "[Pinned file contents — use for EDIT_FILE old_text:]"
+                    ]
                     pinned_tokens = 0
                     for path, content in self._pinned_files:
                         entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
                         entry_tokens = self.tokenizer.count(entry)
-                        if pinned_tokens + entry_tokens > self._pinned_token_budget:
+                        if pinned_tokens + entry_tokens > pinned_budget:
                             break
                         pinned_lines.append(entry)
                         pinned_tokens += entry_tokens
                     if len(pinned_lines) > 1:
-                        context.append({"role": "system", "content": "\n".join(pinned_lines)})
+                        context.append(
+                            {"role": "system", "content": "\n".join(pinned_lines)}
+                        )
                 pinned_injected = True
 
         if not pinned_injected:
@@ -362,43 +493,114 @@ class TieredMemory:
                 for path, content in self._pinned_files:
                     entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
                     entry_tokens = self.tokenizer.count(entry)
-                    if pinned_tokens + entry_tokens > self._pinned_token_budget:
+                    if pinned_tokens + entry_tokens > pinned_budget:
                         break
                     pinned_lines.append(entry)
                     pinned_tokens += entry_tokens
                 if len(pinned_lines) > 1:
-                    context.insert(0, {"role": "system", "content": "\n".join(pinned_lines)})
+                    context.insert(
+                        0, {"role": "system", "content": "\n".join(pinned_lines)}
+                    )
 
         return context
 
-    def format_l0_scratchpad(self, project_root: Optional[str] = None) -> str:
-        """Format current SessionState into a dynamic L0 working memory scratchpad for system context."""
-        parts = ["[L0 WORKING MEMORY SCRATCHPAD]"]
+    def format_l0_scratchpad(
+        self,
+        project_root: Optional[str] = None,
+        budget: Optional[ContextBudget] = None,
+    ) -> str:
+        """Format current SessionState into a dynamic L0 working memory scratchpad for system context.
+
+        The budget is headroom-aware (see `get_effective_budget`): with ample
+        free context the scratchpad expands to surface more decisions, errors,
+        and tried-and-failed entries (richer grounding for code edits); under
+        pressure it shrinks to protect the conversation. Sections are ordered by
+        priority and assembled greedily so the scratchpad can never blow the
+        context window even with long or multiline state entries.
+        """
+        if budget is None:
+            budget = self.get_effective_budget()
+        entry_limit = budget.scratchpad_entry_limit
+        section_cap = budget.scratchpad_section_cap
+        max_chars = budget.l0_chars
+        sections = []
+
         if self.state.current_task:
-            parts.append(f"- Active Goal: {self.state.current_task}")
+            sections.append(
+                (
+                    0,
+                    f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
+                )
+            )
 
         if project_root:
             from core.tools.task_helpers import get_workspace_pending_tasks
+
             pending = get_workspace_pending_tasks(project_root)
             if pending:
-                parts.append(f"- Pending Tasks: {', '.join(pending[:5])}")
+                shown = ", ".join(
+                    _scratchpad_clean(t, entry_limit) for t in pending[:5]
+                )
+                sections.append((1, f"- Pending Tasks: {shown}"))
 
         if self.state.active_file:
-            parts.append(f"- Active File: {self.state.active_file}")
+            sections.append(
+                (
+                    2,
+                    f"- Active File: {_scratchpad_clean(self.state.active_file, entry_limit)}",
+                )
+            )
         if self.state.files_modified:
-            parts.append(f"- Modified Files: {', '.join(self.state.files_modified[-5:])}")
+            shown = ", ".join(
+                _scratchpad_clean(f, entry_limit)
+                for f in self.state.files_modified[-5:]
+            )
+            sections.append((3, f"- Modified Files: {shown}"))
         if self.state.failing_tests:
-            parts.append(f"- Failing Tests: {', '.join(self.state.failing_tests[:3])}")
+            shown = ", ".join(
+                _scratchpad_clean(t, entry_limit)
+                for t in self.state.failing_tests[:section_cap]
+            )
+            sections.append((4, f"- Failing Tests: {shown}"))
         if self.state.errors_seen:
-            parts.append(f"- Active Errors: {'; '.join(self.state.errors_seen[-3:])}")
+            shown = "; ".join(
+                _scratchpad_clean(e, entry_limit)
+                for e in self.state.errors_seen[-section_cap:]
+            )
+            sections.append((5, f"- Active Errors: {shown}"))
         if self.state.decisions:
-            parts.append(f"- Key Decisions: {'; '.join(self.state.decisions[-3:])}")
+            shown = "; ".join(
+                _scratchpad_clean(d, entry_limit)
+                for d in self.state.decisions[-section_cap:]
+            )
+            sections.append((6, f"- Key Decisions: {shown}"))
         if self.state.tried_and_failed:
-            parts.append(f"- Tried & Failed: {'; '.join(self.state.tried_and_failed[-3:])}")
-        
-        if len(parts) == 1:
+            shown = "; ".join(
+                _scratchpad_clean(t, entry_limit)
+                for t in self.state.tried_and_failed[-section_cap:]
+            )
+            sections.append((7, f"- Tried & Failed: {shown}"))
+
+        if not sections:
             return ""
-        return "\n".join(parts)
+
+        sections.sort(key=lambda s: s[0])
+        lines = [_SCRATCHPAD_HEADER]
+        used = len(_SCRATCHPAD_HEADER)
+        for _, line in sections:
+            # Exact joined length: newline separator (1) + line content.
+            if used + 1 + len(line) <= max_chars:
+                lines.append(line)
+                used += 1 + len(line)
+                continue
+            # A single section can still claim the remaining budget (truncated),
+            # but never push the scratchpad over its cap.
+            remaining = max_chars - used
+            if remaining > 21:
+                budget_chars = remaining - 1 - 4
+                lines.append(line[:budget_chars].rstrip() + " ...")
+            break
+        return "\n".join(lines)
 
     def record_memory(self, entry: str, category: str = "decision") -> None:
         """Record an explicit memory entry into SessionState and persist to project memory."""
@@ -429,12 +631,26 @@ class TieredMemory:
     def predict_next_tools(self) -> list[str]:
         """Predict likely next tools based on current state."""
         tools = []
-        _EXPLORE_KEYWORDS = {"understand", "how", "what", "where", "find", "architecture",
-                             "depends", "explain", "structure", "callers", "relationship"}
+        _EXPLORE_KEYWORDS = {
+            "understand",
+            "how",
+            "what",
+            "where",
+            "find",
+            "architecture",
+            "depends",
+            "explain",
+            "structure",
+            "callers",
+            "relationship",
+        }
         intent_lower = (self.state.intent or self.state.current_task or "").lower()
         # Suggest SEARCH_AST first for exploration or when no file is focused yet
-        if not self.state.active_file or not self.state.files_modified or \
-                any(kw in intent_lower for kw in _EXPLORE_KEYWORDS):
+        if (
+            not self.state.active_file
+            or not self.state.files_modified
+            or any(kw in intent_lower for kw in _EXPLORE_KEYWORDS)
+        ):
             tools.append("SEARCH_AST")
         if self.state.active_file:
             tools.append("READ_FILE")
@@ -452,7 +668,9 @@ class TieredMemory:
         return ContextSnapshot(
             token_count=self.total_tokens,
             message_count=len(self.messages),
-            compression_ratio=self.total_tokens / self.config.max_tokens if self.config.max_tokens > 0 else 0,
+            compression_ratio=self.total_tokens / self.config.max_tokens
+            if self.config.max_tokens > 0
+            else 0,
             active_file=self.state.active_file,
             tech_stack=self.state.tech_stack,
             errors_seen=self.state.errors_seen,
@@ -468,7 +686,7 @@ class TieredMemory:
     def _update_state_from_message(self, msg: Message) -> None:
         content = msg.content
         # Extract file paths
-        paths = re.findall(r'[\w/\.\-]+\.\w{1,10}', content)
+        paths = re.findall(r"[\w/\.\-]+\.\w{1,10}", content)
         for p in paths[:3]:
             if p not in self.state.files_read and msg.role == MessageRole.USER:
                 self.state.files_read.append(p)
@@ -476,11 +694,10 @@ class TieredMemory:
                 self.state.files_modified.append(p)
         # Extract errors
         error_matches = re.findall(
-            r'(?:Error|Exception|FAILED)[:\s]+([^\n]{10,100})', content
+            r"(?:Error|Exception|FAILED)[:\s]+([^\n]{10,100})", content
         )
         for err in error_matches[:2]:
             if err not in self.state.errors_seen:
                 self.state.errors_seen.append(err)
 
         self.persist_to_project_memory()
-

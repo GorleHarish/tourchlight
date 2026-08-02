@@ -2,6 +2,7 @@
 Tests for performance and accuracy optimizations in Torchlight.
 """
 
+import os
 import tempfile
 from pathlib import Path
 from core.tools.registry import get_tool_registry, ToolResult
@@ -47,11 +48,27 @@ def test_symbol_index_mtime_cache():
 def test_inline_syntax_guardrail():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
-        
-        # Test valid Python syntax
-        res_valid = tool_write_file_impl({"path": "clean.py", "content": "x = 10\n"}, project_root=str(tmp_path))
-        assert "Syntax Warning" not in res_valid
 
-        # Test broken Python syntax
-        res_invalid = tool_write_file_impl({"path": "broken.py", "content": "def broken_func(\n"}, project_root=str(tmp_path))
-        assert "Syntax Warning" in res_invalid
+        # Test valid Python syntax
+        res_valid = tool_write_file_impl(
+            {"path": "clean.py", "content": "x = 10\n"}, project_root=str(tmp_path)
+        )
+        assert "Syntax Warning" not in res_valid
+        assert os.path.exists(tmp_path / "clean.py")
+
+        # Test broken Python syntax is now BLOCKED: file is NOT written
+        res_invalid = tool_write_file_impl(
+            {"path": "broken.py", "content": "def broken_func(\n"},
+            project_root=str(tmp_path),
+        )
+        assert "Syntax error" in res_invalid
+        assert "NOT written" in res_invalid
+        assert not os.path.exists(tmp_path / "broken.py")
+
+        # force=true escape hatch still writes (scaffolding bypass)
+        res_forced = tool_write_file_impl(
+            {"path": "forced.py", "content": "def broken_func(\n", "force": True},
+            project_root=str(tmp_path),
+        )
+        assert "Written" in res_forced
+        assert os.path.exists(tmp_path / "forced.py")

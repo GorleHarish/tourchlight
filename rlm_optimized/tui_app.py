@@ -11,7 +11,7 @@ import json
 import asyncio
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 import hashlib
 
 from textual.app import App, ComposeResult
@@ -173,12 +173,15 @@ def _provider_runtime_info(provider_key: str) -> tuple[int, bool]:
 # ── Approval Modal ──────────────────────────────────────────────────────
 
 
-class ApprovalModal(ModalScreen[bool]):
-    """Modal dialog for tool & file modification approval in Cyberpunk Sci-Fi style."""
+class ApprovalModal(ModalScreen[Union[bool, str]]):
+    """Production-grade modal dialog for tool & file modification approval."""
 
     BINDINGS = [
         ("y", "allow", "Allow"),
         ("Y", "allow", "Allow"),
+        ("enter", "allow", "Allow"),
+        ("a", "always_allow", "Always Allow"),
+        ("A", "always_allow", "Always Allow"),
         ("n", "deny", "Deny"),
         ("N", "deny", "Deny"),
         ("escape", "deny", "Deny"),
@@ -187,12 +190,13 @@ class ApprovalModal(ModalScreen[bool]):
     DEFAULT_CSS = """
     ApprovalModal {
         align: center middle;
+        background: rgba(0, 0, 0, 0.7);
     }
     #approval-dialog {
-        width: 76;
+        width: 84;
         max-height: 85%;
-        border: heavy $warning;
-        background: #121614;
+        border: round $primary;
+        background: $surface;
         padding: 1 2;
     }
     #approval-title {
@@ -233,7 +237,7 @@ class ApprovalModal(ModalScreen[bool]):
         margin-top: 1;
     }
     #approval-buttons Button {
-        margin: 0 2;
+        margin: 0 1;
         min-width: 18;
     }
     #approval-hint {
@@ -304,10 +308,12 @@ class ApprovalModal(ModalScreen[bool]):
                     id="approval-diff",
                 )
             with Horizontal(id="approval-buttons"):
-                yield Button("APPROVE (Y)", classes="btn-gold", id="allow-btn")
-                yield Button("REJECT (N)", classes="btn-outline", id="deny-btn")
+                yield Button("APPROVE (Enter / Y)", variant="success", id="allow-btn")
+                yield Button("REJECT (Esc / N)", variant="error", id="deny-btn")
+                yield Button("ALWAYS ALLOW (A)", variant="warning", id="always-btn")
             yield Static(
-                "[dim]Press Y to approve, N or Esc to reject[/]", id="approval-hint"
+                "[dim]Press Enter / Y to approve, N or Esc to reject, A for session auto-approve[/dim]",
+                id="approval-hint",
             )
 
     def on_mount(self) -> None:
@@ -322,6 +328,9 @@ class ApprovalModal(ModalScreen[bool]):
     def action_deny(self) -> None:
         self.dismiss(False)
 
+    def action_always_allow(self) -> None:
+        self.dismiss("always")
+
     @on(Button.Pressed, "#allow-btn")
     def on_allow(self) -> None:
         self.dismiss(True)
@@ -329,6 +338,10 @@ class ApprovalModal(ModalScreen[bool]):
     @on(Button.Pressed, "#deny-btn")
     def on_deny(self) -> None:
         self.dismiss(False)
+
+    @on(Button.Pressed, "#always-btn")
+    def on_always(self) -> None:
+        self.dismiss("always")
 
 
 # ── Folder Picker Modal ──────────────────────────────────────────────────
@@ -1254,21 +1267,7 @@ class TorchlightApp(App):
 
             # 3. Right Sidebar: Implementation Plan & TODO Tasks
             with Vertical(id="plan-sidebar"):
-                if Collapsible is not None:
-                    yield Collapsible(
-                        Static(self._build_plan_overview_text(), id="plan-overview-panel"),
-                        title="📄 IMPLEMENTATION PLAN",
-                        collapsed=False,
-                        id="plan-overview-collapsible",
-                    )
-                    yield Collapsible(
-                        Static(self._build_task_checklist_text(), id="task-checklist-panel"),
-                        title="☑ ACTIVE TASKS & TODO",
-                        collapsed=False,
-                        id="task-checklist-collapsible",
-                    )
-                else:
-                    yield Static(self._build_plan_text(), id="plan-panel")
+                yield Static(self._build_plan_text(), id="plan-panel")
 
         # Bottom Context Progress & Telemetry Meter
         with Vertical(id="telemetry-bar"):
@@ -3076,6 +3075,8 @@ class TorchlightApp(App):
     # ── Approval Modal ──────────────────────────────────────────────────
 
     async def _handle_approval(self, tool_name: str, risk: str, args: dict) -> bool:
+        if getattr(self, "_auto_approve_session", False):
+            return True
         diff_entries = None
         diff_path = ""
         self._capture_prewrite_snapshot(tool_name, args)
@@ -3091,7 +3092,7 @@ class TorchlightApp(App):
                 _old, _new, diff_path, diff_entries = preview
         except Exception:
             pass
-        return await self.push_screen_wait(
+        res = await self.push_screen_wait(
             ApprovalModal(
                 tool_name,
                 risk,
@@ -3100,6 +3101,11 @@ class TorchlightApp(App):
                 diff_path=diff_path,
             )
         )
+        if res == "always":
+            self._auto_approve_session = True
+            self.notify("Session auto-approval enabled for all tools", severity="information", timeout=3)
+            return True
+        return bool(res)
 
     def _capture_prewrite_snapshot(self, tool_name: str, args: dict) -> None:
         """Snapshot file contents *before* a diffable write executes.

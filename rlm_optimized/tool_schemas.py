@@ -13,6 +13,7 @@ try:
         validate_tool_call as validate_and_normalize_tool_call,
         get_openai_tools_schema as get_openai_tools_schema,
     )
+
     _USE_CORE = True
 except ImportError:
     _USE_CORE = False
@@ -24,7 +25,10 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "READ_FILE": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "File path (supports :N-M range or :Symbol suffix)"},
+            "path": {
+                "type": "string",
+                "description": "File path (supports :N-M range or :Symbol suffix)",
+            },
         },
         "required": ["path"],
         "aliases": {
@@ -36,6 +40,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "properties": {
             "path": {"type": "string", "description": "Relative path to target file"},
             "content": {"type": "string", "description": "Full file content to write"},
+            "force": {
+                "type": "boolean",
+                "description": "Bypass syntax/compile/stub validation gates (scaffolding escape hatch; default false)",
+            },
+            "reject_on_stub": {
+                "type": "boolean",
+                "description": "Reject files containing truncation stubs (default true)",
+            },
         },
         "required": ["path", "content"],
         "aliases": {
@@ -47,15 +59,50 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "File to edit"},
-            "old_text": {"type": "string", "description": "Exact text to find and replace"},
+            "old_text": {
+                "type": "string",
+                "description": "Exact text to find and replace",
+            },
             "new_text": {"type": "string", "description": "Replacement text"},
-            "diff": {"type": "string", "description": "Aider-style <<<<<<< SEARCH \\n old \\n ======= \\n new \\n >>>>>>> REPLACE block"},
+            "diff": {
+                "type": "string",
+                "description": "Aider-style <<<<<<< SEARCH \\n old \\n ======= \\n new \\n >>>>>>> REPLACE block",
+            },
+            "force": {
+                "type": "boolean",
+                "description": "Bypass syntax/compile/stub validation gates (scaffolding escape hatch; default false)",
+            },
+            "reject_on_stub": {
+                "type": "boolean",
+                "description": "Reject files containing truncation stubs (default true)",
+            },
         },
         "required": ["path"],
         "aliases": {
             "path": ["file", "filename", "filepath", "dest", "target", "p", "f"],
-            "old_text": ["old", "find", "search", "target", "original", "search_text", "old_code", "existing", "source", "before"],
-            "new_text": ["new", "replace", "replacement", "new_code", "replacement_text", "updated", "code", "text", "after"],
+            "old_text": [
+                "old",
+                "find",
+                "search",
+                "target",
+                "original",
+                "search_text",
+                "old_code",
+                "existing",
+                "source",
+                "before",
+            ],
+            "new_text": [
+                "new",
+                "replace",
+                "replacement",
+                "new_code",
+                "replacement_text",
+                "updated",
+                "code",
+                "text",
+                "after",
+            ],
             "diff": ["block", "diff_block", "search_replace"],
         },
     },
@@ -82,8 +129,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "GREP": {
         "type": "object",
         "properties": {
-            "pattern": {"type": "string", "description": "Regex or string search pattern"},
-            "path": {"type": "string", "description": "Directory or file path to search"},
+            "pattern": {
+                "type": "string",
+                "description": "Regex or string search pattern",
+            },
+            "path": {
+                "type": "string",
+                "description": "Directory or file path to search",
+            },
         },
         "required": ["pattern"],
         "aliases": {
@@ -147,7 +200,10 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "fact": {"type": "string", "description": "Fact to save to project memory"},
-            "category": {"type": "string", "description": "Category: fact, decision, tech, fail"},
+            "category": {
+                "type": "string",
+                "description": "Category: fact, decision, tech, fail",
+            },
         },
         "required": ["fact"],
         "aliases": {
@@ -171,7 +227,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "File path to verify"},
-            "expected_snippet": {"type": "string", "description": "Expected content to find"},
+            "expected_snippet": {
+                "type": "string",
+                "description": "Expected content to find",
+            },
+            "compile": {
+                "type": "boolean",
+                "description": "Run syntax + compile validation on the file (default false)",
+            },
         },
         "required": ["path"],
         "aliases": {
@@ -192,10 +255,19 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "GIT": {
         "type": "object",
         "properties": {
-            "subcommand": {"type": "string", "description": "Git subcommand: status, diff, log, show, branch, blame, commit, add, restore, stash, remote, shortlog"},
-            "message": {"type": "string", "description": "Commit message (for commit subcommand)"},
+            "subcommand": {
+                "type": "string",
+                "description": "Git subcommand: status, diff, log, show, branch, blame, commit, add, restore, stash, remote, shortlog",
+            },
+            "message": {
+                "type": "string",
+                "description": "Commit message (for commit subcommand)",
+            },
             "files": {"type": "string", "description": "File paths to operate on"},
-            "flag": {"type": "string", "description": "Additional flag or ref (e.g., HEAD~3, --staged)"},
+            "flag": {
+                "type": "string",
+                "description": "Additional flag or ref (e.g., HEAD~3, --staged)",
+            },
             "staged": {"type": "boolean", "description": "Operate on staged changes"},
             "count": {"type": "string", "description": "Number of log entries to show"},
         },
@@ -211,9 +283,18 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "SEARCH_AST": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Natural language or symbol query for AST graph search"},
-            "action": {"type": "string", "description": "Query action: search (semantic), structure, signature, source, ast, subgraph"},
-            "top_k": {"type": "integer", "description": "Number of semantic search results (default: 3)"},
+            "query": {
+                "type": "string",
+                "description": "Natural language or symbol query for AST graph search",
+            },
+            "action": {
+                "type": "string",
+                "description": "Query action: search (semantic), structure, signature, source, ast, subgraph",
+            },
+            "top_k": {
+                "type": "integer",
+                "description": "Number of semantic search results (default: 3)",
+            },
         },
         "required": ["query"],
         "aliases": {
@@ -229,24 +310,28 @@ def get_openai_tools_schema() -> list[dict]:
     """Generate OpenAI-style tools list for function calling / structured schema enforcement."""
     tools = []
     for tool_name, schema in TOOL_SCHEMAS.items():
-        tools.append({
-            "type": "function",
-            "function": {
-                "name": tool_name,
-                "description": f"Tool call: {tool_name}",
-                "parameters": {
-                    "type": schema["type"],
-                    "properties": schema["properties"],
-                    "required": schema["required"],
-                }
+        tools.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": tool_name,
+                    "description": f"Tool call: {tool_name}",
+                    "parameters": {
+                        "type": schema["type"],
+                        "properties": schema["properties"],
+                        "required": schema["required"],
+                    },
+                },
             }
-        })
+        )
     return tools
 
 
-def validate_and_normalize_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
+def validate_and_normalize_tool_call(
+    tool_name: str, args: dict
+) -> Tuple[bool, str, dict]:
     """Validate tool call against schema and normalize parameter aliases.
-    
+
     Returns:
         (is_valid, error_or_success_msg, normalized_args)
     """
@@ -269,8 +354,10 @@ def validate_and_normalize_tool_call(tool_name: str, args: dict) -> Tuple[bool, 
 
     # Check required fields
     required = schema.get("required", [])
-    missing = [req for req in required if req not in normalized or normalized[req] is None]
-    
+    missing = [
+        req for req in required if req not in normalized or normalized[req] is None
+    ]
+
     if missing:
         err_msg = (
             f"Schema Validation Error for '{tool_upper}': Missing required parameter(s): {missing}. "

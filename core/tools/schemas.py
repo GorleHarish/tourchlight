@@ -14,7 +14,10 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "READ_FILE": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "File path (supports :N-M range or :Symbol suffix)"},
+            "path": {
+                "type": "string",
+                "description": "File path (supports :N-M range or :Symbol suffix)",
+            },
         },
         "required": ["path"],
         "aliases": {
@@ -26,6 +29,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "properties": {
             "path": {"type": "string", "description": "Relative path to target file"},
             "content": {"type": "string", "description": "Full file content to write"},
+            "force": {
+                "type": "boolean",
+                "description": "Bypass syntax/compile/stub validation gates (scaffolding escape hatch; default false)",
+            },
+            "reject_on_stub": {
+                "type": "boolean",
+                "description": "Reject files containing truncation stubs (default true)",
+            },
         },
         "required": ["path", "content"],
         "aliases": {
@@ -36,20 +47,70 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "EDIT_FILE": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "File to edit (supports path:N-M range)"},
-            "old_text": {"type": "string", "description": "Exact text to find and replace"},
+            "path": {
+                "type": "string",
+                "description": "File to edit (supports path:N-M range)",
+            },
+            "old_text": {
+                "type": "string",
+                "description": "Exact text to find and replace",
+            },
             "new_text": {"type": "string", "description": "Replacement text"},
-            "diff": {"type": "string", "description": "Aider-style <<<<<<< SEARCH \\n old \\n ======= \\n new \\n >>>>>>> REPLACE block"},
-            "start_line": {"type": "integer", "description": "Optional starting line number to constrain edit search scope"},
-            "end_line": {"type": "integer", "description": "Optional ending line number to constrain edit search scope"},
-            "symbol": {"type": "string", "description": "Optional AST symbol name (function/class/method) to target for replacement"},
-            "chunks": {"type": "array", "description": "Optional list of multiple replacements: [{'old_text': '...', 'new_text': '...'}]"},
+            "diff": {
+                "type": "string",
+                "description": "Aider-style <<<<<<< SEARCH \\n old \\n ======= \\n new \\n >>>>>>> REPLACE block",
+            },
+            "start_line": {
+                "type": "integer",
+                "description": "Optional starting line number to constrain edit search scope",
+            },
+            "end_line": {
+                "type": "integer",
+                "description": "Optional ending line number to constrain edit search scope",
+            },
+            "symbol": {
+                "type": "string",
+                "description": "Optional AST symbol name (function/class/method) to target for replacement",
+            },
+            "chunks": {
+                "type": "array",
+                "description": "Optional list of multiple replacements: [{'old_text': '...', 'new_text': '...'}]",
+            },
+            "force": {
+                "type": "boolean",
+                "description": "Bypass syntax/compile/stub validation gates (scaffolding escape hatch; default false)",
+            },
+            "reject_on_stub": {
+                "type": "boolean",
+                "description": "Reject files containing truncation stubs (default true)",
+            },
         },
         "required": ["path"],
         "aliases": {
             "path": ["file", "filename", "filepath", "dest", "target", "p", "f"],
-            "old_text": ["old", "find", "search", "target", "original", "search_text", "old_code", "existing", "source", "before"],
-            "new_text": ["new", "replace", "replacement", "new_code", "replacement_text", "updated", "code", "text", "after"],
+            "old_text": [
+                "old",
+                "find",
+                "search",
+                "target",
+                "original",
+                "search_text",
+                "old_code",
+                "existing",
+                "source",
+                "before",
+            ],
+            "new_text": [
+                "new",
+                "replace",
+                "replacement",
+                "new_code",
+                "replacement_text",
+                "updated",
+                "code",
+                "text",
+                "after",
+            ],
             "diff": ["block", "diff_block", "search_replace"],
             "start_line": ["start", "line_start", "from_line", "start_l"],
             "end_line": ["end", "line_end", "to_line", "end_l"],
@@ -80,8 +141,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "GREP": {
         "type": "object",
         "properties": {
-            "pattern": {"type": "string", "description": "Regex or string search pattern"},
-            "path": {"type": "string", "description": "Directory or file path to search"},
+            "pattern": {
+                "type": "string",
+                "description": "Regex or string search pattern",
+            },
+            "path": {
+                "type": "string",
+                "description": "Directory or file path to search",
+            },
         },
         "required": ["pattern"],
         "aliases": {
@@ -145,7 +212,10 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "fact": {"type": "string", "description": "Fact to save to project memory"},
-            "category": {"type": "string", "description": "Category: fact, decision, tech, fail"},
+            "category": {
+                "type": "string",
+                "description": "Category: fact, decision, tech, fail",
+            },
         },
         "required": ["fact"],
         "aliases": {
@@ -169,7 +239,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "File path to verify"},
-            "expected_snippet": {"type": "string", "description": "Expected content to find"},
+            "expected_snippet": {
+                "type": "string",
+                "description": "Expected content to find",
+            },
+            "compile": {
+                "type": "boolean",
+                "description": "Run syntax + compile validation on the file (default false)",
+            },
         },
         "required": ["path"],
         "aliases": {
@@ -190,10 +267,19 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "GIT": {
         "type": "object",
         "properties": {
-            "subcommand": {"type": "string", "description": "Git subcommand: status, diff, log, show, branch, blame, commit, add, restore, stash, remote, shortlog"},
-            "message": {"type": "string", "description": "Commit message (for commit subcommand)"},
+            "subcommand": {
+                "type": "string",
+                "description": "Git subcommand: status, diff, log, show, branch, blame, commit, add, restore, stash, remote, shortlog",
+            },
+            "message": {
+                "type": "string",
+                "description": "Commit message (for commit subcommand)",
+            },
             "files": {"type": "string", "description": "File paths to operate on"},
-            "flag": {"type": "string", "description": "Additional flag or ref (e.g., HEAD~3, --staged)"},
+            "flag": {
+                "type": "string",
+                "description": "Additional flag or ref (e.g., HEAD~3, --staged)",
+            },
             "staged": {"type": "boolean", "description": "Operate on staged changes"},
             "count": {"type": "string", "description": "Number of log entries to show"},
         },
@@ -209,14 +295,34 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "SEARCH_AST": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Natural language or symbol query for AST graph search"},
-            "action": {"type": "string", "description": "Query action: search, path, subgraph, structure, update, summary"},
-            "target": {"type": "string", "description": "Target symbol for pathfinding (when action is 'path')"},
-            "top_k": {"type": "integer", "description": "Number of search results (default: 5)"},
+            "query": {
+                "type": "string",
+                "description": "Natural language or symbol query for AST graph search",
+            },
+            "action": {
+                "type": "string",
+                "description": "Query action: search, path, subgraph, structure, update, summary",
+            },
+            "target": {
+                "type": "string",
+                "description": "Target symbol for pathfinding (when action is 'path')",
+            },
+            "top_k": {
+                "type": "integer",
+                "description": "Number of search results (default: 5)",
+            },
         },
         "required": [],
         "aliases": {
-            "query": ["q", "name", "symbol", "search_text", "pattern", "source", "from"],
+            "query": [
+                "q",
+                "name",
+                "symbol",
+                "search_text",
+                "pattern",
+                "source",
+                "from",
+            ],
             "action": ["cmd", "type", "mode"],
             "target": ["to", "dest", "end"],
             "top_k": ["limit", "k", "count"],
@@ -225,9 +331,18 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "INSPECT_WEB": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Target HTML/JS file relative path or HTTP URL"},
-            "wait_ms": {"type": "integer", "description": "Wait time in ms for page load / game loop (default: 1500)"},
-            "interact": {"type": "array", "description": "List of action steps: [{'type': 'click'|'fill'|'key_press'|'hover'|'wait_for_selector', 'selector': '...', 'key': '...', 'text': '...'}]"},
+            "path": {
+                "type": "string",
+                "description": "Target HTML/JS file relative path or HTTP URL",
+            },
+            "wait_ms": {
+                "type": "integer",
+                "description": "Wait time in ms for page load / game loop (default: 1500)",
+            },
+            "interact": {
+                "type": "array",
+                "description": "List of action steps: [{'type': 'click'|'fill'|'key_press'|'hover'|'wait_for_selector', 'selector': '...', 'key': '...', 'text': '...'}]",
+            },
         },
         "required": ["path"],
         "aliases": {
@@ -239,8 +354,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "SAVE_MEMORY": {
         "type": "object",
         "properties": {
-            "entry": {"type": "string", "description": "Memory entry text (fact, key decision, or failed strategy)"},
-            "category": {"type": "string", "description": "Memory category: 'decision' (default), 'arch_decision', 'tried_failed'"},
+            "entry": {
+                "type": "string",
+                "description": "Memory entry text (fact, key decision, or failed strategy)",
+            },
+            "category": {
+                "type": "string",
+                "description": "Memory category: 'decision' (default), 'arch_decision', 'tried_failed'",
+            },
         },
         "required": ["entry"],
         "aliases": {
@@ -251,11 +372,23 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "UPDATE_TASK_GRAPH": {
         "type": "object",
         "properties": {
-            "action": {"type": "string", "description": "Action: 'add_subtask', 'skip_task', 'update_status', 'set_description'"},
+            "action": {
+                "type": "string",
+                "description": "Action: 'add_subtask', 'skip_task', 'update_status', 'set_description'",
+            },
             "task_id": {"type": "string", "description": "ID of the target task"},
-            "description": {"type": "string", "description": "Task description for new task or update"},
-            "depends_on": {"type": "array", "description": "List of task IDs this subtask depends on"},
-            "target_files": {"type": "array", "description": "List of target file paths for the task"},
+            "description": {
+                "type": "string",
+                "description": "Task description for new task or update",
+            },
+            "depends_on": {
+                "type": "array",
+                "description": "List of task IDs this subtask depends on",
+            },
+            "target_files": {
+                "type": "array",
+                "description": "List of target file paths for the task",
+            },
         },
         "required": ["action"],
         "aliases": {
@@ -269,8 +402,8 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
 }
 
 
-
 # ── Validation ─────────────────────────────────────────────────────────────
+
 
 def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
     """
@@ -298,7 +431,9 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
 
     # Check required fields
     required = schema.get("required", [])
-    missing = [req for req in required if req not in normalized or normalized[req] is None]
+    missing = [
+        req for req in required if req not in normalized or normalized[req] is None
+    ]
 
     if missing:
         err_msg = (
@@ -315,16 +450,18 @@ def get_openai_tools_schema() -> list[dict]:
     """Generate OpenAI-style tools list for function calling."""
     tools = []
     for tool_name, schema in TOOL_SCHEMAS.items():
-        tools.append({
-            "type": "function",
-            "function": {
-                "name": tool_name,
-                "description": f"Tool call: {tool_name}",
-                "parameters": {
-                    "type": schema["type"],
-                    "properties": schema["properties"],
-                    "required": schema["required"],
+        tools.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": tool_name,
+                    "description": f"Tool call: {tool_name}",
+                    "parameters": {
+                        "type": schema["type"],
+                        "properties": schema["properties"],
+                        "required": schema["required"],
+                    },
                 },
-            },
-        })
+            }
+        )
     return tools

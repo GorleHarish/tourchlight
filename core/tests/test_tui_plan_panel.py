@@ -31,7 +31,7 @@ def test_build_plan_text_with_tasks():
             )
 
         res = _build_plan_text(tmpdir)
-        assert "IMPLEMENTATION PLAN" in res
+        assert "PLAN & TASKS" in res
         assert "50%" in res
         assert "(2/4)" in res
         assert "[✓] Done Task" in res

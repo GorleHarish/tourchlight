@@ -489,19 +489,27 @@ class RLMEngineOptimized:
 
             if action == "final_answer":
                 # ── Verification Gate: Prevent Premature Final Answers ──
+                # Evaluate the CURRENT on-disk state: re-verify any edits made
+                # since the last successful test run before trusting the gate.
                 rejection_reason = None
+                has_failing = False
+                try:
+                    pending_verified = await asyncio.to_thread(
+                        self.feedback_loop.verify_pending_changes
+                    )
+                    has_failing = (not pending_verified) or bool(
+                        getattr(self.feedback_loop, "has_failing_tests", False)
+                    )
+                except Exception:
+                    has_failing = bool(
+                        getattr(self.feedback_loop, "has_failing_tests", False)
+                    )
+
                 if (
                     iteration < MAX_ITERATIONS_PER_LEVEL - 2
                     and getattr(self, "_final_answer_rejections", 0) < 2
                 ):
                     # 1. Check for failing post-edit tests
-                    has_failing = getattr(
-                        self.feedback_loop, "has_failing_tests", False
-                    ) or (
-                        self.feedback_loop
-                        and self.feedback_loop._last_test_result
-                        and not self.feedback_loop._last_test_result.all_passed
-                    )
                     if has_failing:
                         fb_ctx = self.feedback_loop.build_feedback_context()
                         rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE) to debug and resolve the failure."
@@ -531,6 +539,13 @@ class RLMEngineOptimized:
                     self._final_answer_rejections = (
                         getattr(self, "_final_answer_rejections", 0) + 1
                     )
+                    if self._final_answer_rejections >= 2:
+                        rejection_reason += (
+                            "\n\n⚠️ [GATE ESCALATION] This is your FINAL rejection for this prompt. "
+                            "If you yield a final answer again it will be accepted but marked UNRESOLVED. "
+                            "Prefer abandoning broken edits (revert to a known-good state) and reporting "
+                            "the blocker explicitly rather than repeating the same fix attempt."
+                        )
                     step.action = "rejected_final_answer"
                     step.result = rejection_reason
                     result.steps.append(step)
@@ -543,6 +558,11 @@ class RLMEngineOptimized:
                         messages.append({"role": "assistant", "content": response})
                         messages.append({"role": "user", "content": rejection_reason})
                     continue
+
+                # Gate exhausted or passed: if failures are still unresolved, surface
+                # them so callers/users never see a clean success on broken work.
+                if has_failing:
+                    content = content + self._build_unresolved_failures_warning()
 
                 step.result = content
                 result.steps.append(step)
@@ -1086,6 +1106,9 @@ class RLMEngineOptimized:
         if not final_content:
             final_content = response
 
+        # Surface any unresolved test failures even when the loop was forced to end.
+        final_content = final_content + self._build_unresolved_failures_warning()
+
         step = Step(
             step_number=MAX_ITERATIONS_PER_LEVEL + 1,
             depth=depth,
@@ -1101,6 +1124,37 @@ class RLMEngineOptimized:
         result.answer = final_content
         result.total_llm_calls = self._total_llm_calls
         return result
+
+    def _build_unresolved_failures_warning(self) -> str:
+        """Build an explicit warning attached to an accepted final answer when the
+        verification gate was bypassed but test state is still failing/unverified.
+        Returns an empty string when there is nothing unresolved to surface."""
+        parts = []
+        try:
+            if getattr(self.feedback_loop, "has_failing_tests", False):
+                detail = ""
+                try:
+                    err = self.feedback_loop.get_test_failure_error()
+                    if err is not None and err.surgical_traceback:
+                        detail = f"\n{err.surgical_traceback[:400]}"
+                except Exception:
+                    pass
+                parts.append(
+                    "[UNRESOLVED TEST FAILURES] This final answer was accepted with "
+                    f"post-edit tests still failing or unverified.{detail}"
+                )
+        except Exception:
+            pass
+        try:
+            if getattr(self.feedback_loop, "_files_modified_since_test", None):
+                parts.append(
+                    "[UNVERIFIED CHANGES] Recent edits have not been verified by passing tests."
+                )
+        except Exception:
+            pass
+        if not parts:
+            return ""
+        return "\n\n⚠️ " + "\n⚠️ ".join(parts)
 
     def _parse_response(
         self, response: str
