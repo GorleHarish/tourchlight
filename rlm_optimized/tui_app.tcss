@@ -49,6 +49,14 @@ Footer {
     padding: 0 0;
 }
 
+#plan-sidebar {
+    width: 32;
+    height: 100%;
+    background: $surface;
+    border-left: heavy $primary;
+    padding: 0 0;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    PHASE 5 RESERVED — Tabbed editor split pane.
    Currently NOT composed in TorchlightApp.compose(). These selectors are

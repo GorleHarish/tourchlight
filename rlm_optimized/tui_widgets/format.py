@@ -13,11 +13,7 @@ from rich.markup import escape
 
 
 def build_plan_text(project_root: str, is_goal: bool = False) -> str:
-    """Render the implementation plan / task graph as rich-markup text.
-
-    Mirrors the historical ``TorchlightApp._build_plan_text`` output verbatim
-    (bar widths, glyphs, and section labels are intentional).
-    """
+    """Render Production-Grade Implementation Plan (top) and Task Hierarchy (bottom)."""
     plan_path = os.path.join(project_root, "implementation_plan.md")
     alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
     alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
@@ -35,15 +31,10 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
         target_file = alt_goal_path
         file_type = "json"
 
-    mode_hdr = (
-        "[bold bright_green]🎯 GOAL_MODE[/bold bright_green]"
-        if is_goal
-        else "[bold cyan]💬 CHAT_MODE[/bold cyan]"
-    )
-
-    tasks = []
-    completed = 0
-    total = 0
+    plan_title = "Active Development Goal"
+    active_tasks = []
+    completed_tasks = []
+    in_progress_tasks = []
     seen: set[str] = set()
 
     def _norm(text: str) -> str:
@@ -54,6 +45,7 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
             if file_type == "json":
                 with open(target_file, "r", encoding="utf-8") as f:
                     goal_data = json.load(f)
+                plan_title = str(goal_data.get("goal") or goal_data.get("title") or "Active Goal Spec")
                 raw_tasks = goal_data.get("tasks", [])
                 for t in raw_tasks:
                     st = t.get("status", "pending")
@@ -63,16 +55,20 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
                     seen.add(_norm(desc_raw))
                     desc = escape(desc_raw)
                     if st in ("verified", "completed"):
-                        completed += 1
-                        tasks.append(f"[bold green]☑ {desc}[/bold green]")
-                    elif st == "in_progress":
-                        tasks.append(f"[bold yellow]■ {desc} █[/bold yellow]")
+                        completed_tasks.append(f"[bold green]  [✓] {desc}[/bold green]")
+                    elif st in ("in_progress", "active"):
+                        in_progress_tasks.append(f"[bold yellow]  [►] {desc} █[/bold yellow]")
                     else:
-                        tasks.append(f"[dim]☐ {desc}[/dim]")
-                total = len(tasks)
+                        active_tasks.append(f"[dim]  [ ] {desc}[/dim]")
             else:
                 with open(target_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
+
+                for line in lines:
+                    if line.startswith("# "):
+                        plan_title = line.lstrip("# ").strip()
+                        break
+
                 chk_regex = re.compile(
                     r"^(?:[-*+>]|\d+[\.\)])?\s*\[([ xX/\-v✓~])\]\s*(.*)$"
                 )
@@ -86,35 +82,53 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
                         if _norm(task_raw) in seen:
                             continue
                         seen.add(_norm(task_raw))
-                        total += 1
                         task_text = escape(task_raw)
                         if state in ("x", "X", "v", "✓"):
-                            completed += 1
-                            tasks.append(f"[bold green]☑ {task_text}[/bold green]")
+                            completed_tasks.append(f"[bold green]  [✓] {task_text}[/bold green]")
                         elif state in ("/", "-", "~"):
-                            tasks.append(f"[bold yellow]■ {task_text} █[/bold yellow]")
+                            in_progress_tasks.append(f"[bold yellow]  [►] {task_text} █[/bold yellow]")
                         else:
-                            tasks.append(f"[dim]☐ {task_text}[/dim]")
+                            active_tasks.append(f"[dim]  [ ] {task_text}[/dim]")
         except Exception:  # noqa: BLE001, S110
             pass
 
+    total = len(completed_tasks) + len(in_progress_tasks) + len(active_tasks)
+    completed = len(completed_tasks)
+
+    # 1. Top Section: Implementation Plan & Mode Badge
+    mode_badge = "[bold green]🎯 GOAL MODE[/bold green]" if is_goal else "[bold cyan]💬 CHAT MODE[/bold cyan]"
+    plan_header = f"[bold cyan]📄 IMPLEMENTATION PLAN[/bold cyan]  {mode_badge}"
+    plan_body = f"[bold white]{escape(plan_title)}[/bold white]"
+
+    # 2. Bottom Section: Tasks & TODO Hierarchy
+    task_header = "[bold cyan]☑ ACTIVE TASKS & TODO[/bold cyan]"
     if total == 0:
-        return (
-            f"{mode_hdr}\n[dim]No active plan checkboxes found.[/dim]\n\n"
-            f"[bold cyan]📋 TASKS[/bold cyan]\n[dim]Waiting for goal initialization...[/dim]"
+        task_list_markup = "[dim]No active plan checkboxes found.\nWaiting for goal initialization...[/dim]"
+        prog_str = "[dim]0/0 tasks completed[/dim]"
+    else:
+        pct = int((completed / total) * 100) if total > 0 else 0
+        bar_width = 12
+        filled = min(bar_width, round((pct / 100.0) * bar_width))
+        bar = "█" * filled + "░" * (bar_width - filled)
+        prog_str = (
+            f"[{bar}] [bold green]{pct}%[/bold green] [dim]({completed}/{total})[/dim]"
         )
 
-    pct = int((completed / total) * 100) if total > 0 else 0
-    bar_width = 12
-    filled = min(bar_width, round((pct / 100.0) * bar_width))
-    bar = "█" * filled + "░" * (bar_width - filled)
+        sections = []
+        if in_progress_tasks:
+            sections.append("[bold yellow]► IN PROGRESS[/bold yellow]\n" + "\n".join(in_progress_tasks))
+        if active_tasks:
+            sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks[:8]))
+        if completed_tasks:
+            sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks[:8]))
 
-    prog_str = (
-        f"[{bar}] [bold green]{pct}%[/bold green] [dim]({completed}/{total})[/dim]"
+        task_list_markup = "\n\n".join(sections)
+
+    return (
+        f"{plan_header}\n"
+        f"{plan_body}\n\n"
+        f"───────────────────────────────\n"
+        f"{task_header}\n"
+        f"{prog_str}\n\n"
+        f"{task_list_markup}"
     )
-    tree_header = "[bold cyan]📋 IMPLEMENTATION PLAN[/bold cyan]"
-    body = "\n".join(tasks[:10])
-    if len(tasks) > 10:
-        body += f"\n[dim]...+{len(tasks) - 10} more[/dim]"
-
-    return f"{mode_hdr}\n{prog_str}\n\n{tree_header}\n{body}"

@@ -113,10 +113,9 @@ def git_status_for_tree(root: str | Path) -> dict[str, str]:
         return {}
 
 
-def _should_skip_path(path: Path) -> bool:
-    """Filter out OS noise, cache directories, and internal state files."""
-    name = path.name
-    if name in (
+def _should_skip_dir(name: str) -> bool:
+    """Check if a directory name should be skipped from exploration."""
+    return name in (
         ".git",
         "__pycache__",
         "node_modules",
@@ -125,11 +124,14 @@ def _should_skip_path(path: Path) -> bool:
         "dist",
         "build",
         ".torchlight",
-        ".DS_Store",
         ".pytest_cache",
-        ".context-memory",
-        ".context-memory.json",
-    ) or name.startswith(".torchlight_"):
+    ) or name.startswith(".") or name.startswith(".torchlight_")
+
+
+def _should_skip_path(path: Path) -> bool:
+    """Filter out OS noise, cache directories, and internal state files."""
+    name = path.name
+    if _should_skip_dir(name) or name in (".DS_Store", ".context-memory", ".context-memory.json"):
         return True
     return False
 
@@ -163,14 +165,15 @@ class GitFileTree(DirectoryTree):
         return key
 
     def _decorated_name(self, path: Path) -> str:
-        """Prefix file labels with a clean single-letter git tag; leave directories clean."""
+        """Prefix file labels with clean git status badges ([U] untracked, [M] modified, etc.); leave directories clean."""
         name = path.name
         if path.is_dir():
-            return f"📁 {name}"
+            return name
         code = self._git_status.get(self._rel_key(path))
         if code:
-            return f"[{code}] {name}"
-        return f"📄 {name}"
+            disp_code = "U" if code == "??" else code
+            return f"[{disp_code}] {name}"
+        return name
 
     def _populate_node(
         self,

@@ -1090,18 +1090,18 @@ class TorchlightApp(App):
     CSS_PATH = "tui_app.tcss"
 
     BINDINGS = [
-        Binding("ctrl+h", "show_help", "Shortcuts & Help", show=True),
-        Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=True),
-        Binding("ctrl+x", "copy_selection", "Copy Selection", show=True),
-        Binding("ctrl+y", "copy_chat", "Copy Chat", show=True),
         Binding("ctrl+p", "command_palette", "Command Palette", show=True),
-        Binding("ctrl+e", "copy_last", "Copy Last", show=True),
-        Binding("ctrl+o", "open_folder", "Open Folder", show=True),
-        Binding("ctrl+m", "select_model", "Select Model", show=True),
-        Binding("ctrl+g", "select_mode", "Session Mode", show=True),
-        Binding("ctrl+b", "toggle_sidebar", "Toggle Sidebar", show=True),
-        Binding("ctrl+t", "cycle_theme", "Theme", show=True),
-        Binding("ctrl+n", "compact_context", "Compact Context", show=True),
+        Binding("ctrl+h", "show_help", "Help", show=True),
+        Binding("ctrl+m", "select_model", "Model", show=True),
+        Binding("ctrl+g", "select_mode", "Mode", show=True),
+        Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=True),
+        Binding("ctrl+t", "cycle_theme", "Theme", show=False),
+        Binding("ctrl+n", "compact_context", "Compact Context", show=False),
+        Binding("ctrl+o", "open_folder", "Open Folder", show=False),
+        Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=False),
+        Binding("ctrl+x", "copy_selection", "Copy Selection", show=False),
+        Binding("ctrl+y", "copy_chat", "Copy Chat", show=False),
+        Binding("ctrl+e", "copy_last", "Copy Last", show=False),
         Binding("ctrl+r", "reset_session", "Reset REPL", show=False),
         Binding("ctrl+l", "clear", "Clear Chat", show=False),
         Binding("ctrl+c", "quit", "Quit", show=True),
@@ -1212,35 +1212,15 @@ class TorchlightApp(App):
             yield Button("⌨️ Help", id="help-btn", variant="default")
 
         with Horizontal(id="main-ide-container"):
-            # 1. Left Explorer Sidebar (Files, System Health, Plan)
+            # 1. Left Explorer Sidebar (Files)
             with Vertical(id="explorer-sidebar"):
                 yield Static(
                     "EXPLORER / BLUEPRINT WORKSPACE", classes="panel-header-title"
                 )
                 self._file_tree = GitFileTree(self.engine.project_root, id="file-tree")
                 yield self._file_tree
-                if Collapsible is not None:
-                    yield Collapsible(
-                        Static(
-                            self._build_system_health_text(), id="system-health-panel"
-                        ),
-                        title="📊 Inference Speedometer & Memory",
-                        collapsed=False,
-                        id="health-collapsible",
-                    )
-                    yield Collapsible(
-                        Static(self._build_plan_text(), id="plan-panel"),
-                        title="📑 SESSION_LOGS & TASKS",
-                        collapsed=False,
-                        id="plan-collapsible",
-                    )
-                else:
-                    yield Static("System Health", classes="sidebar-section-title")
-                    yield Static(
-                        self._build_system_health_text(), id="system-health-panel"
-                    )
 
-            # 2. Main Right Area: Agent Terminal, Reasoning Trajectory & Logs
+            # 2. Main Center Area: Agent Terminal, Reasoning Trajectory & Logs
             with Vertical(id="agent-split-pane"):
                 with Horizontal(id="terminal-header-bar"):
                     yield Static(
@@ -1267,6 +1247,13 @@ class TorchlightApp(App):
                         yield Button("SEND ↗", id="send-btn", variant="primary")
                         yield Static("", id="input-spinner")
                     yield ListView(id="input-suggestions")
+
+            # 3. Right Sidebar: Implementation Plan & TODO Tasks
+            with Vertical(id="plan-sidebar"):
+                yield Static(
+                    "📋 IMPLEMENTATION PLAN & TASKS", classes="panel-header-title"
+                )
+                yield Static(self._build_plan_text(), id="plan-panel")
 
         # Bottom Context Progress & Telemetry Meter
         with Vertical(id="telemetry-bar"):
@@ -1577,10 +1564,18 @@ class TorchlightApp(App):
 
         state_str = getattr(self, "_agent_state", "READY")
 
+        tps_val = getattr(self, "_live_tps", 0.0)
+        tps_str = (
+            f"{tps_val:.1f} t/s"
+            if tps_val > 0
+            else ("0.0 t/s" if not self._is_running else "t/s...")
+        )
+
         return (
             f"[bold cyan]> SYSTEM:[/] [bold green]{state_str}[/bold green]  │  "
             f"[bold cyan]MODE:[/] [bold white]{'🎯 GOAL' if getattr(self.engine, 'execution_mode', None) and getattr(self.engine.execution_mode, 'value', None) == 'GOAL' else '💬 CHAT'}[/bold white]  │  "
-            f"[bold cyan]CONTEXT:[/] [{bar}] [bold yellow]{pct}%[/bold yellow] [dim]({tokens_est:,}/{ctx_max:,})[/dim]"
+            f"[bold cyan]CONTEXT:[/] [{bar}] [bold yellow]{pct}%[/bold yellow] [dim]({tokens_est:,}/{ctx_max:,})[/dim]  │  "
+            f"[bold cyan]SPEED:[/] [bold green]⚡ {tps_str}[/bold green]"
         )
 
     def _build_meta_text(self) -> str:

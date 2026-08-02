@@ -117,7 +117,7 @@ async def test_git_tree_decorates_file_labels():
             await pilot.pause()
 
             root_labels = {str(c.label) for c in tree.root.children}
-            assert "M  a.txt" in root_labels
+            assert "[M] a.txt" in root_labels
             assert "b.py" in root_labels
             assert "sub" in root_labels
 
@@ -126,7 +126,7 @@ async def test_git_tree_decorates_file_labels():
             await pilot.pause()
             await pilot.pause()
             sub_labels = {str(c.label) for c in sub.children}
-            assert "??  c.txt" in sub_labels
+            assert "[U] c.txt" in sub_labels
             await pilot.pause()
 
 

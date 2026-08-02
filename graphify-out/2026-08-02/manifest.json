@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785623097.378953,
-    "ast_hash": "6288d96c9be0025768a0c469c7e77b40",
+    "mtime": 1785631287.1059732,
+    "ast_hash": "a3ab21c795934250728e30c9b55e7b9b",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/repl_sandbox.py": {
-    "mtime": 1785321126.243465,
-    "ast_hash": "e3d329ba7d69894eb13f34832cd01d0a",
+    "mtime": 1785631287.10793,
+    "ast_hash": "4b2be5505a4c413e47a36d320556da5d",
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine.py": {
@@ -640,8 +640,8 @@
     "semantic_hash": "b1e6a896c2c08a849387079fcbc4e560"
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785623063.0614102,
-    "ast_hash": "a02906f421d13a9e9c21dfcba0673a7e",
+    "mtime": 1785631287.108555,
+    "ast_hash": "996cd54f8a8c20dfd3a2e911eb97951c",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -780,8 +780,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_plan_panel.py": {
-    "mtime": 1785622080.290189,
-    "ast_hash": "39d64f7e73a49bfcb1bc54215e5a6df5",
+    "mtime": 1785631287.1069162,
+    "ast_hash": "b4be7078c479f55bfeded82d19f525a0",
     "semantic_hash": ""
   },
   "core/tests/test_memory_sync.py": {
@@ -870,8 +870,8 @@
     "semantic_hash": ""
   },
   "core/tools/task_helpers.py": {
-    "mtime": 1785398086.4607675,
-    "ast_hash": "c6e6940f181400fac4777054cdef3699",
+    "mtime": 1785631335.083791,
+    "ast_hash": "4385d59ee1e18d270b1ab9533c92c684",
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
@@ -887,6 +887,96 @@
   "bug.md": {
     "mtime": 1785619036.0650692,
     "ast_hash": "e078afd061b2cd28f695353b4ec64039",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_command_palette.py": {
+    "mtime": 1785630296.886013,
+    "ast_hash": "01eabaf2afdef1ffacfb80fcbe39d6cd",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_diff_view.py": {
+    "mtime": 1785628358.2986772,
+    "ast_hash": "94386f4f8b83fcd0b4b287b0a5c31523",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_file_tree.py": {
+    "mtime": 1785629910.0862455,
+    "ast_hash": "d997111fb94e521335a0a462b7703601",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_status_bar.py": {
+    "mtime": 1785630278.713166,
+    "ast_hash": "9981c3f3d91bf01752a27b8086f43134",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_tool_cards.py": {
+    "mtime": 1785627727.2664034,
+    "ast_hash": "1053fc82912cf99f9516e1765cafdca7",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_trajectory_rail.py": {
+    "mtime": 1785627878.2573025,
+    "ast_hash": "967ce4e6d20abcd82e07d7fa13a579f3",
+    "semantic_hash": ""
+  },
+  "core/tests/test_tui_transcript_widgets.py": {
+    "mtime": 1785626976.424632,
+    "ast_hash": "e8649c3816f941399218f0dd85e69882",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/__init__.py": {
+    "mtime": 1785630841.7147415,
+    "ast_hash": "70cc60d4f0044c6e43fb492c12d8865c",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/command_palette.py": {
+    "mtime": 1785630831.9349804,
+    "ast_hash": "89d41d995dff1ee4b8f66697f48b6457",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/diff_view.py": {
+    "mtime": 1785628286.351026,
+    "ast_hash": "1f6290edd06dec6e1e7ca58a521aa0a8",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/file_tree.py": {
+    "mtime": 1785630176.5490756,
+    "ast_hash": "3b5bce657dde9025aa939c80f7eb27f8",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/format.py": {
+    "mtime": 1785631338.0835142,
+    "ast_hash": "416121056f0b1a5fac01aecc7e379aec",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/status_bar.py": {
+    "mtime": 1785629787.9670951,
+    "ast_hash": "b0894acd605bc8c91b92814ba482e39a",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/thinking_block.py": {
+    "mtime": 1785626639.2620318,
+    "ast_hash": "95567b3794bf2d86697db18dfbff58bd",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/tool_card.py": {
+    "mtime": 1785627596.9131868,
+    "ast_hash": "1e320a118b48bc8458d8520de661909d",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/trajectory_rail.py": {
+    "mtime": 1785627924.7815456,
+    "ast_hash": "370f34afdaad2882f587ad5af773907b",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/tui_widgets/transcript.py": {
+    "mtime": 1785626935.1525412,
+    "ast_hash": "4d388738c76f1a4bbbf79513f3b7cf6b",
+    "semantic_hash": ""
+  },
+  "rlm_optimized/UI_IMPROVEMENTS_PLAN.md": {
+    "mtime": 1785631364.7657304,
+    "ast_hash": "a7b6ebc1039964617116a8d0e46e90c4",
     "semantic_hash": ""
   }
 }
