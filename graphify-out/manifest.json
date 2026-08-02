@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785651190.3086364,
-    "ast_hash": "6af0a4e4ec91b2c9c8df2874073802bc",
+    "mtime": 1785653285.2907245,
+    "ast_hash": "3e9b2e53fa3d41590a4ecedc9e3b81bc",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -355,8 +355,8 @@
     "semantic_hash": ""
   },
   "core/memory/models.py": {
-    "mtime": 1785399161.989352,
-    "ast_hash": "60a6c6ff98c2d943b712eb174bbdae00",
+    "mtime": 1785652951.9760902,
+    "ast_hash": "210913a25caeb44dec586399d91e30b5",
     "semantic_hash": ""
   },
   "core/memory/persistence.py": {
@@ -640,8 +640,8 @@
     "semantic_hash": "b1e6a896c2c08a849387079fcbc4e560"
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785651316.322767,
-    "ast_hash": "5a0748ce3e25cf484f4aff08659a0fdf",
+    "mtime": 1785653243.7853081,
+    "ast_hash": "c75af5cda8965f65b8c24fd189e2adb8",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -880,8 +880,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_session_modes.py": {
-    "mtime": 1785399326.8495748,
-    "ast_hash": "f394247ec20b3a53f85acfdad1a6f1b7",
+    "mtime": 1785653029.2542849,
+    "ast_hash": "73accd6e5b079bedc05d86e24b705f38",
     "semantic_hash": ""
   },
   "bug.md": {
@@ -945,8 +945,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/format.py": {
-    "mtime": 1785651163.2290266,
-    "ast_hash": "257cb22114785a1a477bccde6894e0c8",
+    "mtime": 1785652252.2693126,
+    "ast_hash": "9b62551661726c8110af491d84c019dc",
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/status_bar.py": {
