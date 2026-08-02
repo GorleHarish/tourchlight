@@ -34,11 +34,6 @@ Footer {
 
 /* ── Body Layout ──────────────────────────────────────────────────────── */
 
-#body-container {
-    height: 1fr;
-    width: 1fr;
-}
-
 /* ── VS Code / Antigravity Style Multi-Tab Split Layout ───────────────── */
 
 #main-ide-container {
@@ -53,6 +48,13 @@ Footer {
     border-right: heavy $primary;
     padding: 0 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PHASE 5 RESERVED — Tabbed editor split pane.
+   Currently NOT composed in TorchlightApp.compose(). These selectors are
+   parked for the planned editor pane (see UI_IMPROVEMENTS_PLAN.md Phase 5).
+   Do not rely on them until the pane is mounted.
+   ═══════════════════════════════════════════════════════════════════════ */
 
 #editor-split-pane {
     width: 3fr;
@@ -172,15 +174,8 @@ Footer {
     text-style: bold;
 }
 
-#compact-btn {
-    background: $warning;
-    color: #000000;
-}
-
-#compact-btn:hover {
-    background: $accent;
-    color: #000000;
-}
+/* #compact-btn uses the built-in warning Button variant, which computes a
+   theme-correct text color ($button-color-foreground) — no hardcoded hex. */
 
 #prompt-symbol {
     width: 2;
@@ -202,13 +197,6 @@ Footer {
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
 
-#sidebar {
-    width: 34;
-    background: $surface;
-    border-right: solid $panel;
-    padding: 0 1;
-}
-
 .sidebar-section-title {
     text-style: bold;
     color: $primary;
@@ -216,38 +204,6 @@ Footer {
     margin-bottom: 0;
     height: 1;
     content-align: left middle;
-}
-
-/* Sidebar dividers between sections */
-.sidebar-divider {
-    height: 1;
-    border-bottom: solid $panel;
-    margin: 0;
-}
-
-/* ── Engine Buttons ───────────────────────────────────────────────────── */
-
-#engine-btn-bar-1,
-#engine-btn-bar-2 {
-    height: 3;
-    align: center middle;
-    margin-bottom: 0;
-}
-
-#engine-btn-bar-1 Button {
-    margin: 0 1;
-    min-width: 8;
-    height: 3;
-    content-align: center middle;
-    text-style: bold;
-}
-
-#engine-btn-bar-2 Button {
-    margin: 0 1;
-    width: 1fr;
-    height: 3;
-    content-align: center middle;
-    text-style: bold;
 }
 
 /* ── File Tree ────────────────────────────────────────────────────────── */
@@ -277,17 +233,6 @@ Tree:focus {
     border: tall $accent;
 }
 
-/* ── Meta Panel (System Status) ───────────────────────────────────────── */
-
-#meta-panel {
-    height: auto;
-    background: $background;
-    border: solid $panel;
-    padding: 0 1;
-    margin-bottom: 0;
-    color: $foreground;
-}
-
 /* ── Implementation Plan Panel ────────────────────────────────────────── */
 
 #plan-panel {
@@ -301,20 +246,7 @@ Tree:focus {
     overflow-y: auto;
 }
 
-/* ── Shortcuts Panel ──────────────────────────────────────────────────── */
-
-#shortcuts-panel {
-    height: auto;
-    color: $foreground-muted;
-    padding: 0 0;
-}
-
 /* ── Chat Pane ────────────────────────────────────────────────────────── */
-
-#chat-pane {
-    width: 1fr;
-    height: 1fr;
-}
 
 /* ── Input Base ───────────────────────────────────────────────────────── */
 
@@ -372,28 +304,6 @@ TextArea:disabled {
 
 /* ── Status Bar ───────────────────────────────────────────────────────── */
 
-#status-bar {
-    height: 1;
-    background: $surface;
-    padding: 0 0;
-    border-bottom: solid $panel;
-}
-
-#status-left {
-    width: 1fr;
-    min-width: 20;
-    padding: 0 1;
-    color: $primary;
-    text-style: bold;
-}
-
-#status-right {
-    width: auto;
-    padding: 0 1;
-    color: $foreground;
-    text-align: right;
-}
-
 #help-btn {
     width: auto;
     height: 1;
@@ -418,11 +328,24 @@ TextArea:disabled {
 
 /* ── Chat Container ───────────────────────────────────────────────────── */
 
-#chat-container {
+#transcript-area {
     height: 1fr;
+    width: 1fr;
+}
+
+#chat-container {
+    width: 1fr;
+    height: 100%;
     padding: 0 1;
     background: $background;
     color: $foreground;
+}
+
+#trajectory-rail {
+    width: 4;
+    height: 100%;
+    background: $background;
+    border-left: solid $panel;
 }
 
 /* ── Input Area ───────────────────────────────────────────────────────── */
@@ -434,64 +357,6 @@ TextArea:disabled {
     background: $surface;
     border-top: solid $panel;
     padding: 0 1;
-}
-
-#input-header-bar {
-    height: 1;
-    margin-top: 0;
-    margin-bottom: 0;
-    padding: 0 0;
-}
-
-#input-model-badge {
-    width: auto;
-    height: 1;
-    min-width: 12;
-    padding: 0 1;
-    border: none;
-    background: transparent;
-    color: $accent;
-    text-style: bold;
-}
-
-#input-model-badge:hover {
-    background: $panel;
-    color: $primary;
-}
-
-#input-model-badge:focus {
-    border: none;
-    background: $panel;
-    color: $primary;
-}
-
-#compact-btn {
-    width: auto;
-    height: 1;
-    min-width: 10;
-    padding: 0 1;
-    margin-left: 1;
-    border: none;
-    background: transparent;
-    color: $warning;
-    text-style: bold;
-}
-
-#compact-btn:hover {
-    background: $panel;
-    color: $text-warning;
-}
-
-#compact-btn:focus {
-    border: none;
-    background: $panel;
-    color: $text-warning;
-}
-
-#context-progress-badge {
-    width: 1fr;
-    color: $foreground;
-    text-align: right;
 }
 
 #input-row {
@@ -515,6 +380,34 @@ TextArea:disabled {
     background: $surface;
     border: tall $accent;
     color: $foreground;
+}
+
+/* Slash-command / @file autocomplete dropdown under the prompt */
+#input-suggestions {
+    display: none;
+    height: auto;
+    max-height: 6;
+    margin-top: 1;
+    background: $background;
+    border: solid $panel;
+}
+
+#input-suggestions:focus {
+    border: tall $accent;
+}
+
+#input-suggestions > ListItem {
+    padding: 0 1;
+}
+
+#input-suggestions > ListItem.--highlight {
+    background: $accent;
+    color: $background;
+    text-style: bold;
+}
+
+#input-suggestions > ListItem.--highlight:hover {
+    background: $accent;
 }
 
 #send-btn {
@@ -541,16 +434,20 @@ TextArea:disabled {
     margin: 0 0 0 2;
 }
 
+/* ── Thinking blocks (Phase 1) ────────────────────────────────────────── */
+
+.thinking-block {
+    margin: 0 0 1 0;
+}
+
+.thinking-block-body {
+    color: $foreground-muted;
+    margin: 0 0 0 2;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Responsive Design (classes toggled by Resize handler in Python)
    ═══════════════════════════════════════════════════════════════════════════ */
-
-.narrow-terminal #sidebar {
-    display: none;
-}
-.narrow-terminal #chat-pane {
-    width: 1fr;
-}
 
 .very-narrow-terminal #input-area {
     height: auto;
@@ -561,8 +458,21 @@ TextArea:disabled {
     min-height: 3;
     max-height: 4;
 }
-
-.short-terminal #status-bar {
+.narrow-terminal #trajectory-rail {
+    display: none;
+}
+.narrow-terminal #status-bar .sb-tps,
+.narrow-terminal #status-bar .sb-errors {
+    display: none;
+}
+.very-narrow-terminal #status-bar .sb-gauge {
+    display: none;
+}
+.very-narrow-terminal #telemetry-bar {
+    height: 1;
+    min-height: 1;
+}
+.very-narrow-terminal #context-meter-bar {
     display: none;
 }
 
@@ -682,4 +592,135 @@ CollapsibleContents {
     padding: 0 1;
     background: $background;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CMD_CENTER_V1.0 Cyberpunk Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#top-hud-header {
+    height: 1;
+    background: $surface;
+    border-bottom: solid $primary;
+    padding: 0 1;
+}
+
+#hud-title {
+    width: auto;
+    color: $primary;
+    text-style: bold;
+    margin-right: 2;
+}
+
+.hud-badge {
+    width: auto;
+    padding: 0 1;
+    background: $panel;
+    color: $primary;
+    margin-right: 1;
+}
+
+.hud-badge-green {
+    width: auto;
+    padding: 0 1;
+    background: $primary;
+    color: $background;
+    text-style: bold;
+    margin-right: 1;
+}
+
+#hud-spacer {
+    width: 1fr;
+}
+
+.mode-badge-goal {
+    width: auto;
+    height: 1;
+    padding: 0 1;
+    border: none;
+    background: $primary;
+    color: $background;
+    text-style: bold;
+    margin-right: 1;
+}
+
+.mode-badge-chat {
+    width: auto;
+    height: 1;
+    padding: 0 1;
+    border: none;
+    background: $panel;
+    color: $primary;
+    text-style: bold;
+    margin-right: 1;
+}
+
+/* Approval modal buttons */
+.btn-gold {
+    background: $warning;
+    color: $background;
+    text-style: bold;
+    border: none;
+    margin-right: 1;
+}
+
+.btn-outline {
+    background: transparent;
+    color: $warning;
+    border: solid $warning;
+}
+
+/* Telemetry & Gauges */
+#telemetry-bar {
+    height: 2;
+    min-height: 2;
+    background: $surface;
+    border-top: solid $border-blurred;
+    padding: 0 1;
+}
+
+#context-meter-bar {
+    height: 1;
+    min-height: 1;
+    background: transparent;
+    padding: 0;
+    color: $foreground;
+    text-style: bold;
+    border-top: none;
+}
+
+/* Bottom Nav Dock */
+#bottom-nav-dock {
+    height: 1;
+    background: $panel;
+    border-top: solid $primary;
+    align: center middle;
+}
+
+.nav-dock-btn {
+    width: auto;
+    height: 1;
+    min-width: 14;
+    padding: 0 2;
+    border: none;
+    background: transparent;
+    color: $primary;
+    text-style: bold;
+}
+
+.nav-dock-btn:hover {
+    background: $surface;
+    color: $accent;
+}
+
+.nav-dock-btn-active {
+    width: auto;
+    height: 1;
+    min-width: 14;
+    padding: 0 2;
+    border: none;
+    background: $primary;
+    color: $background;
+    text-style: bold;
+}
+
 
