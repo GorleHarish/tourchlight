@@ -13,16 +13,31 @@ def main():
     parser = argparse.ArgumentParser(description="Torchlight Autonomous Harness Runner")
     parser.add_argument("--project-root", default=".", help="Project root directory")
     parser.add_argument("--goal-id", default="goal_01", help="Goal ID")
-    parser.add_argument("--title", default="Autonomous Improvement Goal", help="Goal Title")
-    parser.add_argument("--description", default="Run continuous task optimization", help="Goal Description")
-    parser.add_argument("--duration", type=int, default=86400, help="Max duration in seconds (default 86400 / 24h)")
+    parser.add_argument(
+        "--title", default="Autonomous Improvement Goal", help="Goal Title"
+    )
+    parser.add_argument(
+        "--description",
+        default="Run continuous task optimization",
+        help="Goal Description",
+    )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=86400,
+        help="Max duration in seconds (default 86400 / 24h)",
+    )
     parser.add_argument("--max-steps", type=int, default=10, help="Max steps per epoch")
 
     args = parser.parse_args()
 
     project_root = Path(args.project_root).resolve()
-    memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=4000))
-    config = HarnessConfig(max_duration_seconds=args.duration, max_epoch_steps=args.max_steps)
+    memory = TieredMemory(
+        config=MemoryConfig.auto_tune(max_tokens=4000, metadata_overhead=600)
+    )
+    config = HarnessConfig(
+        max_duration_seconds=args.duration, max_epoch_steps=args.max_steps
+    )
 
     harness = AutonomousHarness(project_root=project_root, memory=memory, config=config)
 
@@ -31,10 +46,23 @@ def main():
     if not goal:
         print(f"Initializing new goal: {args.title}")
         demo_tasks = [
-            {"id": "task_01", "description": "Audit codebase structure", "target_files": ["core/execution/feedback_loop.py"]},
-            {"id": "task_02", "description": "Verify test suite health", "target_files": ["core/tests/test_autonomous_harness.py"]},
+            {
+                "id": "task_01",
+                "description": "Audit codebase structure",
+                "target_files": ["core/execution/feedback_loop.py"],
+            },
+            {
+                "id": "task_02",
+                "description": "Verify test suite health",
+                "target_files": ["core/tests/test_autonomous_harness.py"],
+            },
         ]
-        goal = harness.initialize_goal(goal_id=args.goal_id, title=args.title, description=args.description, tasks=demo_tasks)
+        goal = harness.initialize_goal(
+            goal_id=args.goal_id,
+            title=args.title,
+            description=args.description,
+            tasks=demo_tasks,
+        )
 
     print(f"Goal loaded: {goal.title} ({len(goal.tasks)} tasks)")
     print(f"Tasks Markdown written to: {harness.tasks_md_path}")

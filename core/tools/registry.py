@@ -282,6 +282,9 @@ def get_tool_registry() -> ToolRegistry:
     return _registry
 
 
+get_global_registry = get_tool_registry
+
+
 def _create_default_registry() -> ToolRegistry:
     """Create the default tool registry with all built-in tools."""
     from .implementations import (

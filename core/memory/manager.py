@@ -170,6 +170,8 @@ class TieredMemory:
         # even after compression. Max 2 files (FIFO eviction).
         self._pinned_files: deque[tuple[str, str]] = deque(maxlen=2)
         self._pinned_token_budget: int = config.pinned_token_budget
+        self._cached_msg_tokens: int = 0
+        self._last_persist_ts: float = 0.0
 
     def load_project_memory(self) -> None:
         """Load persistent project memory (.context-memory.json) into L0 working state."""
@@ -199,10 +201,14 @@ class TieredMemory:
         except Exception:
             pass
 
-    def persist_to_project_memory(self) -> None:
-        """Persist L0 working state to disk in .context-memory.json."""
+    def persist_to_project_memory(self, force: bool = False) -> None:
+        """Persist L0 working state to disk in .context-memory.json (debounced)."""
         if not self._project_memory:
             return
+        now = datetime.now().timestamp()
+        if not force and (now - self._last_persist_ts) < 5.0:
+            return
+        self._last_persist_ts = now
         try:
             self._project_memory.persist_session_state(self.state)
         except Exception:
@@ -210,9 +216,15 @@ class TieredMemory:
 
     @property
     def total_tokens(self) -> int:
-        msg_tokens = sum(self.tokenizer.count(m.content) for m in self.messages)
         pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
-        return msg_tokens + pinned_tokens
+        return self._cached_msg_tokens + pinned_tokens
+
+    def _append_message(self, msg: Message) -> None:
+        if len(self.messages) == self.messages.maxlen and self.messages:
+            old = self.messages[0]
+            self._cached_msg_tokens = max(0, self._cached_msg_tokens - old.token_count)
+        self.messages.append(msg)
+        self._cached_msg_tokens += msg.token_count
 
     def add_system_message(self, content: str) -> None:
         msg = Message(
@@ -220,7 +232,7 @@ class TieredMemory:
             content=content,
             token_count=self.tokenizer.count(content),
         )
-        self.messages.append(msg)
+        self._append_message(msg)
         self._update_state_from_message(msg)
 
     def add_user_message(self, content: str) -> None:
@@ -229,7 +241,7 @@ class TieredMemory:
             content=content,
             token_count=self.tokenizer.count(content),
         )
-        self.messages.append(msg)
+        self._append_message(msg)
         self._update_state_from_message(msg)
 
     def add_assistant_message(self, content: str) -> None:
@@ -238,7 +250,7 @@ class TieredMemory:
             content=content,
             token_count=self.tokenizer.count(content),
         )
-        self.messages.append(msg)
+        self._append_message(msg)
         self._update_state_from_message(msg)
 
     def add_tool_result(self, content: str, tool_name: str = "") -> None:
@@ -248,18 +260,15 @@ class TieredMemory:
             token_count=self.tokenizer.count(content),
             metadata={"tool_name": tool_name},
         )
-        self.messages.append(msg)
+        self._append_message(msg)
 
     def get_effective_budget(self) -> ContextBudget:
-        """Return headroom-aware budget allocations for the current turn.
-
-        Budgets expand with free context (more L0 memory, larger pins) and
-        shrink under pressure, so no reserved context sits idle.
-        """
+        """Return headroom-aware budget allocations for the current turn."""
         return ContextBudget(
             max_tokens=self.config.max_tokens,
             used_tokens=self.total_tokens,
             base_pinned_tokens=self.config.pinned_token_budget,
+            metadata_overhead=self.config.metadata_overhead,
         )
 
     def pin_file(self, path: str, content: str) -> None:
@@ -324,13 +333,28 @@ class TieredMemory:
         """Remove all pinned files."""
         self._pinned_files.clear()
 
+    def add_message(
+        self, role: MessageRole, content: str, metadata: Optional[dict] = None
+    ) -> None:
+        """Generic add_message method for role-based message addition."""
+        msg = Message(
+            role=role,
+            content=content,
+            token_count=self.tokenizer.count(content),
+            metadata=metadata or {},
+        )
+        self._append_message(msg)
+        self._update_state_from_message(msg)
+
     def should_compress(self) -> bool:
-        if len(self.messages) <= 1:
-            return False
-        ratio = self.total_tokens / self.config.max_tokens
+        override = getattr(self, "_total_tokens", None)
+        tot = override if override is not None else self.total_tokens
+        ratio = tot / self.config.max_tokens if self.config.max_tokens > 0 else 0
         # Emergency ratio override at >= 0.85 (85%) token usage even if message count is small
         if ratio >= 0.85:
             return True
+        if len(self.messages) <= 1:
+            return False
         if len(self.messages) < self.config.recent_window + 2:
             return False
         return ratio > self.config.compression_threshold
@@ -340,11 +364,11 @@ class TieredMemory:
         summarizer_fn: Optional[Callable] = None,
         preserve_first: int = 0,
         force: bool = False,
-    ) -> None:
+    ) -> str:
         """Compress older messages, preserving the first N messages."""
         min_messages = 1 if force else (self.config.recent_window + preserve_first)
         if len(self.messages) <= min_messages:
-            return
+            return ""
 
         window_size = 1 if force else self.config.recent_window
         recent = list(self.messages)[-window_size:] if window_size > 0 else []
@@ -355,29 +379,37 @@ class TieredMemory:
             else list(self.messages)[preserve_first:]
         )
 
+        summary = ""
         if older:
             self.messages.clear()
+            self._cached_msg_tokens = 0
             for msg in preserved:
-                self.messages.append(msg)
+                self._append_message(msg)
 
             if summarizer_fn:
-                summary = summarizer_fn(older)
-                self.messages.append(
-                    Message(
-                        role=MessageRole.SYSTEM,
-                        content=f"[Context summary of older turns]\n{summary}",
-                    )
+                raw_sum = summarizer_fn(older)
+                summary = str(raw_sum) if raw_sum is not None else ""
+                sys_msg = Message(
+                    role=MessageRole.SYSTEM,
+                    content=f"[Context summary of older turns]\n{summary}",
+                    token_count=self.tokenizer.count(summary) + 10,
                 )
+                self._append_message(sys_msg)
             else:
-                self.messages.append(
-                    Message(
-                        role=MessageRole.SYSTEM,
-                        content=f"[Context compacted. {len(older)} turns omitted to save memory.]",
-                    )
+                summary = (
+                    f"[Context compacted. {len(older)} turns omitted to save memory.]"
                 )
+                sys_msg = Message(
+                    role=MessageRole.SYSTEM,
+                    content=summary,
+                    token_count=self.tokenizer.count(summary),
+                )
+                self._append_message(sys_msg)
 
             for msg in recent:
-                self.messages.append(msg)
+                self._append_message(msg)
+
+        return summary
 
     async def compress_recent_async(
         self,
@@ -617,7 +649,8 @@ class TieredMemory:
             if entry not in self.state.decisions:
                 self.state.decisions.append(entry)
 
-        self.persist_to_project_memory()
+        # Explicit memory saves must be durable immediately (debounce bypassed).
+        self.persist_to_project_memory(force=True)
 
     def get_available_headroom(self) -> int:
         """Calculate remaining token budget headroom before reaching max_tokens threshold."""
@@ -681,6 +714,7 @@ class TieredMemory:
     def clear(self) -> None:
         self.messages.clear()
         self._pinned_files.clear()
+        self._cached_msg_tokens = 0
         self.state = SessionState()
 
     def _update_state_from_message(self, msg: Message) -> None:

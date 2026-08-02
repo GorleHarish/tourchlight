@@ -70,6 +70,9 @@ class HarnessConfig:
         False  # Preserve continuous session context between sub-tasks
     )
     mode: ExecutionMode = ExecutionMode.GOAL
+    # Blanket `git checkout -- .` + `git clean -fd` requires BOTH this flag AND
+    # a `.torchlight/.harness_managed` marker (proving the harness created the repo).
+    allow_blanket_revert: bool = False
 
 
 class AutonomousHarness:
@@ -489,8 +492,12 @@ class AutonomousHarness:
             score = 100.0
 
             # 1. Bracket balance & syntax validation
-            open_b = code_patch.count("{") + code_patch.count("(") + code_patch.count("[")
-            close_b = code_patch.count("}") + code_patch.count(")") + code_patch.count("]")
+            open_b = (
+                code_patch.count("{") + code_patch.count("(") + code_patch.count("[")
+            )
+            close_b = (
+                code_patch.count("}") + code_patch.count(")") + code_patch.count("]")
+            )
             if open_b != close_b:
                 score -= 40.0
 
@@ -498,6 +505,7 @@ class AutonomousHarness:
             if target_file.endswith(".py") and code_patch:
                 try:
                     import ast
+
                     ast.parse(code_patch)
                 except Exception:
                     score -= 50.0
@@ -695,6 +703,19 @@ class AutonomousHarness:
                         capture_output=True,
                     )
                     return True
+            # Blanket workspace revert requires allow_blanket_revert=True AND a
+            # .torchlight/.harness_managed marker proving the harness itself
+            # initialized the repository. Pre-existing user repos never get the
+            # marker, so a misconfigured flag cannot destroy user work.
+            allow = getattr(self.config, "allow_blanket_revert", False)
+            managed = (self.torchlight_dir / ".harness_managed").exists()
+            if not (allow and managed):
+                logger.warning(
+                    "Blanket git revert skipped: requires allow_blanket_revert=True "
+                    "and a .torchlight/.harness_managed marker."
+                )
+                return False
+
             subprocess.run(
                 ["git", "checkout", "--", "."],
                 cwd=str(self.project_root),

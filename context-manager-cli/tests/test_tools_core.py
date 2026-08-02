@@ -1,10 +1,18 @@
 from context_manager.tools.core import (
-    classify_command, AUTO, CONFIRM, REVIEW,
-    get_core_registry, CoreTool, CoreToolRegistry, set_ctx_window,
+    classify_command,
+    AUTO,
+    CONFIRM,
+    REVIEW,
+    get_core_registry,
+    CoreTool,
+    CoreToolRegistry,
+    set_ctx_window,
+    _read_budget_for_ctx,
 )
 
 
 # ── classify_command ─────────────────────────────────────────────────────────
+
 
 def test_classify_safe_command():
     assert classify_command("ls") == AUTO
@@ -33,9 +41,12 @@ def test_classify_empty_command():
 
 # ── CoreToolRegistry ─────────────────────────────────────────────────────────
 
+
 def test_core_registry_register():
     reg = CoreToolRegistry()
-    tool = CoreTool(name="TEST", icon="T", description="test", risk_level=AUTO, fn=lambda a, c: "ok")
+    tool = CoreTool(
+        name="TEST", icon="T", description="test", risk_level=AUTO, fn=lambda a, c: "ok"
+    )
     reg.register(tool)
     assert reg.get("TEST") is tool
 
@@ -89,5 +100,6 @@ def test_core_registry_dangerous_tools():
 
 def test_set_ctx_window():
     set_ctx_window(8192)
-    from context_manager.tools.core import _CTX_WINDOW
-    assert _CTX_WINDOW == 8192
+    assert _read_budget_for_ctx() == (100, 4_000)
+    set_ctx_window(4096)
+    assert _read_budget_for_ctx() == (60, 2_400)

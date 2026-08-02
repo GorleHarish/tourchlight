@@ -239,11 +239,14 @@ class RLMEngineOptimized:
         if self._memory is None and TieredMemory and MemoryConfig:
             try:
                 from core.memory.persistence import ProjectMemory
-                from rlm_optimized.config import CTX_SIZE
+                from rlm_optimized.config import CTX_SIZE, estimate_metadata_overhead
 
                 pm = ProjectMemory(Path(self.project_root))
                 self._memory = TieredMemory(
-                    config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE),
+                    config=MemoryConfig.auto_tune(
+                        max_tokens=CTX_SIZE,
+                        metadata_overhead=estimate_metadata_overhead(ctx_size=CTX_SIZE),
+                    ),
                     project_memory=pm,
                 )
             except Exception:
@@ -371,13 +374,17 @@ class RLMEngineOptimized:
         self._final_answer_rejections = 0
 
         if TieredMemory and MemoryConfig:
-            from .config import CTX_SIZE
+            from .config import CTX_SIZE, estimate_metadata_overhead
             from pathlib import Path
             from core.memory.persistence import ProjectMemory
 
             pm = ProjectMemory(Path(self.project_root))
             memory = TieredMemory(
-                config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE), project_memory=pm
+                config=MemoryConfig.auto_tune(
+                    max_tokens=CTX_SIZE,
+                    metadata_overhead=estimate_metadata_overhead(ctx_size=CTX_SIZE),
+                ),
+                project_memory=pm,
             )
             memory.add_system_message(
                 build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192))

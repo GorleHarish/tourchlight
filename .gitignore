@@ -23,3 +23,6 @@ models/
 # Torchlight logs and runtime state
 .torchlight/
 .torchlight_history.log
+test_kuzu_db*
+.ruff_cache/
+

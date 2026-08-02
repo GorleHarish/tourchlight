@@ -45,13 +45,15 @@ class ContextBudget:
     recent_min_tokens: int = 300
     recent_max_tokens: int = 3000
     recent_headroom_share: float = 0.15
+    metadata_overhead: int = 0
     # Rendering approximations (chars <-> tokens)
     chars_per_token: int = 4
     entry_chars_per_token: int = 20
 
     @property
     def target_tokens(self) -> int:
-        return int(self.max_tokens * self.target_utilization)
+        available = max(0, self.max_tokens - self.metadata_overhead)
+        return int(available * self.target_utilization)
 
     @property
     def headroom_tokens(self) -> int:

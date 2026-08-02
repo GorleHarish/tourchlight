@@ -5,13 +5,17 @@ import subprocess as _sp
 # ── Hardware Detection ─────────────────────────────────────────
 # Auto-detect Apple Silicon chip and RAM for safe default tuning.
 
+
 def _detect_apple_silicon_ram() -> int:
     """Detect total RAM in GB on macOS."""
     try:
-        out = _sp.check_output(["sysctl", "-n", "hw.memsize"], text=True, timeout=3).strip()
-        return int(out) // (1024 ** 3)
+        out = _sp.check_output(
+            ["sysctl", "-n", "hw.memsize"], text=True, timeout=3
+        ).strip()
+        return int(out) // (1024**3)
     except Exception:
         return 0
+
 
 def _detect_chip() -> str:
     """Detect Apple Silicon chip name (e.g., 'Apple M1')."""
@@ -22,6 +26,7 @@ def _detect_chip() -> str:
         return out
     except Exception:
         return "unknown"
+
 
 IS_MACOS = platform.system() == "Darwin"
 TOTAL_RAM_GB = _detect_apple_silicon_ram() if IS_MACOS else 0
@@ -51,7 +56,9 @@ if PROVIDER == "lmstudio":
     LOCAL_API_BASE_URL = os.environ.get("RLM_LOCAL_API_URL", LMSTUDIO_BASE_URL)
     LOCAL_API_KEY = os.environ.get("RLM_LOCAL_API_KEY", LMSTUDIO_API_KEY)
 elif PROVIDER == "ollama":
-    LOCAL_API_BASE_URL = os.environ.get("RLM_LOCAL_API_URL", "http://localhost:11434/v1")
+    LOCAL_API_BASE_URL = os.environ.get(
+        "RLM_LOCAL_API_URL", "http://localhost:11434/v1"
+    )
     LOCAL_API_KEY = os.environ.get("RLM_LOCAL_API_KEY", "not-needed")
 else:
     # Default for llama-cpp / turbo / mlx: llama-server runs on port 8080
@@ -65,8 +72,14 @@ CLOUD_API_KEY = os.environ.get("RLM_CLOUD_API_KEY", "")
 
 # ── Grammar Validation ─────────────────────────────────────────
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
-GRAMMAR_FILE = os.environ.get("RLM_GRAMMAR_FILE", os.path.join(_PKG_DIR, "grammar.gbnf"))
-USE_GRAMMAR_CONSTRAINT = os.environ.get("RLM_USE_GRAMMAR", "true").lower() in ("true", "1", "yes")
+GRAMMAR_FILE = os.environ.get(
+    "RLM_GRAMMAR_FILE", os.path.join(_PKG_DIR, "grammar.gbnf")
+)
+USE_GRAMMAR_CONSTRAINT = os.environ.get("RLM_USE_GRAMMAR", "true").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
 # ── AST Knowledge Graph ──────────────────────────────────────────
 # Directory name for the per-workspace Kuzu graph DB. Always resolved
@@ -76,7 +89,9 @@ AST_DB_DIRNAME = os.environ.get("RLM_AST_DB_DIRNAME", ".torchlight_ast_db")
 
 # ── Reasoning Constraints ──────────────────────────────────────
 MAX_RECURSION_DEPTH = int(os.environ.get("RLM_MAX_RECURSION", "4"))
-MAX_ITERATIONS_PER_LEVEL = int(os.environ.get("RLM_MAX_ITERATIONS", "15" if IS_8GB_DEVICE else "30"))
+MAX_ITERATIONS_PER_LEVEL = int(
+    os.environ.get("RLM_MAX_ITERATIONS", "15" if IS_8GB_DEVICE else "30")
+)
 MAX_THINKING_LOOPS = int(os.environ.get("RLM_MAX_THINKING_LOOPS", "6"))
 
 # ── Context Window (Auto-scaled for hardware) ──────────────────
@@ -95,7 +110,30 @@ else:
 # ── Generation Parameters ──────────────────────────────────────
 TEMPERATURE = 0.7
 TOP_P = 0.9
-NUM_PREDICT = int(os.environ.get("RLM_NUM_PREDICT", "-1"))  # -1 = unlimited (generate until stop token)
+NUM_PREDICT = int(
+    os.environ.get("RLM_NUM_PREDICT", "-1")
+)  # -1 = unlimited (generate until stop token)
+
+
+def estimate_metadata_overhead(
+    system_content: str = "", ctx_size: int = CTX_SIZE
+) -> int:
+    """Estimate tokens consumed by system prompt, tool schemas, and the flashlight beam.
+
+    Mirrors the CLI's `_calculate_metadata_overhead`: base system-prompt cost plus a
+    beam allowance scaled to the context window. Fed into `MemoryConfig.auto_tune` so
+    the history budget is net of prompt-assembly overhead and the assembled prompt
+    always stays inside the model's context window.
+    """
+    base = max(400, len(system_content) // 4) if system_content else 800
+    if ctx_size <= 5000:
+        beam = 600
+    elif ctx_size <= 9000:
+        beam = 1500
+    else:
+        beam = 3000
+    return base + beam
+
 
 # ── M1 Thread Tuning ──────────────────────────────────────────
 # M1 has 4 performance + 4 efficiency cores. Use perf cores only
@@ -127,7 +165,9 @@ ALLOWED_MODULES = [
 
 def normalize_model_name(name: str, provider: str = "") -> str:
     """Normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 E2B', 'gemma 4 4e4b')."""
-    name_lower = name.lower().replace(" ", "").replace("-", "").replace("_", "").replace(":", "")
+    name_lower = (
+        name.lower().replace(" ", "").replace("-", "").replace("_", "").replace(":", "")
+    )
     if provider == "mlx" or "mlx" in name_lower:
         if "qwen" in name_lower or name_lower == "qwen2.5coder":
             if "1.5b" in name_lower or "15b" in name_lower:
@@ -147,7 +187,13 @@ def normalize_model_name(name: str, provider: str = "") -> str:
         elif "3b" in name_lower:
             return "qwen2.5-coder-3b-instruct"
         return "qwen2.5-coder-7b-instruct"
-    if "gemma4e4b" in name_lower or "gemma4e4" in name_lower or "gemma44b" in name_lower or "4e4b" in name_lower or "e4b" in name_lower:
+    if (
+        "gemma4e4b" in name_lower
+        or "gemma4e4" in name_lower
+        or "gemma44b" in name_lower
+        or "4e4b" in name_lower
+        or "e4b" in name_lower
+    ):
         return "gemma-4-E4B-it"
     if "gemma4e2b" in name_lower or "gemma4" in name_lower or "gemma4e2" in name_lower:
         return "gemma-4-E2B-it"
@@ -160,21 +206,53 @@ def normalize_model_name(name: str, provider: str = "") -> str:
 
 def list_available_models() -> list[dict[str, str]]:
     """Scan local models directory and returns available GGUF and MLX models."""
-    models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
+    models_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "models")
+    )
     available = [
-        {"name": "Gemma 4 E2B Instruct (2B TurboQuant)", "id": "gemma-4-E2B-it", "provider": "turbo"},
-        {"name": "Gemma 4 E4B Instruct (4B TurboQuant)", "id": "gemma-4-E4B-it", "provider": "turbo"},
-        {"name": "Gemma 4 E4B Instruct (MLX Metal)", "id": "mlx-community/gemma-4-E4B-it-4bit", "provider": "mlx"},
-        {"name": "Gemma 2 2B Instruct (MLX Metal)", "id": "mlx-community/gemma-2-2b-it-4bit", "provider": "mlx"},
-        {"name": "Qwen 2.5 Coder 7B (TurboQuant)", "id": "qwen2.5-coder-7b-instruct", "provider": "turbo"},
-        {"name": "Gemini 2.5 Flash (Cloud API)", "id": "gemini-2.5-flash", "provider": "gemini"},
+        {
+            "name": "Gemma 4 E2B Instruct (2B TurboQuant)",
+            "id": "gemma-4-E2B-it",
+            "provider": "turbo",
+        },
+        {
+            "name": "Gemma 4 E4B Instruct (4B TurboQuant)",
+            "id": "gemma-4-E4B-it",
+            "provider": "turbo",
+        },
+        {
+            "name": "Gemma 4 E4B Instruct (MLX Metal)",
+            "id": "mlx-community/gemma-4-E4B-it-4bit",
+            "provider": "mlx",
+        },
+        {
+            "name": "Gemma 2 2B Instruct (MLX Metal)",
+            "id": "mlx-community/gemma-2-2b-it-4bit",
+            "provider": "mlx",
+        },
+        {
+            "name": "Qwen 2.5 Coder 7B (TurboQuant)",
+            "id": "qwen2.5-coder-7b-instruct",
+            "provider": "turbo",
+        },
+        {
+            "name": "Gemini 2.5 Flash (Cloud API)",
+            "id": "gemini-2.5-flash",
+            "provider": "gemini",
+        },
     ]
     if os.path.exists(models_dir):
         for fname in os.listdir(models_dir):
             if fname.endswith(".gguf"):
                 model_id = fname.replace(".gguf", "")
                 if not any(m["id"] == model_id for m in available):
-                    available.append({"name": f"Local GGUF: {fname}", "id": model_id, "provider": "turbo"})
+                    available.append(
+                        {
+                            "name": f"Local GGUF: {fname}",
+                            "id": model_id,
+                            "provider": "turbo",
+                        }
+                    )
     return available
 
 
@@ -202,6 +280,7 @@ def fetch_provider_models(base_url: str, timeout: float = 2.5) -> list[str]:
 def is_port_in_use(port: int = 8080) -> bool:
     """Check if server port 8080 is actively listening."""
     import socket
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(1.0)
         return s.connect_ex(("127.0.0.1", port)) == 0

@@ -20,14 +20,21 @@ class SessionPersistence:
             self.session_dir = session_dir
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
-    def save_session(self, memory, session_name: Optional[str] = None, project_path: Optional[str] = None) -> str:
+    def save_session(
+        self,
+        memory,
+        session_name: Optional[str] = None,
+        project_path: Optional[str] = None,
+    ) -> str:
         if session_name is None:
             session_name = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         session_file = self.session_dir / f"{session_name}.json"
         messages_data = [
             {
-                "role": msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role),
+                "role": msg.role.value
+                if isinstance(msg.role, MessageRole)
+                else str(msg.role),
                 "content": msg.content,
                 "timestamp": msg.timestamp.isoformat(),
                 "token_count": msg.token_count,
@@ -78,18 +85,22 @@ class SessionPersistence:
             try:
                 with open(f) as fh:
                     data = json.load(fh)
-                sessions.append({
-                    "name": data.get("name", f.stem),
-                    "created": data.get("created", ""),
-                    "message_count": len(data.get("messages", [])),
-                    "total_tokens": data.get("total_tokens", 0),
-                })
+                sessions.append(
+                    {
+                        "name": data.get("name", f.stem),
+                        "created": data.get("created", ""),
+                        "message_count": len(data.get("messages", [])),
+                        "total_tokens": data.get("total_tokens", 0),
+                    }
+                )
             except Exception:
                 continue
         return sessions
 
 
-def ensure_git_repository(project_path: Union[Path, str], force_init: bool = False) -> Path:
+def ensure_git_repository(
+    project_path: Union[Path, str], force_init: bool = False
+) -> Path:
     """
     Ensure target project directory exists and has a local Git repository initialized.
     Configures fallback user email and name if unconfigured.
@@ -97,21 +108,69 @@ def ensure_git_repository(project_path: Union[Path, str], force_init: bool = Fal
     path = Path(project_path).resolve()
     path.mkdir(parents=True, exist_ok=True)
     git_dir = path / ".git"
+    fresh_init = not git_dir.exists()
     if not git_dir.exists() or force_init:
         try:
-            subprocess.run(["git", "init"], cwd=str(path), check=True, capture_output=True)
-            res_email = subprocess.run(["git", "config", "user.email"], cwd=str(path), capture_output=True, text=True)
+            subprocess.run(
+                ["git", "init"], cwd=str(path), check=True, capture_output=True
+            )
+            res_email = subprocess.run(
+                ["git", "config", "user.email"],
+                cwd=str(path),
+                capture_output=True,
+                text=True,
+            )
             if not res_email.stdout.strip():
-                subprocess.run(["git", "config", "user.email", "torchlight@local.dev"], cwd=str(path), check=True, capture_output=True)
-            res_name = subprocess.run(["git", "config", "user.name"], cwd=str(path), capture_output=True, text=True)
+                subprocess.run(
+                    ["git", "config", "user.email", "torchlight@local.dev"],
+                    cwd=str(path),
+                    check=True,
+                    capture_output=True,
+                )
+            res_name = subprocess.run(
+                ["git", "config", "user.name"],
+                cwd=str(path),
+                capture_output=True,
+                text=True,
+            )
             if not res_name.stdout.strip():
-                subprocess.run(["git", "config", "user.name", "Torchlight Agent"], cwd=str(path), check=True, capture_output=True)
+                subprocess.run(
+                    ["git", "config", "user.name", "Torchlight Agent"],
+                    cwd=str(path),
+                    check=True,
+                    capture_output=True,
+                )
+            # Mark the repo as harness-managed ONLY when the harness itself
+            # created it (fresh init), never for pre-existing user repositories.
+            # Gates destructive blanket reverts in AutonomousHarness.
+            if fresh_init:
+                _write_harness_marker(path)
         except Exception:
             pass
     return path
 
 
-def ensure_project_initialized(project_path: Union[Path, str], create_git: bool = False) -> Path:
+def _write_harness_marker(project_path: Path) -> None:
+    """Write a marker proving the harness itself initialized this git repo.
+
+    Only written when the harness performs a fresh ``git init``. Pre-existing
+    user repositories never receive the marker, so ``allow_blanket_revert``
+    cannot destroy user work by accident.
+    """
+    try:
+        marker_dir = project_path / ".torchlight"
+        marker_dir.mkdir(parents=True, exist_ok=True)
+        (marker_dir / ".harness_managed").write_text(
+            "Managed by the Torchlight AutonomousHarness.\n",
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
+def ensure_project_initialized(
+    project_path: Union[Path, str], create_git: bool = False
+) -> Path:
     """
     Ensure target project directory exists and has `.context-memory.json` persistent memory file auto-created.
     If create_git is True (e.g. when initializing a new target project or via AutonomousHarness),
@@ -125,6 +184,7 @@ def ensure_project_initialized(project_path: Union[Path, str], create_git: bool 
     if memory_file.exists() and memory_file.is_dir():
         try:
             import shutil
+
             shutil.rmtree(memory_file)
         except Exception:
             pass
@@ -153,15 +213,20 @@ def ensure_project_initialized(project_path: Union[Path, str], create_git: bool 
     # 3. Ensure .gitignore contains .torchlight/ to prevent dirty git status
     gitignore_file = path / ".gitignore"
     try:
-        content = gitignore_file.read_text(encoding="utf-8") if gitignore_file.exists() else ""
+        content = (
+            gitignore_file.read_text(encoding="utf-8")
+            if gitignore_file.exists()
+            else ""
+        )
         if ".torchlight" not in content:
             separator = "" if not content or content.endswith("\n") else "\n"
-            gitignore_file.write_text(content + f"{separator}.torchlight/\n", encoding="utf-8")
+            gitignore_file.write_text(
+                content + f"{separator}.torchlight/\n", encoding="utf-8"
+            )
     except Exception:
         pass
 
     return path
-
 
 
 def init_new_project(project_path: Union[Path, str]) -> Path:
@@ -173,7 +238,12 @@ def init_new_project(project_path: Union[Path, str]) -> Path:
 
 
 class ProjectMemory:
-    def __init__(self, project_dir: Union[Path, str], auto_init: bool = True, create_git: bool = False):
+    def __init__(
+        self,
+        project_dir: Union[Path, str],
+        auto_init: bool = True,
+        create_git: bool = False,
+    ):
         self.project_dir = Path(project_dir).resolve()
         self.memory_file = self.project_dir / ".context-memory.json"
         if auto_init:
@@ -257,4 +327,3 @@ class ProjectMemory:
         data["errors_seen"] = state.errors_seen
         data["tried_and_failed"] = state.tried_and_failed
         self.save(data)
-
