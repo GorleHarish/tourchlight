@@ -41,7 +41,6 @@ class ContextBudget:
     l0_headroom_share: float = 0.20
     # Pinned files
     pinned_min_tokens: int = 200
-    pinned_max_multiplier: float = 1.5
     # Conversation recent-window reserve (feeds compression decisions)
     recent_min_tokens: int = 300
     recent_max_tokens: int = 3000
@@ -87,13 +86,16 @@ class ContextBudget:
 
     @property
     def pinned_tokens(self) -> int:
-        """Token ceiling for pinned file content this turn."""
+        """Token ceiling for pinned file content this turn.
+
+        Never exceeds the configured `base_pinned_tokens` (an explicit user
+        choice); shrinks under pressure so the conversation keeps priority over
+        pinned slices. Idle headroom is spent on L0 enrichment instead, which is
+        generated memory rather than exact file content.
+        """
         scaled = int(self.base_pinned_tokens * (0.5 + 0.75 * self.headroom_ratio))
-        return _clamp(
-            scaled,
-            self.pinned_min_tokens,
-            int(self.base_pinned_tokens * self.pinned_max_multiplier),
-        )
+        floor = min(self.pinned_min_tokens, self.base_pinned_tokens)
+        return max(floor, min(scaled, self.base_pinned_tokens))
 
     @property
     def recent_tokens(self) -> int:

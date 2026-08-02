@@ -6,7 +6,7 @@ and shrink under pressure so the conversation never gets crowded out.
 """
 
 from core.memory.budget import ContextBudget
-from core.memory.manager import TieredMemory, MemoryConfig
+from core.memory.manager import MemoryConfig, TieredMemory
 
 
 def test_effective_budget_uses_idle_headroom_on_large_window():
@@ -65,12 +65,25 @@ def test_pinned_budget_scales_with_headroom():
     tight = ContextBudget(max_tokens=4096, used_tokens=3900, base_pinned_tokens=600)
     roomy = ContextBudget(max_tokens=12288, used_tokens=0, base_pinned_tokens=600)
 
+    # The configured base is a hard ceiling (never exceeded); under pressure the
+    # pinned slice shrinks so the conversation keeps priority.
     assert tight.pinned_tokens < 600
-    assert roomy.pinned_tokens > 600
+    assert roomy.pinned_tokens > tight.pinned_tokens
     assert tight.pinned_tokens >= tight.pinned_min_tokens
-    assert roomy.pinned_tokens <= int(
-        roomy.base_pinned_tokens * roomy.pinned_max_multiplier
-    )
+
+
+def test_explicit_pin_budget_is_respected():
+    config = MemoryConfig(max_tokens=4096, pinned_token_budget=100)
+    memory = TieredMemory(config)
+
+    large_content = "\n".join([f"line_{i} = {i}" for i in range(100)])
+    memory.pin_file("large.py", large_content)
+
+    pinned = memory.get_pinned_files()
+    assert len(pinned) == 1
+    path, pinned_content = pinned[0]
+    assert path == "large.py"
+    assert "truncated" in pinned_content
 
 
 def test_context_budget_bounds():

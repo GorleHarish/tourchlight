@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785658372.6426857,
-    "ast_hash": "79dba3c49f90c9428a8409505a88fb26",
+    "mtime": 1785659186.3236299,
+    "ast_hash": "1d949ea42cecf66e265596eee578a2ba",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785658336.2583706,
-    "ast_hash": "8a87d755cdb4cf61ca0efc6a4b506517",
+    "mtime": 1785658876.2546272,
+    "ast_hash": "4bd3a72674f267cbe2aaa529869ad274",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -860,8 +860,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_scratchpad_enhancements.py": {
-    "mtime": 1785658302.9260962,
-    "ast_hash": "b333b881ff4ac4d2a2d4d65af5885933",
+    "mtime": 1785658935.8268113,
+    "ast_hash": "ecd35ca2be2efe9d0c3c9b47a1ecf9da",
     "semantic_hash": ""
   },
   "core/tests/test_plan_execution_loop.py": {
@@ -977,6 +977,16 @@
   "rlm_optimized/UI_IMPROVEMENTS_PLAN.md": {
     "mtime": 1785633384.349179,
     "ast_hash": "71465990989c01b68f214fe1ed9d0065",
+    "semantic_hash": ""
+  },
+  "core/memory/budget.py": {
+    "mtime": 1785659062.161773,
+    "ast_hash": "2af30e98c98078c62b27e6422e9e6093",
+    "semantic_hash": ""
+  },
+  "core/tests/test_context_budget.py": {
+    "mtime": 1785659154.617548,
+    "ast_hash": "2846cb34bde5466f2fa771c02ae3aefd",
     "semantic_hash": ""
   }
 }
