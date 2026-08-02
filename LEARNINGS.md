@@ -86,5 +86,25 @@ This document summarizes key learnings and design principles established during 
 - **Insight:** During reasoning or planning phases, LLMs often emit natural language prose containing backticks or code tags (e.g., `` ` tags if I were executing... ``). Without multi-layer validation, parsers misclassify this as executable code (`action="code"`), attempting `exec()` in the REPL sandbox and causing invalid syntax tracebacks.
 - **Principle:** Enforce a 3-layer validation pipeline: (1) `ast.parse` and prose frequency heuristic in `_parse_response()` to reclassify non-code inside `<CODE>` tags as `thinking`, (2) pre-execution syntax validation in the `solve_async` dispatch loop, and (3) a last-resort prose guard inside `REPLSandbox.execute()` to cleanly reject prose without syntax error exceptions.
 
+---
+
+## 6. Adaptive Context Budgeting & Runtime Rollout
+
+### A. Headroom-Adaptive, Not Reservation-Fixed Budgets
+- **Insight:** Statically reserving fixed token budgets for the L0 scratchpad and pinned files leaves context idle when the window is quiet and overflows under pressure.
+- **Principle:** Scale the L0 scratchpad from idle headroom (`ContextBudget`, 150→1200 tokens, ~20% of headroom against a 0.85 utilization target) and shrink under pressure. Explicit user-configured budgets (e.g. `base_pinned_tokens`) are hard ceilings that adaptation never exceeds.
+
+### B. Scratchpad Hygiene & Priority-Ordered Eviction
+- **Insight:** Raw scratchpad entries with long values, embedded newlines, and low-priority noise waste tokens and dilute high-priority state.
+- **Principle:** Truncate per-entry values (120 chars), flatten whitespace, and greedily assemble sections by priority under a hard cap (1600 chars); drop low-priority sections first so active goals, modified files, and failing tests always survive.
+
+### C. Gate-Parity Between System Prompt and Engine
+- **Insight:** Prompt-level warnings alone are ignored when the engine does not enforce them, allowing premature final answers.
+- **Principle:** Align system-prompt directives with runtime enforcement: the engine re-verifies pending changes before accepting a final answer, and final answers that mark pending changes as done are treated as failed turns (revert + report blocker).
+
+### D. Runtime Activation Over Silent Local Fallbacks
+- **Insight:** A frontend that silently falls back to stale duplicate modules means shared `core` fixes never reach production behavior.
+- **Principle:** After every shared-core fix, verify runtime delegation (`PYTHONPATH` coverage plus a delegation check such as `ExecutionFeedbackLoop is core: True`) on each frontend, since import-time fallbacks can mask outdated code.
+
 
 

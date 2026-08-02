@@ -2,6 +2,15 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.6.0] - 2026-08-02
+
+### Added & Improved
+- **Headroom-Adaptive Context Budget Coordinator (`ContextBudget` in `core/memory/budget.py`)**: Replaces static reservation with a headroom-driven coordinator. L0 scratchpad scales 150→1200 tokens (~20% of idle headroom, computed against a 0.85 target utilization), scratchpad entry limits scale 60→240 chars, and section caps scale 3→8. Pinned-file budget shrinks under pressure but never exceeds the configured `base_pinned_tokens` (explicit user choice is a hard ceiling).
+- **L0 Scratchpad Hygiene & Priority-Ordered Eviction (`core/memory/manager.py`)**: Per-entry 120-char truncation with whitespace/newline flattening, priority-ordered greedy assembly under a 1600-char cap, and low-priority section dropping under pressure so the highest-value state (active goal, modified files, active errors, failing tests) always survives.
+- **Verification-Gate Prompt Parity (`core/prompts/system.py`)**: New `UNVERIFIED CHANGES` / `UNRESOLVED TEST FAILURES` directives — accepted final answers that mark pending changes as done are treated as failed turns (broken edits reverted, blocker reported with surgical traceback), and the engine re-verifies pending changes before accepting final answers.
+- **CLI Runtime Core Activation Fix (`context-manager-cli/run.sh`)**: Added the repo root to `PYTHONPATH` (`$(pwd)/src:$(pwd)/..`) so the CLI's feedback-loop delegation actually resolves `ExecutionFeedbackLoop` etc. from `core` at runtime instead of silently using stale local fallback modules — Phases 2–3 verification-gate fixes are now active in the CLI.
+- **Comprehensive Unit Testing**: Added `core/tests/test_context_budget.py` (7 tests covering L0 expansion/shrink, bounds, and explicit pinned-budget ceiling respect) plus scratchpad-hygiene and prompt gate-parity tests. Core suite: 348 tests passing; CLI suite: 46 tests passing with core delegation verified active.
+
 ## [v2.5.0] - 2026-07-30
 
 ### Added & Improved
