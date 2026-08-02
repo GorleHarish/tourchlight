@@ -1,7 +1,7 @@
 """Command palette + slash-command autocomplete for the Torchlight TUI.
 
 Phase 4:
-* ``CommandPalette`` — a ``Ctrl+K`` modal that fuzzy-searches app bindings,
+* ``CommandPalette`` — a ``Ctrl+P`` modal that fuzzy-searches app bindings,
   slash commands, and project files (Enter runs, Esc closes).
 * ``PromptTextArea`` — a ``TextArea`` subclass that turns Enter into a submit
   (the stock widget consumes Enter to insert a newline, so it never reached
@@ -285,7 +285,7 @@ class PaletteResult(NamedTuple):
 
 
 class CommandPalette(ModalScreen[Optional[PaletteResult]]):  # noqa: UP045 - 3.9 runtime base
-    """Ctrl+K modal: fuzzy-search actions, slash commands, and files."""
+    """Ctrl+P modal: fuzzy-search actions, slash commands, and files."""
 
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("escape", "cancel", "Cancel"),
@@ -371,6 +371,16 @@ class CommandPalette(ModalScreen[Optional[PaletteResult]]):  # noqa: UP045 - 3.9
     @on(Input.Changed, "#palette-input")
     def on_palette_input(self, event: Input.Changed) -> None:
         self._refresh(event.value)
+
+    @on(Input.Submitted, "#palette-input")
+    def on_palette_submit(self, event: Input.Submitted) -> None:
+        self.action_select()
+
+    @on(ListView.Selected, "#palette-list")
+    def on_palette_selected(self, event: ListView.Selected) -> None:
+        if event.index is not None:
+            self._index = event.index
+        self.action_select()
 
     def _refresh(self, query: str) -> None:
         self._filtered = fuzzy_filter(query, self._all_items)

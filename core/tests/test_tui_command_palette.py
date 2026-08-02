@@ -271,3 +271,43 @@ async def test_command_palette_composes_filters_and_selects():
             assert results and results[0].kind == "slash"
             assert results[0].value == "/help"
             await pilot.pause()
+
+
+@pytest.mark.anyio
+async def test_command_palette_enter_runs_highlighted_item():
+    try:
+        from textual.app import App
+        from textual.widgets import Static
+
+        from rlm_optimized.tui_widgets.command_palette import CommandPalette
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "readme.md").write_text("hi")
+
+        class PaletteApp(App):
+            def compose(self):
+                yield Static("host")
+
+        app = PaletteApp()
+        async with app.run_test() as pilot:
+            results = []
+            palette = CommandPalette(tmp)
+            app.push_screen(palette, results.append)
+            await pilot.pause()
+
+            # Focus the palette input (as on_mount does) and type a filter.
+            palette.query_one("#palette-input").focus()
+            await pilot.pause()
+            await pilot.press("/", "m", "o", "d")
+            await pilot.pause()
+            assert palette._filtered and palette._filtered[0][0].startswith("/model")
+
+            # Enter must run the highlighted item, not just submit the Input.
+            await pilot.press("enter")
+            await pilot.pause()
+            assert results, "Enter on palette input should run the highlighted item"
+            assert results[0].kind == "slash"
+            assert results[0].value == "/model"
+            await pilot.pause()

@@ -113,8 +113,10 @@ def git_status_for_tree(root: str | Path) -> dict[str, str]:
         return {}
 
 
-def _should_skip_dir(name: str) -> bool:
-    return name in (
+def _should_skip_path(path: Path) -> bool:
+    """Filter out OS noise, cache directories, and internal state files."""
+    name = path.name
+    if name in (
         ".git",
         "__pycache__",
         "node_modules",
@@ -123,7 +125,13 @@ def _should_skip_dir(name: str) -> bool:
         "dist",
         "build",
         ".torchlight",
-    ) or name.startswith(".")
+        ".DS_Store",
+        ".pytest_cache",
+        ".context-memory",
+        ".context-memory.json",
+    ) or name.startswith(".torchlight_"):
+        return True
+    return False
 
 
 class GitFileTree(DirectoryTree):
@@ -132,6 +140,10 @@ class GitFileTree(DirectoryTree):
     def __init__(self, path: str | Path, **kwargs) -> None:
         super().__init__(str(path), **kwargs)
         self._git_status: dict[str, str] = {}
+
+    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
+        """Filter out hidden dotfiles and OS clutter from tree view."""
+        return [p for p in paths if not _should_skip_path(p)]
 
     def refresh_git(self) -> None:
         """Re-run ``git status --porcelain`` for the current root."""
@@ -151,14 +163,14 @@ class GitFileTree(DirectoryTree):
         return key
 
     def _decorated_name(self, path: Path) -> str:
-        """Prefix file labels with the git code; leave directories clean."""
+        """Prefix file labels with a clean single-letter git tag; leave directories clean."""
         name = path.name
         if path.is_dir():
-            return name
+            return f"📁 {name}"
         code = self._git_status.get(self._rel_key(path))
         if code:
-            return f"{code}  {name}"
-        return name
+            return f"[{code}] {name}"
+        return f"📄 {name}"
 
     def _populate_node(
         self,
@@ -166,7 +178,8 @@ class GitFileTree(DirectoryTree):
         content: Iterable[Path],  # type: ignore[override]
     ) -> None:
         node.remove_children()
-        for path in content:
+        filtered = [p for p in content if not _should_skip_path(p)]
+        for path in filtered:
             try:
                 allow_expand = self._safe_is_dir(path)
                 node.add(
@@ -177,3 +190,4 @@ class GitFileTree(DirectoryTree):
             except OSError:
                 continue
         node.expand()
+

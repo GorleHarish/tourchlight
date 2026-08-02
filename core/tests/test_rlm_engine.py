@@ -4,9 +4,10 @@ from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
 from rlm_optimized.cloud_client import CloudClient
 from rlm_optimized.llamacpp_client import LlamaCppClient
 
+
 def test_rlm_engine_optimized_debate_verifier_initialization():
     mock_client = MagicMock()
-    
+
     # 1. Default initialization (debate_verifier disabled by default for fast performance)
     engine = RLMEngineOptimized(client=mock_client)
     assert hasattr(engine, "debate_verifier")
@@ -19,27 +20,41 @@ def test_rlm_engine_optimized_debate_verifier_initialization():
 
     # 3. Custom debate verifier injection
     custom_verifier = MagicMock()
-    engine_custom = RLMEngineOptimized(client=mock_client, debate_verifier=custom_verifier)
+    engine_custom = RLMEngineOptimized(
+        client=mock_client, debate_verifier=custom_verifier
+    )
     assert engine_custom.debate_verifier == custom_verifier
+
 
 def test_client_chat_protocol_methods():
     for client_cls in [CloudClient, LlamaCppClient]:
-        assert hasattr(client_cls, "chat"), f"{client_cls.__name__} must implement chat()"
-        assert hasattr(client_cls, "chat_stream"), f"{client_cls.__name__} must implement chat_stream()"
+        assert hasattr(client_cls, "chat"), (
+            f"{client_cls.__name__} must implement chat()"
+        )
+        assert hasattr(client_cls, "chat_stream"), (
+            f"{client_cls.__name__} must implement chat_stream()"
+        )
+
 
 def test_rlm_engine_debate_verifier_error_resilience():
     import asyncio
 
     async def _test():
         mock_client = MagicMock()
-        mock_client.stream_chat_with_history.return_value = ["<FINAL_ANSWER>42</FINAL_ANSWER>"]
+        mock_client.stream_chat_with_history.return_value = [
+            "<FINAL_ANSWER>42</FINAL_ANSWER>"
+        ]
         mock_client.chat_with_history.return_value = "Summary text"
-        
+
         failing_verifier = MagicMock()
         failing_verifier.should_debate.return_value = True
-        failing_verifier.verify_and_refine.side_effect = RuntimeError("Debate service timeout")
+        failing_verifier.verify_and_refine.side_effect = RuntimeError(
+            "Debate service timeout"
+        )
 
-        engine = RLMEngineOptimized(client=mock_client, debate_verifier=failing_verifier)
+        engine = RLMEngineOptimized(
+            client=mock_client, debate_verifier=failing_verifier
+        )
         result = await engine.solve_async("What is 2+2?")
 
         assert result.answer == "42"
@@ -50,6 +65,7 @@ def test_rlm_engine_debate_verifier_error_resilience():
 
 def test_rlm_engine_solve_method():
     from rlm_optimized.rlm_engine import RLMEngine
+
     mock_client = MagicMock()
     mock_client.chat_with_history.return_value = "<FINAL_ANSWER>Done</FINAL_ANSWER>"
     engine = RLMEngine(client=mock_client)
@@ -60,21 +76,24 @@ def test_rlm_engine_solve_method():
 
 def test_rlm_engine_optimized_code_execution():
     import asyncio
+
     async def _test():
         mock_client = MagicMock()
         mock_client.stream_chat_with_history.side_effect = [
             ["<CODE>x = 10 + 32; print(x)</CODE>"],
-            ["<FINAL_ANSWER>42</FINAL_ANSWER>"]
+            ["<FINAL_ANSWER>42</FINAL_ANSWER>"],
         ]
         mock_client.chat_with_history.return_value = "Summary"
         engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
         res = await engine.solve_async("Calculate 10+32")
         assert "42" in res.answer or len(res.steps) >= 2
+
     asyncio.run(_test())
 
 
 def test_rlm_engine_optimized_none_tool_name():
     import asyncio
+
     async def _test():
         mock_client = MagicMock()
         # Return tool call with None tool_name from _parse_response
@@ -83,10 +102,13 @@ def test_rlm_engine_optimized_none_tool_name():
         ]
         mock_client.chat_with_history.return_value = "Summary"
         engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
-        action, thinking, content, extra_queries, tool_name, tool_args = engine._parse_response("<INVALID>tag</INVALID>")
+        action, thinking, content, extra_queries, tool_name, tool_args = (
+            engine._parse_response("<INVALID>tag</INVALID>")
+        )
         assert tool_name is None
         assert action == "final_answer"
         assert content == "<INVALID>tag</INVALID>"
+
     asyncio.run(_test())
 
 
@@ -164,6 +186,7 @@ def test_rlm_engine_code_tag_and_backticks():
 
     # 3. REPL Sandbox should strip markdown backticks before exec
     from rlm_optimized.repl_sandbox import REPLSandbox
+
     sandbox = REPLSandbox()
     res = sandbox.execute("```python\na = 10\nb = 20\nprint(a + b)\n```")
     assert res["success"] is True
@@ -173,7 +196,9 @@ def test_rlm_engine_code_tag_and_backticks():
     assert action3 == "thinking"
 
     # 5. REPL Sandbox should reject natural language prose gracefully
-    res_prose = sandbox.execute("tags if I were executing, but here I'm generating the final result as an HTML file.")
+    res_prose = sandbox.execute(
+        "tags if I were executing, but here I'm generating the final result as an HTML file."
+    )
     assert res_prose["success"] is False
     assert "Content appears to be natural language/prose" in res_prose["error"]
 
@@ -208,8 +233,73 @@ def test_rlm_engine_parse_system_thought_and_plan_prefix():
     assert "Plan for learning Python" in content_plan
 
 
+def test_clean_and_parse_json_tolerant_multiline_content():
+    from rlm_optimized.rlm_engine_optimized import _clean_and_parse_json
+
+    # Raw (unescaped) newlines + embedded braces in content must not truncate
+    raw = '{"path": "x.py", "content": "def f():\n    return {"k": 1}\n"}'
+    parsed = _clean_and_parse_json(raw)
+    assert parsed["path"] == "x.py"
+    assert parsed["content"] == 'def f():\n    return {"k": 1}\n'
 
 
+def test_clean_and_parse_json_trailing_unterminated_string():
+    from rlm_optimized.rlm_engine_optimized import _clean_and_parse_json
+
+    parsed = _clean_and_parse_json('{"path": "x.py", "content": "def f():')
+    assert parsed["path"] == "x.py"
 
 
+def test_repair_stop_tokens_write_file():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
 
+    repaired = engine._repair_stop_tokens('<WRITE_FILE path="x.py">\ndef f():')
+    assert repaired.endswith("</WRITE_FILE>")
+
+    # A fully closed WRITE_FILE must be left untouched
+    closed = engine._repair_stop_tokens(
+        '<WRITE_FILE path="x.py">\ndef f():</WRITE_FILE>'
+    )
+    assert closed.endswith("</WRITE_FILE>")
+    assert closed.count("</WRITE_FILE>") == 1
+
+
+def test_action_tag_unclosed_with_trailing_prose():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    # Unclosed <action> + trailing prose previously produced NO MATCH (tool call lost)
+    resp = (
+        '<action>WRITE_FILE {"path": "x.py", "content": "def f():\\n    return 1"}\n'
+        "I will now continue with the next step."
+    )
+    action, _, _, _, tool_name, tool_args = engine._parse_response(resp)
+    assert action == "tool"
+    assert tool_name == "WRITE_FILE"
+    assert tool_args["path"] == "x.py"
+    assert tool_args["content"] == "def f():\n    return 1"
+
+
+def test_action_tag_braces_inside_string_values():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    resp = '<action>EDIT_FILE {"path": "x.py", "old_text": "a {b}", "new_text": "c"}</action>'
+    action, _, _, _, tool_name, tool_args = engine._parse_response(resp)
+    assert action == "tool"
+    assert tool_name == "EDIT_FILE"
+    assert tool_args["old_text"] == "a {b}"
+    assert tool_args["new_text"] == "c"
+
+
+def test_action_tag_no_json_args():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    action, _, _, _, tool_name, tool_args = engine._parse_response(
+        "<action>LIST_DIR</action>"
+    )
+    assert action == "tool"
+    assert tool_name == "LIST_DIR"
+    assert tool_args == {}

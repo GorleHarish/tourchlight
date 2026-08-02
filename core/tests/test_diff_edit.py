@@ -239,3 +239,52 @@ def test_edit_file_auto_fallback_to_write():
         with open(os.path.join(tmpdir, "new_file_2.py"), "r", encoding="utf-8") as f:
             assert "x = 42" in f.read()
 
+
+
+def test_edit_file_line_range_old_text_not_found_does_not_overwrite():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "main.py")
+        original = "a = 1\nb = 2\nc = 3\n"
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write(original)
+
+        res = tool_edit_file_impl(
+            {"path": "main.py", "start_line": 1, "end_line": 2,
+             "old_text": "zzz", "new_text": "X"},
+            project_root=tmpdir,
+        )
+        assert "not found within line range" in res
+        assert "READ_FILE" in res
+        with open(test_file, "r", encoding="utf-8") as f:
+            assert f.read() == original
+
+
+def test_edit_file_line_range_old_text_found_replaces_within_range():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "main.py")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("a = 1\nb = 2\nc = 3\n")
+
+        res = tool_edit_file_impl(
+            {"path": "main.py", "start_line": 1, "end_line": 2,
+             "old_text": "a = 1", "new_text": "a = 10"},
+            project_root=tmpdir,
+        )
+        assert "within line range 1-2" in res
+        with open(test_file, "r", encoding="utf-8") as f:
+            assert f.read() == "a = 10\nb = 2\nc = 3\n"
+
+
+def test_edit_file_line_range_no_old_text_full_range_replace():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "main.py")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("a = 1\nb = 2\nc = 3\n")
+
+        res = tool_edit_file_impl(
+            {"path": "main.py", "start_line": 2, "end_line": 3, "new_text": "b = 20\nc = 30\n"},
+            project_root=tmpdir,
+        )
+        assert "within line range 2-3" in res
+        with open(test_file, "r", encoding="utf-8") as f:
+            assert f.read() == "a = 1\nb = 20\nc = 30\n"

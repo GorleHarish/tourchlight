@@ -958,6 +958,8 @@ class ShortcutsHelpModal(ModalScreen[None]):
 ### ⌨️ Keyboard Shortcuts
 - **Enter** — Send prompt
 - **Shift+Enter** — New line in prompt (multi-line input)
+- **Ctrl+P** — Open Command Palette
+- **Ctrl+N** — Compact Context
 - **Ctrl+B** — Toggle Sidebar
 - **Ctrl+T** — Cycle Theme
 - **Ctrl+M** — Select Active Model
@@ -966,7 +968,7 @@ class ShortcutsHelpModal(ModalScreen[None]):
 - **Ctrl+A** — Open Telemetry & Status
 - **Ctrl+X** — Copy Selection
 - **Ctrl+Y** — Copy Entire Chat History
-- **Ctrl+K** — Copy Last Response
+- **Ctrl+E** — Copy Last Response
 - **Ctrl+L** — Clear Chat Screen
 - **Ctrl+C** — Quit Application
 
@@ -1092,14 +1094,14 @@ class TorchlightApp(App):
         Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=True),
         Binding("ctrl+x", "copy_selection", "Copy Selection", show=True),
         Binding("ctrl+y", "copy_chat", "Copy Chat", show=True),
-        Binding("ctrl+k", "command_palette", "Command Palette", show=True),
+        Binding("ctrl+p", "command_palette", "Command Palette", show=True),
         Binding("ctrl+e", "copy_last", "Copy Last", show=True),
         Binding("ctrl+o", "open_folder", "Open Folder", show=True),
         Binding("ctrl+m", "select_model", "Select Model", show=True),
         Binding("ctrl+g", "select_mode", "Session Mode", show=True),
         Binding("ctrl+b", "toggle_sidebar", "Toggle Sidebar", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=True),
-        Binding("ctrl+p", "compact_context", "Compact Context", show=True),
+        Binding("ctrl+n", "compact_context", "Compact Context", show=True),
         Binding("ctrl+r", "reset_session", "Reset REPL", show=False),
         Binding("ctrl+l", "clear", "Clear Chat", show=False),
         Binding("ctrl+c", "quit", "Quit", show=True),
@@ -1528,8 +1530,11 @@ class TorchlightApp(App):
             else ("0ms" if not self._is_running else "--")
         )
 
+        is_engine_ready = (self.engine_port <= 0 or getattr(self, "_last_server_online", False))
+        status_badge = "[bold green]● ENGINE READY[/bold green]" if is_engine_ready else "[bold red]○ ENGINE OFFLINE (Port 1234)[/bold red]"
+
         speedometer = (
-            f"[bold cyan]⚡ INFERENCE SPEEDOMETER[/bold cyan]\n"
+            f"[bold cyan]⚡ INFERENCE SPEEDOMETER[/bold cyan]  {status_badge}\n"
             f"[bold green]SPEED: {tps_str} t/s[/bold green] [dim](Latency: {lat_str})[/dim]\n"
         )
 

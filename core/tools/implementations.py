@@ -22,22 +22,70 @@ import httpx
 
 _MAX_TOOL_OUTPUT = 4000
 _SAFE_COMMANDS_SET = {
-    "ls", "la", "ll", "cat", "head", "tail", "echo", "pwd", "which",
-    "find", "grep", "rg", "awk", "sed", "wc", "diff", "file",
-    "python -m pytest", "pytest", "python -m mypy", "mypy",
-    "python -m flake8", "flake8", "ruff check",
-    "git status", "git log", "git diff", "git show", "git branch",
-    "git stash list", "git remote", "git fetch",
-    "npm test", "npm run test", "npx jest",
-    "cargo test", "cargo check", "cargo clippy",
-    "sysctl", "vm_stat", "top -l", "df", "diskutil list",
-    "pip list", "pip show", "pip freeze",
-    "node --version", "python --version", "python3 --version",
+    "ls",
+    "la",
+    "ll",
+    "cat",
+    "head",
+    "tail",
+    "echo",
+    "pwd",
+    "which",
+    "find",
+    "grep",
+    "rg",
+    "awk",
+    "sed",
+    "wc",
+    "diff",
+    "file",
+    "python -m pytest",
+    "pytest",
+    "python -m mypy",
+    "mypy",
+    "python -m flake8",
+    "flake8",
+    "ruff check",
+    "git status",
+    "git log",
+    "git diff",
+    "git show",
+    "git branch",
+    "git stash list",
+    "git remote",
+    "git fetch",
+    "npm test",
+    "npm run test",
+    "npx jest",
+    "cargo test",
+    "cargo check",
+    "cargo clippy",
+    "sysctl",
+    "vm_stat",
+    "top -l",
+    "df",
+    "diskutil list",
+    "pip list",
+    "pip show",
+    "pip freeze",
+    "node --version",
+    "python --version",
+    "python3 --version",
     "tree",
 }
 
-_LONG_CMDS = ("pip install", "pip3 install", "npm install", "yarn", "cargo build",
-              "gradle", "./gradlew", "mvn ", "make ", "cmake")
+_LONG_CMDS = (
+    "pip install",
+    "pip3 install",
+    "npm install",
+    "yarn",
+    "cargo build",
+    "gradle",
+    "./gradlew",
+    "mvn ",
+    "make ",
+    "cmake",
+)
 
 _global_memory_mgr = None
 
@@ -51,16 +99,28 @@ def set_memory_manager(mgr) -> None:
 # ── Symbol extraction patterns ────────────────────────────────────────────
 
 _SYM_PATTERNS = [
-    (re.compile(r'^\s*(?:async\s+)?def\s+(\w+)(?:\[[^\]]+\])?\s*\(', re.MULTILINE), "fn"),
-    (re.compile(r'^\s*class\s+(\w+)\b', re.MULTILINE), "class"),
-    (re.compile(r'^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)', re.MULTILINE), "fn"),
-    (re.compile(r'^\s*(?:export\s+)?class\s+(\w+)', re.MULTILINE), "class"),
-    (re.compile(r'^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^\s=]+)\s*=>', re.MULTILINE), "fn"),
-    (re.compile(r'^\s*(?:export\s+)?interface\s+(\w+)', re.MULTILINE), "struct"),
-    (re.compile(r'^\s*(?:pub\s+)?fn\s+(\w+)', re.MULTILINE), "fn"),
-    (re.compile(r'^\s*(?:pub\s+)?(?:struct|enum)\s+(\w+)', re.MULTILINE), "struct"),
-    (re.compile(r'^\s*(?:fun)\s+(\w+)\s*\(', re.MULTILINE), "fn"),
-    (re.compile(r'^\s*type\s+(\w+)\s+struct', re.MULTILINE), "struct"),
+    (
+        re.compile(r"^\s*(?:async\s+)?def\s+(\w+)(?:\[[^\]]+\])?\s*\(", re.MULTILINE),
+        "fn",
+    ),
+    (re.compile(r"^\s*class\s+(\w+)\b", re.MULTILINE), "class"),
+    (
+        re.compile(r"^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)", re.MULTILINE),
+        "fn",
+    ),
+    (re.compile(r"^\s*(?:export\s+)?class\s+(\w+)", re.MULTILINE), "class"),
+    (
+        re.compile(
+            r"^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^\s=]+)\s*=>",
+            re.MULTILINE,
+        ),
+        "fn",
+    ),
+    (re.compile(r"^\s*(?:export\s+)?interface\s+(\w+)", re.MULTILINE), "struct"),
+    (re.compile(r"^\s*(?:pub\s+)?fn\s+(\w+)", re.MULTILINE), "fn"),
+    (re.compile(r"^\s*(?:pub\s+)?(?:struct|enum)\s+(\w+)", re.MULTILINE), "struct"),
+    (re.compile(r"^\s*(?:fun)\s+(\w+)\s*\(", re.MULTILINE), "fn"),
+    (re.compile(r"^\s*type\s+(\w+)\s+struct", re.MULTILINE), "struct"),
 ]
 
 
@@ -71,7 +131,7 @@ def _extract_symbols(content: str, max_symbols: int = 40) -> list:
     for pattern, kind in _SYM_PATTERNS:
         for m in pattern.finditer(content):
             name = m.group(1)
-            lineno = content[:m.start()].count("\n") + 1
+            lineno = content[: m.start()].count("\n") + 1
             key = (lineno, name)
             if key in seen:
                 continue
@@ -124,6 +184,7 @@ def _read_budget() -> tuple:
     """Return (MAX_LINES, MAX_CHARS) based on available context window."""
     try:
         from ..tools.registry import get_tool_registry
+
         # Default budget
         return 100, 4_000
     except ImportError:
@@ -156,28 +217,64 @@ def _read_budget_for_ctx() -> tuple:
 # ── Documentation source registry ─────────────────────────────────────────
 
 _DOC_SOURCES: list = [
-    (r'\bpython\b|\bpytest\b|\basyncio\b|\btyping\b|\bpathlib\b|\bdataclass\b',
-     "https://docs.python.org/3/search.html?q=%s", "docs.python.org"),
-    (r'\bfastapi\b', "https://fastapi.tiangolo.com/search/?q=%s", "fastapi.tiangolo.com"),
-    (r'\bpydantic\b', "https://docs.pydantic.dev/latest/search/?q=%s", "docs.pydantic.dev"),
-    (r'\bsqlalchemy\b', "https://docs.sqlalchemy.org/en/20/search.html?q=%s", "docs.sqlalchemy.org"),
-    (r'\bhttpx\b', "https://www.python-httpx.org/search/?q=%s", "python-httpx.org"),
-    (r'\brich\b', "https://rich.readthedocs.io/en/stable/search.html?q=%s", "rich.readthedocs.io"),
-    (r'\bnode(js)?\b|\bnpm\b|\bjavascript\b|\btypescript\b|\bexpress\b',
-     "https://nodejs.org/en/search/?query=%s", "nodejs.org"),
-    (r'\bmdn\b|\bjavascript\b|\bcss\b|\bhtml\b|\bfetch\b|\bpromise\b',
-     "https://developer.mozilla.org/en-US/search?q=%s", "developer.mozilla.org"),
-    (r'\brust\b|\bcargo\b|\bcrates?\b|\btokio\b|\bserde\b',
-     "https://doc.rust-lang.org/std/?search=%s", "doc.rust-lang.org"),
-    (r'\bgolang\b|\bgo\b', "https://pkg.go.dev/search?q=%s", "pkg.go.dev"),
-    (r'\bdocker\b|\bdocker-compose\b', "https://docs.docker.com/search/?q=%s", "docs.docker.com"),
-    (r'\bgithub\s+actions?\b|\bworkflow\b',
-     "https://docs.github.com/en/search?query=%s", "docs.github.com"),
+    (
+        r"\bpython\b|\bpytest\b|\basyncio\b|\btyping\b|\bpathlib\b|\bdataclass\b",
+        "https://docs.python.org/3/search.html?q=%s",
+        "docs.python.org",
+    ),
+    (
+        r"\bfastapi\b",
+        "https://fastapi.tiangolo.com/search/?q=%s",
+        "fastapi.tiangolo.com",
+    ),
+    (
+        r"\bpydantic\b",
+        "https://docs.pydantic.dev/latest/search/?q=%s",
+        "docs.pydantic.dev",
+    ),
+    (
+        r"\bsqlalchemy\b",
+        "https://docs.sqlalchemy.org/en/20/search.html?q=%s",
+        "docs.sqlalchemy.org",
+    ),
+    (r"\bhttpx\b", "https://www.python-httpx.org/search/?q=%s", "python-httpx.org"),
+    (
+        r"\brich\b",
+        "https://rich.readthedocs.io/en/stable/search.html?q=%s",
+        "rich.readthedocs.io",
+    ),
+    (
+        r"\bnode(js)?\b|\bnpm\b|\bjavascript\b|\btypescript\b|\bexpress\b",
+        "https://nodejs.org/en/search/?query=%s",
+        "nodejs.org",
+    ),
+    (
+        r"\bmdn\b|\bjavascript\b|\bcss\b|\bhtml\b|\bfetch\b|\bpromise\b",
+        "https://developer.mozilla.org/en-US/search?q=%s",
+        "developer.mozilla.org",
+    ),
+    (
+        r"\brust\b|\bcargo\b|\bcrates?\b|\btokio\b|\bserde\b",
+        "https://doc.rust-lang.org/std/?search=%s",
+        "doc.rust-lang.org",
+    ),
+    (r"\bgolang\b|\bgo\b", "https://pkg.go.dev/search?q=%s", "pkg.go.dev"),
+    (
+        r"\bdocker\b|\bdocker-compose\b",
+        "https://docs.docker.com/search/?q=%s",
+        "docs.docker.com",
+    ),
+    (
+        r"\bgithub\s+actions?\b|\bworkflow\b",
+        "https://docs.github.com/en/search?query=%s",
+        "docs.github.com",
+    ),
 ]
 
 
 def _detect_doc_source(query: str) -> tuple:
     import urllib.parse
+
     lower = query.lower()
     encoded = urllib.parse.quote_plus(query)
     for pattern, url_tpl, label in _DOC_SOURCES:
@@ -191,10 +288,15 @@ def _detect_doc_source(query: str) -> tuple:
 
 def _ddg_search(q: str) -> str:
     """DuckDuckGo HTML search fallback."""
-    headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+    }
     resp = httpx.post(
-        "https://html.duckduckgo.com/html/", data={"q": q, "kl": "us-en"},
-        headers=headers, timeout=15, follow_redirects=True,
+        "https://html.duckduckgo.com/html/",
+        data={"q": q, "kl": "us-en"},
+        headers=headers,
+        timeout=15,
+        follow_redirects=True,
     )
     resp.raise_for_status()
 
@@ -202,9 +304,18 @@ def _ddg_search(q: str) -> str:
         return re.sub(r"<[^>]+>", "", s).strip()
 
     raw = resp.text
-    titles = [strip_tags(t) for t in re.findall(r'class="result__a"[^>]*>(.*?)</a>', raw, re.DOTALL)]
-    urls_raw = [strip_tags(u).strip() for u in re.findall(r'class="result__url"[^>]*>(.*?)</div>', raw, re.DOTALL)]
-    snippets = [strip_tags(s) for s in re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', raw, re.DOTALL)]
+    titles = [
+        strip_tags(t)
+        for t in re.findall(r'class="result__a"[^>]*>(.*?)</a>', raw, re.DOTALL)
+    ]
+    urls_raw = [
+        strip_tags(u).strip()
+        for u in re.findall(r'class="result__url"[^>]*>(.*?)</div>', raw, re.DOTALL)
+    ]
+    snippets = [
+        strip_tags(s)
+        for s in re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', raw, re.DOTALL)
+    ]
 
     if not titles:
         return "No results found."
@@ -225,13 +336,22 @@ class StructurePreservingHTMLParser(HTMLParser):
     while stripping navigation/script noise for clean markdown output.
     Uses depth tracking to handle nested tags cleanly without duplicate backticks.
     """
+
     def __init__(self):
         super().__init__()
         self.output = []
         self.code_depth = 0
         self.skip_depth = 0
         self.in_heading = False
-        self.skip_tags = {"script", "style", "nav", "footer", "header", "noscript", "svg"}
+        self.skip_tags = {
+            "script",
+            "style",
+            "nav",
+            "footer",
+            "header",
+            "noscript",
+            "svg",
+        }
 
     def handle_starttag(self, tag, attrs):
         tag_lower = tag.lower()
@@ -304,6 +424,7 @@ def _fetch_remote_playwright(url: str, timeout_ms: int = 10000) -> Optional[str]
     """Fallback fetch via Playwright headless browser for Cloudflare / JS SPAs / 403 blocks."""
     try:
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             try:
@@ -328,7 +449,10 @@ def _fetch_remote_playwright(url: str, timeout_ms: int = 10000) -> Optional[str]
                     pass
     except Exception as e:
         import logging
-        logging.getLogger(__name__).debug(f"Playwright remote fetch failed for {url}: {e}")
+
+        logging.getLogger(__name__).debug(
+            f"Playwright remote fetch failed for {url}: {e}"
+        )
     return None
 
 
@@ -351,7 +475,7 @@ def _augment_query_with_project_deps(query: str, project_root: str) -> str:
             matches += re.findall(r'["\']([\w\-]+)\s*[~^>=]+\s*(\d+\.\d+)', content)
             for pkg, ver in matches:
                 if pkg.lower() in query_lower:
-                    major = ver.split('.')[0]
+                    major = ver.split(".")[0]
                     if f"v{major}" not in query_lower and major not in query_lower:
                         return f"{query_str} v{major}"
         except Exception:
@@ -362,10 +486,12 @@ def _augment_query_with_project_deps(query: str, project_root: str) -> str:
     if pkg_json.exists():
         try:
             content = pkg_json.read_text(encoding="utf-8", errors="ignore")
-            for pkg, ver in re.findall(r'"([\w\-@/]+)"\s*:\s*"[\^~>=]*(\d+\.\d+)', content):
-                pkg_name = pkg.split('/')[-1]
+            for pkg, ver in re.findall(
+                r'"([\w\-@/]+)"\s*:\s*"[\^~>=]*(\d+\.\d+)', content
+            ):
+                pkg_name = pkg.split("/")[-1]
                 if pkg_name.lower() in query_lower:
-                    major = ver.split('.')[0]
+                    major = ver.split(".")[0]
                     if f"v{major}" not in query_lower and major not in query_lower:
                         return f"{query_str} v{major}"
         except Exception:
@@ -374,26 +500,32 @@ def _augment_query_with_project_deps(query: str, project_root: str) -> str:
     return query_str
 
 
-
 def _extract_identifiers(snippet: str, language: str) -> list:
     if language in ("python", "py"):
-        calls = re.findall(r'([\w]+(?:\.[\w]+)+)\s*\(', snippet)
-        standalone = re.findall(r'\b([A-Z][\w]+|[a-z][\w_]{3,})\s*\(', snippet)
+        calls = re.findall(r"([\w]+(?:\.[\w]+)+)\s*\(", snippet)
+        standalone = re.findall(r"\b([A-Z][\w]+|[a-z][\w_]{3,})\s*\(", snippet)
         identifiers = list(dict.fromkeys(calls + standalone))
     elif language in ("javascript", "typescript", "js", "ts"):
-        identifiers = list(dict.fromkeys(re.findall(r'([\w]+(?:\.[\w]+)+)\s*\(', snippet)))
+        identifiers = list(
+            dict.fromkeys(re.findall(r"([\w]+(?:\.[\w]+)+)\s*\(", snippet))
+        )
     elif language in ("rust", "rs"):
-        identifiers = list(dict.fromkeys(re.findall(r'([\w:]+(?:::[\w]+)+)\s*[!\(]', snippet)))
+        identifiers = list(
+            dict.fromkeys(re.findall(r"([\w:]+(?:::[\w]+)+)\s*[!\(]", snippet))
+        )
     elif language in ("go",):
-        identifiers = list(dict.fromkeys(re.findall(r'([\w]+\.[\w]+)\s*\(', snippet)))
+        identifiers = list(dict.fromkeys(re.findall(r"([\w]+\.[\w]+)\s*\(", snippet)))
     else:
-        identifiers = list(dict.fromkeys(re.findall(r'([\w]+(?:[.:][\w]+)+)\s*[\(!\[]?', snippet)))
+        identifiers = list(
+            dict.fromkeys(re.findall(r"([\w]+(?:[.:][\w]+)+)\s*[\(!\[]?", snippet))
+        )
     return [i for i in identifiers if len(i) > 3 and not i.startswith("_")][:8]
 
 
 # ══════════════════════════════════════════════════════════════════════════
 # Tool implementations
 # ══════════════════════════════════════════════════════════════════════════
+
 
 def tool_read_file_impl(args: dict, project_root: str) -> str:
     """READ_FILE — read a file with optional line-range or symbol syntax."""
@@ -407,9 +539,9 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         range_end = None
         symbol_name = None
 
-        m_range = re.match(r'^(.+?)\s*:\s*(\d+)-(\d+)\s*$', path)
-        m_line = re.match(r'^(.+?)\s*:\s*(\d+)\s*$', path)
-        m_sym = re.match(r'^(.+?)\s*:\s*([A-Za-z_]\w*)\s*$', path)
+        m_range = re.match(r"^(.+?)\s*:\s*(\d+)-(\d+)\s*$", path)
+        m_line = re.match(r"^(.+?)\s*:\s*(\d+)\s*$", path)
+        m_sym = re.match(r"^(.+?)\s*:\s*([A-Za-z_]\w*)\s*$", path)
 
         if m_range:
             path, range_start, range_end = (
@@ -447,7 +579,17 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
             return f"{path} is a directory. Use RUN_COMMAND('ls {path}') to list it."
 
         # Image file rejection
-        image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".svg", ".tiff"}
+        image_extensions = {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".bmp",
+            ".ico",
+            ".svg",
+            ".tiff",
+        }
         ext = os.path.splitext(p)[1].lower()
         if ext in image_extensions:
             return f"Cannot read image file: {os.path.basename(p)}."
@@ -456,6 +598,7 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         file_size = os.path.getsize(p)
         try:
             import psutil
+
             available_ram_gb = psutil.virtual_memory().available / (1024**3)
         except ImportError:
             available_ram_gb = 8
@@ -513,12 +656,14 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
             sl = lines[r0:r1]
             if len(sl) > MAX_LINES:
                 sl = sl[:MAX_LINES]
-                trunc_note = f"\n... (capped at {MAX_LINES} lines — use a tighter range)"
+                trunc_note = (
+                    f"\n... (capped at {MAX_LINES} lines — use a tighter range)"
+                )
             else:
                 trunc_note = ""
             display = "\n".join(sl)[:MAX_CHARS]
             return (
-                f"{fname} lines {r0+1}–{r0+len(sl)} (of {nlines} total)\n"
+                f"{fname} lines {r0 + 1}–{r0 + len(sl)} (of {nlines} total)\n"
                 f"```{ext}\n{display}{trunc_note}\n```"
             )
 
@@ -527,16 +672,16 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         display = "\n".join(lines[:MAX_LINES])[:MAX_CHARS]
         truncated = nlines > MAX_LINES or len(content) > MAX_CHARS
         suffix = (
-            f"\n... ({nlines - MAX_LINES} more lines)"
-            f' — use READ_FILE("{path}:N-M") for a range,'
-            f' or READ_FILE("{path}:<SYMBOL>") to jump to a function.'
-        ) if truncated else ""
-
-        return (
-            f"{sym_hdr}"
-            f"{fname} ({nlines} lines)\n"
-            f"```{ext}\n{display}{suffix}\n```"
+            (
+                f"\n... ({nlines - MAX_LINES} more lines)"
+                f' — use READ_FILE("{path}:N-M") for a range,'
+                f' or READ_FILE("{path}:<SYMBOL>") to jump to a function.'
+            )
+            if truncated
+            else ""
         )
+
+        return f"{sym_hdr}{fname} ({nlines} lines)\n```{ext}\n{display}{suffix}\n```"
 
     except Exception as e:
         return f"Error reading file: {e}"
@@ -548,7 +693,10 @@ def _normalize_whitespace(content: str, filename: str = "") -> str:
         return ""
     ext = os.path.splitext(filename)[1].lower() if filename else ""
     basename = os.path.basename(filename).lower() if filename else ""
-    preserve_tabs = ext in (".go", ".tsv", ".tab", ".mk") or basename in ("makefile", "gnumakefile")
+    preserve_tabs = ext in (".go", ".tsv", ".tab", ".mk") or basename in (
+        "makefile",
+        "gnumakefile",
+    )
 
     lines = content.splitlines()
     if preserve_tabs:
@@ -569,11 +717,20 @@ def _detect_stubs(content: str, filename: str = "") -> Optional[str]:
         return None
 
     stub_patterns = [
-        (r'#\s*TODO:?\s*(?:implement|add logic|fill in)', "Python TODO stub"),
-        (r'#\s*\.\.\.\s*(?:rest|existing|code|remaining)', "Python code truncation stub"),
-        (r'//\s*\.\.\.\s*(?:rest|existing|code|implementation|remaining)', "JS/C code truncation stub"),
-        (r'/\*\s*\.\.\.\s*(?:rest|existing|code|remaining)\s*\*/', "C-style block stub"),
-        (r'pass\s*#\s*(?:stub|implement|todo|fill)', "Python pass stub"),
+        (r"#\s*TODO:?\s*(?:implement|add logic|fill in)", "Python TODO stub"),
+        (
+            r"#\s*\.\.\.\s*(?:rest|existing|code|remaining)",
+            "Python code truncation stub",
+        ),
+        (
+            r"//\s*\.\.\.\s*(?:rest|existing|code|implementation|remaining)",
+            "JS/C code truncation stub",
+        ),
+        (
+            r"/\*\s*\.\.\.\s*(?:rest|existing|code|remaining)\s*\*/",
+            "C-style block stub",
+        ),
+        (r"pass\s*#\s*(?:stub|implement|todo|fill)", "Python pass stub"),
         (r'throw new Error\(["\']Not implemented["\']\)', "Unimplemented error stub"),
     ]
 
@@ -599,7 +756,11 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
         try:
             res = subprocess.run(
                 ["ruff", "format", "-"],
-                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+                input=content,
+                text=True,
+                capture_output=True,
+                timeout=2,
+                cwd=project_root,
             )
             if res.returncode == 0 and res.stdout:
                 return res.stdout
@@ -608,7 +769,11 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
         try:
             res = subprocess.run(
                 ["black", "-q", "-"],
-                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+                input=content,
+                text=True,
+                capture_output=True,
+                timeout=2,
+                cwd=project_root,
             )
             if res.returncode == 0 and res.stdout:
                 return res.stdout
@@ -618,6 +783,7 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
     # 2. Web/JS/TS/JSON formatters: local or global prettier (no npx network prompts)
     elif ext in (".js", ".ts", ".jsx", ".tsx", ".json", ".css", ".html"):
         import shutil
+
         prettier_bin = None
         local_prettier = os.path.join(project_root, "node_modules", ".bin", "prettier")
         if os.path.exists(local_prettier):
@@ -629,7 +795,11 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
             try:
                 res = subprocess.run(
                     prettier_bin + ["--stdin-filepath", filename],
-                    input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+                    input=content,
+                    text=True,
+                    capture_output=True,
+                    timeout=2,
+                    cwd=project_root,
                 )
                 if res.returncode == 0 and res.stdout:
                     return res.stdout
@@ -641,7 +811,11 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
         try:
             res = subprocess.run(
                 ["gofmt"],
-                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+                input=content,
+                text=True,
+                capture_output=True,
+                timeout=2,
+                cwd=project_root,
             )
             if res.returncode == 0 and res.stdout:
                 return res.stdout
@@ -653,7 +827,11 @@ def _format_code_on_save(content: str, filename: str, project_root: str) -> str:
         try:
             res = subprocess.run(
                 ["rustfmt", "--emit", "stdout"],
-                input=content, text=True, capture_output=True, timeout=2, cwd=project_root
+                input=content,
+                text=True,
+                capture_output=True,
+                timeout=2,
+                cwd=project_root,
             )
             if res.returncode == 0 and res.stdout:
                 return res.stdout
@@ -673,6 +851,7 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
     # 1. Python AST parsing
     if ext == ".py":
         import ast
+
         try:
             ast.parse(content, filename=filename)
         except SyntaxError as se:
@@ -685,22 +864,25 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
     # 2. JSON parsing
     elif ext in (".json", ".jsonc"):
         import json
+
         try:
             json.loads(content)
         except json.JSONDecodeError as je:
-            return f"\n⚠️ JSON Syntax Warning (line {je.lineno}, col {je.colno}): {je.msg}"
+            return (
+                f"\n⚠️ JSON Syntax Warning (line {je.lineno}, col {je.colno}): {je.msg}"
+            )
         except Exception as e:
             return f"\n⚠️ JSON Syntax Warning: {e}"
 
     # 3. Basic bracket balance check for JS/TS/C-like languages (filtering strings and comments)
     elif ext in (".js", ".ts", ".jsx", ".tsx", ".c", ".cpp", ".java"):
         # Strip comments and string literals to prevent false positives on bracket matching
-        cleaned = re.sub(r'//.*', '', content)
-        cleaned = re.sub(r'/\*[\s\S]*?\*/', '', cleaned)
-        cleaned = re.sub(r'([\'"`])(?:\\.|[^\\])*?\1', '', cleaned)
+        cleaned = re.sub(r"//.*", "", content)
+        cleaned = re.sub(r"/\*[\s\S]*?\*/", "", cleaned)
+        cleaned = re.sub(r'([\'"`])(?:\\.|[^\\])*?\1', "", cleaned)
 
         stack = []
-        matching = {')': '(', '}': '{', ']': '['}
+        matching = {")": "(", "}": "{", "]": "["}
         for line_idx, line in enumerate(cleaned.splitlines(), start=1):
             for char in line:
                 if char in matching.values():
@@ -716,15 +898,19 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
     return None
 
 
-
 def tool_write_file_impl(args: dict, project_root: str) -> str:
     """WRITE_FILE — create or overwrite a file."""
     if not isinstance(args, dict):
         args = {"raw": str(args)}
 
     path_raw = (
-        args.get("path") or args.get("file") or args.get("filepath")
-        or args.get("filename") or args.get("dest") or args.get("target") or args.get("p")
+        args.get("path")
+        or args.get("file")
+        or args.get("filepath")
+        or args.get("filename")
+        or args.get("dest")
+        or args.get("target")
+        or args.get("p")
     )
 
     content = args.get("content")
@@ -734,10 +920,16 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
     # Fallback: extract from raw string
     if not path_raw and "raw" in args:
         raw_text = str(args["raw"])
-        p_match = re.search(r'["\']?(?:path|file|filename|filepath)["\']?\s*:\s*["\']([^"\']+)["\']', raw_text)
+        p_match = re.search(
+            r'["\']?(?:path|file|filename|filepath)["\']?\s*:\s*["\']([^"\']+)["\']',
+            raw_text,
+        )
         if p_match:
             path_raw = p_match.group(1)
-        c_match = re.search(r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*)["\']\s*\}?$', raw_text)
+        c_match = re.search(
+            r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*)["\']\s*\}?$',
+            raw_text,
+        )
         if c_match:
             content = c_match.group(1)
 
@@ -745,7 +937,11 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         return "Error: Missing required 'path' parameter for WRITE_FILE."
 
     path_str = str(path_raw).strip()
-    p = os.path.join(project_root, path_str) if not os.path.isabs(path_str) else path_str
+    p = (
+        os.path.join(project_root, path_str)
+        if not os.path.isabs(path_str)
+        else path_str
+    )
 
     if os.path.isdir(p):
         return f"Error: Specified path '{path_str}' is a directory, not a file."
@@ -759,13 +955,14 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
             content = formatted_content
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
-        line_count = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
+        line_count = content.count("\n") + (
+            1 if content and not content.endswith("\n") else 0
+        )
         syntax_note = _check_syntax(content, p) or ""
         stub_note = _detect_stubs(content) or ""
         return f"Written {line_count} lines to {p}{syntax_note}{stub_note}"
     except Exception as e:
         return f"Error writing {p}: {e}"
-
 
 
 def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
@@ -787,41 +984,43 @@ def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
         return s
 
     # 1. Flexible regex-based parsing for Search/Replace blocks
-    search_match = re.search(r'<<<<<<<(?:[ \t]*SEARCH)?\r?\n', text)
+    search_match = re.search(r"<<<<<<<(?:[ \t]*SEARCH)?\r?\n", text)
     if search_match:
-        after_search = text[search_match.end():]
+        after_search = text[search_match.end() :]
         # Option A: Standard divider =======
-        div_match = re.search(r'\r?\n=======\r?\n', after_search)
+        div_match = re.search(r"\r?\n=======\r?\n", after_search)
         if div_match:
-            search_part = after_search[:div_match.start()]
-            after_div = after_search[div_match.end():]
-            end_match = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?(?:$|\r?\n)', after_div)
+            search_part = after_search[: div_match.start()]
+            after_div = after_search[div_match.end() :]
+            end_match = re.search(
+                r"\r?\n>>>>>>>(?:[ \t]*REPLACE)?(?:$|\r?\n)", after_div
+            )
             if end_match:
-                replace_part = after_div[:end_match.start()]
+                replace_part = after_div[: end_match.start()]
                 return _clean_segment(search_part), _clean_segment(replace_part)
             else:
-                end_match2 = re.search(r'>>>>>>>(?:[ \t]*REPLACE)?', after_div)
+                end_match2 = re.search(r">>>>>>>(?:[ \t]*REPLACE)?", after_div)
                 if end_match2:
-                    replace_part = after_div[:end_match2.start()]
+                    replace_part = after_div[: end_match2.start()]
                     return _clean_segment(search_part), _clean_segment(replace_part)
 
         # Option B: Model used >>>>>>> as divider between SEARCH block and REPLACE block
-        div_alt = re.search(r'\r?\n>>>>>>>(?:[ \t]*SEARCH)?\r?\n', after_search)
+        div_alt = re.search(r"\r?\n>>>>>>>(?:[ \t]*SEARCH)?\r?\n", after_search)
         if div_alt:
-            search_part = after_search[:div_alt.start()]
-            after_div = after_search[div_alt.end():]
-            end_match = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?', after_div)
+            search_part = after_search[: div_alt.start()]
+            after_div = after_search[div_alt.end() :]
+            end_match = re.search(r"\r?\n>>>>>>>(?:[ \t]*REPLACE)?", after_div)
             if end_match:
-                replace_part = after_div[:end_match.start()]
+                replace_part = after_div[: end_match.start()]
                 return _clean_segment(search_part), _clean_segment(replace_part)
 
         # Option C: Model omitted ======= divider, putting >>>>>>> REPLACE directly between search and replace
-        rep_tag = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?\r?\n', after_search)
+        rep_tag = re.search(r"\r?\n>>>>>>>(?:[ \t]*REPLACE)?\r?\n", after_search)
         if rep_tag:
-            search_part = after_search[:rep_tag.start()]
-            after_rep = after_search[rep_tag.end():]
-            end_tag = re.search(r'\r?\n>>>>>>>(?:[ \t]*REPLACE)?', after_rep)
-            replace_part = after_rep[:end_tag.start()] if end_tag else after_rep
+            search_part = after_search[: rep_tag.start()]
+            after_rep = after_search[rep_tag.end() :]
+            end_tag = re.search(r"\r?\n>>>>>>>(?:[ \t]*REPLACE)?", after_rep)
+            replace_part = after_rep[: end_tag.start()] if end_tag else after_rep
             if search_part and replace_part:
                 return _clean_segment(search_part), _clean_segment(replace_part)
 
@@ -854,7 +1053,11 @@ def _get_symbol_bounds_ast(content: str, symbol_name: str) -> Optional[Tuple[int
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 name = node.name
-                if name == symbol_name or symbol_name.endswith(f".{name}") or f".{name}" in symbol_name:
+                if (
+                    name == symbol_name
+                    or symbol_name.endswith(f".{name}")
+                    or f".{name}" in symbol_name
+                ):
                     start = getattr(node, "lineno", None)
                     end = getattr(node, "end_lineno", None)
                     if start and end:
@@ -879,19 +1082,25 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     chunk_args.pop("edits", None)
                     chunk_args.update(chunk)
                     res = tool_edit_file_impl(chunk_args, project_root)
-                    results.append(f"Chunk {idx+1}: {res}")
+                    results.append(f"Chunk {idx + 1}: {res}")
             return "\n".join(results)
 
         path = args.get("path", "")
         old_text = args.get("old_text", "")
         new_text = args.get("new_text", "")
-        diff_text = args.get("diff") or args.get("block") or args.get("diff_block") or ""
+        diff_text = (
+            args.get("diff") or args.get("block") or args.get("diff_block") or ""
+        )
         start_line = args.get("start_line") or args.get("start")
         end_line = args.get("end_line") or args.get("end")
-        symbol_name = args.get("symbol") or args.get("symbol_name") or args.get("function")
+        symbol_name = (
+            args.get("symbol") or args.get("symbol_name") or args.get("function")
+        )
 
         # Parse line range suffix from path (e.g. "path/to/file.py:20-45")
-        if ":" in path and not os.path.exists(os.path.join(project_root, path) if not os.path.isabs(path) else path):
+        if ":" in path and not os.path.exists(
+            os.path.join(project_root, path) if not os.path.isabs(path) else path
+        ):
             parts = path.rsplit(":", 1)
             possible_path = parts[0]
             range_part = parts[1]
@@ -906,8 +1115,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         # Check for Aider-style Search/Replace blocks in diff, old_text, or raw inputs
         diff_attempted = False
-        for candidate in [diff_text, old_text, args.get("content", ""), args.get("raw", "")]:
-            if candidate and any(m in str(candidate) for m in ["<<<<<<<", "SEARCH", "=======", ">>>>>>>"]):
+        for candidate in [
+            diff_text,
+            old_text,
+            args.get("content", ""),
+            args.get("raw", ""),
+        ]:
+            if candidate and any(
+                m in str(candidate) for m in ["<<<<<<<", "SEARCH", "=======", ">>>>>>>"]
+            ):
                 diff_attempted = True
                 s_parsed, r_parsed = _parse_diff_block(str(candidate))
                 if s_parsed is not None and r_parsed is not None:
@@ -925,13 +1141,19 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         if not old_text and not diff_attempted and not start_line and not symbol_name:
             content_arg = args.get("content") or args.get("code") or args.get("text")
             if content_arg:
-                return tool_write_file_impl({"path": path, "content": content_arg}, project_root)
+                return tool_write_file_impl(
+                    {"path": path, "content": content_arg}, project_root
+                )
 
         if not os.path.exists(p):
             # Auto-fallback 2: If file does not exist and new_text/content is provided without old_text, auto-create via WRITE_FILE
-            content_arg = args.get("content") or args.get("code") or args.get("text") or new_text
+            content_arg = (
+                args.get("content") or args.get("code") or args.get("text") or new_text
+            )
             if content_arg and not old_text and not diff_attempted:
-                return tool_write_file_impl({"path": path, "content": content_arg}, project_root)
+                return tool_write_file_impl(
+                    {"path": path, "content": content_arg}, project_root
+                )
             return f"File not found: {path}"
 
         with open(p, "r", encoding="utf-8") as f:
@@ -943,7 +1165,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             if bounds:
                 s_l, e_l = bounds
                 lines = content.splitlines(keepends=True)
-                new_content = "".join(lines[:s_l-1]) + new_text
+                new_content = "".join(lines[: s_l - 1]) + new_text
                 if new_text and not new_text.endswith("\n") and e_l < len(lines):
                     new_content += "\n"
                 new_content += "".join(lines[e_l:])
@@ -965,9 +1187,17 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 s_idx = s_l - 1
                 e_idx = min(len(lines), e_l)
                 target_slice = "".join(lines[s_idx:e_idx])
-                if old_text and old_text in target_slice:
-                    new_slice = target_slice.replace(old_text, new_text, 1)
-                    new_content = "".join(lines[:s_idx]) + new_slice + "".join(lines[e_idx:])
+                if old_text:
+                    if old_text in target_slice:
+                        new_slice = target_slice.replace(old_text, new_text, 1)
+                        new_content = (
+                            "".join(lines[:s_idx]) + new_slice + "".join(lines[e_idx:])
+                        )
+                    else:
+                        return (
+                            f"Edit failed: 'old_text' not found within line range {s_l}-{e_l} of {path}. "
+                            f"READ_FILE('{path}') first, then provide the exact text from the file as old_text."
+                        )
                 else:
                     new_content = "".join(lines[:s_idx]) + new_text
                     if new_text and not new_text.endswith("\n") and e_idx < len(lines):
@@ -994,7 +1224,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     "=======\n"
                     "<new replacement text>\n"
                     ">>>>>>> REPLACE\n\n"
-                    "Or use exact JSON arguments: {\"path\": \"file.py\", \"old_text\": \"...\", \"new_text\": \"...\"}"
+                    'Or use exact JSON arguments: {"path": "file.py", "old_text": "...", "new_text": "..."}'
                 )
             return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find, or line range (start_line/end_line). To overwrite full file, use WRITE_FILE."
         if new_text == old_text:
@@ -1023,7 +1253,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             stub_note = _detect_stubs(new_content) or ""
             return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{syntax_note}{stub_note}"
 
-
         # Helper: Normalize lines for line-based matching
         def normalize_line(l):
             return l.strip()
@@ -1031,7 +1260,9 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         content_lines = content.splitlines(keepends=True)
 
         # Tier 2: Fuzzy whitespace-agnostic line matching
-        old_norm = [normalize_line(l) for l in old_text.splitlines() if normalize_line(l)]
+        old_norm = [
+            normalize_line(l) for l in old_text.splitlines() if normalize_line(l)
+        ]
         if not old_norm:
             return "Edit failed: 'old_text' is empty or contains only whitespace."
 
@@ -1062,7 +1293,11 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         if best_start != -1:
             new_content = "".join(content_lines[:best_start]) + new_text
-            if new_text and not new_text.endswith("\n") and best_end < len(content_lines):
+            if (
+                new_text
+                and not new_text.endswith("\n")
+                and best_end < len(content_lines)
+            ):
                 new_content += "\n"
             new_content += "".join(content_lines[best_end:])
 
@@ -1077,18 +1312,34 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         # Tier 3: Ellipsis / Wildcard matching (e.g. header \n ... \n footer)
         old_raw_lines = [l.strip() for l in old_text.splitlines()]
-        wildcard_indices = [idx for idx, l in enumerate(old_raw_lines) if l in ("...", "…", "# ...", "// ...", "/* ... */")]
+        wildcard_indices = [
+            idx
+            for idx, l in enumerate(old_raw_lines)
+            if l in ("...", "…", "# ...", "// ...", "/* ... */")
+        ]
         if len(wildcard_indices) == 1:
             w_idx = wildcard_indices[0]
-            head_norm = [normalize_line(l) for l in old_text.splitlines()[:w_idx] if normalize_line(l)]
-            tail_norm = [normalize_line(l) for l in old_text.splitlines()[w_idx+1:] if normalize_line(l)]
+            head_norm = [
+                normalize_line(l)
+                for l in old_text.splitlines()[:w_idx]
+                if normalize_line(l)
+            ]
+            tail_norm = [
+                normalize_line(l)
+                for l in old_text.splitlines()[w_idx + 1 :]
+                if normalize_line(l)
+            ]
 
             if head_norm and tail_norm:
                 # Find head match
                 head_match_idx = -1
                 for i in range(len(content_lines)):
                     if content_lines[i].strip() == head_norm[0]:
-                        if all(i+k < len(content_lines) and content_lines[i+k].strip() == head_norm[k] for k in range(len(head_norm))):
+                        if all(
+                            i + k < len(content_lines)
+                            and content_lines[i + k].strip() == head_norm[k]
+                            for k in range(len(head_norm))
+                        ):
                             head_match_idx = i
                             break
 
@@ -1097,40 +1348,56 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     tail_match_idx = -1
                     for i in range(head_match_idx + len(head_norm), len(content_lines)):
                         if content_lines[i].strip() == tail_norm[0]:
-                            if all(i+k < len(content_lines) and content_lines[i+k].strip() == tail_norm[k] for k in range(len(tail_norm))):
+                            if all(
+                                i + k < len(content_lines)
+                                and content_lines[i + k].strip() == tail_norm[k]
+                                for k in range(len(tail_norm))
+                            ):
                                 tail_match_idx = i + len(tail_norm)
                                 break
 
                     if tail_match_idx != -1:
                         new_content = "".join(content_lines[:head_match_idx]) + new_text
-                        if new_text and not new_text.endswith("\n") and tail_match_idx < len(content_lines):
+                        if (
+                            new_text
+                            and not new_text.endswith("\n")
+                            and tail_match_idx < len(content_lines)
+                        ):
                             new_content += "\n"
                         new_content += "".join(content_lines[tail_match_idx:])
 
                         with open(p, "w", encoding="utf-8") as f:
                             f.write(new_content)
-                        return f"Surgically edited {path} (wildcard replaced block from line {head_match_idx+1} to {tail_match_idx})."
+                        return f"Surgically edited {path} (wildcard replaced block from line {head_match_idx + 1} to {tail_match_idx})."
 
         # Tier 4: Anchor Matching (First line & Last line match uniquely)
         if len(old_norm) >= 3:
             first_l = old_norm[0]
             last_l = old_norm[-1]
 
-            first_matches = [i for i, l in enumerate(content_lines) if l.strip() == first_l]
-            last_matches = [i for i, l in enumerate(content_lines) if l.strip() == last_l]
+            first_matches = [
+                i for i, l in enumerate(content_lines) if l.strip() == first_l
+            ]
+            last_matches = [
+                i for i, l in enumerate(content_lines) if l.strip() == last_l
+            ]
 
             if len(first_matches) == 1 and len(last_matches) == 1:
                 f_idx = first_matches[0]
                 l_idx = last_matches[0]
                 if f_idx < l_idx:
                     new_content = "".join(content_lines[:f_idx]) + new_text
-                    if new_text and not new_text.endswith("\n") and (l_idx + 1) < len(content_lines):
+                    if (
+                        new_text
+                        and not new_text.endswith("\n")
+                        and (l_idx + 1) < len(content_lines)
+                    ):
                         new_content += "\n"
-                    new_content += "".join(content_lines[l_idx + 1:])
+                    new_content += "".join(content_lines[l_idx + 1 :])
 
                     with open(p, "w", encoding="utf-8") as f:
                         f.write(new_content)
-                    return f"Surgically edited {path} (anchor replaced block between lines {f_idx+1} and {l_idx+1})."
+                    return f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})."
 
         # Tier 5: Difflib similarity ratio matching (>= 60% similarity for small models)
         best_ratio = 0.0
@@ -1140,7 +1407,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         for w_size in range(max(1, window_size - 3), window_size + 4):
             for i in range(len(content_lines) - w_size + 1):
-                block = "".join(content_lines[i:i + w_size])
+                block = "".join(content_lines[i : i + w_size])
                 ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
                 if ratio > best_ratio:
                     best_ratio = ratio
@@ -1149,13 +1416,17 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         if best_ratio >= 0.60 and best_diff_start != -1:
             new_content = "".join(content_lines[:best_diff_start]) + new_text
-            if new_text and not new_text.endswith("\n") and best_diff_end < len(content_lines):
+            if (
+                new_text
+                and not new_text.endswith("\n")
+                and best_diff_end < len(content_lines)
+            ):
                 new_content += "\n"
             new_content += "".join(content_lines[best_diff_end:])
 
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
-            return f"Surgically edited {path} (similarity replaced block with {int(best_ratio*100)}% match at lines {best_diff_start+1}-{best_diff_end})."
+            return f"Surgically edited {path} (similarity replaced block with {int(best_ratio * 100)}% match at lines {best_diff_start + 1}-{best_diff_end})."
 
         # Tier 6: Character-level subsequence matching for typo-ridden input
         best_subseq_len = 0
@@ -1194,14 +1465,14 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
             with open(p, "w", encoding="utf-8") as f:
                 f.write(new_content)
-            return f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10))+1})."
+            return f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})."
 
         # All tiers failed — provide closest match as diagnostic
         closest_block = ""
         closest_ratio = 0.0
         closest_line = 1
         for i in range(max(1, len(content_lines) - 10)):
-            block = "".join(content_lines[i:min(i+10, len(content_lines))])
+            block = "".join(content_lines[i : min(i + 10, len(content_lines))])
             ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
             if ratio > closest_ratio:
                 closest_ratio = ratio
@@ -1212,9 +1483,9 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         if closest_ratio > 0.25:
             snippet = closest_block.strip()[:250]
             hint = (
-                f"\n⚠️ Closest match found ({int(closest_ratio*100)}% similar, around line {closest_line}):\n"
+                f"\n⚠️ Closest match found ({int(closest_ratio * 100)}% similar, around line {closest_line}):\n"
                 f"```\n{snippet}\n```\n"
-                f"ACTION REQUIRED: Call READ_FILE(path='{path}:{closest_line}-{closest_line+15}') to copy the exact lines before retrying your edit."
+                f"ACTION REQUIRED: Call READ_FILE(path='{path}:{closest_line}-{closest_line + 15}') to copy the exact lines before retrying your edit."
             )
 
         return (
@@ -1228,7 +1499,11 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 def tool_read_symbols_impl(args: dict, project_root: str) -> str:
     """READ_SYMBOLS — show file structure without loading content."""
     try:
-        path = str(args.get("path", args.get("file", args.get("filename", args.get("filepath", ""))))).strip()
+        path = str(
+            args.get(
+                "path", args.get("file", args.get("filename", args.get("filepath", "")))
+            )
+        ).strip()
         if not path:
             return "READ_SYMBOLS requires a file path. Use RUN_COMMAND('ls') to see directory contents."
 
@@ -1237,7 +1512,10 @@ def tool_read_symbols_impl(args: dict, project_root: str) -> str:
         # Security
         cwd_abs = os.path.abspath(project_root)
         cwd_prefix = cwd_abs if cwd_abs.endswith(os.sep) else cwd_abs + os.sep
-        if not os.path.abspath(p).startswith(cwd_prefix) and os.path.abspath(p) != cwd_abs:
+        if (
+            not os.path.abspath(p).startswith(cwd_prefix)
+            and os.path.abspath(p) != cwd_abs
+        ):
             return f"Access denied: {path} is outside the workspace."
 
         if not os.path.exists(p):
@@ -1288,9 +1566,9 @@ def tool_list_dir_impl(args: dict, project_root: str) -> str:
                     if size < 1024:
                         size_str = f"{size}B"
                     elif size < 1024 * 1024:
-                        size_str = f"{size/1024:.1f}KB"
+                        size_str = f"{size / 1024:.1f}KB"
                     else:
-                        size_str = f"{size/(1024*1024):.1f}MB"
+                        size_str = f"{size / (1024 * 1024):.1f}MB"
                     lines.append(f"  {entry}  ({size_str})")
                 except OSError:
                     lines.append(f"  {entry}")
@@ -1311,6 +1589,7 @@ def tool_grep_impl(args: dict, project_root: str) -> str:
     Falls back to pure Python when rg is not installed.
     """
     import shutil
+
     try:
         pattern = args.get("pattern", "")
         path = args.get("path", ".")
@@ -1340,24 +1619,41 @@ def _grep_rg(pattern: str, path: str, project_root: str, rg_path: str) -> str:
     parts = [
         rg_path,
         "--line-number",
-        "--context", str(CONTEXT),
-        "--max-count", str(MAX_MATCHES),
-        "--color", "never",
+        "--context",
+        str(CONTEXT),
+        "--max-count",
+        str(MAX_MATCHES),
+        "--color",
+        "never",
         "--hidden",
-        "--glob", "!.git",
-        "--glob", "!__pycache__",
-        "--glob", "!node_modules",
-        "--glob", "!venv",
-        "--glob", "!.venv",
-        "--glob", "!*.pyc",
-        "--glob", "!*.pyo",
-        "--glob", "!*.so",
-        "--glob", "!*.o",
-        "--glob", "!*.class",
-        "--glob", "!build",
-        "--glob", "!dist",
-        "--glob", "!.gradle",
-        "--glob", "!.idea",
+        "--glob",
+        "!.git",
+        "--glob",
+        "!__pycache__",
+        "--glob",
+        "!node_modules",
+        "--glob",
+        "!venv",
+        "--glob",
+        "!.venv",
+        "--glob",
+        "!*.pyc",
+        "--glob",
+        "!*.pyo",
+        "--glob",
+        "!*.so",
+        "--glob",
+        "!*.o",
+        "--glob",
+        "!*.class",
+        "--glob",
+        "!build",
+        "--glob",
+        "!dist",
+        "--glob",
+        "!.gradle",
+        "--glob",
+        "!.idea",
     ]
 
     if os.path.isfile(path):
@@ -1369,8 +1665,11 @@ def _grep_rg(pattern: str, path: str, project_root: str, rg_path: str) -> str:
 
     try:
         r = subprocess.run(
-            parts, capture_output=True, text=True,
-            cwd=project_root, timeout=30,
+            parts,
+            capture_output=True,
+            text=True,
+            cwd=project_root,
+            timeout=30,
         )
         output = (r.stdout or "").strip()
         if not output:
@@ -1378,8 +1677,11 @@ def _grep_rg(pattern: str, path: str, project_root: str, rg_path: str) -> str:
             return f"GREP: no matches for '{pattern}' in {os.path.relpath(path, project_root)}"
 
         # Count matches (lines without context markers)
-        match_count = sum(1 for line in output.splitlines()
-                         if line and ":" in line and not line.startswith("--"))
+        match_count = sum(
+            1
+            for line in output.splitlines()
+            if line and ":" in line and not line.startswith("--")
+        )
 
         header = f"GREP '{pattern}' — {match_count} match(es) via ripgrep"
         if match_count >= MAX_MATCHES:
@@ -1427,15 +1729,24 @@ def _grep_python(pattern: str, path: str, project_root: str) -> str:
             block = [f"{relpath}:"]
             for i in range(start, end):
                 marker = ">>> " if i in grp else "    "
-                block.append(f"{marker}{i+1:>4}: {flines[i].rstrip()}")
+                block.append(f"{marker}{i + 1:>4}: {flines[i].rstrip()}")
             results.append("\n".join(block))
 
     if os.path.isfile(path):
         rel = os.path.relpath(path, project_root) if os.path.isabs(path) else path
         _search_file(path, rel)
     elif os.path.isdir(path):
-        SKIP = {".git", "__pycache__", "node_modules", ".gradle",
-                "build", "dist", ".idea", "venv", ".venv"}
+        SKIP = {
+            ".git",
+            "__pycache__",
+            "node_modules",
+            ".gradle",
+            "build",
+            "dist",
+            ".idea",
+            "venv",
+            ".venv",
+        }
         for root, dirs, files in os.walk(path):
             dirs[:] = [d for d in dirs if d not in SKIP]
             for fname in files:
@@ -1467,23 +1778,38 @@ def tool_run_command_impl(args: dict, project_root: str) -> str:
 
     if cmd_clean.startswith("semantic_search"):
         import re
-        match = re.search(r'semantic_search\((?:query_string=)?["\'](.*?)["\']', cmd_clean)
-        q = match.group(1) if match else cmd_clean.replace("semantic_search", "").strip("() '\"")
+
+        match = re.search(
+            r'semantic_search\((?:query_string=)?["\'](.*?)["\']', cmd_clean
+        )
+        q = (
+            match.group(1)
+            if match
+            else cmd_clean.replace("semantic_search", "").strip("() '\"")
+        )
         return tool_search_ast_impl({"action": "search", "query": q}, project_root)
 
     if cmd_clean.startswith("SEARCH_AST"):
         import re
-        match = re.search(r'SEARCH_AST\((.*?)\)', cmd_clean, re.IGNORECASE)
+
+        match = re.search(r"SEARCH_AST\((.*?)\)", cmd_clean, re.IGNORECASE)
         payload = match.group(1) if match else ""
         if "structure" in payload.lower():
             return tool_search_ast_impl({"action": "structure"}, project_root)
-        return tool_search_ast_impl({"action": "search", "query": payload}, project_root)
+        return tool_search_ast_impl(
+            {"action": "search", "query": payload}, project_root
+        )
 
     timeout = 180 if any(cmd_clean.startswith(c) for c in _LONG_CMDS) else 30
 
     try:
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, cwd=project_root, timeout=timeout,
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=project_root,
+            timeout=timeout,
         )
         out = (r.stdout or "").strip()
         err = (r.stderr or "").strip()
@@ -1510,8 +1836,12 @@ def tool_web_search_impl(args: dict, project_root: str) -> str:
         if brave_key := os.getenv("BRAVE_API_KEY"):
             r = httpx.get(
                 "https://api.search.brave.com/res/v1/web/search",
-                headers={"Accept": "application/json", "X-Subscription-Token": brave_key},
-                params={"q": query, "count": 5}, timeout=15,
+                headers={
+                    "Accept": "application/json",
+                    "X-Subscription-Token": brave_key,
+                },
+                params={"q": query, "count": 5},
+                timeout=15,
             )
             r.raise_for_status()
             results = r.json().get("web", {}).get("results", [])
@@ -1538,14 +1868,18 @@ def tool_web_fetch_impl(args: dict, project_root: str) -> str:
 
     def sanitize_web_text(text: str) -> str:
         # Sanitize <tool_call> tags to prevent indirect prompt injection from web pages
-        clean = text.replace("<tool_call>", "&lt;tool_call&gt;").replace("</tool_call>", "&lt;/tool_call&gt;")
+        clean = text.replace("<tool_call>", "&lt;tool_call&gt;").replace(
+            "</tool_call>", "&lt;/tool_call&gt;"
+        )
         return clean[:4000]
 
     # Tier 1: Reader API (Jina AI)
     try:
         r = httpx.get(
-            f"https://r.jina.ai/{url}", headers={"Accept": "text/plain"},
-            timeout=10, follow_redirects=True,
+            f"https://r.jina.ai/{url}",
+            headers={"Accept": "text/plain"},
+            timeout=10,
+            follow_redirects=True,
         )
         if r.status_code == 200 and r.text.strip():
             return f"{url}:\n{sanitize_web_text(r.text.strip())}"
@@ -1570,18 +1904,20 @@ def tool_web_fetch_impl(args: dict, project_root: str) -> str:
     if pw_content:
         return f"{url} (via Playwright):\n{sanitize_web_text(pw_content)}"
 
-    return f"Fetch error: Unable to retrieve content from {url} (blocked or unreachable)."
-
+    return (
+        f"Fetch error: Unable to retrieve content from {url} (blocked or unreachable)."
+    )
 
 
 def tool_doc_search_impl(args: dict, project_root: str) -> str:
     """DOC_SEARCH — search official documentation."""
     import urllib.parse
+
     raw_query = args.get("query", "")
     query = _augment_query_with_project_deps(raw_query, project_root)
     search_url, label = _detect_doc_source(query)
     if "duckduckgo" not in label:
-        domain = re.search(r'https?://([^/]+)', search_url)
+        domain = re.search(r"https?://([^/]+)", search_url)
         ddg_query = f"site:{domain.group(1)} {query}" if domain else query
     else:
         ddg_query = query + " documentation syntax"
@@ -1600,14 +1936,15 @@ def tool_doc_search_impl(args: dict, project_root: str) -> str:
         try:
             r = httpx.get(
                 f"https://r.jina.ai/{first_url}",
-                headers={"Accept": "text/plain"}, timeout=15, follow_redirects=True,
+                headers={"Accept": "text/plain"},
+                timeout=15,
+                follow_redirects=True,
             )
             if r.status_code == 200:
                 fetch_snippet = f"\nDoc excerpt ({first_url}):\n{r.text.strip()[:1200]}"
         except Exception:
             pass
     return f"DOC_SEARCH — source: {label}\n{'─' * 40}\n" + raw_results + fetch_snippet
-
 
 
 def tool_web_verify_impl(args: dict, project_root: str) -> str:
@@ -1626,10 +1963,12 @@ def tool_web_verify_impl(args: dict, project_root: str) -> str:
     for ident in identifiers[:4]:
         query = f"{ident} {language} syntax documentation"
         search_url, label = _detect_doc_source(query)
-        domain_m = re.search(r'https?://([^/]+)', search_url)
-        ddg_q = (f"site:{domain_m.group(1)} {ident}"
-                 if "duckduckgo" not in label and domain_m
-                 else f"{ident} {language} documentation")
+        domain_m = re.search(r"https?://([^/]+)", search_url)
+        ddg_q = (
+            f"site:{domain_m.group(1)} {ident}"
+            if "duckduckgo" not in label and domain_m
+            else f"{ident} {language} documentation"
+        )
         status = "UNKNOWN"
         doc_url = ""
         try:
@@ -1648,9 +1987,11 @@ def tool_web_verify_impl(args: dict, project_root: str) -> str:
         results.append(f"  {ident:<40} {status}")
         if doc_url:
             results.append(f"  -> {doc_url}")
-    results += ["─" * 40,
-                "VERIFIED = identifier appeared in docs search results.",
-                "Always read the full doc page before relying on this."]
+    results += [
+        "─" * 40,
+        "VERIFIED = identifier appeared in docs search results.",
+        "Always read the full doc page before relying on this.",
+    ]
     return "\n".join(results)
 
 
@@ -1667,6 +2008,7 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
 
     try:
         from ..memory.persistence import ProjectMemory
+
         pm = ProjectMemory(Path(project_root))
         cat = category.lower()
         mem = pm.load()
@@ -1720,8 +2062,12 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
             new_task = {
                 "id": task_id,
                 "description": description or f"Sub-task {task_id}",
-                "target_files": target_files if isinstance(target_files, list) else [target_files],
-                "depends_on": depends_on if isinstance(depends_on, list) else [depends_on],
+                "target_files": target_files
+                if isinstance(target_files, list)
+                else [target_files],
+                "depends_on": depends_on
+                if isinstance(depends_on, list)
+                else [depends_on],
                 "outputs_summary": None,
                 "status": "pending",
                 "attempts": 0,
@@ -1778,6 +2124,7 @@ def tool_format_code_impl(args: dict, project_root: str) -> str:
     if language.lower() in ("python", "py"):
         try:
             import black
+
             return black.format_str(snippet, mode=black.Mode())
         except ImportError:
             return f"'black' not installed. Returning raw snippet:\n{snippet}"
@@ -1813,8 +2160,18 @@ def tool_ask_user_impl(args: dict, project_root: str) -> str:
 # ── GIT tool ────────────────────────────────────────────────────────────────
 
 _GIT_SAFE_SUBCOMMANDS = {
-    "status", "log", "diff", "show", "branch", "stash", "remote",
-    "ls-files", "rev-parse", "describe", "blame", "shortlog",
+    "status",
+    "log",
+    "diff",
+    "show",
+    "branch",
+    "stash",
+    "remote",
+    "ls-files",
+    "rev-parse",
+    "describe",
+    "blame",
+    "shortlog",
 }
 _GIT_WRITE_SUBCOMMANDS = {"add", "restore", "stash", "checkout", "switch"}
 _GIT_DESTRUCTIVE_SUBCOMMANDS = {"push", "reset", "rebase", "merge", "clean", "drop"}
@@ -1824,8 +2181,12 @@ def _git_run(cmd: str, project_root: str, timeout: int = 30) -> tuple[bool, str]
     """Run a git command and return (success, output)."""
     try:
         r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True,
-            cwd=project_root, timeout=timeout,
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=project_root,
+            timeout=timeout,
         )
         output = (r.stdout or "").strip()
         if r.stderr:
@@ -1868,12 +2229,15 @@ def tool_git_impl(args: dict, project_root: str) -> str:
     if not ok:
         try:
             from ..memory.persistence import ensure_git_repository
+
             ensure_git_repository(project_root)
             ok, _ = _git_run("git rev-parse --is-inside-work-tree", project_root)
         except Exception:
             pass
         if not ok:
-            return "Not a git repository. Use RUN_COMMAND('git init') to initialize one."
+            return (
+                "Not a git repository. Use RUN_COMMAND('git init') to initialize one."
+            )
 
     # Safety check
     if subcommand in _GIT_DESTRUCTIVE_SUBCOMMANDS:
@@ -1968,18 +2332,30 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
     top_k = int(args.get("top_k", 5))
 
     from core.flashlight.graph_engine import get_project_graph
+
     graph = get_project_graph(project_root)
 
     if action in ("update", "reindex", "build"):
         gdict = graph.build()
         return f"✅ AST Graph re-indexed successfully: {gdict['node_count']} nodes, {gdict['edge_count']} edges saved to `.torchlight/graph.json`."
-    elif action in ("search", "query", "semantic", "signature", "signatures", "symbol", "symbols", "definition", "definitions"):
+    elif action in (
+        "search",
+        "query",
+        "semantic",
+        "signature",
+        "signatures",
+        "symbol",
+        "symbols",
+        "definition",
+        "definitions",
+    ):
         if not query:
             return graph.get_structure()
         res = graph.query(query, top_k=top_k)
         if "No AST graph nodes found" in res:
             try:
                 from rlm_optimized.repl_sandbox import semantic_search
+
                 return semantic_search(query, top_k=top_k, project_root=project_root)
             except ImportError:
                 pass
@@ -2010,14 +2386,24 @@ def tool_inspect_web_impl(args: dict, project_root: str) -> str:
         return "INSPECT_WEB requires 'path' parameter."
 
     from pathlib import Path
-    full_path = Path(project_root) / path if not Path(path).is_absolute() else Path(path)
+
+    full_path = (
+        Path(project_root) / path if not Path(path).is_absolute() else Path(path)
+    )
 
     try:
         from core.execution.web_inspector import WebOutcomeInspector
-        inspector = WebOutcomeInspector(output_dir=Path(project_root) / ".torchlight" / "screenshots")
-        res = inspector.inspect(file_path=str(full_path) if not path.startswith(("http://", "https://")) else path, wait_ms=wait_ms, interact=interact)
+
+        inspector = WebOutcomeInspector(
+            output_dir=Path(project_root) / ".torchlight" / "screenshots"
+        )
+        res = inspector.inspect(
+            file_path=str(full_path)
+            if not path.startswith(("http://", "https://"))
+            else path,
+            wait_ms=wait_ms,
+            interact=interact,
+        )
         return res.to_markdown()
     except Exception as e:
         return f"Error during web outcome inspection: {e}"
-
-

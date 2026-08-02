@@ -5,7 +5,12 @@ import asyncio
 from pathlib import Path
 from typing import Optional, Callable
 from dataclasses import dataclass, field
-from rlm_optimized.config import MAX_RECURSION_DEPTH, MAX_ITERATIONS_PER_LEVEL, MAX_THINKING_LOOPS, IS_8GB_DEVICE
+from rlm_optimized.config import (
+    MAX_RECURSION_DEPTH,
+    MAX_ITERATIONS_PER_LEVEL,
+    MAX_THINKING_LOOPS,
+    IS_8GB_DEVICE,
+)
 from rlm_optimized.repl_sandbox import REPLSandbox
 from rlm_optimized.prompts import SYSTEM_PROMPT, build_system_prompt, build_step_message
 from core.tools.registry import get_tool_registry
@@ -22,6 +27,7 @@ try:
     from core.memory.models import Message, MessageRole
     from core.memory.manager import TieredMemory, MemoryConfig
     from core.memory.persistence import ProjectMemory, ensure_project_initialized
+
     _summarizer = ConversationSummarizer()
 except ImportError:
     _summarizer = None
@@ -39,12 +45,13 @@ except ImportError:
 class Step:
     step_number: int
     depth: int
-    action: str            # "code", "tool", "sub_queries", "final_answer", "thinking"
+    action: str  # "code", "tool", "sub_queries", "final_answer", "thinking"
     thinking: str
     content: str
     result: Optional[str] = None
     tool_name: Optional[str] = None
     tool_args: Optional[dict] = None
+
 
 @dataclass
 class SolveResult:
@@ -53,18 +60,92 @@ class SolveResult:
     depth: int = 0
     total_llm_calls: int = 0
 
+
+def _tolerant_json_repair(raw: str) -> str:
+    """Repair common LLM JSON corruption inside string values:
+    raw (unescaped) newlines/tabs, and a trailing unterminated string.
+    Existing escape sequences are preserved."""
+    out = []
+    in_str = False
+    esc = False
+    for ch in raw:
+        if in_str:
+            if esc:
+                esc = False
+                if ch == "\n":
+                    out.append("n")  # backslash already emitted -> forms \n
+                elif ch == "\r":
+                    out.append("r")
+                else:
+                    out.append(ch)
+                continue
+            if ch == "\\":
+                out.append(ch)
+                esc = True
+                continue
+            if ch == '"':
+                in_str = False
+                out.append(ch)
+                continue
+            if ch == "\n" or ch == "\r":
+                out.append("\\n")
+                continue
+            if ch == "\t":
+                out.append("\\t")
+                continue
+            out.append(ch)
+        else:
+            if ch == '"':
+                in_str = True
+            out.append(ch)
+    if in_str:
+        out.append('"')
+    return "".join(out)
+
+
+def _extract_balanced_json_object(text: str) -> Optional[str]:
+    """Return the first balanced top-level JSON object literal in text.
+    Handles nested braces and braces inside string values, and stops cleanly
+    at the `}` that closes the object instead of swallowing trailing prose."""
+    start = text.find("{")
+    if start == -1:
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+    return text[start:]
+
+
 def _clean_and_parse_json(raw_str: str) -> dict:
     raw = (raw_str or "").strip()
     if not raw:
         return {}
-        
+
     def _extract_dict(data):
         if isinstance(data, dict):
             return data
         if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
             return data[0]
         return None
-    
+
     # 1. Direct JSON parse
     try:
         data = json.loads(raw)
@@ -74,16 +155,9 @@ def _clean_and_parse_json(raw_str: str) -> dict:
     except Exception:
         pass
 
-    # 2. Fix unescaped newlines in JSON multiline string literals
+    # 2. Tolerant repair: raw newlines/tabs in strings, unterminated trailing string
     try:
-        # Match content/code/text fields with raw multiline strings
-        fixed = re.sub(
-            r'("(?:content|code|text|raw)")\s*:\s*"(.*?)"(?=\s*[,}\]])',
-            lambda m: m.group(1) + ': ' + json.dumps(m.group(2)),
-            raw,
-            flags=re.DOTALL
-        )
-        data = json.loads(fixed)
+        data = json.loads(_tolerant_json_repair(raw))
         extracted = _extract_dict(data)
         if extracted is not None:
             return extracted
@@ -92,11 +166,16 @@ def _clean_and_parse_json(raw_str: str) -> dict:
 
     # 3. Regex fallback extraction for key properties
     result = {}
-    path_match = re.search(r'["\']?(?:path|file|filepath|filename)["\']?\s*:\s*["\']([^"\']+)["\']', raw)
+    path_match = re.search(
+        r'["\']?(?:path|file|filepath|filename)["\']?\s*:\s*["\']([^"\']+)["\']', raw
+    )
     if path_match:
         result["path"] = path_match.group(1)
 
-    content_match = re.search(r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*?)["\']\s*(?:,|\}|\])?$', raw)
+    content_match = re.search(
+        r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*?)["\']\s*(?:,|\}|\])?$',
+        raw,
+    )
     if content_match:
         result["content"] = content_match.group(1)
 
@@ -107,20 +186,28 @@ def _clean_and_parse_json(raw_str: str) -> dict:
 
 
 class RLMEngineOptimized:
-    def __init__(self, client=None, on_step: Optional[Callable[[Step], None]] = None,
-                 max_depth: int = MAX_RECURSION_DEPTH, project_root: Optional[str] = None,
-                 approval_fn: Optional[Callable[[str, str, dict], bool]] = None,
-                 on_token: Optional[Callable[[str], None]] = None,
-                 on_status_change: Optional[Callable[[dict], None]] = None,
-                 enable_debate: bool = False,
-                 debate_verifier: Optional[object] = None):
+    def __init__(
+        self,
+        client=None,
+        on_step: Optional[Callable[[Step], None]] = None,
+        max_depth: int = MAX_RECURSION_DEPTH,
+        project_root: Optional[str] = None,
+        approval_fn: Optional[Callable[[str, str, dict], bool]] = None,
+        on_token: Optional[Callable[[str], None]] = None,
+        on_status_change: Optional[Callable[[dict], None]] = None,
+        enable_debate: bool = False,
+        debate_verifier: Optional[object] = None,
+    ):
         if client is None:
             from rlm_optimized.llamacpp_client import LlamaCppClient
+
             client = LlamaCppClient()
         self.client = client
         self.on_step = on_step
         self.on_token = on_token  # callback for each streaming token
-        self.on_status_change = on_status_change  # callback for real-time telemetry state
+        self.on_status_change = (
+            on_status_change  # callback for real-time telemetry state
+        )
         self.max_depth = max_depth
         self.project_root = project_root or os.getcwd()
         if ensure_project_initialized:
@@ -140,7 +227,10 @@ class RLMEngineOptimized:
         self._memory = None
         try:
             from core.execution.feedback_loop import ExecutionFeedbackLoop
-            self.feedback_loop = ExecutionFeedbackLoop(project_root=Path(self.project_root))
+
+            self.feedback_loop = ExecutionFeedbackLoop(
+                project_root=Path(self.project_root)
+            )
         except Exception:
             self.feedback_loop = None
 
@@ -150,8 +240,12 @@ class RLMEngineOptimized:
             try:
                 from core.memory.persistence import ProjectMemory
                 from rlm_optimized.config import CTX_SIZE
+
                 pm = ProjectMemory(Path(self.project_root))
-                self._memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE), project_memory=pm)
+                self._memory = TieredMemory(
+                    config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE),
+                    project_memory=pm,
+                )
             except Exception:
                 pass
         return self._memory
@@ -159,8 +253,6 @@ class RLMEngineOptimized:
     @memory.setter
     def memory(self, val) -> None:
         self._memory = val
-
-
 
     def set_project_root(self, project_root: str) -> None:
         """Switch the active workspace, keeping the sandbox's AST-graph
@@ -172,7 +264,6 @@ class RLMEngineOptimized:
         self.sandbox.set_project_root(project_root)
         if self.feedback_loop:
             self.feedback_loop.project_root = Path(project_root).resolve()
-
 
     def _notify_status(self, state: str, details: Optional[dict] = None) -> None:
         """Notify listeners of real-time background status and action telemetry."""
@@ -193,10 +284,11 @@ class RLMEngineOptimized:
     # Stop tokens used by the LLM — the server strips these from output,
     # so we need to re-append them for the parser to match properly.
     _STOP_TAG_PAIRS = [
-        ("<TOOL",   "</TOOL>"),
-        ("<CODE>",  "</CODE>"),
+        ("<WRITE_FILE", "</WRITE_FILE>"),
+        ("<TOOL", "</TOOL>"),
+        ("<CODE>", "</CODE>"),
         ("<FINAL_ANSWER>", "</FINAL_ANSWER>"),
-        ("<SUB_QUERY>",    "</SUB_QUERY>"),
+        ("<SUB_QUERY>", "</SUB_QUERY>"),
         ("<action>", "</action>"),
     ]
 
@@ -204,7 +296,10 @@ class RLMEngineOptimized:
         """Re-append closing tags that were consumed as stop tokens by llama-server."""
         for open_tag, close_tag in self._STOP_TAG_PAIRS:
             # Check if text has the opening tag but NOT the closing tag
-            if open_tag.lower() in text.lower() and close_tag.lower() not in text.lower():
+            if (
+                open_tag.lower() in text.lower()
+                and close_tag.lower() not in text.lower()
+            ):
                 text = text.rstrip() + close_tag
                 break  # Only one action per response
         return text
@@ -257,7 +352,6 @@ class RLMEngineOptimized:
             )
             return self._repair_stop_tokens(raw)
 
-
     def compact_context(self, memory=None, force: bool = True) -> tuple[int, int, int]:
         """Manually compact context memory and return (before, after, freed)."""
         target_mem = memory or getattr(self, "_memory", None)
@@ -265,7 +359,9 @@ class RLMEngineOptimized:
             return 0, 0, 0
         before = getattr(target_mem, "total_tokens", 0)
         summarizer_fn = _summarizer.simple_summarize if _summarizer else None
-        target_mem.compress_recent(summarizer_fn=summarizer_fn, preserve_first=2, force=force)
+        target_mem.compress_recent(
+            summarizer_fn=summarizer_fn, preserve_first=2, force=force
+        )
         after = getattr(target_mem, "total_tokens", 0)
         return before, after, max(0, before - after)
 
@@ -273,29 +369,40 @@ class RLMEngineOptimized:
         result = SolveResult(answer="", depth=depth)
         self._total_llm_calls = 0
         self._final_answer_rejections = 0
-        
+
         if TieredMemory and MemoryConfig:
             from .config import CTX_SIZE
             from pathlib import Path
             from core.memory.persistence import ProjectMemory
+
             pm = ProjectMemory(Path(self.project_root))
-            memory = TieredMemory(config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE), project_memory=pm)
-            memory.add_system_message(build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192)))
+            memory = TieredMemory(
+                config=MemoryConfig.auto_tune(max_tokens=CTX_SIZE), project_memory=pm
+            )
+            memory.add_system_message(
+                build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192))
+            )
             memory.add_user_message(task)
             self._memory = memory
             use_memory = True
         else:
             from .config import CTX_SIZE
+
             messages = [
-                {"role": "system", "content": build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192))},
+                {
+                    "role": "system",
+                    "content": build_system_prompt(
+                        self.project_root, compact=(CTX_SIZE < 8192)
+                    ),
+                },
                 {"role": "user", "content": task},
             ]
             use_memory = False
 
         sandbox_lock = asyncio.Lock()
-        consecutive_thinking = 0    # Track loops with no action tag
-        consecutive_code_errors = 0 # Track consecutive failed code executions
-        last_code_output = None     # Track last successful CODE result
+        consecutive_thinking = 0  # Track loops with no action tag
+        consecutive_code_errors = 0  # Track consecutive failed code executions
+        last_code_output = None  # Track last successful CODE result
 
         # ── Consecutive duplicate tool call detection ─────────────────
         _last_tool_key: Optional[tuple[str, str]] = None
@@ -307,35 +414,64 @@ class RLMEngineOptimized:
 
             if use_memory:
                 if memory.should_compress():
-                    self._notify_status("THINKING", {"depth": depth, "status": "compacting context"})
-                    summarizer_fn = _summarizer.simple_summarize if _summarizer else None
-                    memory.compress_recent(summarizer_fn=summarizer_fn, preserve_first=2)
+                    self._notify_status(
+                        "THINKING", {"depth": depth, "status": "compacting context"}
+                    )
+                    summarizer_fn = (
+                        _summarizer.simple_summarize if _summarizer else None
+                    )
+                    memory.compress_recent(
+                        summarizer_fn=summarizer_fn, preserve_first=2
+                    )
                 context = memory.get_context_for_llm(project_root=self.project_root)
             else:
                 context = messages
 
-            self._notify_status("THINKING", {"depth": depth, "iteration": iteration + 1})
+            self._notify_status(
+                "THINKING", {"depth": depth, "iteration": iteration + 1}
+            )
             response = await self._stream_llm(context)
-            action, thinking, content, extra_queries, tool_name, tool_args = self._parse_response(response)
+            action, thinking, content, extra_queries, tool_name, tool_args = (
+                self._parse_response(response)
+            )
 
             # ── Debate & Self-Critique Verification Pass ──
             if self.debate_verifier:
                 phase_name = "plan" if action in ("thinking", "plan") else "code"
-                if self.debate_verifier.should_debate(tool_name=tool_name, phase=phase_name):
-                    self._notify_status("CRITIQUING", {"tool_name": tool_name, "action": action})
+                if self.debate_verifier.should_debate(
+                    tool_name=tool_name, phase=phase_name
+                ):
+                    self._notify_status(
+                        "CRITIQUING", {"tool_name": tool_name, "action": action}
+                    )
                     try:
-                        refined_response, critique_res = await self.debate_verifier.verify_and_refine(
+                        (
+                            refined_response,
+                            critique_res,
+                        ) = await self.debate_verifier.verify_and_refine(
                             proposal=response,
                             task_context=task,
                             tool_name=tool_name,
-                            phase=phase_name
+                            phase=phase_name,
                         )
                         if critique_res.has_flaws and refined_response != response:
                             response = refined_response
-                            action, thinking, content, extra_queries, tool_name, tool_args = self._parse_response(response)
-                            self._notify_status("REFINED", {"tool_name": tool_name, "flaws": critique_res.flaws})
+                            (
+                                action,
+                                thinking,
+                                content,
+                                extra_queries,
+                                tool_name,
+                                tool_args,
+                            ) = self._parse_response(response)
+                            self._notify_status(
+                                "REFINED",
+                                {"tool_name": tool_name, "flaws": critique_res.flaws},
+                            )
                     except Exception as verifier_err:
-                        print(f"[RLMEngine] Debate verifier bypassed due to error: {verifier_err}")
+                        print(
+                            f"[RLMEngine] Debate verifier bypassed due to error: {verifier_err}"
+                        )
 
             step = Step(
                 step_number=iteration + 1,
@@ -354,10 +490,17 @@ class RLMEngineOptimized:
             if action == "final_answer":
                 # ── Verification Gate: Prevent Premature Final Answers ──
                 rejection_reason = None
-                if iteration < MAX_ITERATIONS_PER_LEVEL - 2 and getattr(self, "_final_answer_rejections", 0) < 2:
+                if (
+                    iteration < MAX_ITERATIONS_PER_LEVEL - 2
+                    and getattr(self, "_final_answer_rejections", 0) < 2
+                ):
                     # 1. Check for failing post-edit tests
-                    has_failing = getattr(self.feedback_loop, "has_failing_tests", False) or (
-                        self.feedback_loop and self.feedback_loop._last_test_result and not self.feedback_loop._last_test_result.all_passed
+                    has_failing = getattr(
+                        self.feedback_loop, "has_failing_tests", False
+                    ) or (
+                        self.feedback_loop
+                        and self.feedback_loop._last_test_result
+                        and not self.feedback_loop._last_test_result.all_passed
                     )
                     if has_failing:
                         fb_ctx = self.feedback_loop.build_feedback_context()
@@ -366,21 +509,28 @@ class RLMEngineOptimized:
                     # 2. Check for pending goal sub-tasks in workspace task files (implementation_plan.md, tasks.md, goal_spec.json)
                     else:
                         try:
-                            from core.tools.task_helpers import get_workspace_pending_tasks
-                            pending_tasks = get_workspace_pending_tasks(self.project_root)
+                            from core.tools.task_helpers import (
+                                get_workspace_pending_tasks,
+                            )
+
+                            pending_tasks = get_workspace_pending_tasks(
+                                self.project_root
+                            )
                             if pending_tasks:
                                 task_descs = [f"- {t}" for t in pending_tasks[:3]]
                                 rejection_reason = (
                                     "❌ [VERIFICATION GATE REJECTION]\n"
                                     "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
-                                    + "\n".join(task_descs) +
-                                    "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                                    + "\n".join(task_descs)
+                                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
                                 )
                         except Exception:
                             pass
 
                 if rejection_reason:
-                    self._final_answer_rejections = getattr(self, "_final_answer_rejections", 0) + 1
+                    self._final_answer_rejections = (
+                        getattr(self, "_final_answer_rejections", 0) + 1
+                    )
                     step.action = "rejected_final_answer"
                     step.result = rejection_reason
                     result.steps.append(step)
@@ -404,43 +554,63 @@ class RLMEngineOptimized:
                 # ---- Summarize Session ----
                 try:
                     import datetime
+
                     loop = asyncio.get_running_loop()
-                    self._notify_status("THINKING", {"depth": depth, "status": "summarizing task"})
+                    self._notify_status(
+                        "THINKING", {"depth": depth, "status": "summarizing task"}
+                    )
                     summary_prompt = "Summarize the key actions taken and findings discovered during this task execution in exactly 3 concise bullet points. Focus on what was modified and what was learned."
-                    
-                    summary_messages = memory.get_context_for_llm() if use_memory else messages.copy()
+
+                    summary_messages = (
+                        memory.get_context_for_llm() if use_memory else messages.copy()
+                    )
                     if len(summary_messages) > 4:
                         summary_messages = [summary_messages[0]] + summary_messages[-3:]
-                    summary_messages.append({"role": "assistant", "content": f"<FINAL_ANSWER>{content}</FINAL_ANSWER>"})
+                    summary_messages.append(
+                        {
+                            "role": "assistant",
+                            "content": f"<FINAL_ANSWER>{content}</FINAL_ANSWER>",
+                        }
+                    )
                     summary_messages.append({"role": "user", "content": summary_prompt})
-                    
+
                     def _call_summarize():
                         try:
-                            return self.client.chat_with_history(summary_messages, use_grammar=False)
+                            return self.client.chat_with_history(
+                                summary_messages, use_grammar=False
+                            )
                         except TypeError:
                             return self.client.chat_with_history(summary_messages)
 
                     summary = await asyncio.wait_for(
-                        loop.run_in_executor(None, _call_summarize),
-                        timeout=15.0
+                        loop.run_in_executor(None, _call_summarize), timeout=15.0
                     )
                     if hasattr(self, "_repair_stop_tokens"):
                         summary = self._repair_stop_tokens(summary)
-                        
-                    history_file = os.path.join(self.project_root, ".torchlight_history.log")
+
+                    history_file = os.path.join(
+                        self.project_root, ".torchlight_history.log"
+                    )
                     with open(history_file, "a", encoding="utf-8") as f:
-                        f.write(f"\n--- Session Summary ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---\n")
+                        f.write(
+                            f"\n--- Session Summary ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---\n"
+                        )
                         f.write(summary.strip() + "\n")
-                        
+
                     try:
                         from pathlib import Path
                         from core.memory.persistence import ProjectMemory
+
                         pm = ProjectMemory(Path(self.project_root))
-                        pm.update(f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}")
+                        pm.update(
+                            f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}"
+                        )
                         if use_memory and memory:
                             memory.persist_to_project_memory()
                     except Exception as inner_e:
-                        print(f"Failed to save to ProjectMemory (.context-memory.json): {inner_e}")
+                        print(
+                            f"Failed to save to ProjectMemory (.context-memory.json): {inner_e}"
+                        )
                 except Exception as e:
                     print(f"Session summarization skipped or failed: {e}")
                 # -----------------------------
@@ -449,14 +619,21 @@ class RLMEngineOptimized:
                 return result
 
             elif action == "tool":
-                is_valid, err_msg, tool_args = validate_and_normalize_tool_call(tool_name, tool_args or {})
+                is_valid, err_msg, tool_args = validate_and_normalize_tool_call(
+                    tool_name, tool_args or {}
+                )
                 if not is_valid:
                     step.result = f"❌ {err_msg}"
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
-                    self._notify_status("TOOL_DONE", {"tool_name": tool_name, "success": False})
-                    feedback = build_step_message("tool_error", err_msg) + "\nRe-issue the tool call matching the exact schema."
+                    self._notify_status(
+                        "TOOL_DONE", {"tool_name": tool_name, "success": False}
+                    )
+                    feedback = (
+                        build_step_message("tool_error", err_msg)
+                        + "\nRe-issue the tool call matching the exact schema."
+                    )
                     if use_memory:
                         memory.add_assistant_message(response)
                         memory.add_user_message(feedback)
@@ -468,10 +645,24 @@ class RLMEngineOptimized:
                 # ── Duplicate tool call detection ──────────────────────
                 # Read-only tools are exempt — re-reading a file is always
                 # legitimate (verify edits, context compression, refresh memory).
-                _READ_ONLY_TOOLS = {"READ_FILE", "READ_SYMBOLS", "LIST_DIR", "GREP",
-                                    "SEARCH_AST", "INSPECT_WEB", "UPDATE_TASK_GRAPH",
-                                    "WEB_SEARCH", "WEB_FETCH", "DOC_SEARCH", "WEB_VERIFY",
-                                    "GIT", "SAVE_MEMORY", "FORMAT_CODE", "VERIFY", "ASK_USER"}
+                _READ_ONLY_TOOLS = {
+                    "READ_FILE",
+                    "READ_SYMBOLS",
+                    "LIST_DIR",
+                    "GREP",
+                    "SEARCH_AST",
+                    "INSPECT_WEB",
+                    "UPDATE_TASK_GRAPH",
+                    "WEB_SEARCH",
+                    "WEB_FETCH",
+                    "DOC_SEARCH",
+                    "WEB_VERIFY",
+                    "GIT",
+                    "SAVE_MEMORY",
+                    "FORMAT_CODE",
+                    "VERIFY",
+                    "ASK_USER",
+                }
                 canonical_args = json.dumps(tool_args, sort_keys=True, default=str)
                 tool_name_upper = tool_name.upper() if tool_name else ""
                 tool_key = (tool_name_upper, canonical_args)
@@ -483,15 +674,25 @@ class RLMEngineOptimized:
                         result.steps.append(step)
                         if self.on_step:
                             self.on_step(step)
-                        self._notify_status("TOOL_DONE", {"tool_name": tool_name, "success": True, "duplicate": True})
+                        self._notify_status(
+                            "TOOL_DONE",
+                            {
+                                "tool_name": tool_name,
+                                "success": True,
+                                "duplicate": True,
+                            },
+                        )
 
                         if consecutive_duplicates >= MAX_DUPLICATES:
                             # Force-extract — the model is stuck in a loop
                             forced = f"Tool {tool_name} was executed {consecutive_duplicates} times with identical arguments. The result is unchanged. Present whatever you have using <FINAL_ANSWER>."
                             step_forced = Step(
-                                step_number=iteration + 2, depth=depth,
-                                action="final_answer", thinking=f"(forced after {consecutive_duplicates} duplicate {tool_name} calls)",
-                                content=forced, result=forced,
+                                step_number=iteration + 2,
+                                depth=depth,
+                                action="final_answer",
+                                thinking=f"(forced after {consecutive_duplicates} duplicate {tool_name} calls)",
+                                content=forced,
+                                result=forced,
                             )
                             result.steps.append(step_forced)
                             if self.on_step:
@@ -522,9 +723,15 @@ class RLMEngineOptimized:
                 registry = get_tool_registry()
                 risk = registry.risk_level_for(tool_name, tool_args)
                 if risk in (CONFIRM, REVIEW):
-                    self._notify_status("WAITING_APPROVAL", {"tool_name": tool_name, "risk": risk, "args": tool_args})
+                    self._notify_status(
+                        "WAITING_APPROVAL",
+                        {"tool_name": tool_name, "risk": risk, "args": tool_args},
+                    )
                 else:
-                    self._notify_status("TOOL", {"tool_name": tool_name, "args": tool_args, "depth": depth})
+                    self._notify_status(
+                        "TOOL",
+                        {"tool_name": tool_name, "args": tool_args, "depth": depth},
+                    )
 
                 approved = True
                 if risk in (CONFIRM, REVIEW) and self.approval_fn:
@@ -534,16 +741,24 @@ class RLMEngineOptimized:
                         approved = self.approval_fn(tool_name, risk, tool_args)
 
                 if approved:
-                    self._notify_status("TOOL", {"tool_name": tool_name, "args": tool_args, "depth": depth})
-                    tool_result = await asyncio.to_thread(registry.execute, tool_name, tool_args, self.project_root)
+                    self._notify_status(
+                        "TOOL",
+                        {"tool_name": tool_name, "args": tool_args, "depth": depth},
+                    )
+                    tool_result = await asyncio.to_thread(
+                        registry.execute, tool_name, tool_args, self.project_root
+                    )
                     step.result = tool_result.output
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
-                    self._notify_status("TOOL_DONE", {"tool_name": tool_name, "success": tool_result.success})
+                    self._notify_status(
+                        "TOOL_DONE",
+                        {"tool_name": tool_name, "success": tool_result.success},
+                    )
 
                     # Pin file content after READ_FILE so it survives compression
-                    if (use_memory and tool_result.success and tool_name):
+                    if use_memory and tool_result.success and tool_name:
                         tname_upper = tool_name.upper()
                         if "READ_FILE" in tname_upper:
                             fpath = tool_args.get("path", "")
@@ -558,9 +773,21 @@ class RLMEngineOptimized:
                     feedback = build_step_message(msg_type, tool_result.output)
 
                     # Execution feedback: auto-run tests or web inspector after code changes
-                    if self.feedback_loop and tool_name and tool_name.upper() in ("EDIT_FILE", "WRITE_FILE", "RUN_COMMAND"):
-                        await asyncio.to_thread(self.feedback_loop.on_tool_executed, tool_name.upper(), tool_args, tool_result.output)
-                        fb_ctx = await asyncio.to_thread(self.feedback_loop.build_feedback_context)
+                    if (
+                        self.feedback_loop
+                        and tool_name
+                        and tool_name.upper()
+                        in ("EDIT_FILE", "WRITE_FILE", "RUN_COMMAND")
+                    ):
+                        await asyncio.to_thread(
+                            self.feedback_loop.on_tool_executed,
+                            tool_name.upper(),
+                            tool_args,
+                            tool_result.output,
+                        )
+                        fb_ctx = await asyncio.to_thread(
+                            self.feedback_loop.build_feedback_context
+                        )
                         if fb_ctx:
                             feedback += f"\n\n[AUTOMATIC POST-EDIT EXECUTION FEEDBACK]\n{fb_ctx}"
 
@@ -580,7 +807,9 @@ class RLMEngineOptimized:
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
-                    feedback = build_step_message("tool_denied", f"{tool_name} was denied.")
+                    feedback = build_step_message(
+                        "tool_denied", f"{tool_name} was denied."
+                    )
 
                 if use_memory:
                     memory.add_assistant_message(response)
@@ -592,12 +821,16 @@ class RLMEngineOptimized:
             elif action == "code":
                 # Validate content is actually executable code / syntax valid
                 import ast
+
                 is_valid = False
                 try:
                     ast.parse(content)
                     is_valid = True
                 except SyntaxError:
-                    if re.search(r'\b(?:def|class|import|from|return|if|for|while|const|let|var|function|val|var|fn)\b', content):
+                    if re.search(
+                        r"\b(?:def|class|import|from|return|if|for|while|const|let|var|function|val|var|fn)\b",
+                        content,
+                    ):
                         is_valid = True
 
                 if not is_valid:
@@ -616,31 +849,52 @@ class RLMEngineOptimized:
                     continue
 
                 # Check if code modifies files or executes system commands
-                modifies_files = bool(re.search(
-                    r"\b(open\s*\(.*['\"][wa\+]|write_text|write_bytes|os\.remove|os\.unlink|"
-                    r"os\.mkdir|os\.makedirs|os\.rename|shutil\.|subprocess\.|os\.system)\b",
-                    content, re.IGNORECASE
-                ))
+                modifies_files = bool(
+                    re.search(
+                        r"\b(open\s*\(.*['\"][wa\+]|write_text|write_bytes|os\.remove|os\.unlink|"
+                        r"os\.mkdir|os\.makedirs|os\.rename|shutil\.|subprocess\.|os\.system)\b",
+                        content,
+                        re.IGNORECASE,
+                    )
+                )
                 if modifies_files:
-                    self._notify_status("WAITING_APPROVAL", {"tool_name": "CODE_FILE_WRITE", "risk": CONFIRM})
+                    self._notify_status(
+                        "WAITING_APPROVAL",
+                        {"tool_name": "CODE_FILE_WRITE", "risk": CONFIRM},
+                    )
                 else:
-                    self._notify_status("TOOL", {"tool_name": "REPL_CODE", "depth": depth})
+                    self._notify_status(
+                        "TOOL", {"tool_name": "REPL_CODE", "depth": depth}
+                    )
 
                 approved = True
                 if modifies_files and self.approval_fn:
                     tool_args = {"preview": content[:300]}
                     if asyncio.iscoroutinefunction(self.approval_fn):
-                        approved = await self.approval_fn("CODE_FILE_WRITE", CONFIRM, tool_args)
+                        approved = await self.approval_fn(
+                            "CODE_FILE_WRITE", CONFIRM, tool_args
+                        )
                     else:
-                        approved = self.approval_fn("CODE_FILE_WRITE", CONFIRM, tool_args)
+                        approved = self.approval_fn(
+                            "CODE_FILE_WRITE", CONFIRM, tool_args
+                        )
 
                 if approved:
-                    self._notify_status("TOOL", {"tool_name": "REPL_CODE", "depth": depth})
+                    self._notify_status(
+                        "TOOL", {"tool_name": "REPL_CODE", "depth": depth}
+                    )
                     async with sandbox_lock:
-                        exec_result = await asyncio.to_thread(self.sandbox.execute, content, cwd=self.project_root)
+                        exec_result = await asyncio.to_thread(
+                            self.sandbox.execute, content, cwd=self.project_root
+                        )
                 else:
                     self._notify_status("TOOL_DENIED", {"tool_name": "REPL_CODE"})
-                    exec_result = {"success": False, "error": "Code execution denied by user", "stdout": "", "stderr": ""}
+                    exec_result = {
+                        "success": False,
+                        "error": "Code execution denied by user",
+                        "stdout": "",
+                        "stderr": "",
+                    }
 
                 if exec_result["success"]:
                     consecutive_code_errors = 0
@@ -658,7 +912,9 @@ class RLMEngineOptimized:
                     feedback = build_step_message("code_result", output)
                     # Hint the model to wrap up after successful computation
                     feedback += "\nIf this answers the user's question, present the result using <FINAL_ANSWER> tags now."
-                    self._notify_status("TOOL_DONE", {"tool_name": "REPL_CODE", "success": True})
+                    self._notify_status(
+                        "TOOL_DONE", {"tool_name": "REPL_CODE", "success": True}
+                    )
                 else:
                     consecutive_code_errors += 1
                     error_msg = exec_result["error"] or "Unknown error"
@@ -670,9 +926,12 @@ class RLMEngineOptimized:
                     if consecutive_code_errors >= 5:
                         forced = f"Code execution failed {consecutive_code_errors} consecutive times: {error_msg}. Present your final findings using <FINAL_ANSWER>."
                         step_forced = Step(
-                            step_number=iteration + 2, depth=depth,
-                            action="final_answer", thinking=f"(forced after {consecutive_code_errors} consecutive code errors)",
-                            content=forced, result=forced,
+                            step_number=iteration + 2,
+                            depth=depth,
+                            action="final_answer",
+                            thinking=f"(forced after {consecutive_code_errors} consecutive code errors)",
+                            content=forced,
+                            result=forced,
                         )
                         result.steps.append(step_forced)
                         if self.on_step:
@@ -682,7 +941,9 @@ class RLMEngineOptimized:
                         return result
                     elif consecutive_code_errors >= 3:
                         feedback += "\n⚠️ Code execution has failed 3 times consecutively. Do not retry the same code. Change approach or return <FINAL_ANSWER>."
-                    self._notify_status("TOOL_DONE", {"tool_name": "REPL_CODE", "success": False})
+                    self._notify_status(
+                        "TOOL_DONE", {"tool_name": "REPL_CODE", "success": False}
+                    )
 
                 result.steps.append(step)
                 if self.on_step:
@@ -707,11 +968,18 @@ class RLMEngineOptimized:
                         memory.add_user_message(build_step_message("depth_limit", ""))
                     else:
                         messages.append({"role": "assistant", "content": response})
-                        messages.append({"role": "user", "content": build_step_message("depth_limit", "")})
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": build_step_message("depth_limit", ""),
+                            }
+                        )
                 else:
                     queries = [content] + extra_queries
                     step.content = " | ".join(queries)
-                    self._notify_status("SUBAGENT", {"depth": depth + 1, "queries_count": len(queries)})
+                    self._notify_status(
+                        "SUBAGENT", {"depth": depth + 1, "queries_count": len(queries)}
+                    )
 
                     # On 8GB devices with 1 llama-server slot, run sequentially
                     # to avoid memory thrashing. On 16GB+ run in parallel.
@@ -727,7 +995,9 @@ class RLMEngineOptimized:
                     combined_answers = []
                     for idx, sub_res in enumerate(sub_results):
                         result.steps.extend(sub_res.steps)
-                        combined_answers.append(f"Sub-query [{queries[idx]}]: {sub_res.answer}")
+                        combined_answers.append(
+                            f"Sub-query [{queries[idx]}]: {sub_res.answer}"
+                        )
 
                     aggregated_answer = "\n".join(combined_answers)
                     step.result = aggregated_answer
@@ -737,14 +1007,25 @@ class RLMEngineOptimized:
 
                     if use_memory:
                         memory.add_assistant_message(response)
-                        memory.add_user_message(build_step_message("sub_query_result", aggregated_answer))
+                        memory.add_user_message(
+                            build_step_message("sub_query_result", aggregated_answer)
+                        )
                     else:
                         messages.append({"role": "assistant", "content": response})
-                        messages.append({"role": "user", "content": build_step_message("sub_query_result", aggregated_answer)})
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": build_step_message(
+                                    "sub_query_result", aggregated_answer
+                                ),
+                            }
+                        )
 
             else:
                 consecutive_thinking += 1
-                step.result = f"(No action tag detected — thinking loop {consecutive_thinking})"
+                step.result = (
+                    f"(No action tag detected — thinking loop {consecutive_thinking})"
+                )
                 result.steps.append(step)
                 if self.on_step:
                     self.on_step(step)
@@ -761,9 +1042,12 @@ class RLMEngineOptimized:
                     if last_code_output:
                         forced = f"Based on computation: {last_code_output}"
                     step_forced = Step(
-                        step_number=iteration + 2, depth=depth,
-                        action="final_answer", thinking=f"(auto-extracted after {MAX_THINKING_LOOPS} thinking loops)",
-                        content=forced, result=forced,
+                        step_number=iteration + 2,
+                        depth=depth,
+                        action="final_answer",
+                        thinking=f"(auto-extracted after {MAX_THINKING_LOOPS} thinking loops)",
+                        content=forced,
+                        result=forced,
                     )
                     result.steps.append(step_forced)
                     if self.on_step:
@@ -772,9 +1056,11 @@ class RLMEngineOptimized:
                     result.total_llm_calls = self._total_llm_calls
                     return result
                 elif consecutive_thinking >= 4:
-                    nudge = ("You MUST respond with exactly one action tag now. "
-                             "If you have completed your work, wrap your response in <FINAL_ANSWER>your answer</FINAL_ANSWER>. "
-                             "If you need to perform an action, use <TOOL> or <CODE>.")
+                    nudge = (
+                        "You MUST respond with exactly one action tag now. "
+                        "If you have completed your work, wrap your response in <FINAL_ANSWER>your answer</FINAL_ANSWER>. "
+                        "If you need to perform an action, use <TOOL> or <CODE>."
+                    )
                 else:
                     nudge = "Please continue with an action using <TOOL>, <CODE>, <SUB_QUERY>, or <FINAL_ANSWER>."
 
@@ -788,9 +1074,11 @@ class RLMEngineOptimized:
             memory.add_user_message(build_step_message("iteration_limit", ""))
             context = memory.get_context_for_llm()
         else:
-            messages.append({"role": "user", "content": build_step_message("iteration_limit", "")})
+            messages.append(
+                {"role": "user", "content": build_step_message("iteration_limit", "")}
+            )
             context = messages
-            
+
         self._total_llm_calls += 1
         response = await self._stream_llm(context)
         _, _, final_content, _, _, _ = self._parse_response(response)
@@ -798,8 +1086,14 @@ class RLMEngineOptimized:
         if not final_content:
             final_content = response
 
-        step = Step(step_number=MAX_ITERATIONS_PER_LEVEL + 1, depth=depth, action="final_answer",
-                    thinking="(forced)", content=final_content, result=final_content)
+        step = Step(
+            step_number=MAX_ITERATIONS_PER_LEVEL + 1,
+            depth=depth,
+            action="final_answer",
+            thinking="(forced)",
+            content=final_content,
+            result=final_content,
+        )
         result.steps.append(step)
         if self.on_step:
             self.on_step(step)
@@ -808,210 +1102,423 @@ class RLMEngineOptimized:
         result.total_llm_calls = self._total_llm_calls
         return result
 
-    def _parse_response(self, response: str) -> tuple[str, str, str, list[str], Optional[str], Optional[dict]]:
+    def _parse_response(
+        self, response: str
+    ) -> tuple[str, str, str, list[str], Optional[str], Optional[dict]]:
         """Parse the LLM response for action tags.
         Returns: (action, thinking, content, extra_queries, tool_name, tool_args)
         """
         # 0. Extract explicit <think>...</think> or <thought>...</thought> or unwrapped reasoning prefixes
         explicit_thinking = ""
-        think_match = re.search(r'<(?:think|thought|thinking|reasoning)>(.*?)(?:</(?:think|thought|thinking|reasoning)>|$)', response, re.DOTALL | re.IGNORECASE)
+        think_match = re.search(
+            r"<(?:think|thought|thinking|reasoning)>(.*?)(?:</(?:think|thought|thinking|reasoning)>|$)",
+            response,
+            re.DOTALL | re.IGNORECASE,
+        )
         if think_match:
             explicit_thinking = think_match.group(1).strip()
         else:
             prefix_match = re.match(
-                r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)(.*)',
-                response, re.DOTALL | re.IGNORECASE
+                r"^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)(.*)",
+                response,
+                re.DOTALL | re.IGNORECASE,
             )
             if prefix_match:
                 explicit_thinking = prefix_match.group(1).strip()
 
         def _get_thinking(tag_start_pos: int) -> str:
             pre_tag_text = response[:tag_start_pos].strip()
-            cleaned_pre = re.sub(r'<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)', '', pre_tag_text, flags=re.IGNORECASE).strip()
-            cleaned_pre = re.sub(r'^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)', '', cleaned_pre, flags=re.IGNORECASE).strip()
-            if explicit_thinking and cleaned_pre and cleaned_pre not in explicit_thinking:
+            cleaned_pre = re.sub(
+                r"<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)",
+                "",
+                pre_tag_text,
+                flags=re.IGNORECASE,
+            ).strip()
+            cleaned_pre = re.sub(
+                r"^\s*(?:thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)",
+                "",
+                cleaned_pre,
+                flags=re.IGNORECASE,
+            ).strip()
+            if (
+                explicit_thinking
+                and cleaned_pre
+                and cleaned_pre not in explicit_thinking
+            ):
                 return f"{explicit_thinking}\n\n{cleaned_pre}"
             return explicit_thinking or cleaned_pre
 
         # 1. Check for <tool_call>...</tool_call> (standard tag for Qwen / Llama models)
-        tool_call_match = re.search(r'<tool_call>\s*(.*?)(?:</tool_call>|$)', response, re.DOTALL | re.IGNORECASE)
+        tool_call_match = re.search(
+            r"<tool_call>\s*(.*?)(?:</tool_call>|$)",
+            response,
+            re.DOTALL | re.IGNORECASE,
+        )
         if tool_call_match and tool_call_match.group(1).strip():
             raw_payload = tool_call_match.group(1).strip()
             thinking = _get_thinking(tool_call_match.start())
             parsed_json = _clean_and_parse_json(raw_payload)
-            
-            tool_name = parsed_json.get("name") or parsed_json.get("tool") or parsed_json.get("action")
-            tool_args = parsed_json.get("arguments") or parsed_json.get("args") or parsed_json
-            
+
+            tool_name = (
+                parsed_json.get("name")
+                or parsed_json.get("tool")
+                or parsed_json.get("action")
+            )
+            tool_args = (
+                parsed_json.get("arguments") or parsed_json.get("args") or parsed_json
+            )
+
             if tool_name:
                 t_name = str(tool_name).upper()
                 if isinstance(tool_args, str):
                     tool_args = _clean_and_parse_json(tool_args)
-                return ("tool", thinking, f"{t_name}({json.dumps(tool_args)})", [], t_name, tool_args)
+                return (
+                    "tool",
+                    thinking,
+                    f"{t_name}({json.dumps(tool_args)})",
+                    [],
+                    t_name,
+                    tool_args,
+                )
 
         # 2. Check for <TOOL name="...">JSON</TOOL> or <tool name="...">JSON</tool>
         tool_match = re.search(
             r'<TOOL\s+name=["\'](\w+)["\']>\s*(.*?)(?:</TOOL>|$)',
-            response, re.DOTALL | re.IGNORECASE,
+            response,
+            re.DOTALL | re.IGNORECASE,
         )
         if tool_match and tool_match.group(2).strip():
             tool_name = tool_match.group(1).upper()
             raw_args = tool_match.group(2).strip()
             thinking = _get_thinking(tool_match.start())
             tool_args = _clean_and_parse_json(raw_args)
-            return ("tool", thinking, f"{tool_name}({raw_args})", [], tool_name, tool_args)
+            return (
+                "tool",
+                thinking,
+                f"{tool_name}({raw_args})",
+                [],
+                tool_name,
+                tool_args,
+            )
 
         # 2b. Check for <action>NAME {JSON}</action> — fallback shape when grammar is off
         action_tag_match = re.search(
-            r'<action>\s*(\w+)\s*(?:\{.*?\})?(?:</action>|$)',
-            response, re.DOTALL | re.IGNORECASE,
+            r"<action>\s*(\w+)\s*(.*?)(?:</action>|$)",
+            response,
+            re.DOTALL | re.IGNORECASE,
         )
         if action_tag_match and action_tag_match.group(1).strip():
             tool_name = action_tag_match.group(1).upper()
             thinking = _get_thinking(action_tag_match.start())
-            # Try to extract JSON args from inside the tag
-            tag_content = action_tag_match.group(0)
-            json_match = re.search(r'\{.*\}', tag_content, re.DOTALL)
-            if json_match:
-                tool_args = _clean_and_parse_json(json_match.group(0))
+            # Extract the first balanced JSON object from inside the tag so we
+            # never lose args to an unclosed <action> tag or grab trailing prose.
+            json_obj = _extract_balanced_json_object(action_tag_match.group(0))
+            if json_obj:
+                tool_args = _clean_and_parse_json(json_obj)
             else:
                 tool_args = {}
-            return ("tool", thinking, f"{tool_name}({json.dumps(tool_args)})", [], tool_name, tool_args)
+            return (
+                "tool",
+                thinking,
+                f"{tool_name}({json.dumps(tool_args)})",
+                [],
+                tool_name,
+                tool_args,
+            )
 
         # 3. Check for <WRITE_FILE path="...">content</WRITE_FILE>
         write_tag_match = re.search(
             r'<WRITE_FILE\s+path=["\']([^"\']+)["\']>\s*(.*?)(?:</WRITE_FILE>|$)',
-            response, re.DOTALL | re.IGNORECASE,
+            response,
+            re.DOTALL | re.IGNORECASE,
         )
         if write_tag_match:
             path_val = write_tag_match.group(1).strip()
             content_val = write_tag_match.group(2)
             thinking = _get_thinking(write_tag_match.start())
-            return ("tool", thinking, f"WRITE_FILE({path_val})", [], "WRITE_FILE", {"path": path_val, "content": content_val})
+            return (
+                "tool",
+                thinking,
+                f"WRITE_FILE({path_val})",
+                [],
+                "WRITE_FILE",
+                {"path": path_val, "content": content_val},
+            )
 
         # 3b. Check for JSON array output (fallback for Qwen JSON outputs)
-        json_array_match = re.search(r'(?:```(?:json)?\s*)?(\[\s*\{\s*["\'](?:tool_name|name|action|tool)["\'].*?\}\s*\])(?:\s*```)?', response, re.DOTALL | re.IGNORECASE)
+        json_array_match = re.search(
+            r'(?:```(?:json)?\s*)?(\[\s*\{\s*["\'](?:tool_name|name|action|tool)["\'].*?\}\s*\])(?:\s*```)?',
+            response,
+            re.DOTALL | re.IGNORECASE,
+        )
         if json_array_match:
             try:
                 first_tool = _clean_and_parse_json(json_array_match.group(1))
                 if first_tool and isinstance(first_tool, dict):
-                    t_name = (first_tool.get("tool_name") or first_tool.get("name") or first_tool.get("action") or first_tool.get("tool") or "").upper()
+                    t_name = (
+                        first_tool.get("tool_name")
+                        or first_tool.get("name")
+                        or first_tool.get("action")
+                        or first_tool.get("tool")
+                        or ""
+                    ).upper()
                     if t_name:
-                        t_args = first_tool.get("params") or first_tool.get("arguments") or first_tool.get("args")
+                        t_args = (
+                            first_tool.get("params")
+                            or first_tool.get("arguments")
+                            or first_tool.get("args")
+                        )
                         if t_args is None:
                             t_args = dict(first_tool)
                             t_args.pop("tool_name", None)
                             t_args.pop("name", None)
                             t_args.pop("action", None)
                             t_args.pop("tool", None)
-                        
+
                         thinking = _get_thinking(json_array_match.start())
-                        return ("tool", thinking, f"{t_name}({json.dumps(t_args)})", [], t_name, t_args)
+                        return (
+                            "tool",
+                            thinking,
+                            f"{t_name}({json.dumps(t_args)})",
+                            [],
+                            t_name,
+                            t_args,
+                        )
             except Exception:
                 pass
 
         # 4. Check for <CODE>...</CODE>
-        code_match = re.search(r"<CODE(?:\s+[^>]*)?>(.*?)(?:</CODE>|$)", response, re.DOTALL)
+        code_match = re.search(
+            r"<CODE(?:\s+[^>]*)?>(.*?)(?:</CODE>|$)", response, re.DOTALL
+        )
         if not code_match:
-            code_match = re.search(r"(?<!`)<CODE(?:\s+[^>]*)?>(.*?)</(?:CODE|code)>", response, re.DOTALL | re.IGNORECASE)
+            code_match = re.search(
+                r"(?<!`)<CODE(?:\s+[^>]*)?>(.*?)</(?:CODE|code)>",
+                response,
+                re.DOTALL | re.IGNORECASE,
+            )
 
         if code_match and code_match.group(1).strip():
             content = code_match.group(1).strip()
             # Clean up any surrounding markdown code fences (e.g. ```python ... ```) inside <CODE>
-            content = re.sub(r'^\s*```(?:python|py)?\s*\n?', '', content, flags=re.IGNORECASE)
-            content = re.sub(r'\n?\s*```\s*$', '', content).strip()
+            content = re.sub(
+                r"^\s*```(?:python|py)?\s*\n?", "", content, flags=re.IGNORECASE
+            )
+            content = re.sub(r"\n?\s*```\s*$", "", content).strip()
 
             thinking = _get_thinking(code_match.start())
-            
+
             # Check if code block specifies a target file writing intent (e.g. # file: path/foo.py or # filename: foo.py)
-            file_match = re.search(r"^(?:#|//)\s*(?:file|filename|filepath|path)\s*:\s*([^\n\r]+)", content, re.IGNORECASE)
+            file_match = re.search(
+                r"^(?:#|//)\s*(?:file|filename|filepath|path)\s*:\s*([^\n\r]+)",
+                content,
+                re.IGNORECASE,
+            )
             if file_match:
                 target_path = file_match.group(1).strip()
                 # Remove header line from content
-                cleaned_content = re.sub(r"^(?:#|//)\s*(?:file|filename|filepath|path)\s*:\s*[^\n\r]+\n?", "", content).strip()
-                return ("tool", thinking, f"WRITE_FILE({target_path})", [], "WRITE_FILE", {"path": target_path, "content": cleaned_content})
+                cleaned_content = re.sub(
+                    r"^(?:#|//)\s*(?:file|filename|filepath|path)\s*:\s*[^\n\r]+\n?",
+                    "",
+                    content,
+                ).strip()
+                return (
+                    "tool",
+                    thinking,
+                    f"WRITE_FILE({target_path})",
+                    [],
+                    "WRITE_FILE",
+                    {"path": target_path, "content": cleaned_content},
+                )
 
             # Validate if content actually looks like executable code or code file declaration
             import ast
+
             is_valid_code = False
             try:
                 ast.parse(content)
                 is_valid_code = True
             except SyntaxError:
                 words = content.split()
-                prose_indicators = sum(1 for w in words if w.lower().strip("`'\",.") in {
-                    'the', 'is', 'are', 'was', 'were', 'will', 'would', 'should',
-                    'could', 'have', 'has', 'had', 'been', 'being', 'this', 'that',
-                    'with', 'from', 'into', 'since', 'because', 'however', 'therefore',
-                    'i', 'we', 'they', 'he', 'she', 'it', 'my', 'your', 'executing',
-                    'here', 'generating', 'result', 'file', 'asking'
-                })
-                is_prose = len(words) > 3 and (prose_indicators / max(len(words), 1)) > 0.1
-                if not is_prose and re.search(r'\b(?:def|class|import|from|return|const|let|function|fn)\b', content):
+                prose_indicators = sum(
+                    1
+                    for w in words
+                    if w.lower().strip("`'\",.")
+                    in {
+                        "the",
+                        "is",
+                        "are",
+                        "was",
+                        "were",
+                        "will",
+                        "would",
+                        "should",
+                        "could",
+                        "have",
+                        "has",
+                        "had",
+                        "been",
+                        "being",
+                        "this",
+                        "that",
+                        "with",
+                        "from",
+                        "into",
+                        "since",
+                        "because",
+                        "however",
+                        "therefore",
+                        "i",
+                        "we",
+                        "they",
+                        "he",
+                        "she",
+                        "it",
+                        "my",
+                        "your",
+                        "executing",
+                        "here",
+                        "generating",
+                        "result",
+                        "file",
+                        "asking",
+                    }
+                )
+                is_prose = (
+                    len(words) > 3 and (prose_indicators / max(len(words), 1)) > 0.1
+                )
+                if not is_prose and re.search(
+                    r"\b(?:def|class|import|from|return|const|let|function|fn)\b",
+                    content,
+                ):
                     is_valid_code = True
 
             if is_valid_code:
                 return ("code", thinking, content, [], None, None)
             else:
                 # Content inside <CODE> tag is natural language/prose, reclassify as thinking
-                thinking_text = f"{thinking}\n\n{content}".strip() if thinking else content
+                thinking_text = (
+                    f"{thinking}\n\n{content}".strip() if thinking else content
+                )
                 return ("thinking", thinking_text, "", [], None, None)
 
         # 5. Check for <SUB_QUERY>...</SUB_QUERY>
-        sub_query_matches = re.findall(r"<SUB_QUERY>(.*?)(?:</SUB_QUERY>|$)", response, re.DOTALL | re.IGNORECASE)
+        sub_query_matches = re.findall(
+            r"<SUB_QUERY>(.*?)(?:</SUB_QUERY>|$)", response, re.DOTALL | re.IGNORECASE
+        )
         if sub_query_matches:
             first_tag_pos = response.lower().find("<sub_query>")
-            thinking = _get_thinking(first_tag_pos) if first_tag_pos != -1 else explicit_thinking
-            return ("sub_queries", thinking, sub_query_matches[0].strip(),
-                    [q.strip() for q in sub_query_matches[1:]], None, None)
+            thinking = (
+                _get_thinking(first_tag_pos)
+                if first_tag_pos != -1
+                else explicit_thinking
+            )
+            return (
+                "sub_queries",
+                thinking,
+                sub_query_matches[0].strip(),
+                [q.strip() for q in sub_query_matches[1:]],
+                None,
+                None,
+            )
 
         # 6. Check for <FINAL_ANSWER>...</FINAL_ANSWER>
-        final_match = re.search(r"<FINAL_ANSWER>(.*?)(?:</FINAL_ANSWER>|$)", response, re.DOTALL | re.IGNORECASE)
+        final_match = re.search(
+            r"<FINAL_ANSWER>(.*?)(?:</FINAL_ANSWER>|$)",
+            response,
+            re.DOTALL | re.IGNORECASE,
+        )
         if final_match:
             raw_content = final_match.group(1).strip()
-            pre_text = response[:final_match.start()].strip()
-            
-            is_template = bool(re.match(r"^(?:your|the)?\s*(?:complete\s+)?answer$", raw_content.lower()))
-            is_mid_sentence = bool(re.search(r"\b(?:use|using|with|by|in|written|into|output|tag|provide|format|wrap)\s*[`'\"]*$", pre_text, re.IGNORECASE))
+            pre_text = response[: final_match.start()].strip()
+
+            is_template = bool(
+                re.match(
+                    r"^(?:your|the)?\s*(?:complete\s+)?answer$", raw_content.lower()
+                )
+            )
+            is_mid_sentence = bool(
+                re.search(
+                    r"\b(?:use|using|with|by|in|written|into|output|tag|provide|format|wrap)\s*[`'\"]*$",
+                    pre_text,
+                    re.IGNORECASE,
+                )
+            )
 
             if not is_template and not is_mid_sentence and raw_content:
                 thinking = _get_thinking(final_match.start())
                 return ("final_answer", thinking, raw_content, [], None, None)
 
         # 7. Direct answer / non-tool response handling
-        cleaned_body = re.sub(r'<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)', '', response, flags=re.IGNORECASE).strip()
-        has_unclosed_tool_attempt = bool(re.search(r'<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b', cleaned_body, re.IGNORECASE))
-
-        reasoning_prefix_match = re.match(
-            r'^\s*(?:system\s+thought[:\s]*|thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)',
-            response.strip(), re.IGNORECASE
+        cleaned_body = re.sub(
+            r"<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)",
+            "",
+            response,
+            flags=re.IGNORECASE,
+        ).strip()
+        has_unclosed_tool_attempt = bool(
+            re.search(
+                r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b",
+                cleaned_body,
+                re.IGNORECASE,
+            )
         )
 
-        execution_intent = bool(re.search(
-            r'\b(?:I\s+will|let\s*me|I\s+need\s+to|going\s+to|will\s+start\s+by|create|write|inspect)\s+.*?\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|RUN_COMMAND|INSPECT_WEB|WEB_SEARCH|WEB_FETCH)\b',
-            cleaned_body, re.IGNORECASE
-        ))
+        reasoning_prefix_match = re.match(
+            r"^\s*(?:system\s+thought[:\s]*|thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)",
+            response.strip(),
+            re.IGNORECASE,
+        )
 
-        plan_action_start = bool(re.match(
-            r'^(?:1[\.\s]|step\s*1|first,|I\s+will\s+start|I\s+need\s+to\s+first)\s*(?:I\s+will|let\s*me|use|call|run|create|write|read|inspect|list|search|find|edit|check|verify)',
-            cleaned_body, re.IGNORECASE
-        ))
+        execution_intent = bool(
+            re.search(
+                r"\b(?:I\s+will|let\s*me|I\s+need\s+to|going\s+to|will\s+start\s+by|create|write|inspect)\s+.*?\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|RUN_COMMAND|INSPECT_WEB|WEB_SEARCH|WEB_FETCH)\b",
+                cleaned_body,
+                re.IGNORECASE,
+            )
+        )
 
-        has_plan_file = bool(re.search(r'implementation_plan\.md', cleaned_body, re.IGNORECASE))
+        plan_action_start = bool(
+            re.match(
+                r"^(?:1[\.\s]|step\s*1|first,|I\s+will\s+start|I\s+need\s+to\s+first)\s*(?:I\s+will|let\s*me|use|call|run|create|write|read|inspect|list|search|find|edit|check|verify)",
+                cleaned_body,
+                re.IGNORECASE,
+            )
+        )
 
-        is_planning_cot = bool(reasoning_prefix_match) or execution_intent or plan_action_start or has_plan_file
+        has_plan_file = bool(
+            re.search(r"implementation_plan\.md", cleaned_body, re.IGNORECASE)
+        )
+
+        is_planning_cot = (
+            bool(reasoning_prefix_match)
+            or execution_intent
+            or plan_action_start
+            or has_plan_file
+        )
 
         if is_planning_cot and not has_unclosed_tool_attempt:
-            combined_thinking = f"{explicit_thinking}\n\n{cleaned_body}".strip() if explicit_thinking else cleaned_body
+            combined_thinking = (
+                f"{explicit_thinking}\n\n{cleaned_body}".strip()
+                if explicit_thinking
+                else cleaned_body
+            )
             if reasoning_prefix_match:
-                combined_thinking = re.sub(r'^\s*(?:system\s+thought[:\s]*|thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)', '', combined_thinking, flags=re.IGNORECASE).strip()
+                combined_thinking = re.sub(
+                    r"^\s*(?:system\s+thought[:\s]*|thought\s+|\[(?:thought|thinking|reasoning|plan)\][:\s]*|(?:thought|thinking|reasoning|plan)(?:\s+process)?\s*[\n\r:]\s*|(?:chain\s*of\s*thought)[:\s]+)",
+                    "",
+                    combined_thinking,
+                    flags=re.IGNORECASE,
+                ).strip()
             return ("thinking", combined_thinking or cleaned_body, "", [], None, None)
 
         if not has_unclosed_tool_attempt and cleaned_body:
             if explicit_thinking:
                 return ("final_answer", explicit_thinking, cleaned_body, [], None, None)
-            
-            final_cleaned = re.sub(r'</?FINAL_ANSWER>', '', cleaned_body, flags=re.IGNORECASE).strip()
+
+            final_cleaned = re.sub(
+                r"</?FINAL_ANSWER>", "", cleaned_body, flags=re.IGNORECASE
+            ).strip()
             if final_cleaned:
                 return ("final_answer", "", final_cleaned, [], None, None)
 

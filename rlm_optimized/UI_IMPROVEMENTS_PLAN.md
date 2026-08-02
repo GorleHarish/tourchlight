@@ -230,8 +230,11 @@ diff rendering, app-wiring smoke). Full suite: 271 passed; ruff clean on all new
 **Objective:** discoverability + glanceability. → `command_palette.py`, `status_bar.py`,
 `file_tree.py`.
 
-- **Command palette** (`ctrl+k`): fuzzy-search over all actions (bindings + slash commands +
+- **Command palette** (`ctrl+p`): fuzzy-search over all actions (bindings + slash commands +
   file open). Reuse existing `ModelPickerModal`/`ShortcutsHelpModal` building blocks.
+  ⚠️ Do **not** bind anything else to `ctrl+p` — it is the standard palette key (Textual default
+  and every IDE). "Compact Context" lives on `ctrl+n`; `ctrl+k` must stay free for the input
+  widget (TextArea uses it to delete to end of line).
 - **Slash-command autocomplete** in `#user-input`: on `/`, show a suggestion `ListView` below
   the TextArea (fuzzy filter on `_handle_slash_command` L1687 names); Enter accepts, Esc dismisses.
   Optionally `@`-mention file completion from the tree.
@@ -241,14 +244,14 @@ diff rendering, app-wiring smoke). Full suite: 271 passed; ruff clean on all new
 - **Git-aware file tree:** decorate `DirectoryTree` entries with `M/A/D/U/??` from
   `git status --porcelain` (cheap, refreshed on write; cache invalidation only). Row prefix badges
   like VS Code.
-- **Acceptance:** palette opens at `ctrl+k`; `/comp<Tab>` completes; context gauge renders as a
+- **Acceptance:** palette opens at `ctrl+p`; `/comp<Tab>` completes; context gauge renders as a
   bar; tree shows modified files.
 
 **Status: Phase 4 ✅ done** — IDE shell polish. New `tui_widgets/command_palette.py`,
 `status_bar.py`, `file_tree.py` (all pure helpers trivially unit-tested + thin Textual widgets,
 CSS-first, theme vars only):
 
-- **Command palette** (`Ctrl+K`): `CommandPalette(ModalScreen)` fuzzy-searches app bindings +
+- **Command palette** (`Ctrl+P`): `CommandPalette(ModalScreen)` fuzzy-searches app bindings +
   slash commands + project files (prefix > substring > subsequence scoring; dot/vendor dirs
   excluded, capped at 200 files). Enter runs, Esc cancels, ↑/↓/Home/End navigate.
 - **Prompt autocomplete**: `PromptTextArea(TextArea)` subclass turns Enter into submit (stock
