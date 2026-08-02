@@ -12,8 +12,43 @@ import re
 from rich.markup import escape
 
 
-def build_plan_text(project_root: str, is_goal: bool = False) -> str:
-    """Render Production-Grade Implementation Plan (top) and Task Hierarchy (bottom)."""
+def build_plan_overview_text(project_root: str, is_goal: bool = False) -> str:
+    """Render Implementation Plan overview (title & mode badge)."""
+    plan_path = os.path.join(project_root, "implementation_plan.md")
+    alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
+    alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
+
+    target_file = None
+    if os.path.exists(plan_path):
+        target_file = plan_path
+    elif os.path.exists(alt_tasks_path):
+        target_file = alt_tasks_path
+    elif os.path.exists(alt_goal_path):
+        target_file = alt_goal_path
+
+    plan_title = "Active Development Goal"
+    if target_file and os.path.exists(target_file):
+        try:
+            if target_file.endswith(".json"):
+                with open(target_file, "r", encoding="utf-8") as f:
+                    goal_data = json.load(f)
+                plan_title = str(goal_data.get("goal") or goal_data.get("title") or "Active Goal Spec")
+            else:
+                with open(target_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.startswith("# "):
+                            plan_title = line.lstrip("# ").strip()
+                            break
+        except Exception:
+            pass
+
+    if is_goal:
+        return f"[bold green]🎯 GOAL MODE[/bold green]\n[bold white]{escape(plan_title)}[/bold white]"
+    return f"[bold white]{escape(plan_title)}[/bold white]"
+
+
+def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
+    """Render Task Checklist hierarchy & progress bar."""
     plan_path = os.path.join(project_root, "implementation_plan.md")
     alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
     alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
@@ -31,7 +66,6 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
         target_file = alt_goal_path
         file_type = "json"
 
-    plan_title = "Active Development Goal"
     active_tasks = []
     completed_tasks = []
     in_progress_tasks = []
@@ -45,7 +79,6 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
             if file_type == "json":
                 with open(target_file, "r", encoding="utf-8") as f:
                     goal_data = json.load(f)
-                plan_title = str(goal_data.get("goal") or goal_data.get("title") or "Active Goal Spec")
                 raw_tasks = goal_data.get("tasks", [])
                 for t in raw_tasks:
                     st = t.get("status", "pending")
@@ -63,11 +96,6 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
             else:
                 with open(target_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
-
-                for line in lines:
-                    if line.startswith("# "):
-                        plan_title = line.lstrip("# ").strip()
-                        break
 
                 chk_regex = re.compile(
                     r"^(?:[-*+>]|\d+[\.\)])?\s*\[([ xX/\-v✓~])\]\s*(.*)$"
@@ -95,40 +123,41 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
     total = len(completed_tasks) + len(in_progress_tasks) + len(active_tasks)
     completed = len(completed_tasks)
 
-    # 1. Top Section: Implementation Plan & Mode Badge
-    mode_badge = "[bold green]🎯 GOAL MODE[/bold green]" if is_goal else "[bold cyan]💬 CHAT MODE[/bold cyan]"
-    plan_header = f"[bold cyan]📄 IMPLEMENTATION PLAN[/bold cyan]  {mode_badge}"
-    plan_body = f"[bold white]{escape(plan_title)}[/bold white]"
-
-    # 2. Bottom Section: Tasks & TODO Hierarchy
-    task_header = "[bold cyan]☑ ACTIVE TASKS & TODO[/bold cyan]"
     if total == 0:
-        task_list_markup = "[dim]No active plan checkboxes found.\nWaiting for goal initialization...[/dim]"
-        prog_str = "[dim]0/0 tasks completed[/dim]"
-    else:
-        pct = int((completed / total) * 100) if total > 0 else 0
-        bar_width = 12
-        filled = min(bar_width, round((pct / 100.0) * bar_width))
-        bar = "█" * filled + "░" * (bar_width - filled)
-        prog_str = (
-            f"[{bar}] [bold green]{pct}%[/bold green] [dim]({completed}/{total})[/dim]"
-        )
+        return "[dim]No active plan checkboxes found.\nWaiting for goal initialization...[/dim]"
 
-        sections = []
-        if in_progress_tasks:
-            sections.append("[bold yellow]► IN PROGRESS[/bold yellow]\n" + "\n".join(in_progress_tasks))
-        if active_tasks:
-            sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks[:8]))
-        if completed_tasks:
-            sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks[:8]))
+    pct = int((completed / total) * 100) if total > 0 else 0
+    bar_width = 12
+    filled = min(bar_width, round((pct / 100.0) * bar_width))
+    bar = "█" * filled + "░" * (bar_width - filled)
+    prog_str = (
+        f"[{bar}] [bold green]{pct}%[/bold green] [dim]({completed}/{total})[/dim]"
+    )
 
-        task_list_markup = "\n\n".join(sections)
+    sections = []
+    if in_progress_tasks:
+        sections.append("[bold yellow]► IN PROGRESS[/bold yellow]\n" + "\n".join(in_progress_tasks))
+    if active_tasks:
+        sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks[:8]))
+    if completed_tasks:
+        sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks[:8]))
+
+    task_list_markup = "\n\n".join(sections)
+    return f"{prog_str}\n\n{task_list_markup}"
+
+
+def build_plan_text(project_root: str, is_goal: bool = False) -> str:
+    """Render Production-Grade Implementation Plan (top) and Task Hierarchy (bottom)."""
+    overview = build_plan_overview_text(project_root, is_goal)
+    checklist = build_task_checklist_text(project_root, is_goal)
+
+    plan_header = "[bold cyan]📄 IMPLEMENTATION PLAN[/bold cyan]"
+    task_header = "[bold cyan]☑ ACTIVE TASKS & TODO[/bold cyan]"
 
     return (
         f"{plan_header}\n"
-        f"{plan_body}\n\n"
+        f"{overview}\n\n"
         f"───────────────────────────────\n"
         f"{task_header}\n"
-        f"{prog_str}\n\n"
-        f"{task_list_markup}"
+        f"{checklist}"
     )

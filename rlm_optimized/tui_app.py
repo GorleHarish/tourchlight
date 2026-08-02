@@ -65,7 +65,11 @@ from rlm_optimized.config import (
 from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized, Step
 from core.tools.classification import CONFIRM, REVIEW
 from rlm_optimized.memory_monitor import format_memory_status, is_memory_safe
-from rlm_optimized.tui_widgets.format import build_plan_text
+from rlm_optimized.tui_widgets.format import (
+    build_plan_overview_text,
+    build_plan_text,
+    build_task_checklist_text,
+)
 from rlm_optimized.tui_widgets.transcript import (
     MessageCard,
     StreamingView,
@@ -1090,11 +1094,12 @@ class TorchlightApp(App):
     CSS_PATH = "tui_app.tcss"
 
     BINDINGS = [
-        Binding("ctrl+p", "command_palette", "Command Palette", show=True),
+        Binding("ctrl+p", "command_palette", "Command Palette", show=False),
         Binding("ctrl+h", "show_help", "Help", show=True),
         Binding("ctrl+m", "select_model", "Model", show=True),
-        Binding("ctrl+g", "select_mode", "Mode", show=True),
-        Binding("ctrl+b", "toggle_sidebar", "Sidebar", show=True),
+        Binding("ctrl+g", "select_mode", "Mode", show=False),
+        Binding("ctrl+b", "toggle_left_sidebar", "Left Sidebar", show=True),
+        Binding("ctrl+r", "toggle_right_sidebar", "Right Sidebar", show=True),
         Binding("ctrl+t", "cycle_theme", "Theme", show=False),
         Binding("ctrl+n", "compact_context", "Compact Context", show=False),
         Binding("ctrl+o", "open_folder", "Open Folder", show=False),
@@ -1102,7 +1107,6 @@ class TorchlightApp(App):
         Binding("ctrl+x", "copy_selection", "Copy Selection", show=False),
         Binding("ctrl+y", "copy_chat", "Copy Chat", show=False),
         Binding("ctrl+e", "copy_last", "Copy Last", show=False),
-        Binding("ctrl+r", "reset_session", "Reset REPL", show=False),
         Binding("ctrl+l", "clear", "Clear Chat", show=False),
         Binding("ctrl+c", "quit", "Quit", show=True),
     ]
@@ -1250,10 +1254,21 @@ class TorchlightApp(App):
 
             # 3. Right Sidebar: Implementation Plan & TODO Tasks
             with Vertical(id="plan-sidebar"):
-                yield Static(
-                    "📋 IMPLEMENTATION PLAN & TASKS", classes="panel-header-title"
-                )
-                yield Static(self._build_plan_text(), id="plan-panel")
+                if Collapsible is not None:
+                    yield Collapsible(
+                        Static(self._build_plan_overview_text(), id="plan-overview-panel"),
+                        title="📄 IMPLEMENTATION PLAN",
+                        collapsed=False,
+                        id="plan-overview-collapsible",
+                    )
+                    yield Collapsible(
+                        Static(self._build_task_checklist_text(), id="task-checklist-panel"),
+                        title="☑ ACTIVE TASKS & TODO",
+                        collapsed=False,
+                        id="task-checklist-collapsible",
+                    )
+                else:
+                    yield Static(self._build_plan_text(), id="plan-panel")
 
         # Bottom Context Progress & Telemetry Meter
         with Vertical(id="telemetry-bar"):
@@ -1541,6 +1556,22 @@ class TorchlightApp(App):
 
         return f"{speedometer}\n{memory_block}"
 
+    def _build_plan_overview_text(self) -> str:
+        project_root = getattr(self.engine, "project_root", os.getcwd())
+        is_goal = bool(
+            getattr(self.engine, "execution_mode", None)
+            and getattr(self.engine.execution_mode, "value", None) == "GOAL"
+        )
+        return build_plan_overview_text(project_root, is_goal)
+
+    def _build_task_checklist_text(self) -> str:
+        project_root = getattr(self.engine, "project_root", os.getcwd())
+        is_goal = bool(
+            getattr(self.engine, "execution_mode", None)
+            and getattr(self.engine.execution_mode, "value", None) == "GOAL"
+        )
+        return build_task_checklist_text(project_root, is_goal)
+
     def _build_plan_text(self) -> str:
         project_root = getattr(self.engine, "project_root", os.getcwd())
         is_goal = bool(
@@ -1573,7 +1604,7 @@ class TorchlightApp(App):
 
         return (
             f"[bold cyan]> SYSTEM:[/] [bold green]{state_str}[/bold green]  │  "
-            f"[bold cyan]MODE:[/] [bold white]{'🎯 GOAL' if getattr(self.engine, 'execution_mode', None) and getattr(self.engine.execution_mode, 'value', None) == 'GOAL' else '💬 CHAT'}[/bold white]  │  "
+            f"[bold cyan]LIFECYCLE:[/] [bold green]⚡ ADAPTIVE[/bold green]  │  "
             f"[bold cyan]CONTEXT:[/] [{bar}] [bold yellow]{pct}%[/bold yellow] [dim]({tokens_est:,}/{ctx_max:,})[/dim]  │  "
             f"[bold cyan]SPEED:[/] [bold green]⚡ {tps_str}[/bold green]"
         )
@@ -1622,7 +1653,17 @@ class TorchlightApp(App):
         except Exception:
             pass
         try:
-            pp = self.query_one("#plan-panel")
+            po = self.query_one("#plan-overview-panel", Static)
+            po.update(self._build_plan_overview_text())
+        except Exception:
+            pass
+        try:
+            pt = self.query_one("#task-checklist-panel", Static)
+            pt.update(self._build_task_checklist_text())
+        except Exception:
+            pass
+        try:
+            pp = self.query_one("#plan-panel", Static)
             pp.update(self._build_plan_text())
         except Exception:
             pass
@@ -3201,10 +3242,21 @@ class TorchlightApp(App):
         self.push_screen(FolderPickerModal(self.engine.project_root), _on_picker_result)
 
     def action_toggle_sidebar(self) -> None:
+        self.action_toggle_left_sidebar()
+
+    def action_toggle_left_sidebar(self) -> None:
         try:
             sidebar = self.query_one("#explorer-sidebar")
-            self._show_sidebar = not self._show_sidebar
+            self._show_sidebar = not getattr(self, "_show_sidebar", True)
             sidebar.display = self._show_sidebar
+        except Exception:
+            pass
+
+    def action_toggle_right_sidebar(self) -> None:
+        try:
+            sidebar = self.query_one("#plan-sidebar")
+            self._show_plan_sidebar = not getattr(self, "_show_plan_sidebar", True)
+            sidebar.display = self._show_plan_sidebar
         except Exception:
             pass
 

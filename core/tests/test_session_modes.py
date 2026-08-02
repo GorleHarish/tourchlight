@@ -13,10 +13,10 @@ from core.memory.manager import TieredMemory, MemoryConfig
 
 
 def test_session_state_execution_mode_default():
-    """Verify default session state execution mode is CHAT."""
+    """Verify default session state execution mode is UNIFIED."""
     state = SessionState()
-    assert state.execution_mode == ExecutionMode.CHAT
-    assert state.execution_mode.value == "chat"
+    assert state.execution_mode == ExecutionMode.UNIFIED
+    assert state.execution_mode.value == "unified"
 
 
 def test_ensure_project_initialized_patches_gitignore(tmp_path):
