@@ -94,7 +94,7 @@ rlm_optimized/                              # TUI frontend
 ### Key Design Decisions
 - **Shared core library**: `core/` is standalone with `pyproject.toml`, both frontends import from it
 - **Phase-Tailored System Prompting**: Dynamically injects phase-specific instructions for `plan`, `code`, `troubleshoot`, and `chat` alongside temperature presets.
-- **Dynamic L0 Working Memory Scratchpad**: Renders active goal, modified files, active errors, failing tests, key decisions, and `tried_and_failed` anti-looping strategy logs into system context on every turn.
+- **Dynamic L0 Working Memory Scratchpad**: Renders active goal, modified files, active errors, failing tests, key decisions, and `tried_and_failed` anti-looping strategy logs into system context on every turn. Budget is **headroom-adaptive** (`core/memory/budget.py::ContextBudget`): expands up to ~1200 tokens to surface more entries when context is idle, shrinks to ~150 tokens under pressure; priority-ordered so the highest-value state always survives.
 - **Active Model Memory & Dynamic Task Re-Planning**: `SAVE_MEMORY` tool enables explicit logging of facts/decisions/failed strategies; `UPDATE_TASK_GRAPH` tool enables dynamic mid-trajectory task insertions (`add_subtask`), task skips (`skip_task`), and status mutations in `.torchlight/goal_spec.json`.
 - **AST-Driven Inter-Task Symbol Handoffs**: Automatically extracts newly created or modified function/class signatures via `SymbolIndex` upon task completion, enriching task output summaries for downstream epoch handoffs.
 - **Anti-Symptom-Patching Directives**: Hardcoded directives in `SYSTEM_PROMPT` forbidding masking symptoms, swallowing exceptions, returning dummy fallbacks, or deleting assertions.
