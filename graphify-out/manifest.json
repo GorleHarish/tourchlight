@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785778230.6969082,
-    "ast_hash": "73ce43058052d2b868c858e5c0f9b01a",
+    "mtime": 1785779956.0292792,
+    "ast_hash": "bbb250b194c38083d6440587b69e92bc",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -305,13 +305,13 @@
     "semantic_hash": "634c41eaca622a39df58aa713cd385bd"
   },
   "core/execution/autonomous_harness.py": {
-    "mtime": 1785662464.7591784,
-    "ast_hash": "d36c6e00ea5b6b7e6f5da18f0f0c8410",
+    "mtime": 1785779714.0648417,
+    "ast_hash": "8e9eb8dc4faa4de262b35fa8cf6d38be",
     "semantic_hash": ""
   },
   "core/execution/feedback_loop.py": {
-    "mtime": 1785659887.268008,
-    "ast_hash": "9a3ebbf83948a23a62918a2a77ca7dd5",
+    "mtime": 1785779798.5469449,
+    "ast_hash": "b2832c7e1541e74d6ebebb67ee1a442a",
     "semantic_hash": ""
   },
   "core/execution/run_harness.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": "dea4d7ca36f7eb4d9f443cd8575f30da"
   },
   "core/memory/manager.py": {
-    "mtime": 1785767636.0189524,
-    "ast_hash": "ffc6b18c69051ea0bdd792e68aeba2b2",
+    "mtime": 1785779565.0088317,
+    "ast_hash": "55cdb98d4d8cd1ea8656840be2713858",
     "semantic_hash": ""
   },
   "core/memory/models.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785776688.1188056,
-    "ast_hash": "6223c31cfdc67f394aed3c061a23a5cf",
+    "mtime": 1785779771.073461,
+    "ast_hash": "bf53f125a46579f14df8f96c616b21fc",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -790,8 +790,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_feedback_loop.py": {
-    "mtime": 1785658302.9247227,
-    "ast_hash": "9a04cd23aa4c2e3f9201e4f18f5296be",
+    "mtime": 1785779866.2890809,
+    "ast_hash": "00dd7e3b12912a0d57dddb8815334ecd",
     "semantic_hash": ""
   },
   "core/execution/trajectory.py": {
@@ -1047,6 +1047,11 @@
   "test_tui_app_2.py": {
     "mtime": 1785766250.598648,
     "ast_hash": "05ffc055f68882e86abe491af7673b23",
+    "semantic_hash": ""
+  },
+  "plans/agentic-loop-bugs-grammar.md": {
+    "mtime": 1785779308.9548714,
+    "ast_hash": "fdd47b42f1a7e405ec68789e3421ba09",
     "semantic_hash": ""
   }
 }

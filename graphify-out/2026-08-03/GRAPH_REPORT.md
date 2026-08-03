@@ -1,11 +1,11 @@
 # Graph Report - tourchlight v1_i6  (2026-08-03)
 
 ## Corpus Check
-- 208 files · ~142,644 words
+- 208 files · ~142,710 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2920 nodes · 5741 edges · 172 communities (151 shown, 21 thin omitted)
+- 2920 nodes · 5741 edges · 170 communities (149 shown, 21 thin omitted)
 - Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 521 edges (avg confidence: 0.56)
 - Token cost: 0 input · 0 output
 
@@ -123,7 +123,6 @@
 - workflows/graphify.md
 - web_server.py
 - main_optimized.py
-- CalculatorSkill
 - Target Quality Tiers
 - P1: Important Follow-On Work
 - Compression System
@@ -149,7 +148,6 @@
 - AutonomousHarness
 - ActionEntry
 - context_manager/prompts.py
-- ApprovalModal
 - context_manager/memory/embeddings.py
 - Schema Reference
 - MyCustomSkill
@@ -197,7 +195,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (172 total, 21 thin omitted)
+## Communities (170 total, 21 thin omitted)
 
 ### Community 0 - "implementations.py"
 Cohesion: 0.08
@@ -220,8 +218,8 @@ Cohesion: 0.08
 Nodes (26): test_tool_registry_execute(), test_tool_registry_execute_unknown(), test_tool_registry_get(), test_tool_registry_register(), test_tool_registry_risk_level(), test_tool_registry_risk_level_run_command(), test_tool_result_failure(), test_tool_result_success() (+18 more)
 
 ### Community 5 - "BaseSkill"
-Cohesion: 0.10
-Nodes (20): ABC, BaseSkill, create_default_registry(), _extract_markdown_skill_metadata(), GitSkill, _LazySkill, MarkdownDocumentSkill, Skills — external / plugin capabilities.  Skills are DIFFERENT from core tools: (+12 more)
+Cohesion: 0.09
+Nodes (22): ABC, BaseSkill, CalculatorSkill, create_default_registry(), _extract_markdown_skill_metadata(), GitSkill, _LazySkill, MarkdownDocumentSkill (+14 more)
 
 ### Community 6 - "LMStudioClient"
 Cohesion: 0.14
@@ -324,8 +322,8 @@ Cohesion: 0.08
 Nodes (24): Added, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved (+16 more)
 
 ### Community 31 - "Static"
-Cohesion: 0.09
-Nodes (19): DirectoryTree, Horizontal, AgentMemoryWidget, ComposeResult, Displays the live L0 Agent Brain Scratchpad., ComposeResult, ComposeResult, Single-row consolidated status bar (Phase 4).      Hosted where the old text met (+11 more)
+Cohesion: 0.08
+Nodes (20): DirectoryTree, Horizontal, AgentMemoryWidget, ComposeResult, Displays the live L0 Agent Brain Scratchpad., ComposeResult, ComposeResult, Single-row consolidated status bar (Phase 4).      Hosted where the old text met (+12 more)
 
 ### Community 32 - "PyASTVisitor"
 Cohesion: 0.14
@@ -353,7 +351,7 @@ Nodes (29): CompressionConfig, VerbatimCompactor — compress text while preserv
 
 ### Community 38 - "on"
 Cohesion: 0.05
-Nodes (20): DirectorySelected, NamedTuple, AgentStatusModal, FileActionModal, FolderPickerModal, on, Pressed, Selected (+12 more)
+Nodes (20): DirectorySelected, NamedTuple, AgentStatusModal, ApprovalModal, FileActionModal, FolderPickerModal, on, Pressed (+12 more)
 
 ### Community 39 - "core/memory/manager.py"
 Cohesion: 0.08
@@ -385,7 +383,7 @@ Nodes (5): Container, A status-aware tool call card.      Header shows the risk-
 
 ### Community 46 - "CopySelectionModal"
 Cohesion: 0.06
-Nodes (33): anyio, Tests for Phase-1 transcript widgets (message cards, streaming, thinking)., Smoke test: the real app mounts MessageCards and drives the streaming view., test_app_transcript_wiring(), test_card_meta_for(), test_estimate_token_count(), test_message_card_composes(), test_streaming_view_updates() (+25 more)
+Nodes (35): anyio, Tests for Phase-1 transcript widgets (message cards, streaming, thinking)., Smoke test: the real app mounts MessageCards and drives the streaming view., test_app_transcript_wiring(), test_card_meta_for(), test_estimate_token_count(), test_message_card_composes(), test_streaming_view_updates() (+27 more)
 
 ### Community 47 - "GitFileTree"
 Cohesion: 0.20
@@ -408,16 +406,16 @@ Cohesion: 0.15
 Nodes (18): anyio, Tests for Phase-4 consolidated status bar (gauge + segments widget)., test_build_status_segments_defaults(), test_build_status_segments_populated(), test_build_status_segments_running_no_tps_yet(), test_build_status_segments_server_offline_and_branch_escape(), test_gauge_markup_clamps_out_of_range(), test_gauge_markup_color_escalation() (+10 more)
 
 ### Community 52 - "SkillResult"
-Cohesion: 0.23
-Nodes (6): Any, ReproSkill, Any, Synchronous wrapper for use from non-async contexts., Trigger real load on first call, then delegate., SkillResult
+Cohesion: 0.20
+Nodes (7): Any, ReproSkill, Any, Synchronous wrapper for use from non-async contexts., Trigger real load on first call, then delegate., SkillResult, expr
 
 ### Community 53 - "ContextBudget"
 Cohesion: 0.08
 Nodes (15): _clamp(), ContextBudget, Token reserve kept for the recent-message window., Current fraction of the target window in use., Effective budget allocations for the current turn.      `used_tokens` is the liv, Token allowance for the L0 working memory scratchpad this turn., Max characters per scratchpad entry (longer when headroom is ample)., Max entries shown per state section (3 tight ... 8 rich). (+7 more)
 
 ### Community 54 - "tui_app.py"
-Cohesion: 0.12
-Nodes (17): fetch_provider_models(), Query an OpenAI-compatible /models endpoint (LM Studio, Ollama, llama.cpp)     a, create_client(), load_last_state(), main(), Torchlight Agent — Codex / Tiny-Brain 2 Style IDE TUI (Textual) Full-featured ID, # NOTE: The model badge button click is handled by on_model_badge_clicked, save_last_state() (+9 more)
+Cohesion: 0.14
+Nodes (16): fetch_provider_models(), Query an OpenAI-compatible /models endpoint (LM Studio, Ollama, llama.cpp)     a, create_client(), load_last_state(), main(), Torchlight Agent — Codex / Tiny-Brain 2 Style IDE TUI (Textual) Full-featured ID, # NOTE: The model badge button click is handled by on_model_badge_clicked, save_last_state() (+8 more)
 
 ### Community 55 - "command_palette.py"
 Cohesion: 0.20
@@ -599,10 +597,6 @@ Nodes (5): DashboardHTTPHandler, get_dashboard_data(), Path, Torchlight Web GUI 
 Cohesion: 0.27
 Nodes (12): amain(), approval_prompt(), create_client(), display_step(), get_depth_style(), main(), print_banner(), Step (+4 more)
 
-### Community 125 - "CalculatorSkill"
-Cohesion: 0.40
-Nodes (3): CalculatorSkill, Evaluate a mathematical expression safely using Python's AST., expr
-
 ### Community 126 - "Target Quality Tiers"
 Cohesion: 0.50
 Nodes (4): Target Quality Tiers, Tier A: Constrained local mode, Tier B: Balanced local mode, Tier C: Strong local mode
@@ -671,10 +665,6 @@ Nodes (43): AutonomousHarness, GoalSpec, HarnessConfig, Enum, Path, str, Autonom
 Cohesion: 0.29
 Nodes (4): verify_cli_prompt(), build_default_system_prompt(), Torchlight prompt stack — single source of truth.  V2: Optimized for local LLMs, Build system prompt. Use V2 for small contexts.
 
-### Community 153 - "ApprovalModal"
-Cohesion: 0.17
-Nodes (3): ApprovalModal, Production-grade modal dialog for tool & file modification approval., Snapshot file contents *before* a diffable write executes.          ``_handle_st
-
 ### Community 154 - "context_manager/memory/embeddings.py"
 Cohesion: 0.21
 Nodes (9): build_embedder(), Embedder, FallbackEmbedder, HashEmbedder, _normalize(), ProviderEmbedder, any, Protocol (+1 more)
@@ -728,8 +718,8 @@ Cohesion: 0.33
 Nodes (3): App, ComposeResult, TestApp
 
 ### Community 197 - "TorchlightApp"
-Cohesion: 0.05
-Nodes (22): FileSelected, NodeSelected, is_port_in_use(), Check if server port 8080 is actively listening., copy_to_clipboard(), _provider_runtime_info(), App, Step (+14 more)
+Cohesion: 0.04
+Nodes (23): FileSelected, NodeSelected, is_port_in_use(), Check if server port 8080 is actively listening., copy_to_clipboard(), _provider_runtime_info(), App, Step (+15 more)
 
 ## Knowledge Gaps
 - **367 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `context-manager-cli`, `run.sh script`, `COLORTERM` (+362 more)
@@ -739,11 +729,11 @@ Nodes (22): FileSelected, NodeSelected, is_port_in_use(), Check if server port 8
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `AutonomousHarness` connect `AutonomousHarness` to `TieredMemory`, `Flashlight`, `TorchlightApp`, `on`, `goal`, `cli/main.py`, `core/memory/models.py`, `CopySelectionModal`, `tui_app.py`, `ApprovalModal`, `StreamingChatSession`, `Static`?**
+- **Why does `AutonomousHarness` connect `AutonomousHarness` to `TieredMemory`, `Flashlight`, `TorchlightApp`, `on`, `goal`, `cli/main.py`, `core/memory/models.py`, `CopySelectionModal`, `tui_app.py`, `StreamingChatSession`, `Static`?**
   _High betweenness centrality (0.102) - this node is a cross-community bridge._
 - **Why does `TieredMemory` connect `TieredMemory` to `Message`, `test_context_budget_overflow.py`, `rlm_engine_optimized.py`, `core/memory/manager.py`, `cli/main.py`, `core/memory/models.py`, `Step`, `LlamaCppClient`, `test_plan_execution_loop.py`, `AutonomousHarness`, `ContextBudget`, `RLMEngineOptimized`, `tool_edit_file_impl`, `StreamingChatSession`?**
   _High betweenness centrality (0.071) - this node is a cross-community bridge._
-- **Why does `TorchlightApp` connect `TorchlightApp` to `test_tui_plan_panel.py`, `on`, `CloudClient`, `CommandPalette`, `ToolCallCard`, `CopySelectionModal`, `Step`, `GitFileTree`, `test_tui_diff_view.py`, `LlamaCppClient`, `PromptTextArea`, `AutonomousHarness`, `classify_command`, `tui_app.py`, `RLMEngineOptimized`, `ApprovalModal`, `Static`?**
+- **Why does `TorchlightApp` connect `TorchlightApp` to `test_tui_plan_panel.py`, `on`, `CloudClient`, `CommandPalette`, `ToolCallCard`, `CopySelectionModal`, `Step`, `GitFileTree`, `test_tui_diff_view.py`, `LlamaCppClient`, `PromptTextArea`, `AutonomousHarness`, `classify_command`, `tui_app.py`, `RLMEngineOptimized`, `Static`?**
   _High betweenness centrality (0.043) - this node is a cross-community bridge._
 - **Are the 24 inferred relationships involving `TieredMemory` (e.g. with `StreamingChatSession` and `AutonomousHarness`) actually correct?**
   _`TieredMemory` has 24 INFERRED edges - model-reasoned connections that need verification._
