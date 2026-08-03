@@ -1,42 +1,235 @@
-# Comprehensive RLM GBNF Grammar Schema for SLM Output Control
-# Enforces model output to follow valid reasoning followed by structured action tags.
+# ============================================================
+# RLM GBNF Grammar — Production-Ready v2.0
+#
+# BUG FIXES (11 total):
+#  [1] CRITICAL  root: single-action → multi-step (step+)
+#  [2] CRITICAL  file/code/query/answer content: any-char* → char-exclusion
+#  [3] CRITICAL  reasoning: any-char* → [^<\x00]+ (tag-boundary safe)
+#  [4] HIGH      bool-val: null separated into null-val
+#  [5] HIGH      number-val: scientific notation added
+#  [6] MEDIUM    tool-call-json: both key orderings accepted
+#  [7] MEDIUM    root: trailing ws added
+#  [8] MEDIUM    unbounded wildcards removed; bounded char classes used
+#  [9] MEDIUM    error-tag added for tool failure / retry signaling
+# [10] LOW       number-val: leading zeros rejected (RFC 8259)
+# [11] LOW       string-val: explicit escape enumeration + \uXXXX validated
+#
+# Agent pattern:  (reasoning? action ws)+  trailing-ws?
+# Enables chains: READ_FILE → reason → EDIT_FILE → reason → FINAL_ANSWER
+# ============================================================
 
-root ::= reasoning (tool-call-tag | tool-xml-tag | write-file-tag | code-tag | subquery-tag | final-tag | "")
 
-reasoning ::= any-char*
+# -----------------------------------------------
+# ROOT — multi-step agent chain                [FIX 1, 7]
+# One or more steps, each step ends with a
+# structured action block. Final trailing ws
+# accommodates models that append \n.
+# -----------------------------------------------
+root ::= step+ ws
 
-# 1. <tool_call> {"name": "...", "arguments": {...}} </tool_call>
-tool-call-tag ::= "<tool_call>" ws tool-call-json ws "</tool_call>"
-tool-call-json ::= "{" ws "\"name\"" ws ":" ws tool-name-val ws "," ws "\"arguments\"" ws ":" ws tool-args-obj ws "}"
-tool-name-val ::= "\"WRITE_FILE\"" | "\"EDIT_FILE\"" | "\"READ_FILE\"" | "\"READ_SYMBOLS\"" | "\"SEARCH_AST\"" | "\"LIST_DIR\"" | "\"GREP\"" | "\"RUN_COMMAND\"" | "\"INSPECT_WEB\"" | "\"UPDATE_TASK_GRAPH\"" | "\"SAVE_MEMORY\"" | "\"WEB_SEARCH\"" | "\"WEB_FETCH\"" | "\"DOC_SEARCH\"" | "\"WEB_VERIFY\"" | "\"GIT\"" | "\"FORMAT_CODE\"" | "\"VERIFY\"" | "\"ASK_USER\""
+# Each step: optional free-form reasoning, then exactly one action
+step ::= reasoning? action ws
 
-# 2. <TOOL name="..."> JSON </TOOL>
-tool-xml-tag ::= "<TOOL name=\"" tool-name-str "\">" ws tool-args-obj ws "</TOOL>"
-tool-name-str ::= "WRITE_FILE" | "EDIT_FILE" | "READ_FILE" | "READ_SYMBOLS" | "SEARCH_AST" | "LIST_DIR" | "GREP" | "RUN_COMMAND" | "INSPECT_WEB" | "UPDATE_TASK_GRAPH" | "SAVE_MEMORY" | "WEB_SEARCH" | "WEB_FETCH" | "DOC_SEARCH" | "WEB_VERIFY" | "GIT" | "FORMAT_CODE" | "VERIFY" | "ASK_USER"
 
-# 3. <WRITE_FILE path="..."> content </WRITE_FILE>
-write-file-tag ::= "<WRITE_FILE path=\"" file-path-val "\">" file-content "</WRITE_FILE>"
-file-path-val ::= [^"\r\n]+
-file-content ::= any-char*
+# -----------------------------------------------
+# REASONING — prose/thinking before an action  [FIX 3, 8]
+#
+# Restriction: cannot contain a bare '<' character.
+# '<' exclusively signals the start of an action tag (all action tags
+# begin with '<'), so this creates an unambiguous boundary.
+#
+# Trade-off: reasoning text with '<' (e.g., "use vector<int>") must
+# either use "&lt;" or be elided. In practice, detailed code reasoning
+# should be placed inside a <CODE> block, not in raw reasoning prose.
+# -----------------------------------------------
+reasoning ::= [^<\x00]+
 
-# 4. Other action tags
-code-tag ::= "<CODE>" code-content "</CODE>"
-subquery-tag ::= "<SUB_QUERY>" query-content "</SUB_QUERY>"
-final-tag ::= "<FINAL_ANSWER>" answer-content "</FINAL_ANSWER>"
 
-# Tool arguments JSON object
-tool-args-obj ::= "{" ws (json-pair (ws "," ws json-pair)*)? ws "}"
-json-pair ::= string-val ws ":" ws json-val
-json-val ::= string-val | number-val | bool-val | tool-args-obj | json-array
-json-array ::= "[" ws (json-val (ws "," ws json-val)*)? ws "]"
+# -----------------------------------------------
+# ACTION — exactly one structured output block
+# -----------------------------------------------
+action ::= tool-call-tag
+         | tool-xml-tag
+         | write-file-tag
+         | code-tag
+         | subquery-tag
+         | error-tag
+         | final-tag
 
-# Primitive types
-string-val ::= "\"" ([^"\\] | "\\" .)* "\""
-number-val ::= "-"? [0-9]+ ("." [0-9]+)?
-bool-val ::= "true" | "false" | "null"
+
+# -----------------------------------------------
+# 1. <tool_call> JSON </tool_call>             [FIX 6]
+#
+# Accepts BOTH key orderings:
+#   {"name": "X", "arguments": {...}}
+#   {"arguments": {...}, "name": "X"}
+# This matches RFC 8259 §4 (key order is irrelevant).
+# -----------------------------------------------
+tool-call-tag  ::= "<tool_call>" ws tool-call-json ws "</tool_call>"
+tool-call-json ::= "{" ws ( tool-kv-name-first | tool-kv-args-first ) ws "}"
+
+tool-kv-name-first ::= "\"name\""      ws ":" ws tool-name-val ws "," ws
+                        "\"arguments\"" ws ":" ws tool-args-obj
+
+tool-kv-args-first ::= "\"arguments\"" ws ":" ws tool-args-obj ws "," ws
+                        "\"name\""      ws ":" ws tool-name-val
+
+tool-name-val ::= "\"WRITE_FILE\""        | "\"EDIT_FILE\""     | "\"READ_FILE\""
+               | "\"READ_SYMBOLS\""      | "\"SEARCH_AST\""    | "\"LIST_DIR\""
+               | "\"GREP\""              | "\"RUN_COMMAND\""    | "\"INSPECT_WEB\""
+               | "\"UPDATE_TASK_GRAPH\"" | "\"SAVE_MEMORY\""
+               | "\"WEB_SEARCH\""        | "\"WEB_FETCH\""      | "\"DOC_SEARCH\""
+               | "\"WEB_VERIFY\""        | "\"GIT\""            | "\"FORMAT_CODE\""
+               | "\"VERIFY\""            | "\"ASK_USER\""
+
+
+# -----------------------------------------------
+# 2. <TOOL name="TOOL_NAME"> {...} </TOOL>
+# -----------------------------------------------
+tool-xml-tag  ::= "<TOOL name=\"" tool-name-str "\">" ws tool-args-obj ws "</TOOL>"
+
+tool-name-str ::= "WRITE_FILE"        | "EDIT_FILE"    | "READ_FILE"
+               | "READ_SYMBOLS"      | "SEARCH_AST"   | "LIST_DIR"
+               | "GREP"              | "RUN_COMMAND"   | "INSPECT_WEB"
+               | "UPDATE_TASK_GRAPH" | "SAVE_MEMORY"
+               | "WEB_SEARCH"        | "WEB_FETCH"     | "DOC_SEARCH"
+               | "WEB_VERIFY"        | "GIT"           | "FORMAT_CODE"
+               | "VERIFY"            | "ASK_USER"
+
+
+# -----------------------------------------------
+# 3. <WRITE_FILE path="..."> content </WRITE_FILE>  [FIX 2, 8]
+#
+# write-file-unit: matches any single character or short sequence that is
+# NOT the exact string </WRITE_FILE>. Each alternative is a valid prefix of
+# the closing tag that diverges before completing it.
+#
+# DESIGN NOTE: For files whose content might literally contain the string
+# "</WRITE_FILE>" (e.g., template files), use tool-call-tag with a JSON
+# string "content" argument instead — JSON escaping handles all edge cases.
+# -----------------------------------------------
+write-file-tag     ::= "<WRITE_FILE path=\"" file-path-val "\">" write-file-content "</WRITE_FILE>"
+file-path-val      ::= [^"\r\n\x00]+
+
+write-file-content ::= write-file-unit*
+write-file-unit    ::= [^<\x00]                 # any non-'<' character
+                     | "<" [^/\x00]             # '<' not followed by '/'
+                     | "</" [^W\x00]            # '</' not followed by 'W'
+                     | "</W" [^R\x00]           # '</W' not followed by 'R'
+                     | "</WR" [^I\x00]
+                     | "</WRI" [^T\x00]
+                     | "</WRIT" [^E\x00]
+                     | "</WRITE" [^_\x00]
+                     | "</WRITE_" [^F\x00]
+                     | "</WRITE_F" [^I\x00]
+                     | "</WRITE_FI" [^L\x00]
+                     | "</WRITE_FIL" [^E\x00]
+                     | "</WRITE_FILE" [^>\x00]  # '</WRITE_FILE' not followed by '>'
+
+
+# -----------------------------------------------
+# 4. <CODE> ... </CODE>                        [FIX 2, 8]
+# -----------------------------------------------
+code-tag     ::= "<CODE>" code-content "</CODE>"
+code-content ::= code-unit*
+code-unit    ::= [^<\x00]
+               | "<" [^/\x00]
+               | "</" [^C\x00]
+               | "</C" [^O\x00]
+               | "</CO" [^D\x00]
+               | "</COD" [^E\x00]
+               | "</CODE" [^>\x00]
+
+
+# -----------------------------------------------
+# 5. <SUB_QUERY> ... </SUB_QUERY>              [FIX 2, 8]
+# -----------------------------------------------
+subquery-tag  ::= "<SUB_QUERY>" query-content "</SUB_QUERY>"
+query-content ::= query-unit*
+query-unit    ::= [^<\x00]
+                | "<" [^/\x00]
+                | "</" [^S\x00]
+                | "</S" [^U\x00]
+                | "</SU" [^B\x00]
+                | "</SUB" [^_\x00]
+                | "</SUB_" [^Q\x00]
+                | "</SUB_Q" [^U\x00]
+                | "</SUB_QU" [^E\x00]
+                | "</SUB_QUE" [^R\x00]
+                | "</SUB_QUER" [^Y\x00]
+                | "</SUB_QUERY" [^>\x00]
+
+
+# -----------------------------------------------
+# 6. <ERROR> ... </ERROR>   [NEW — FIX 9]
+#
+# Emitted when a tool call fails or the agent needs to signal a retry.
+# The agent parser should detect this tag and route to RecoveryEngine.
+# error-content is intentionally simple (no nested tags expected).
+# -----------------------------------------------
+error-tag     ::= "<ERROR>" error-content "</ERROR>"
+error-content ::= error-unit*
+error-unit    ::= [^<\x00]
+                | "<" [^/\x00]
+                | "</" [^E\x00]
+                | "</E" [^R\x00]
+                | "</ER" [^R\x00]
+                | "</ERR" [^O\x00]
+                | "</ERRO" [^R\x00]
+                | "</ERROR" [^>\x00]
+
+
+# -----------------------------------------------
+# 7. <FINAL_ANSWER> ... </FINAL_ANSWER>        [FIX 2, 8]
+# -----------------------------------------------
+final-tag      ::= "<FINAL_ANSWER>" answer-content "</FINAL_ANSWER>"
+answer-content ::= answer-unit*
+answer-unit    ::= [^<\x00]
+                 | "<" [^/\x00]
+                 | "</" [^F\x00]
+                 | "</F" [^I\x00]
+                 | "</FI" [^N\x00]
+                 | "</FIN" [^A\x00]
+                 | "</FINA" [^L\x00]
+                 | "</FINAL" [^_\x00]
+                 | "</FINAL_" [^A\x00]
+                 | "</FINAL_A" [^N\x00]
+                 | "</FINAL_AN" [^S\x00]
+                 | "</FINAL_ANS" [^W\x00]
+                 | "</FINAL_ANSW" [^E\x00]
+                 | "</FINAL_ANSWE" [^R\x00]
+                 | "</FINAL_ANSWER" [^>\x00]
+
+
+# -----------------------------------------------
+# JSON — RFC 8259 compliant
+# -----------------------------------------------
+tool-args-obj ::= "{" ws ( json-pair ( ws "," ws json-pair )* )? ws "}"
+json-pair     ::= string-val ws ":" ws json-val
+
+# [FIX 4] null-val is a distinct type, no longer grouped under bool-val
+json-val      ::= string-val | number-val | bool-val | null-val
+                | tool-args-obj | json-array
+
+json-array    ::= "[" ws ( json-val ( ws "," ws json-val )* )? ws "]"
+
+
+# [FIX 11] String: explicit escape enumeration; \uXXXX validated as 4 hex digits
+string-val  ::= "\"" string-char* "\""
+string-char ::= [^"\\\x00-\x1f]
+              | "\\" ( "\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" )
+              | "\\u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]
+
+
+# [FIX 5, 10] Number: scientific notation; leading zeros rejected
+# Matches: -1, 0, 42, 3.14, 1e10, -2.5e-3, 1.5E+3
+number-val ::= "-"? ( "0" | [1-9] [0-9]* ) ( "." [0-9]+ )? ( [eE] [+\-]? [0-9]+ )?
+
+
+# [FIX 4] Boolean and null are separate types
+bool-val ::= "true" | "false"
+null-val  ::= "null"
+
+
+# Whitespace: zero or more spaces/tabs/newlines
 ws ::= [ \t\n\r]*
-any-char ::= [^\x00]
-
-code-content ::= any-char*
-query-content ::= any-char*
-answer-content ::= any-char*

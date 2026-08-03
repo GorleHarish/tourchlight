@@ -36,5 +36,8 @@ all = [
     "torchlight-core[llm,memory,cloud,ollama]",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [tool.setuptools.packages.find]
 include = ["core*"]

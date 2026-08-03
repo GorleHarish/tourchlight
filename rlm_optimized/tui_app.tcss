@@ -58,11 +58,8 @@ Footer {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   PHASE 5 RESERVED — Tabbed editor split pane.
-   Currently NOT composed in TorchlightApp.compose(). These selectors are
-   parked for the planned editor pane (see UI_IMPROVEMENTS_PLAN.md Phase 5).
-   Do not rely on them until the pane is mounted.
-   ═══════════════════════════════════════════════════════════════════════ */
+    PHASE 5 — Tabbed editor split pane (implemented).
+    ═══════════════════════════════════════════════════════════════════════ */
 
 #editor-split-pane {
     width: 3fr;
@@ -150,6 +147,83 @@ Footer {
     background: $background;
     color: $foreground;
     border: none;
+}
+
+#active-editor-view:focus {
+    border: tall $accent;
+}
+
+.editor-view {
+    width: 1fr;
+    height: 1fr;
+    padding: 0 1;
+    background: $background;
+    color: $foreground;
+}
+
+/* ── Tab Button Accessibility ─────────────────────────────────── */
+
+.tab-item-active:focus,
+.tab-item-inactive:focus {
+    border: tall $accent;
+    background: $surface;
+}
+
+.tab-item-active:hover,
+.tab-item-inactive:hover {
+    background: $surface;
+    color: $accent;
+}
+
+.tab-item-active:disabled,
+.tab-item-inactive:disabled {
+    color: $foreground-muted;
+    background: $panel;
+}
+
+.tab-close-btn:focus {
+    border: tall $accent;
+    background: $surface;
+    color: $error;
+}
+
+.tab-close-btn:hover {
+    color: $error;
+    background: $panel;
+}
+
+.tab-close-btn:disabled {
+    color: $foreground-muted;
+    background: transparent;
+}
+
+#toggle-split-btn:focus {
+    border: tall $accent;
+    background: $surface;
+}
+
+#toggle-split-btn:hover {
+    background: $surface;
+    color: $accent;
+}
+
+#toggle-split-btn:disabled {
+    color: $foreground-muted;
+    background: $panel;
+}
+
+/* ── Responsive: Editor Split Pane ────────────────────────────── */
+
+.narrow-terminal #editor-split-pane {
+    display: none;
+}
+
+.very-narrow-terminal #editor-split-pane {
+    display: none;
+}
+
+.short-terminal #editor-split-pane {
+    width: 2fr;
 }
 
 #agent-split-pane {

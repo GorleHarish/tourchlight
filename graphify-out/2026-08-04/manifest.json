@@ -1,7 +1,7 @@
 {
   ".context-memory.json": {
-    "mtime": 1785787956.670793,
-    "ast_hash": "b0e909202e10f9aa6850d5f9964780c7",
+    "mtime": 1785779956.0292792,
+    "ast_hash": "bbb250b194c38083d6440587b69e92bc",
     "semantic_hash": ""
   },
   "context-manager-cli/.context-memory.json": {
@@ -390,9 +390,9 @@
     "semantic_hash": "9c43c7b8f6937ae1a270e42524a5bad2"
   },
   "core/pyproject.toml": {
-    "mtime": 1785787956.6713634,
-    "ast_hash": "f45917e3e7f4471ce557dc00e4ec86c8",
-    "semantic_hash": ""
+    "mtime": 1784761400.7166445,
+    "ast_hash": "3fcbcfe5739ff2fc970f4f490771ccd2",
+    "semantic_hash": "3fcbcfe5739ff2fc970f4f490771ccd2"
   },
   "core/tests/__init__.py": {
     "mtime": 1784761554.284235,
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785787956.6727252,
-    "ast_hash": "9dba4d8dac6370b748e21f32a0648c8a",
+    "mtime": 1785778135.659405,
+    "ast_hash": "bc70821aa56a2658b45cafcd5b6d668b",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -1052,31 +1052,6 @@
   "plans/agentic-loop-bugs-grammar.md": {
     "mtime": 1785779308.9548714,
     "ast_hash": "fdd47b42f1a7e405ec68789e3421ba09",
-    "semantic_hash": ""
-  },
-  "core/tests/test_tui_accessibility.py": {
-    "mtime": 1785787947.1654088,
-    "ast_hash": "d65832bc6b7e0002529b4ff36420df7b",
-    "semantic_hash": ""
-  },
-  "core/tests/test_tui_tabbed_editor.py": {
-    "mtime": 1785787947.1672554,
-    "ast_hash": "617922272ee8549d99dc95ee8a2ed21e",
-    "semantic_hash": ""
-  },
-  "core/tests/test_tui_theme.py": {
-    "mtime": 1785787947.1704547,
-    "ast_hash": "e72f421dddb660eacaaaf38e13359727",
-    "semantic_hash": ""
-  },
-  ".kilo/plans/1785779073413-non-security-improvements.md": {
-    "mtime": 1785787947.1427193,
-    "ast_hash": "0ab26cc6aa525ea18f55a794025942cd",
-    "semantic_hash": ""
-  },
-  ".kilo/plans/1785781366732-ui-improvements.md": {
-    "mtime": 1785787947.1623995,
-    "ast_hash": "26a7db62bf39d5fa771719917e70fd08",
     "semantic_hash": ""
   }
 }

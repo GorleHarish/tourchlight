@@ -240,7 +240,7 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
         max-height: 6;
         overflow-y: auto;
         border: solid $panel;
-        background: #0A0D0B;
+        background: $background;
         padding: 1;
     }
     #approval-diff-label {
@@ -254,7 +254,7 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
         max-height: 16;
         overflow-y: auto;
         border: solid $panel;
-        background: #0A0D0B;
+        background: $background;
         padding: 1;
     }
     #approval-buttons {
@@ -1149,6 +1149,7 @@ class TorchlightApp(App):
         Binding("ctrl+e", "copy_last", "Copy Last", show=False),
         Binding("ctrl+l", "clear", "Clear Chat", show=False),
         Binding("ctrl+c", "quit", "Quit", show=True),
+        Binding("ctrl+\\", "toggle_editor_split", "Editor Split", show=False),
     ]
 
     def __init__(
@@ -1173,6 +1174,7 @@ class TorchlightApp(App):
         self._trajectory_rail: Optional[TrajectoryRail] = None
         self._is_running = False
         self._show_sidebar = True
+        self._show_plan_sidebar = True
         self._chat_history: list = []
         self._agent_state: str = "IDLE"
         self._agent_events: list[dict] = []
@@ -1186,6 +1188,9 @@ class TorchlightApp(App):
         self._live_tps: float = 0.0
         self._live_latency_ms: float = 0.0
         self._prewrite_snapshots: dict[str, str] = {}
+        self._editor_split_refresh_pending = False
+        self._token_throttle_last: float = 0.0
+        self._token_throttle_interval: float = 0.03
         self._file_tree: Optional[GitFileTree] = None
         self._user_input: Optional[PromptTextArea] = None
         self._status_bar: Optional[StatusBar] = None
@@ -1252,14 +1257,26 @@ class TorchlightApp(App):
                 else "💬 CHAT_MODE: ACTIVE"
             )
             mode_cls = "mode-badge-goal" if "GOAL" in mode_lbl else "mode-badge-chat"
-            yield Button(mode_lbl, id="mode-toggle-btn", classes=mode_cls)
+            yield Button(
+                mode_lbl,
+                id="mode-toggle-btn",
+                classes=mode_cls,
+            )
             yield Button(
                 f"🤖 {escape(self.model_name)} ▾",
                 id="input-model-badge",
                 variant="default",
             )
-            yield Button("🗜️ Compact", id="compact-btn", variant="warning")
-            yield Button("⌨️ Help", id="help-btn", variant="default")
+            yield Button(
+                "🗜️ Compact",
+                id="compact-btn",
+                variant="warning",
+            )
+            yield Button(
+                "⌨️ Help",
+                id="help-btn",
+                variant="default",
+            )
 
         with Horizontal(id="main-ide-container"):
             # 1. Left Explorer Sidebar (Files)
@@ -1270,7 +1287,23 @@ class TorchlightApp(App):
                 self._file_tree = GitFileTree(self.engine.project_root, id="file-tree")
                 yield self._file_tree
 
-            # 2. Main Center Area: Agent Terminal, Reasoning Trajectory & Logs
+            # 2. Tabbed Editor Split Pane
+            with Vertical(id="editor-split-pane"):
+                with Horizontal(id="tab-bar-header"):
+                    yield Static(
+                        "📄 EDITOR", classes="panel-header-title"
+                    )
+                    yield Button(
+                        "≡",
+                        id="toggle-split-btn",
+                        classes="tab-close-btn",
+                    )
+                with Horizontal(id="tab-buttons-container"):
+                    pass
+                with Vertical(id="editor-content-area"):
+                    yield Static("", id="active-editor-view-placeholder")
+
+            # 3. Main Center Area: Agent Terminal, Reasoning Trajectory & Logs
             with Vertical(id="agent-split-pane"):
                 with Horizontal(id="terminal-header-bar"):
                     yield Static(
@@ -1285,7 +1318,11 @@ class TorchlightApp(App):
                 with Vertical(id="input-area"):
                     yield Horizontal(id="context-chips-bar")
                     with Horizontal(id="input-row"):
-                        yield Button("+", id="attach-context-btn", tooltip="Attach Context (Ctrl+U)")
+                        yield Button(
+                            "+",
+                            id="attach-context-btn",
+                            tooltip="Attach Context (Ctrl+U)",
+                        )
                         self._user_input = PromptTextArea(
                             id="user-input",
                             language=None,
@@ -1295,8 +1332,16 @@ class TorchlightApp(App):
                             suggestion_callback=self._on_suggestion_matches,
                         )
                         yield self._user_input
-                        yield Button("⚡ Load Model", id="toggle-engine-btn", variant="success")
-                        yield Button("SEND ↗", id="send-btn", variant="primary")
+                        yield Button(
+                            "⚡ Load Model",
+                            id="toggle-engine-btn",
+                            variant="success",
+                        )
+                        yield Button(
+                            "SEND ↗",
+                            id="send-btn",
+                            variant="primary",
+                        )
                         yield Static("", id="input-spinner")
                     yield ListView(id="input-suggestions")
 
@@ -1322,9 +1367,21 @@ class TorchlightApp(App):
                 id="dock-btn-shell",
                 classes="nav-dock-btn nav-dock-btn-active",
             )
-            yield Button("📖 CONTEXT", id="dock-btn-context", classes="nav-dock-btn")
-            yield Button("📋 LOGS", id="dock-btn-goal", classes="nav-dock-btn")
-            yield Button("⚙️ SYS", id="dock-btn-sys", classes="nav-dock-btn")
+            yield Button(
+                "📖 CONTEXT",
+                id="dock-btn-context",
+                classes="nav-dock-btn",
+            )
+            yield Button(
+                "📋 LOGS",
+                id="dock-btn-goal",
+                classes="nav-dock-btn",
+            )
+            yield Button(
+                "⚙️ SYS",
+                id="dock-btn-sys",
+                classes="nav-dock-btn",
+            )
 
         yield Footer()
 
@@ -1346,6 +1403,11 @@ class TorchlightApp(App):
                 return
 
             filename = os.path.basename(abs_path)
+
+            if abs_path not in self._open_tabs:
+                self._open_tabs[abs_path] = {"dirty": False, "filename": filename}
+            self._active_tab_path = abs_path
+            self._refresh_editor_split_view()
 
             def _on_action_choice(choice: Optional[str]) -> None:
                 if not choice or choice == "cancel":
@@ -1421,7 +1483,10 @@ class TorchlightApp(App):
 
             self.push_screen(FileActionModal(abs_path), _on_action_choice)
         except Exception as e:
-            self.notify(f"File action error: {e}", severity="warning", timeout=2)
+            try:
+                self.notify(f"File action error: {e}", severity="warning", timeout=2)
+            except Exception:
+                pass
 
     def close_file_tab(self, file_path: str) -> None:
         if file_path in self._open_tabs:
@@ -1435,11 +1500,109 @@ class TorchlightApp(App):
         return hashlib.md5(file_path.encode("utf-8")).hexdigest()[:10]
 
     def _refresh_editor_split_view(self) -> None:
+        if self._editor_split_refresh_pending:
+            return
+        self._editor_split_refresh_pending = True
+        try:
+            self.call_after_refresh(self._do_refresh_editor_split_view)
+        except (RuntimeError, TypeError):
+            self._editor_split_refresh_pending = False
+            self._do_refresh_editor_split_view()
+
+    def _do_refresh_editor_split_view(self) -> None:
+        self._editor_split_refresh_pending = False
         try:
             tab_container = self.query_one("#tab-buttons-container")
             content_area = self.query_one("#editor-content-area")
         except Exception:
             return
+
+        for child in list(tab_container.children):
+            child.remove()
+
+        for child in list(content_area.children):
+            child.remove()
+
+        for path, meta in self._open_tabs.items():
+            filename = meta.get("filename", os.path.basename(path))
+            h = self._get_tab_hash(path)
+            is_active = path == self._active_tab_path
+            dirty = meta.get("dirty", False)
+            label = f"{'● ' if dirty else ''}{filename}"
+
+            btn = Button(
+                label,
+                id=f"tsel_{h}",
+                classes="tab-item-active" if is_active else "tab-item-inactive",
+                variant="default",
+            )
+            tab_container.mount(btn)
+
+            close_btn = Button(
+                "×",
+                id=f"tcls_{h}",
+                classes="tab-close-btn",
+                variant="default",
+            )
+            tab_container.mount(close_btn)
+
+        if self._active_tab_path and self._active_tab_path in self._open_tabs:
+            try:
+                with open(self._active_tab_path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+            except OSError:
+                content = ""
+
+            ext = os.path.splitext(self._active_tab_path)[1].lstrip(".")
+            lang_map = {
+                "py": "python",
+                "js": "javascript",
+                "ts": "typescript",
+                "tsx": "typescript",
+                "jsx": "javascript",
+                "go": "go",
+                "rs": "rust",
+                "rb": "ruby",
+                "c": "c",
+                "h": "c",
+                "cpp": "cpp",
+                "hpp": "cpp",
+                "java": "java",
+                "cfg": "ini",
+                "toml": "toml",
+                "yaml": "yaml",
+                "yml": "yaml",
+                "json": "json",
+                "md": "markdown",
+                "html": "html",
+                "css": "css",
+                "sh": "bash",
+                "bash": "bash",
+                "zsh": "bash",
+            }
+            language = lang_map.get(ext, "text")
+
+            try:
+                from rich.syntax import Syntax
+
+                syntax = Syntax(content, language, line_numbers=True, theme="monokai")
+                rich_text = syntax.render()
+            except Exception:
+                rich_text = None
+
+            if rich_text is not None:
+                editor = Static(
+                    rich_text,
+                    id="active-editor-view",
+                    classes="editor-view",
+                )
+            else:
+                editor = Static(
+                    content,
+                    id="active-editor-view",
+                    classes="editor-view",
+                )
+            content_area.mount(editor)
 
     @on(DirectoryTree.FileSelected)
     def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:
@@ -2073,7 +2236,7 @@ class TorchlightApp(App):
     def _apply_responsive_layout(self) -> None:
         try:
             w, h = self.size.width, self.size.height
-            screen = self.query_one("Screen")
+            screen = self.screen or self.query_one("Screen")
             screen.set_class(w < 80, "narrow-terminal")
             screen.set_class(w < 50, "very-narrow-terminal")
             screen.set_class(h < 24, "short-terminal")
@@ -2085,7 +2248,32 @@ class TorchlightApp(App):
 
     async def on_key(self, event) -> None:
         """Global key bindings that aren't caught by specific widgets."""
-        pass
+        if event.key in ("left", "right") and self._open_tabs:
+            pane_visible = True
+            try:
+                editor_pane = self.query_one("#editor-split-pane")
+                pane_visible = editor_pane.display
+            except Exception:
+                pane_visible = True
+            if not pane_visible:
+                return
+
+            paths = list(self._open_tabs.keys())
+            if not paths:
+                return
+            current_idx = (
+                paths.index(self._active_tab_path)
+                if self._active_tab_path in paths
+                else -1
+            )
+            if event.key == "left":
+                new_idx = (current_idx - 1) % len(paths)
+            else:
+                new_idx = (current_idx + 1) % len(paths)
+            self._active_tab_path = paths[new_idx]
+            self._refresh_editor_split_view()
+            event.prevent_default()
+            event.stop()
 
     # ── Slash Command Handler ───────────────────────────────────────────
 
@@ -2426,6 +2614,8 @@ class TorchlightApp(App):
         if self._first_token_time and (now - self._first_token_time) > 0.05:
             self._live_tps = self._stream_token_count / (now - self._first_token_time)
 
+        throttled = now - self._token_throttle_last < self._token_throttle_interval
+
         try:
             widget = self._ensure_streaming_widget()
             display_text = self._streaming_text
@@ -2450,8 +2640,12 @@ class TorchlightApp(App):
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
 
-            escaped = escape(display_text)
+            if throttled:
+                self.call_after_refresh(self._flush_streaming_widget)
+                return
+            self._token_throttle_last = now
 
+            escaped = escape(display_text)
             widget.update_markup(escaped)
 
             meta_parts = []
@@ -2468,6 +2662,18 @@ class TorchlightApp(App):
         except Exception:
             pass
 
+    def _flush_streaming_widget(self) -> None:
+        """Apply any pending streaming text that was throttled."""
+        if self._streaming_view is None:
+            return
+        display_text = self._streaming_text
+        if "<tool_call>" in display_text.lower():
+            parts = re.split(r"<tool_call>", display_text, flags=re.IGNORECASE)
+            display_text = parts[0].strip()
+        if len(display_text) > 4000:
+            display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
+        self._streaming_view.update_markup(escape(display_text))
+
     def _remove_streaming(self) -> None:
         if getattr(self, "_streaming_widget", None) is not None:
             try:
@@ -2481,8 +2687,11 @@ class TorchlightApp(App):
     # ── Step Display ────────────────────────────────────────────────────
 
     def _handle_step(self, step: Step) -> None:
-        container = self.query_one("#chat-container")
         self._remove_streaming()
+        try:
+            container = self.query_one("#chat-container")
+        except Exception:
+            container = None
 
         try:
             has_thinking = bool(
@@ -2550,19 +2759,26 @@ class TorchlightApp(App):
                 if card is None:
                     if self._trajectory_rail is not None:
                         self._trajectory_rail.add_pending(label)
-                    card = ToolCallCard(label, args=display_args, target=target_name)
-                    if hasattr(container, "append_card"):
-                        container.append_card(card, scroll=True)
-                    else:
-                        self._safe_mount(container, card)
+                    try:
+                        card = ToolCallCard(
+                            label, args=display_args, target=target_name
+                        )
+                    except Exception:
+                        card = None
+                    if card is not None:
+                        if hasattr(container, "append_card"):
+                            container.append_card(card, scroll=True)
+                        else:
+                            self._safe_mount(container, card)
                 if self._trajectory_rail is not None:
                     self._trajectory_rail.complete(status)
-                card.complete(
-                    result=res_raw,
-                    args=display_args,
-                    thinking=trimmed_thinking,
-                    status=status,
-                )
+                if card is not None:
+                    card.complete(
+                        result=res_raw,
+                        args=display_args,
+                        thinking=trimmed_thinking,
+                        status=status,
+                    )
 
                 # Phase 3: inline diff for successful file writes/edits.
                 # Computed client-side from disk — zero LLM context overhead.
@@ -2599,7 +2815,7 @@ class TorchlightApp(App):
                         pass
 
                 if (
-                    step.tool_name in ("WRITE_FILE", "EDIT_FILE")
+                    step.tool_name in ("WRITE_FILE", "EDIT_FILE", "CODE_FILE_WRITE")
                     and step.result
                     and not (is_err or denied)
                 ):
@@ -2607,8 +2823,31 @@ class TorchlightApp(App):
                         self._refresh_git_tree()
                     except Exception:
                         pass
-                    self._start_ast_indexing()
-                    self.update_sidebar_meta()
+                    try:
+                        if self.is_running:
+                            self._start_ast_indexing()
+                    except Exception:
+                        pass
+                    try:
+                        self.update_sidebar_meta()
+                    except Exception:
+                        pass
+                    try:
+                        step_args = (
+                            dict(step.tool_args)
+                            if isinstance(step.tool_args, dict)
+                            else {}
+                        )
+                        wp = str(
+                            step_args.get("path")
+                            or step_args.get("file_path")
+                            or ""
+                        )
+                        if wp and os.path.isabs(wp) and wp in self._open_tabs:
+                            self._open_tabs[wp]["dirty"] = True
+                            self._refresh_editor_split_view()
+                    except Exception:
+                        pass
 
             else:
                 # Standalone Reasoning (for non-tool steps)
@@ -2734,7 +2973,10 @@ class TorchlightApp(App):
             pass
 
         if step.action != "final_answer":
-            self._ensure_streaming_widget()
+            try:
+                self._ensure_streaming_widget()
+            except Exception:
+                pass
 
     def action_copy_chat(self) -> None:
         if not self._chat_history:
@@ -3433,6 +3675,17 @@ class TorchlightApp(App):
             sidebar = self.query_one("#explorer-sidebar")
             self._show_sidebar = not getattr(self, "_show_sidebar", True)
             sidebar.display = self._show_sidebar
+        except Exception:
+            pass
+
+    def action_toggle_editor_split(self) -> None:
+        try:
+            editor_pane = self.query_one("#editor-split-pane")
+            editor_pane.display = not editor_pane.display
+            status = "shown" if editor_pane.display else "hidden"
+            self.notify(
+                f"Editor split pane {status}", severity="information", timeout=2
+            )
         except Exception:
             pass
 

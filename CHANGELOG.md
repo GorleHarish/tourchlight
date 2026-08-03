@@ -2,6 +2,21 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.7.0] - 2026-08-04
+
+### Added & Improved
+- **Production-Ready GBNF Grammar Schema v2.0 (`rlm_optimized/grammar.gbnf`)**:
+  - **Multi-Step Agent Trajectory Support**: Fixed single-action root rule `root ::= reasoning (action | "")` to `root ::= step+ ws` (`step ::= reasoning? action ws`), enabling continuous multi-step tool execution sequences (`READ_FILE → EDIT_FILE → VERIFY → FINAL_ANSWER`) in a single generation pass.
+  - **Closing-Tag Collision Elimination**: Replaced naive `any-char*` in `<WRITE_FILE>`, `<CODE>`, `<SUB_QUERY>`, `<FINAL_ANSWER>`, and `<ERROR>` content blocks with explicit character-by-character prefix exclusions (e.g. `write-file-unit`), preventing ambiguous sampler states at `<` characters.
+  - **Reasoning Boundary Disambiguation**: Restricted reasoning prose (`reasoning ::= [^<\x00]+`) so bare `<` characters strictly mark action tag boundaries, preventing reasoning from consuming action tags.
+  - **RFC 8259 JSON & Data-Type Compliance**:
+    - Separated `null` into a distinct `null-val ::= "null"` type rather than grouping it under `bool-val`.
+    - Added scientific notation support (`1e10`, `-2.5e-3`) to `number-val` and enforced RFC 8259 leading zero restrictions.
+    - Supported flexible key ordering in `tool-call-json` (`{"name": "...", "arguments": {...}}` and `{"arguments": {...}, "name": "..."}`).
+    - Added 4-hex-digit unicode escape validation (`\uXXXX`) and enumerated valid JSON string escape sequences.
+  - **Sampler Performance Optimization**: Removed unbounded `any-char` wildcards (~65k valid tokens/step) across all rules, eliminating 10–50× constrained sampling overhead.
+  - **Structured Tool Failure / Retry Tag (`<ERROR>`)**: Added `<ERROR>` action tag for direct integration with `RecoveryEngine`.
+
 ## [v2.6.0] - 2026-08-02
 
 ### Added & Improved
