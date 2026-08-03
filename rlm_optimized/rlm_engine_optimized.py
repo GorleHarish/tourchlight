@@ -12,7 +12,8 @@ from rlm_optimized.config import (
     IS_8GB_DEVICE,
 )
 from rlm_optimized.repl_sandbox import REPLSandbox
-from rlm_optimized.prompts import SYSTEM_PROMPT, build_system_prompt, build_step_message
+from core.prompts.system import get_phase_system_prompt
+from rlm_optimized.prompts import build_step_message
 from core.tools.registry import get_tool_registry
 from core.tools.classification import CONFIRM, REVIEW
 from rlm_optimized.tool_schemas import validate_and_normalize_tool_call
@@ -378,32 +379,35 @@ class RLMEngineOptimized:
             from pathlib import Path
             from core.memory.persistence import ProjectMemory
 
-            pm = ProjectMemory(Path(self.project_root))
-            memory = TieredMemory(
-                config=MemoryConfig.auto_tune(
-                    max_tokens=CTX_SIZE,
-                    metadata_overhead=estimate_metadata_overhead(ctx_size=CTX_SIZE),
-                ),
-                project_memory=pm,
-            )
-            memory.add_system_message(
-                build_system_prompt(self.project_root, compact=(CTX_SIZE < 8192))
-            )
-            memory.add_user_message(task)
-            self._memory = memory
+            if getattr(self, "_memory", None) is None:
+                pm = ProjectMemory(Path(self.project_root))
+                memory = TieredMemory(
+                    config=MemoryConfig.auto_tune(
+                        max_tokens=CTX_SIZE,
+                        metadata_overhead=estimate_metadata_overhead(ctx_size=CTX_SIZE),
+                    ),
+                    project_memory=pm,
+                )
+                memory.add_system_message(
+                    get_phase_system_prompt("code")
+                )
+                self._memory = memory
+
+            self._memory.add_user_message(task)
+            memory = self._memory
             use_memory = True
         else:
             from .config import CTX_SIZE
 
-            messages = [
-                {
-                    "role": "system",
-                    "content": build_system_prompt(
-                        self.project_root, compact=(CTX_SIZE < 8192)
-                    ),
-                },
-                {"role": "user", "content": task},
-            ]
+            if getattr(self, "_messages", None) is None:
+                self._messages = [
+                    {
+                        "role": "system",
+                        "content": get_phase_system_prompt("code"),
+                    }
+                ]
+            self._messages.append({"role": "user", "content": task})
+            messages = self._messages
             use_memory = False
 
         sandbox_lock = asyncio.Lock()
@@ -609,35 +613,34 @@ class RLMEngineOptimized:
                         except TypeError:
                             return self.client.chat_with_history(summary_messages)
 
-                    summary = await asyncio.wait_for(
-                        loop.run_in_executor(None, _call_summarize), timeout=15.0
-                    )
-                    if hasattr(self, "_repair_stop_tokens"):
-                        summary = self._repair_stop_tokens(summary)
+                    async def _background_summarize():
+                        try:
+                            summary = await loop.run_in_executor(None, _call_summarize)
+                            if hasattr(self, "_repair_stop_tokens"):
+                                summary = self._repair_stop_tokens(summary)
 
-                    history_file = os.path.join(
-                        self.project_root, ".torchlight_history.log"
-                    )
-                    with open(history_file, "a", encoding="utf-8") as f:
-                        f.write(
-                            f"\n--- Session Summary ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---\n"
-                        )
-                        f.write(summary.strip() + "\n")
+                            history_file = os.path.join(
+                                self.project_root, ".torchlight_history.log"
+                            )
+                            with open(history_file, "a", encoding="utf-8") as f:
+                                f.write(
+                                    f"\n--- Session Summary ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---\n"
+                                )
+                                f.write(summary.strip() + "\n")
 
-                    try:
-                        from pathlib import Path
-                        from core.memory.persistence import ProjectMemory
+                            from pathlib import Path
+                            from core.memory.persistence import ProjectMemory
 
-                        pm = ProjectMemory(Path(self.project_root))
-                        pm.update(
-                            f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}"
-                        )
-                        if use_memory and memory:
-                            memory.persist_to_project_memory()
-                    except Exception as inner_e:
-                        print(
-                            f"Failed to save to ProjectMemory (.context-memory.json): {inner_e}"
-                        )
+                            pm = ProjectMemory(Path(self.project_root))
+                            pm.update(
+                                f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}"
+                            )
+                            if use_memory and memory:
+                                memory.persist_to_project_memory()
+                        except Exception as e:
+                            print(f"Session summarization skipped or failed: {e}")
+
+                    asyncio.create_task(_background_summarize())
                 except Exception as e:
                     print(f"Session summarization skipped or failed: {e}")
                 # -----------------------------
@@ -1509,6 +1512,38 @@ class RLMEngineOptimized:
             if not is_template and not is_mid_sentence and raw_content:
                 thinking = _get_thinking(final_match.start())
                 return ("final_answer", thinking, raw_content, [], None, None)
+
+        # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks)
+        bare_code_match = re.search(r"```(?:\w+)?\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
+        if bare_code_match and not re.search(r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b", response, re.IGNORECASE):
+            content = bare_code_match.group(1).strip()
+            thinking = _get_thinking(bare_code_match.start())
+            
+            # Try to extract file path from comment inside block
+            file_match = re.search(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*([^\n\r]+)", content, re.IGNORECASE)
+            
+            if not file_match:
+                # Try to extract from text preceding the block
+                pre_text = response[:bare_code_match.start()].strip()
+                file_match_pre = re.search(r"(?:for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?\s*$", pre_text, re.IGNORECASE)
+                if file_match_pre:
+                    target_path = file_match_pre.group(1).strip()
+                else:
+                    target_path = "inline_code_output.txt"  # Fallback
+            else:
+                target_path = file_match.group(1).replace("*/", "").replace("-->", "").strip()
+                # Remove header line from content
+                content = re.sub(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?", "", content, flags=re.IGNORECASE).strip()
+
+            return (
+                "tool",
+                thinking,
+                f"WRITE_FILE({target_path})",
+                [],
+                "WRITE_FILE",
+                {"path": target_path, "content": content},
+            )
+
 
         # 7. Direct answer / non-tool response handling
         cleaned_body = re.sub(

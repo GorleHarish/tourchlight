@@ -28,6 +28,9 @@ from textual.widgets import (
     TextArea,
     ListItem,
     ListView,
+    TabbedContent,
+    TabPane,
+    Switch,
 )
 
 try:
@@ -89,6 +92,7 @@ from rlm_optimized.tui_widgets.command_palette import (
     CommandPalette,
     PaletteResult,
     PromptTextArea,
+    AttachContextModal,
 )
 from rlm_optimized.tui_widgets.file_tree import GitFileTree
 
@@ -168,6 +172,28 @@ def _provider_runtime_info(provider_key: str) -> tuple[int, bool]:
     if provider_key == "ollama":
         return 11434, True
     return 0, True  # cloud providers — no local port to track
+
+
+class AgentMemoryWidget(Static):
+    """Displays the live L0 Agent Brain Scratchpad."""
+
+    def on_mount(self) -> None:
+        self.update_memory()
+        self.set_interval(2.0, self.update_memory)
+
+    def update_memory(self) -> None:
+        try:
+            app = self.app
+            if hasattr(app, "engine") and hasattr(app.engine, "memory"):
+                mem = app.engine.memory
+                if mem and hasattr(mem, "format_l0_scratchpad"):
+                    text = mem.format_l0_scratchpad(project_root=app.engine.project_root)
+                    if text:
+                        self.update(text)
+                        return
+        except Exception:
+            pass
+        self.update("[dim]Agent memory not initialized yet...[/dim]")
 
 
 # ── Approval Modal ──────────────────────────────────────────────────────
@@ -1116,6 +1142,7 @@ class TorchlightApp(App):
         Binding("ctrl+t", "cycle_theme", "Theme", show=False),
         Binding("ctrl+n", "compact_context", "Compact Context", show=False),
         Binding("ctrl+o", "open_folder", "Open Folder", show=False),
+        Binding("ctrl+u", "attach_context", "Attach Context", show=True),
         Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=False),
         Binding("ctrl+x", "copy_selection", "Copy Selection", show=False),
         Binding("ctrl+y", "copy_chat", "Copy Chat", show=False),
@@ -1204,6 +1231,12 @@ class TorchlightApp(App):
         except Exception:
             self.update_status_bar()
 
+        try:
+            memory_widget = self.query_one("#agent-memory-panel", AgentMemoryWidget)
+            self.call_after_refresh(memory_widget.update_memory)
+        except Exception:
+            pass
+
     def compose(self) -> ComposeResult:
         # Top HUD Header
         with Horizontal(id="top-hud-header"):
@@ -1250,8 +1283,9 @@ class TorchlightApp(App):
 
                 # Bottom Command Input Row
                 with Vertical(id="input-area"):
+                    yield Horizontal(id="context-chips-bar")
                     with Horizontal(id="input-row"):
-                        yield Static("> ", id="prompt-symbol")
+                        yield Button("+", id="attach-context-btn", tooltip="Attach Context (Ctrl+U)")
                         self._user_input = PromptTextArea(
                             id="user-input",
                             language=None,
@@ -1261,13 +1295,19 @@ class TorchlightApp(App):
                             suggestion_callback=self._on_suggestion_matches,
                         )
                         yield self._user_input
+                        yield Button("⚡ Load Model", id="toggle-engine-btn", variant="success")
                         yield Button("SEND ↗", id="send-btn", variant="primary")
                         yield Static("", id="input-spinner")
                     yield ListView(id="input-suggestions")
 
             # 3. Right Sidebar: Implementation Plan & TODO Tasks
             with Vertical(id="plan-sidebar"):
-                yield Static(self._build_plan_text(), id="plan-panel")
+                with TabbedContent():
+                    with TabPane("📋 Tasks", id="tab-tasks"):
+                        yield Static(self._build_plan_text(), id="plan-panel")
+                    with TabPane("🧠 Agent Brain", id="tab-brain"):
+                        with VerticalScroll():
+                            yield AgentMemoryWidget(id="agent-memory-panel")
 
         # Bottom Context Progress & Telemetry Meter
         with Vertical(id="telemetry-bar"):
@@ -1756,7 +1796,55 @@ class TorchlightApp(App):
         if not user_text or self._is_running:
             return
 
+        if not self.model_name or self.model_name == "local-model":
+            self.notify("No model selected. Please select a model first.", severity="error")
+            self.action_select_model()
+            return
+            
+        if self.engine_port > 0 and not is_port_in_use(self.engine_port):
+            if self.externally_managed:
+                self.notify(
+                    f"{escape(self.provider_name)} is offline on port {self.engine_port}. Please start it and try again.",
+                    severity="error"
+                )
+            else:
+                self.notify(
+                    f"Model '{escape(self.model_name)}' is not loaded. Please click '⚡ Start Engine' in the top bar.",
+                    severity="error"
+                )
+            return
+
         inp.clear()
+
+        # Gather chips if any
+        try:
+            chips_bar = self.query_one("#context-chips-bar", Horizontal)
+            context_files = []
+            for btn in chips_bar.query(".context-chip"):
+                filepath = getattr(btn, "_filepath", getattr(btn, "tooltip", None)) or btn.label.plain.replace("✕", "").strip().lstrip("@")
+                context_files.append(f"@{filepath}")
+            
+            # Append context to task if not already inline
+            if context_files:
+                chip_context = " ".join(context_files)
+                if chip_context not in user_text:
+                    user_text = f"{user_text} {chip_context}"
+                    
+            # Remove chips after submission
+            for btn in chips_bar.query(Button):
+                btn.remove()
+            chips_bar.remove_class("has-chips")
+        except Exception:
+            pass
+
+        # Add a visual separator if this isn't the first turn and the last step wasn't a separator
+        if self._chat_history and self._chat_history[-1]["role"] != "system":
+            try:
+                container = self.query_one("#chat-container")
+                if container.children:
+                    self._safe_mount(container, Static("─" * 40, classes="turn-separator"))
+            except Exception:
+                pass
 
         if user_text.startswith("/"):
             await self._handle_slash_command(user_text)
@@ -1789,6 +1877,11 @@ class TorchlightApp(App):
             self.stop_current_agent()
             return
         await self._submit_user_input()
+        
+    @on(PromptTextArea.ContextFileAttached)
+    def _on_context_file_attached(self, event: PromptTextArea.ContextFileAttached) -> None:
+        self._add_context_chip(event.filepath)
+        self.set_focus(event.text_area)
 
     # ── Input Suggestions (slash / @file autocomplete) ────────────────────
 
@@ -1991,17 +2084,8 @@ class TorchlightApp(App):
         self._apply_responsive_layout()
 
     async def on_key(self, event) -> None:
-        """Enter submits the prompt; Shift+Enter inserts a newline."""
-        if event.key == "enter":
-            # Check if the TextArea is currently focused
-            try:
-                inp = self.query_one("#user-input", TextArea)
-            except Exception:
-                return
-            if self.focused is inp:
-                event.prevent_default()
-                event.stop()
-                await self._submit_user_input()
+        """Global key bindings that aren't caught by specific widgets."""
+        pass
 
     # ── Slash Command Handler ───────────────────────────────────────────
 
@@ -2763,8 +2847,15 @@ class TorchlightApp(App):
             if selected:
                 new_model = selected["id"]
                 new_provider = selected["provider"]
+                
+                save_last_state({
+                    "last_model": new_model,
+                    "last_provider": new_provider,
+                    "last_provider_name": selected["name"]
+                })
+
                 self.notify(
-                    f"Switching to {selected['name']}...",
+                    f"Switching to {escape(selected['name'])}...",
                     severity="information",
                     timeout=3,
                 )
@@ -2825,12 +2916,12 @@ class TorchlightApp(App):
                     new_provider
                 )
 
-                # 5. Launch new background server if local
-                if new_provider in ("llama-cpp", "turbo", "turboquant", "mlx"):
-                    self.on_start_engine_btn()
+                # (Removed auto-start so the user must click '⚡ Start Engine')
 
                 self.notify(
-                    f"Switched to {selected['name']}", severity="information", timeout=2
+                    f"Switched to {escape(selected['name'])}. Click '⚡ Start Engine' to load into RAM.", 
+                    severity="information", 
+                    timeout=4
                 )
                 self.update_status_bar()
                 self.update_sidebar_meta()
@@ -2899,13 +2990,24 @@ class TorchlightApp(App):
             timeout=5,
         )
 
+    @on(Button.Pressed, "#toggle-engine-btn")
+    def on_toggle_engine_btn(self) -> None:
+        if self.engine_port <= 0:
+            return
+            
+        is_online = getattr(self, "_last_server_online", False)
+        if is_online:
+            self.on_stop_engine_btn()
+        else:
+            self.on_start_engine_btn()
+
     @on(Button.Pressed, "#start-engine-btn")
     def on_start_engine_btn(self) -> None:
         container = self.query_one("#chat-container")
 
         if self.engine_port <= 0:
             self.notify(
-                f"{self.provider_name} is a cloud provider, nothing to start locally",
+                f"{escape(self.provider_name)} is a cloud provider, nothing to start locally",
                 severity="information",
                 timeout=2,
             )
@@ -2915,8 +3017,9 @@ class TorchlightApp(App):
 
         if is_port_in_use(self.engine_port):
             self._server_starting = False
+            self._last_server_online = True
             self.notify(
-                f"Engine server already active on port {self.engine_port}",
+                f"Connected to {escape(self.provider_name)} on port {self.engine_port}",
                 severity="information",
                 timeout=2,
             )
@@ -2926,7 +3029,7 @@ class TorchlightApp(App):
 
         if self.externally_managed:
             self.notify(
-                f"{self.provider_name} offline on port {self.engine_port}. Start it yourself, then retry.",
+                f"{escape(self.provider_name)} offline on port {self.engine_port}. Start it yourself, then retry.",
                 severity="warning",
                 timeout=5,
             )
@@ -2942,7 +3045,7 @@ class TorchlightApp(App):
         )
         if hasattr(self, "_conn_banner_widget") and self._conn_banner_widget:
             self._conn_banner_widget.update(
-                f"  [bold yellow]Starting local engine server ({self.model_name})...[/]\n"
+                f"  [bold yellow]Starting local engine server ({escape(self.model_name)})...[/]\n"
             )
         self.update_status_bar()
         self.update_sidebar_meta()
@@ -2968,7 +3071,7 @@ class TorchlightApp(App):
                 server_log_path = os.path.join(log_dir, "llama_server.log")
                 server_log_file = open(server_log_path, "a", encoding="utf-8")
                 subprocess.Popen(
-                    [target_script],
+                    [target_script, self.model_name],
                     cwd=os.path.dirname(target_script),
                     stdout=server_log_file,
                     stderr=server_log_file,
@@ -3167,6 +3270,21 @@ class TorchlightApp(App):
             is_running=getattr(self, "_is_running", False),
         )
 
+        try:
+            toggle_btn = self.query_one("#toggle-engine-btn", Button)
+            if self.engine_port <= 0:
+                toggle_btn.display = False
+            else:
+                toggle_btn.display = True
+                if server_online:
+                    toggle_btn.label = "🛑 Unload Model"
+                    toggle_btn.variant = "error"
+                else:
+                    toggle_btn.label = "⚡ Load Model"
+                    toggle_btn.variant = "success"
+        except Exception:
+            pass
+
     def _context_usage(self) -> tuple[int, int, float]:
         mem = getattr(self.engine, "_memory", None)
         if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
@@ -3224,6 +3342,52 @@ class TorchlightApp(App):
             CommandPalette(self.engine.project_root, bindings=self.BINDINGS),
             _on_result,
         )
+
+    def action_attach_context(self) -> None:
+        def _on_result(result: Optional[str]) -> None:
+            if result is None:
+                return
+            if self._user_input is not None:
+                self._add_context_chip(result)
+                self.set_focus(self._user_input)
+
+        self.push_screen(
+            AttachContextModal(self.engine.project_root),
+            _on_result,
+        )
+
+    @on(Button.Pressed, "#attach-context-btn")
+    def _on_attach_context_btn_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        self.action_attach_context()
+
+    def _add_context_chip(self, filepath: str) -> None:
+        chips_bar = self.query_one("#context-chips-bar", Horizontal)
+        # Avoid duplicate chips
+        existing_chips = [
+            getattr(btn, "_filepath", getattr(btn, "tooltip", "")) 
+            for btn in chips_bar.query(".context-chip")
+        ]
+        if filepath in existing_chips:
+            return
+            
+        btn = Button(f"@{filepath} ✕", classes="context-chip")
+        # Store original path for submission reconstruction
+        btn._filepath = filepath
+        btn.tooltip = filepath
+        chips_bar.mount(btn)
+        chips_bar.add_class("has-chips")
+
+    @on(Button.Pressed, ".context-chip")
+    def _on_context_chip_pressed(self, event: Button.Pressed) -> None:
+        btn = event.button
+        btn.remove()
+        chips_bar = self.query_one("#context-chips-bar", Horizontal)
+        # Textual's remove() is async, so the button is still in the DOM during this handler.
+        # If there's 1 or fewer chips left, it means the bar will be empty.
+        if len(list(chips_bar.query(".context-chip"))) <= 1:
+            chips_bar.remove_class("has-chips")
+        self.set_focus(self._user_input)
 
     def action_toggle_status_modal(self) -> None:
         meta_sum = self._build_meta_text()
@@ -3411,8 +3575,16 @@ def main():
     # prefer that — this is what fetch_provider_models()/the lmstudio branch
     # below was already built to do, it just never used to get called at
     # startup unless --provider lmstudio was passed by hand.
+    last_state = load_last_state()
+    saved_provider = last_state.get("last_provider")
+    saved_model = last_state.get("last_model")
+
     if args.provider is None:
-        if fetch_provider_models(LMSTUDIO_BASE_URL):
+        if saved_provider and saved_model:
+            args.provider = saved_provider
+            if args.model == MODEL_NAME:  # If untouched
+                args.model = saved_model
+        elif fetch_provider_models(LMSTUDIO_BASE_URL):
             args.provider = "lmstudio"
         else:
             args.provider = PROVIDER

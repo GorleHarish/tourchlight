@@ -216,15 +216,20 @@ async def test_prompt_text_area_enter_submits_and_accepts_suggestion():
         assert not ta.suggestions_visible
         assert submitted == []
 
-        # A second Enter now submits (no active suggestion).
+        # A second Enter now inserts a newline (no active suggestion).
         await pilot.press("enter")
+        await pilot.pause()
+        assert len(submitted) == 0
+        
+        # ctrl+s triggers submission
+        await pilot.press("ctrl+s")
         await pilot.pause()
         assert len(submitted) == 1
 
-        # Plain message text submits directly.
+        # Plain message text submits directly with ctrl+s.
         await pilot.press("h", "i")
         await pilot.pause()
-        await pilot.press("enter")
+        await pilot.press("ctrl+s")
         await pilot.pause()
         assert len(submitted) == 2
         await pilot.pause()

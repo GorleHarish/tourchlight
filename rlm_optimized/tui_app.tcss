@@ -42,7 +42,7 @@ Footer {
 }
 
 #explorer-sidebar {
-    width: 28;
+    width: 24;
     height: 100%;
     background: $surface;
     border-right: heavy $primary;
@@ -50,7 +50,7 @@ Footer {
 }
 
 #plan-sidebar {
-    width: 32;
+    width: 30;
     height: 100%;
     background: $surface;
     border-left: heavy $primary;
@@ -185,12 +185,22 @@ Footer {
 /* #compact-btn uses the built-in warning Button variant, which computes a
    theme-correct text color ($button-color-foreground) — no hardcoded hex. */
 
-#prompt-symbol {
-    width: 2;
+#attach-context-btn {
+    width: 3;
     height: 3;
+    min-width: 3;
+    padding: 0;
+    margin: 0;
+    margin-right: 1;
+    border: none;
+    background: transparent;
     color: $primary;
     text-style: bold;
-    content-align: center middle;
+}
+
+#attach-context-btn:hover {
+    background: $surface;
+    color: $accent;
 }
 
 #context-meter-bar {
@@ -355,7 +365,7 @@ TextArea:disabled {
 #chat-container {
     width: 1fr;
     height: 100%;
-    padding: 0 1;
+    padding: 0 4;
     background: $background;
     color: $foreground;
 }
@@ -381,15 +391,15 @@ TextArea:disabled {
 #input-row {
     height: auto;
     min-height: 3;
-    max-height: 8;
+    max-height: 14;
     align: center middle;
 }
 
 #user-input {
     width: 1fr;
     height: auto;
-    min-height: 3;
-    max-height: 6;
+    min-height: 1;
+    max-height: 12;
     background: $background;
     color: $foreground;
     border: tall $primary;
@@ -690,10 +700,10 @@ CollapsibleContents {
 
 /* Telemetry & Gauges */
 #telemetry-bar {
-    height: 2;
-    min-height: 2;
+    height: 1;
+    min-height: 1;
     background: $surface;
-    border-top: solid $border-blurred;
+    border-top: none;
     padding: 0 1;
 }
 
@@ -718,8 +728,10 @@ CollapsibleContents {
 .nav-dock-btn {
     width: auto;
     height: 1;
+    min-height: 1;
     min-width: 14;
     padding: 0 2;
+    margin: 0 1;
     border: none;
     background: transparent;
     color: $primary;
@@ -734,8 +746,10 @@ CollapsibleContents {
 .nav-dock-btn-active {
     width: auto;
     height: 1;
+    min-height: 1;
     min-width: 14;
     padding: 0 2;
+    margin: 0 1;
     border: none;
     background: $primary;
     color: $background;
@@ -743,3 +757,31 @@ CollapsibleContents {
 }
 
 
+
+/* Context Chips */
+#context-chips-bar {
+    height: auto;
+    max-height: 3;
+    padding-left: 1;
+    margin-bottom: 1;
+    display: none;
+}
+
+#context-chips-bar.has-chips {
+    display: block;
+}
+
+.context-chip {
+    height: 1;
+    min-width: 5;
+    padding: 0 1;
+    margin-right: 1;
+    background: $accent 30%;
+    color: $text;
+    border: none;
+}
+
+.context-chip:hover {
+    background: $error;
+    color: $text;
+}

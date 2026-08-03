@@ -164,13 +164,21 @@ class PromptTextArea(TextArea):
     class SubmitRequested(Message):
         """Posted when the user presses Enter with no active suggestion."""
 
-        def __init__(self, text_area: PromptTextArea) -> None:
+        def __init__(self, text_area: "PromptTextArea") -> None:
             super().__init__()
             self.text_area = text_area
 
         @property
-        def control(self) -> PromptTextArea | None:
+        def control(self) -> "PromptTextArea | None":
             return self.text_area
+
+    class ContextFileAttached(Message):
+        """Posted when the user accepts an @file suggestion."""
+
+        def __init__(self, text_area: "PromptTextArea", filepath: str) -> None:
+            super().__init__()
+            self.text_area = text_area
+            self.filepath = filepath
 
     def __init__(
         self,
@@ -221,12 +229,22 @@ class PromptTextArea(TextArea):
         if not self._matches:
             return
         match = self._matches[min(self.highlight_index, len(self._matches) - 1)]
-        if " " in self.text:
-            head, _sep, _tail = self.text.rpartition(" ")
-            self.load_text(f"{head} {match}")
+        if match.startswith("@"):
+            filepath = match[1:].strip()
+            if " " in self.text:
+                head, _sep, _tail = self.text.rpartition(" ")
+                self.load_text(f"{head} ")
+            else:
+                self.load_text("")
+            self.move_cursor(self.document.end)
+            self.post_message(self.ContextFileAttached(self, filepath))
         else:
-            self.load_text(match)
-        self.move_cursor(self.document.end)
+            if " " in self.text:
+                head, _sep, _tail = self.text.rpartition(" ")
+                self.load_text(f"{head} {match}")
+            else:
+                self.load_text(match)
+            self.move_cursor(self.document.end)
         self._matches = []
         self.highlight_index = 0
         if self._suggestion_callback:
@@ -240,13 +258,21 @@ class PromptTextArea(TextArea):
 
     async def _on_key(self, event) -> None:
         key = event.key
-        if key == "enter":
+
+        if key in ("ctrl+s", "alt+enter"):
             event.stop()
             event.prevent_default()
+            self.post_message(self.SubmitRequested(self))
+            return
+
+        if key == "enter":
             if self._matches:
+                event.stop()
+                event.prevent_default()
                 self.accept_suggestion()
-            else:
-                self.post_message(self.SubmitRequested(self))
+                return
+            # Let the default TextArea handle the newline and indentation
+            await super()._on_key(event)
             return
         if key == "tab":
             event.stop()
@@ -435,6 +461,121 @@ class CommandPalette(ModalScreen[Optional[PaletteResult]]):  # noqa: UP045 - 3.9
         idx = min(self._index, len(self._filtered) - 1)
         label, detail, kind, value = self._filtered[idx]
         self.dismiss(PaletteResult(kind=kind, value=value, label=label, detail=detail))
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+class AttachContextModal(ModalScreen[Optional[str]]):
+    """Ctrl+O modal: fuzzy-search files to attach to the prompt."""
+
+    BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
+        ("escape", "cancel", "Cancel"),
+        ("enter", "select", "Attach"),
+        ("up", "cursor_up", "Up"),
+        ("down", "cursor_down", "Down"),
+        ("home", "scroll_home", "Top"),
+        ("end", "scroll_end", "Bottom"),
+    ]
+
+    DEFAULT_CSS = CommandPalette.DEFAULT_CSS
+
+    def __init__(
+        self,
+        project_root: str | Path,
+    ) -> None:
+        super().__init__()
+        files = iter_project_files(project_root)
+        self._all_items = [(f, "", "file", f) for f in files]
+        self._filtered = self._all_items
+        self._index = 0
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="palette-dialog"):
+            yield Label("📎 Attach Context", id="palette-title")
+            yield Input(
+                placeholder="Fuzzy-search file to attach…",
+                id="palette-input",
+            )
+            yield ListView(id="palette-list")
+            yield Static(
+                f"[dim]{len(self._all_items)} files · ↑/↓ navigate · Enter attach · Esc close[/]",
+                id="palette-hint",
+            )
+
+    def on_mount(self) -> None:
+        self._refresh("")
+        try:
+            self.set_focus(self.query_one("#palette-input", Input))
+        except Exception:  # noqa: BLE001, S110
+            pass
+
+    @on(Input.Changed, "#palette-input")
+    def on_palette_input(self, event: Input.Changed) -> None:
+        self._refresh(event.value)
+
+    @on(Input.Submitted, "#palette-input")
+    def on_palette_submit(self, event: Input.Submitted) -> None:
+        self.action_select()
+
+    @on(ListView.Selected, "#palette-list")
+    def on_palette_selected(self, event: ListView.Selected) -> None:
+        if event.index is not None:
+            self._index = event.index
+        self.action_select()
+
+    def _refresh(self, query: str) -> None:
+        self._filtered = fuzzy_filter(query, self._all_items)
+        lv = self.query_one("#palette-list", ListView)
+        lv.clear()
+        for label, _detail, _kind, _value in self._filtered:
+            lv.append(ListItem(Label(label)))
+        self._index = 0
+        if self._filtered:
+            lv.index = 0
+
+    def _sync_index(self) -> None:
+        try:
+            lv = self.query_one("#palette-list", ListView)
+            lv.index = self._index
+        except Exception:  # noqa: BLE001, S110
+            pass
+
+    @on(ListView.Highlighted, "#palette-list")
+    def on_highlighted(self, event: ListView.Highlighted) -> None:
+        idx = event.list_view.index
+        if idx is not None:
+            self._index = idx
+
+    def action_cursor_up(self) -> None:
+        if not self._filtered:
+            return
+        self._index = (self._index - 1) % len(self._filtered)
+        self._sync_index()
+
+    def action_cursor_down(self) -> None:
+        if not self._filtered:
+            return
+        self._index = (self._index + 1) % len(self._filtered)
+        self._sync_index()
+
+    def action_scroll_home(self) -> None:
+        if not self._filtered:
+            return
+        self._index = 0
+        self._sync_index()
+
+    def action_scroll_end(self) -> None:
+        if not self._filtered:
+            return
+        self._index = len(self._filtered) - 1
+        self._sync_index()
+
+    def action_select(self) -> None:
+        if not self._filtered:
+            return
+        idx = min(self._index, len(self._filtered) - 1)
+        _, _, _, value = self._filtered[idx]
+        self.dismiss(value)
 
     def action_cancel(self) -> None:
         self.dismiss(None)
