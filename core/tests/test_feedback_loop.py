@@ -165,7 +165,7 @@ def test_no_test_command_is_not_failing(tmp_path):
     assert not loop.has_failing_tests
     assert loop.get_test_failure_error() is None
     assert loop.build_feedback_context() == ""
-    assert not loop._files_modified_since_test
+    assert "src/main.py" in loop._files_modified_since_test
 
 
 def test_timeout_records_failing_result(tmp_path):
@@ -263,7 +263,7 @@ def test_verify_pending_changes_nothing_to_run_passes(tmp_path):
     loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
     loop._files_modified_since_test.add("src/main.py")
     assert loop.verify_pending_changes() is True
-    assert not loop._files_modified_since_test
+    assert "src/main.py" in loop._files_modified_since_test
 
 
 def test_failing_run_keeps_dirty_set(tmp_path):

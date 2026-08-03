@@ -74,6 +74,27 @@ class CloudClient:
         except Exception:
             return []
 
+    def _resolve_model_target(self) -> str:
+        """Resolve requested self.model against live models to prevent 404 mismatches."""
+        if not self.model:
+            live = self.list_models()
+            if live:
+                self.model = live[0]
+            return self.model or ""
+        live = self.list_models()
+        if not live:
+            return self.model
+        if self.model in live:
+            return self.model
+        # Check fuzzy match
+        requested_lower = self.model.lower()
+        for m_id in live:
+            if requested_lower in m_id.lower() or m_id.lower() in requested_lower:
+                print(f"[CloudClient] Fuzzy matched model '{self.model}' -> '{m_id}'")
+                self.model = m_id
+                return m_id
+        return self.model
+
     def query(self, prompt: str, system_prompt: str = "", messages: Optional[list] = None, max_retries: int = 3) -> str:
         if messages is None:
             messages = []
@@ -81,6 +102,7 @@ class CloudClient:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
+        self._resolve_model_target()
         cleaned_messages = _sanitize_messages_for_cloud(messages, self.model)
 
         for attempt in range(max_retries):
@@ -98,7 +120,14 @@ class CloudClient:
                 return response.choices[0].message.content or ""
             except Exception as e:
                 error_str = str(e)
-                if any(code in error_str for code in ["401", "403", "404", "invalid_api_key", "model_not_found"]):
+                if "404" in error_str or "NotFoundError" in type(e).__name__ or getattr(e, "status_code", None) == 404:
+                    live = self.list_models()
+                    if live and self.model != live[0]:
+                        print(f"[CloudClient] Model '{self.model}' 404, falling back to '{live[0]}'")
+                        self.model = live[0]
+                        cleaned_messages = _sanitize_messages_for_cloud(messages, self.model)
+                        continue
+                if any(code in error_str for code in ["401", "403", "invalid_api_key"]):
                     raise RuntimeError(f"Cloud API error: {e}") from e
                 if attempt < max_retries - 1:
                     time.sleep(2 ** attempt)
@@ -113,6 +142,7 @@ class CloudClient:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
+        self._resolve_model_target()
         cleaned_messages = _sanitize_messages_for_cloud(messages, self.model)
 
         try:
@@ -134,10 +164,11 @@ class CloudClient:
             error_str = str(e)
             if "404" in error_str or "NotFoundError" in type(e).__name__ or getattr(e, "status_code", None) == 404:
                 try:
-                    models_res = self._client.models.list()
-                    model_list = list(models_res.data) if hasattr(models_res, 'data') else []
+                    model_list = self.list_models()
                     if model_list:
-                        target_model = model_list[0].id
+                        target_model = model_list[0]
+                        print(f"[CloudClient] Stream model '{self.model}' 404, updating self.model -> '{target_model}'")
+                        self.model = target_model
                         fallback_kwargs = dict(
                             model=target_model,
                             messages=messages,

@@ -327,7 +327,7 @@ class AutonomousHarness:
         self.save_goal_spec()
 
         # Step 1: Manage message memory for continuous session execution
-        if getattr(self.config, "preserve_continuous_context", True):
+        if getattr(self.config, "preserve_continuous_context", False):
             if hasattr(self.memory, "compact_between_tasks"):
                 self.memory.compact_between_tasks()
             else:
@@ -685,24 +685,26 @@ class AutonomousHarness:
     def _git_revert(self, target_files: Optional[list[str]] = None) -> bool:
         try:
             ensure_git_repository(self.project_root)
-            if target_files:
-                existing_targets = [
-                    tf for tf in target_files if (self.project_root / tf).exists()
-                ]
-                if existing_targets:
-                    subprocess.run(
-                        ["git", "checkout", "--"] + existing_targets,
-                        cwd=str(self.project_root),
-                        check=False,
-                        capture_output=True,
-                    )
-                    subprocess.run(
-                        ["git", "clean", "-fd"] + existing_targets,
-                        cwd=str(self.project_root),
-                        check=False,
-                        capture_output=True,
-                    )
-                    return True
+            if not target_files:
+                logger.info("No target files to revert.")
+                return True
+            existing_targets = [
+                tf for tf in target_files if (self.project_root / tf).exists()
+            ]
+            if existing_targets:
+                subprocess.run(
+                    ["git", "checkout", "--"] + existing_targets,
+                    cwd=str(self.project_root),
+                    check=False,
+                    capture_output=True,
+                )
+                subprocess.run(
+                    ["git", "clean", "-fd"] + existing_targets,
+                    cwd=str(self.project_root),
+                    check=False,
+                    capture_output=True,
+                )
+                return True
             # Blanket workspace revert requires allow_blanket_revert=True AND a
             # .torchlight/.harness_managed marker proving the harness itself
             # initialized the repository. Pre-existing user repos never get the

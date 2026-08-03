@@ -73,10 +73,24 @@ class LlamaCppClient:
                 "top_p": TOP_P,
                 "max_tokens": NUM_PREDICT,
                 "presence_penalty": 0.1,
-                "stop": ["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],
+                "frequency_penalty": 0.1,
+                "stop": [
+                    "</TOOL>",
+                    "</CODE>",
+                    "</FINAL_ANSWER>",
+                    "</SUB_QUERY>",
+                    "</action>",
+                    "\nAction:",
+                    "Action:",
+                    "Observation:",
+                    "<|im_end|>",
+                    "<|endoftext|>",
+                    "<|im_start|>",
+                    "</s>",
+                ],
             }
             if include_extra:
-                p["repeat_penalty"] = 1.1
+                p["repeat_penalty"] = 1.15
                 if use_grammar and self._grammar_content:
                     p["grammar"] = self._grammar_content
             return p
@@ -148,9 +162,23 @@ class LlamaCppClient:
             "temperature": TEMPERATURE,
             "top_p": TOP_P,
             "max_tokens": NUM_PREDICT,
-            "repeat_penalty": 1.1,
+            "repeat_penalty": 1.15,
             "presence_penalty": 0.1,
-            "stop": ["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],
+            "frequency_penalty": 0.1,
+            "stop": [
+                "</TOOL>",
+                "</CODE>",
+                "</FINAL_ANSWER>",
+                "</SUB_QUERY>",
+                "</action>",
+                "\nAction:",
+                "Action:",
+                "Observation:",
+                "<|im_end|>",
+                "<|endoftext|>",
+                "<|im_start|>",
+                "</s>",
+            ],
             "stream": True,
         }
 

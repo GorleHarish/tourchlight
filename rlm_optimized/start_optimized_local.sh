@@ -40,8 +40,14 @@ if [ -n "$MODEL_INPUT" ]; then
         MODEL_PATH="$MODEL_INPUT"
     elif [ -f "$PROJECT_ROOT/models/$MODEL_INPUT" ]; then
         MODEL_PATH="$PROJECT_ROOT/models/$MODEL_INPUT"
+    elif [ -f "$PROJECT_ROOT/models/${MODEL_INPUT}.gguf" ]; then
+        MODEL_PATH="$PROJECT_ROOT/models/${MODEL_INPUT}.gguf"
+    elif [[ "$MODEL_INPUT" == *"qwen"* ]]; then
+        MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
     elif [[ "$MODEL_INPUT" == *"4e4b"* ]] || [[ "$MODEL_INPUT" == *"e4b"* ]] || [[ "$MODEL_INPUT" == *"E4B"* ]]; then
         MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E4B-it-Q4_K_M.gguf"
+    elif [[ "$MODEL_INPUT" == *"4e2b"* ]] || [[ "$MODEL_INPUT" == *"e2b"* ]] || [[ "$MODEL_INPUT" == *"E2B"* ]]; then
+        MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"
     else
         MODEL_PATH="$MODEL_INPUT"
     fi

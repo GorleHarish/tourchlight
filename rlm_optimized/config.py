@@ -75,7 +75,7 @@ _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAMMAR_FILE = os.environ.get(
     "RLM_GRAMMAR_FILE", os.path.join(_PKG_DIR, "grammar.gbnf")
 )
-USE_GRAMMAR_CONSTRAINT = os.environ.get("RLM_USE_GRAMMAR", "true").lower() in (
+USE_GRAMMAR_CONSTRAINT = os.environ.get("RLM_USE_GRAMMAR", "false").lower() in (
     "true",
     "1",
     "yes",
@@ -165,10 +165,17 @@ ALLOWED_MODULES = [
 
 def normalize_model_name(name: str, provider: str = "") -> str:
     """Normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 E2B', 'gemma 4 4e4b')."""
+    if not name:
+        return name
+    name_str = str(name).strip()
+    provider_clean = (provider or "").lower().strip()
+    if provider_clean in ("lmstudio", "ollama") or name_str.startswith("lmstudio"):
+        return name_str
+
     name_lower = (
-        name.lower().replace(" ", "").replace("-", "").replace("_", "").replace(":", "")
+        name_str.lower().replace(" ", "").replace("-", "").replace("_", "").replace(":", "")
     )
-    if provider == "mlx" or "mlx" in name_lower:
+    if provider_clean == "mlx" or "mlx" in name_lower:
         if "qwen" in name_lower or name_lower == "qwen2.5coder":
             if "1.5b" in name_lower or "15b" in name_lower:
                 return "mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit"
@@ -201,7 +208,7 @@ def normalize_model_name(name: str, provider: str = "") -> str:
         return "gemma-2-2b-it"
     elif name_lower in ("gemma34b", "gemma3"):
         return "gemma3:4b"
-    return name
+    return name_str
 
 
 def list_available_models() -> list[dict[str, str]]:

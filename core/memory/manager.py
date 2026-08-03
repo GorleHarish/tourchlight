@@ -446,6 +446,7 @@ class TieredMemory:
                 Message(
                     role=MessageRole.SYSTEM,
                     content=f"[Continuous Session Summary of Prior Tasks]\n{summary_content}",
+                    token_count=self.tokenizer.count(summary_content) + 10,
                 )
             )
         else:
@@ -472,6 +473,7 @@ class TieredMemory:
                 Message(
                     role=MessageRole.SYSTEM,
                     content=f"[Continuous Session Summary: {summary_text}]",
+                    token_count=self.tokenizer.count(summary_text) + 10,
                 )
             )
 

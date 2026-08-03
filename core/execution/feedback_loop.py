@@ -179,6 +179,7 @@ class ExecutionFeedbackLoop:
         if not self.enabled or not self.auto_run:
             return None
 
+        tool_name = (tool_name or "").upper()
         if tool_name in ("WRITE_FILE", "EDIT_FILE"):
             path = params.get("path") or params.get("file", "")
             if path:
@@ -202,6 +203,7 @@ class ExecutionFeedbackLoop:
         return None
 
     def _should_run_tests(self, tool_name: str) -> bool:
+        tool_name = (tool_name or "").upper()
         if not self._files_modified_since_test:
             return False
         if tool_name in ("RUN_COMMAND", "WRITE_FILE", "EDIT_FILE"):
@@ -343,8 +345,8 @@ class ExecutionFeedbackLoop:
 
             # Nothing to verify (no test framework and no web files): record a
             # non-run so the gate does not misreport it as a passing or failing
-            # test run, and stop re-triggering on the same dirty set.
-            self._files_modified_since_test.clear()
+            # test run. Keep the dirty set so callers can still see unverified
+            # edits instead of silently dropping them.
             result = TestRunResult(
                 command="", return_code=-1, duration_ms=0, results=[], ran=False
             )

@@ -2206,10 +2206,16 @@ class TorchlightApp(App):
                     timeout=3,
                 )
             else:
-                normalized = normalize_model_name(arg)
+                provider = getattr(self, "provider_name", "")
+                normalized = normalize_model_name(arg, provider=provider)
                 self.model_name = normalized
                 if hasattr(self.engine.client, "model"):
                     self.engine.client.model = normalized
+                save_last_state({
+                    "last_model": normalized,
+                    "last_provider": getattr(self.engine.client, "_provider", "custom"),
+                    "last_provider_name": provider,
+                })
                 self.update_status_bar()
                 self.update_sidebar_meta()
                 self.notify(
@@ -3066,6 +3072,14 @@ class TorchlightApp(App):
 
         if os.path.exists(target_script):
             try:
+                # Terminate any previously running server processes to ensure the new model loads
+                try:
+                    subprocess.run(["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL)
+                    subprocess.run(["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL)
+                    time.sleep(0.5)
+                except Exception:
+                    pass
+
                 log_dir = os.path.join(self.engine.project_root, ".torchlight")
                 os.makedirs(log_dir, exist_ok=True)
                 server_log_path = os.path.join(log_dir, "llama_server.log")
@@ -3579,11 +3593,12 @@ def main():
     saved_provider = last_state.get("last_provider")
     saved_model = last_state.get("last_model")
 
+    if saved_model and args.model == MODEL_NAME:
+        args.model = saved_model
+
     if args.provider is None:
-        if saved_provider and saved_model:
+        if saved_provider:
             args.provider = saved_provider
-            if args.model == MODEL_NAME:  # If untouched
-                args.model = saved_model
         elif fetch_provider_models(LMSTUDIO_BASE_URL):
             args.provider = "lmstudio"
         else:

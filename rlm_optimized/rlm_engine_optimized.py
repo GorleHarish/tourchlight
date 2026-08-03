@@ -147,9 +147,11 @@ def _clean_and_parse_json(raw_str: str) -> dict:
             return data[0]
         return None
 
+    last_parsed = None
     # 1. Direct JSON parse
     try:
         data = json.loads(raw)
+        last_parsed = data
         extracted = _extract_dict(data)
         if extracted is not None:
             return extracted
@@ -159,6 +161,7 @@ def _clean_and_parse_json(raw_str: str) -> dict:
     # 2. Tolerant repair: raw newlines/tabs in strings, unterminated trailing string
     try:
         data = json.loads(_tolerant_json_repair(raw))
+        last_parsed = data
         extracted = _extract_dict(data)
         if extracted is not None:
             return extracted
@@ -181,6 +184,10 @@ def _clean_and_parse_json(raw_str: str) -> dict:
         result["content"] = content_match.group(1)
 
     if not result:
+        if isinstance(last_parsed, dict):
+            return last_parsed
+        if isinstance(last_parsed, list) and len(last_parsed) > 0 and isinstance(last_parsed[0], dict):
+            return last_parsed[0]
         result = {"raw": raw}
 
     return result
@@ -217,6 +224,7 @@ class RLMEngineOptimized:
         self._total_llm_calls = 0
         self.sandbox.set_llm_query_fn(self._sandbox_llm_query)
         self.approval_fn = approval_fn  # fn(tool_name, risk, args) -> bool or async
+        self._inline_code_counter = 0
 
         if debate_verifier is not None:
             self.debate_verifier = debate_verifier
@@ -523,7 +531,7 @@ class RLMEngineOptimized:
                     # 1. Check for failing post-edit tests
                     if has_failing:
                         fb_ctx = self.feedback_loop.build_feedback_context()
-                        rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE) to debug and resolve the failure."
+                        rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE, GREP, SEARCH_AST, RUN_COMMAND, INSPECT_WEB) to debug and resolve the failure."
 
                     # 2. Check for pending goal sub-tasks in workspace task files (implementation_plan.md, tasks.md, goal_spec.json)
                     else:
@@ -1514,7 +1522,7 @@ class RLMEngineOptimized:
                 return ("final_answer", thinking, raw_content, [], None, None)
 
         # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks)
-        bare_code_match = re.search(r"```(?:\w+)?\n(.*?)```", response, re.DOTALL | re.IGNORECASE)
+        bare_code_match = re.search(r"```(?:\w+)?\n?(.*?)```", response, re.DOTALL | re.IGNORECASE)
         if bare_code_match and not re.search(r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b", response, re.IGNORECASE):
             content = bare_code_match.group(1).strip()
             thinking = _get_thinking(bare_code_match.start())
@@ -1529,7 +1537,8 @@ class RLMEngineOptimized:
                 if file_match_pre:
                     target_path = file_match_pre.group(1).strip()
                 else:
-                    target_path = "inline_code_output.txt"  # Fallback
+                    self._inline_code_counter += 1
+                    target_path = f"inline_code_output_{self._inline_code_counter}.txt"
             else:
                 target_path = file_match.group(1).replace("*/", "").replace("-->", "").strip()
                 # Remove header line from content

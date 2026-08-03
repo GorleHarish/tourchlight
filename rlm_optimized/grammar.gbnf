@@ -1,23 +1,23 @@
 # Comprehensive RLM GBNF Grammar Schema for SLM Output Control
-# Enforces model output to follow valid reasoning followed by exactly one structured action block.
+# Enforces model output to follow valid reasoning followed by structured action tags.
 
-root ::= reasoning (tool-call-tag | tool-xml-tag | write-file-tag | code-tag | subquery-tag | final-tag)
+root ::= reasoning (tool-call-tag | tool-xml-tag | write-file-tag | code-tag | subquery-tag | final-tag | "")
 
-reasoning ::= [^<]*
+reasoning ::= any-char*
 
 # 1. <tool_call> {"name": "...", "arguments": {...}} </tool_call>
 tool-call-tag ::= "<tool_call>" ws tool-call-json ws "</tool_call>"
 tool-call-json ::= "{" ws "\"name\"" ws ":" ws tool-name-val ws "," ws "\"arguments\"" ws ":" ws tool-args-obj ws "}"
-tool-name-val ::= "\"WRITE_FILE\"" | "\"EDIT_FILE\"" | "\"READ_FILE\"" | "\"LIST_DIR\"" | "\"GREP\"" | "\"RUN_COMMAND\""
+tool-name-val ::= "\"WRITE_FILE\"" | "\"EDIT_FILE\"" | "\"READ_FILE\"" | "\"READ_SYMBOLS\"" | "\"SEARCH_AST\"" | "\"LIST_DIR\"" | "\"GREP\"" | "\"RUN_COMMAND\"" | "\"INSPECT_WEB\"" | "\"UPDATE_TASK_GRAPH\"" | "\"SAVE_MEMORY\"" | "\"WEB_SEARCH\"" | "\"WEB_FETCH\"" | "\"DOC_SEARCH\"" | "\"WEB_VERIFY\"" | "\"GIT\"" | "\"FORMAT_CODE\"" | "\"VERIFY\"" | "\"ASK_USER\""
 
 # 2. <TOOL name="..."> JSON </TOOL>
 tool-xml-tag ::= "<TOOL name=\"" tool-name-str "\">" ws tool-args-obj ws "</TOOL>"
-tool-name-str ::= "WRITE_FILE" | "EDIT_FILE" | "READ_FILE" | "LIST_DIR" | "GREP" | "RUN_COMMAND"
+tool-name-str ::= "WRITE_FILE" | "EDIT_FILE" | "READ_FILE" | "READ_SYMBOLS" | "SEARCH_AST" | "LIST_DIR" | "GREP" | "RUN_COMMAND" | "INSPECT_WEB" | "UPDATE_TASK_GRAPH" | "SAVE_MEMORY" | "WEB_SEARCH" | "WEB_FETCH" | "DOC_SEARCH" | "WEB_VERIFY" | "GIT" | "FORMAT_CODE" | "VERIFY" | "ASK_USER"
 
 # 3. <WRITE_FILE path="..."> content </WRITE_FILE>
 write-file-tag ::= "<WRITE_FILE path=\"" file-path-val "\">" file-content "</WRITE_FILE>"
 file-path-val ::= [^"\r\n]+
-file-content ::= [^<]*
+file-content ::= any-char*
 
 # 4. Other action tags
 code-tag ::= "<CODE>" code-content "</CODE>"
@@ -35,7 +35,8 @@ string-val ::= "\"" ([^"\\] | "\\" .)* "\""
 number-val ::= "-"? [0-9]+ ("." [0-9]+)?
 bool-val ::= "true" | "false" | "null"
 ws ::= [ \t\n\r]*
+any-char ::= [^\x00]
 
-code-content ::= [^<]*
-query-content ::= [^<]*
-answer-content ::= [^<]*
+code-content ::= any-char*
+query-content ::= any-char*
+answer-content ::= any-char*
