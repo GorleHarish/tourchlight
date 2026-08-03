@@ -106,5 +106,22 @@ This document summarizes key learnings and design principles established during 
 - **Insight:** A frontend that silently falls back to stale duplicate modules means shared `core` fixes never reach production behavior.
 - **Principle:** After every shared-core fix, verify runtime delegation (`PYTHONPATH` coverage plus a delegation check such as `ExecutionFeedbackLoop is core: True`) on each frontend, since import-time fallbacks can mask outdated code.
 
+---
 
+## 7. GBNF Grammar Design & Constrained Decoding for SLMs
 
+### A. Multi-Step Trajectory Structuring in Root Rules
+- **Insight:** Structuring grammar root rules as `reasoning action` forces single-turn termination, breaking multi-action agent workflows (`READ_FILE → EDIT_FILE → VERIFY → FINAL_ANSWER`).
+- **Principle:** Structure the root rule as `step+ ws` where `step ::= reasoning? action ws`, allowing free-form reasoning interleaved with sequenceable action tags in a single output stream.
+
+### B. Closing-Tag Collision Prevention via Prefix Exclusion
+- **Insight:** Naive wildcard rules like `any-char*` inside XML-like content tags (`<WRITE_FILE> ... </WRITE_FILE>`) cause GBNF sampler ambiguity at every `<` character and fail when content contains string patterns matching the closing tag.
+- **Principle:** Use character-by-character prefix exclusion rules (`write-file-unit`) for inline text content, or prefer JSON string encoding (`tool-call-tag`) where escaping (`\"`, `\n`) guarantees collision-free parsing.
+
+### C. Disambiguating Reasoning Boundaries
+- **Insight:** Unbounded wildcard reasoning (`any-char*`) matches `<tool_call>` tags, creating ambiguity where the constrained sampler cannot decide whether to continue reasoning or enter an action tag.
+- **Principle:** Restrict raw reasoning prose to non-tag characters (`[^<\x00]+`), using `<` exclusively as an unambiguous action tag prefix.
+
+### D. Strict RFC 8259 JSON Grammar Enforcement
+- **Insight:** Hardcoding JSON key ordering or omitting JSON spec details (scientific exponents like `1e10`, distinct `null` handling, hex-validated `\uXXXX` escapes, rejecting leading zeros) causes valid model outputs to fail constrained sampling or downstream JSON deserialization.
+- **Principle:** Support flexible key ordering (`tool-kv-name-first | tool-kv-args-first`) and full RFC 8259 primitives in GBNF schema definitions.
