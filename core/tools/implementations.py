@@ -924,6 +924,18 @@ def _detect_truncation_stubs(content: str, filename: str = "") -> Optional[str]:
             "C-style block stub",
         ),
         (r'throw new Error\(["\']Not implemented["\']\)', "Unimplemented error stub"),
+        (
+            r"\.\.\.\s*(?:rest|remaining|code|implementation|continues|more)",
+            "Plain-text truncation marker",
+        ),
+        (
+            r"\b(?:code|implementation|rest|content)\s+omitted\b",
+            "Explicit truncation statement",
+        ),
+        (
+            r"<!--\s*(?:truncated|cut[ -]?off|incomplete|rest\s+omitted)\s*-->",
+            "HTML truncation comment",
+        ),
     ]
     found = []
     for pattern, name in truncation_patterns:

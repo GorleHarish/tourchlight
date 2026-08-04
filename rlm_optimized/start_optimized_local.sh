@@ -130,9 +130,9 @@ log_info "  - Threads: $THREADS"
 log_info "  - Batch Size: $BATCH_SIZE"
 
 # Launch server
-EXTRA_ARGS=""
+EXTRA_ARGS=()
 if [[ "$MODEL_PATH" == *"qwen"* ]]; then
-    EXTRA_ARGS="--chat-template qwen2"
+    EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja")
 fi
 
 exec "$LLAMA_SERVER_BIN" \
@@ -147,4 +147,4 @@ exec "$LLAMA_SERVER_BIN" \
     --repeat-penalty 1.1 \
     --cache-type-k "$KV_CACHE_COMPRESSION" \
     --cache-type-v "$KV_CACHE_COMPRESSION" \
-    $EXTRA_ARGS
+    "${EXTRA_ARGS[@]}"

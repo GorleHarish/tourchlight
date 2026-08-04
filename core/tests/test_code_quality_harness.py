@@ -244,3 +244,22 @@ def test_verify_compile_param():
             f.write("def bad(\n")
         res_bad = tool_verify_impl({"path": bad_path, "compile": True}, tmpdir)
         assert "Verification FAILED" in res_bad
+
+
+def test_truncation_stubs_detected_in_non_code_files():
+    # Plain-text truncation markers must be rejected even for .txt/.md targets.
+    assert _detect_truncation_stubs("Some notes ... rest of the content", "notes.txt")
+    status, payload = _validate_and_repair(
+        "The config is ... more code omitted\n", "notes.txt", os.getcwd()
+    )
+    assert status == "error"
+    assert "truncation stubs" in payload
+
+    # Explicit "code omitted" statement is a hard error.
+    assert _detect_truncation_stubs("def run():\n    # code omitted\n", "run.py")
+
+    # Benign prose is still allowed for non-code files.
+    status_ok, _ = _validate_and_repair(
+        "# just a readme\n\nThis describes the project.\n", "README.md", os.getcwd()
+    )
+    assert status_ok == "ok"

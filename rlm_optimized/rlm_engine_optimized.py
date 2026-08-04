@@ -186,11 +186,143 @@ def _clean_and_parse_json(raw_str: str) -> dict:
     if not result:
         if isinstance(last_parsed, dict):
             return last_parsed
-        if isinstance(last_parsed, list) and len(last_parsed) > 0 and isinstance(last_parsed[0], dict):
+        if (
+            isinstance(last_parsed, list)
+            and len(last_parsed) > 0
+            and isinstance(last_parsed[0], dict)
+        ):
             return last_parsed[0]
         result = {"raw": raw}
 
     return result
+
+
+def _looks_like_prose_or_outline(content: str) -> bool:
+    """Heuristic gate for inline code interception (step 6b of _parse_response).
+
+    Returns True when a bare ``` block is likely a plan/outline/prose dump
+    rather than actual code. Small models frequently emit their step-by-step
+    plan inside a ``` block during plan/code phases; auto-WRITE_FILE'ing that
+    prose verbatim produced the "gibberish file" bug (e.g. inline_code_output_N.txt).
+    """
+    text = (content or "").strip()
+    if not text:
+        return True
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if not lines:
+        return True
+    joined = text
+
+    code_tokens = re.findall(
+        r"\b(?:def|class|function|const|let|var|import|from|return|print|echo|"
+        r"SELECT|INSERT|UPDATE|DELETE|CREATE)\b",
+        joined,
+        re.IGNORECASE,
+    )
+    code_punct = len(re.findall(r"[{}();\[\]=<>+\-*/\"'`]", joined))
+
+    # Outline markers: "# 1. ...", "1. ...", "## Step ...", "- [ ] ..."
+    outline_lines = re.findall(
+        r"^\s*(?:#{1,6}\s*)?(?:\d+[\.\)]\s+\S|[-*]\s*\[\s*\]\s+\S)",
+        joined,
+        re.MULTILINE,
+    )
+    # Plan lead-ins at line starts (step-by-step prose).
+    has_plan_leadin = bool(
+        re.search(
+            r"^\s*(?:first|next|then|finally|step\s*\d+|approach|overview|summary|"
+            r"goal|objective|we\s+will|i\s+will|let'?s)\b(?=[\s\:\,])",
+            joined,
+            re.IGNORECASE | re.MULTILINE,
+        )
+    )
+    # Sentence-like majority: wordy lines ending in sentence punctuation.
+    sentence_like = sum(
+        1
+        for ln in lines
+        if len(ln) >= 16
+        and re.search(r"[.!?]\s*$", ln)
+        and len(re.findall(r"[{}();\[\]=<>+\-*/\"'`]", ln)) <= 2
+    )
+
+    # 1. Strong code signals (tokens + structural punctuation) -> definitely code.
+    if code_tokens and code_punct >= 6 and not outline_lines:
+        return False
+
+    # 2. Outlined plan beats weak code signals ("# 1. ...", "## Step ...").
+    if outline_lines and code_punct < 12 and len(code_tokens) <= 1:
+        return True
+
+    # 3. Plan lead-ins / sentence-style prose with no code tokens.
+    if not code_tokens and (has_plan_leadin or sentence_like or outline_lines):
+        return True
+
+    # 4. No code tokens and almost no code punctuation -> prose.
+    return bool(not code_tokens and code_punct < 6)
+
+
+def _trim_trailing_prose(content: str, path: str = "") -> str:
+    """Trim prose a model appended after the file body when </WRITE_FILE> was
+    consumed as a stop token (the regex's `$` alternative swallows trailing text).
+
+    Only applied to code targets to avoid corrupting legitimately prose-based
+    files (README.md, plan docs, notes, etc.)."""
+    ext = os.path.splitext(path)[1].lower() if path else ""
+    code_ext = ext in (
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".mjs",
+        ".cjs",
+        ".c",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".java",
+        ".go",
+        ".rs",
+        ".rb",
+        ".php",
+        ".sh",
+        ".bash",
+        ".json",
+        ".yaml",
+        ".yml",
+        ".toml",
+        ".sql",
+        ".html",
+        ".css",
+        ".scss",
+        ".vue",
+        ".svelte",
+    )
+    if not code_ext:
+        return content
+    lines = content.rstrip("\n").splitlines()
+    cut = len(lines)
+    for i in range(len(lines) - 1, -1, -1):
+        ln = lines[i].strip()
+        if not ln:
+            break
+        if (
+            len(ln) >= 20
+            and ln[-1] in ".!?"
+            and len(re.findall(r"[{}();\[\]=<>+*/\\]", ln)) <= 2
+            and not re.search(
+                r"^\s*(?:def|class|function|const|let|var|import|return|print|echo)\b",
+                ln,
+            )
+        ):
+            cut = i
+        else:
+            break
+    if cut < len(lines):
+        trimmed = "\n".join(lines[:cut])
+        if trimmed.strip():
+            return trimmed
+    return content
 
 
 class RLMEngineOptimized:
@@ -379,7 +511,9 @@ class RLMEngineOptimized:
         after = getattr(target_mem, "total_tokens", 0)
         return before, after, max(0, before - after)
 
-    async def solve_async(self, task: str, depth: int = 0, phase: Optional[str] = None) -> SolveResult:
+    async def solve_async(
+        self, task: str, depth: int = 0, phase: Optional[str] = None
+    ) -> SolveResult:
         result = SolveResult(answer="", depth=depth)
         self._total_llm_calls = 0
         self._final_answer_rejections = 0
@@ -409,9 +543,7 @@ class RLMEngineOptimized:
                     ),
                     project_memory=pm,
                 )
-                memory.add_system_message(
-                    get_phase_system_prompt(phase)
-                )
+                memory.add_system_message(get_phase_system_prompt(phase))
                 self._memory = memory
 
             self._memory.add_user_message(task)
@@ -1363,6 +1495,11 @@ class RLMEngineOptimized:
         if write_tag_match:
             path_val = write_tag_match.group(1).strip()
             content_val = write_tag_match.group(2)
+            # When the closing tag was consumed as a stop token the `$`
+            # alternative may have swallowed trailing prose — trim it for code
+            # targets only.
+            if not re.search(r"</WRITE_FILE>", write_tag_match.group(0), re.IGNORECASE):
+                content_val = _trim_trailing_prose(content_val, path_val)
             thinking = _get_thinking(write_tag_match.start())
             return (
                 "tool",
@@ -1586,41 +1723,72 @@ class RLMEngineOptimized:
                 return ("final_answer", thinking, raw_content, [], None, None)
 
         # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks)
-        # Skip in chat/troubleshoot mode — code blocks there are for
-        # display/reference, not file creation.
-        bare_code_match = re.search(r"```(?:\w+)?\n?(.*?)```", response, re.DOTALL | re.IGNORECASE)
-        if bare_code_match and not re.search(r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b", response, re.IGNORECASE):
+        # Skip in chat/troubleshoot/plan mode — code blocks there are for
+        # display/reference or planning, not file creation.
+        bare_code_match = re.search(
+            r"```(?:\w+)?\n?(.*?)```", response, re.DOTALL | re.IGNORECASE
+        )
+        if bare_code_match and not re.search(
+            r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b", response, re.IGNORECASE
+        ):
             current_phase = getattr(self, "_current_phase", "code")
-            if current_phase not in ("chat", "troubleshoot"):
+            if current_phase not in ("chat", "troubleshoot", "plan"):
                 content = bare_code_match.group(1).strip()
                 thinking = _get_thinking(bare_code_match.start())
-                
-                # Try to extract file path from comment inside block
-                file_match = re.search(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*([^\n\r]+)", content, re.IGNORECASE)
-                
-                if not file_match:
-                    # Try to extract from text preceding the block
-                    pre_text = response[:bare_code_match.start()].strip()
-                    file_match_pre = re.search(r"(?:for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?\s*$", pre_text, re.IGNORECASE)
-                    if file_match_pre:
-                        target_path = file_match_pre.group(1).strip()
-                    else:
-                        self._inline_code_counter += 1
-                        target_path = f"inline_code_output_{self._inline_code_counter}.txt"
-                else:
-                    target_path = file_match.group(1).replace("*/", "").replace("-->", "").strip()
-                    # Remove header line from content
-                    content = re.sub(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?", "", content, flags=re.IGNORECASE).strip()
 
-                return (
-                    "tool",
-                    thinking,
-                    f"WRITE_FILE({target_path})",
-                    [],
-                    "WRITE_FILE",
-                    {"path": target_path, "content": content},
+                # Try to extract file path from comment inside block
+                file_match = re.search(
+                    r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*([^\n\r]+)",
+                    content,
+                    re.IGNORECASE,
                 )
 
+                # Guard: bare blocks that look like a plan/outline/prose dump must
+                # NOT be auto-written (gibberish file bug). An explicit
+                # `# file: ...` header signals a deliberate write and overrides.
+                intercept = True
+                if not file_match and _looks_like_prose_or_outline(content):
+                    intercept = False
+
+                if intercept:
+                    if not file_match:
+                        # Try to extract from text preceding the block
+                        pre_text = response[: bare_code_match.start()].strip()
+                        file_match_pre = re.search(
+                            r"(?:for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?\s*$",
+                            pre_text,
+                            re.IGNORECASE,
+                        )
+                        if file_match_pre:
+                            target_path = file_match_pre.group(1).strip()
+                        else:
+                            self._inline_code_counter += 1
+                            target_path = (
+                                f"inline_code_output_{self._inline_code_counter}.txt"
+                            )
+                    else:
+                        target_path = (
+                            file_match.group(1)
+                            .replace("*/", "")
+                            .replace("-->", "")
+                            .strip()
+                        )
+                        # Remove header line from content
+                        content = re.sub(
+                            r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?",
+                            "",
+                            content,
+                            flags=re.IGNORECASE,
+                        ).strip()
+
+                    return (
+                        "tool",
+                        thinking,
+                        f"WRITE_FILE({target_path})",
+                        [],
+                        "WRITE_FILE",
+                        {"path": target_path, "content": content},
+                    )
 
         # 7. Direct answer / non-tool response handling
         cleaned_body = re.sub(

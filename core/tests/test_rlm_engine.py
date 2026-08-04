@@ -325,9 +325,100 @@ def test_rlm_engine_optimized_duplicate_code_execution(tmp_path):
             client=mock_client, enable_debate=False, project_root=str(tmp_path)
         )
         res = await engine.solve_async("Do math")
-        
-        dup_steps = [s for s in res.steps if "Duplicate code execution block" in s.result]
+
+        dup_steps = [
+            s for s in res.steps if "Duplicate code execution block" in s.result
+        ]
         assert len(dup_steps) >= 1
         assert mock_client.temperature == 0.1
 
     asyncio.run(_test())
+
+
+def test_inline_interception_skips_plan_prose_blocks():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    # A bare ``` block containing a numbered plan outline must NOT become a file.
+    resp_plan_block = (
+        "Here is my approach:\n"
+        "```\n"
+        "# 1. Set up the project structure\n"
+        "# 2. Implement the core module\n"
+        "# 3. Wire up the CLI entrypoint\n"
+        "```"
+    )
+    action, _, _, _, tool_name, _ = engine._parse_response(resp_plan_block)
+    assert action != "tool"
+    assert tool_name != "WRITE_FILE"
+
+    # A prose sentence dump (no file header) must NOT be intercepted either.
+    resp_prose = (
+        "```\n"
+        "First, we need to understand the existing codebase structure.\n"
+        "Then, we can identify the relevant modules and their responsibilities.\n"
+        "Finally, we will implement the fix in the appropriate location.\n"
+        "```"
+    )
+    action2, _, _, _, tool_name2, _ = engine._parse_response(resp_prose)
+    assert action2 != "tool"
+    assert tool_name2 != "WRITE_FILE"
+
+
+def test_inline_interception_still_catches_real_code_and_file_header():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    # A real code block with code tokens + punctuation is still intercepted.
+    resp_code = "```python\ndef add(a, b):\n    return a + b\n```"
+    action, _, _, _, tool_name, tool_args = engine._parse_response(resp_code)
+    assert action == "tool"
+    assert tool_name == "WRITE_FILE"
+    assert "def add" in tool_args["content"]
+
+    # An explicit `# file:` header overrides the prose guard.
+    resp_header = "```\n# file: notes.txt\nThis is a short note without code.\n```"
+    action2, _, _, _, tool_name2, tool_args2 = engine._parse_response(resp_header)
+    assert action2 == "tool"
+    assert tool_name2 == "WRITE_FILE"
+    assert tool_args2["path"] == "notes.txt"
+
+
+def test_inline_interception_skips_plan_phase():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+    engine._current_phase = "plan"
+
+    # Even a real-looking code block is not auto-written during plan phase.
+    resp = "```python\ndef add(a, b):\n    return a + b\n```"
+    action, _, _, _, tool_name, _ = engine._parse_response(resp)
+    assert action != "tool"
+    assert tool_name != "WRITE_FILE"
+
+
+def test_write_file_trailing_prose_trimmed_for_code_targets():
+    mock_client = MagicMock()
+    engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+
+    # Unclosed <WRITE_FILE> for a code target swallows trailing prose; trimmed.
+    resp = (
+        '<WRITE_FILE path="main.py">\n'
+        "def main():\n"
+        '    print("hello")\n'
+        "This function serves as the primary entrypoint of the application.\n"
+    )
+    action, _, _, _, tool_name, tool_args = engine._parse_response(resp)
+    assert action == "tool"
+    assert tool_name == "WRITE_FILE"
+    assert 'print("hello")' in tool_args["content"]
+    assert "primary entrypoint" not in tool_args["content"]
+
+    # A prose target (.md) must NOT be trimmed.
+    resp_md = (
+        '<WRITE_FILE path="README.md">\n'
+        "# My Project\n\n"
+        "This project provides a terminal-based agent with intelligent context management.\n"
+    )
+    action2, _, _, _, _, tool_args2 = engine._parse_response(resp_md)
+    assert action2 == "tool"
+    assert "intelligent context management" in tool_args2["content"]

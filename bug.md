@@ -27,6 +27,7 @@ This document records all discovered loop bugs, agent trajectory issues, edge ca
 | **BUG-17** | Erroneous File Tree Reset in `/copylast` Slash Command | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
 | **BUG-18** | Unescaped Rich Markup Tags in `_poll_server_launch()` | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
 | **BUG-19** | Non-Thread-Safe Widget Mounts in Background AST Indexer | 🟡 Medium | `rlm_optimized/tui_app.py` | ✅ Fixed |
+| **BUG-20** | Inline Code Interception Writes Gibberish Prose/Plan Blocks as Files | 🟠 High | `rlm_optimized/rlm_engine_optimized.py`, `core/tools/implementations.py` | ✅ Fixed |
 
 ---
 
@@ -109,6 +110,13 @@ This document records all discovered loop bugs, agent trajectory issues, edge ca
 - **Location**: [implementations.py](file:///Users/harishgorle/Desktop/opencode/tourchlight%20v1_i6/core/tools/implementations.py#L1460)
 - **Root Cause**: When local or smaller LLMs attempted to inspect project structure using internal AST helper functions (e.g. `get_project_structure()`), prompt confusion led models to issue `<TOOL name="RUN_COMMAND">{"cmd": "get_project_structure()*"}</TOOL>`. `RUN_COMMAND` passed `cmd` directly to `/bin/sh -c`, resulting in shell syntax errors (`Exit 2: syntax error: unexpected end of file`).
 - **Fix**: Added auto-interception in `tool_run_command_impl` to redirect internal AST function calls (`get_project_structure`, `semantic_search`, `SEARCH_AST`) to `SEARCH_AST` execution. Added `"get_project_structure"` action alias to `tool_search_ast_impl` and updated system prompts in `prompts.py` to clarify tool vs CODE boundaries.
+
+### BUG-20: Inline Code Interception Writes Gibberish Prose/Plan Blocks as Files
+- **Severity**: 🟠 High
+- **Location**: [rlm_engine_optimized.py](file:///Users/harishgorle/Desktop/opencode/tourchlight%20v1_i6/rlm_optimized/rlm_engine_optimized.py#L1728), [implementations.py](file:///Users/harishgorle/Desktop/opencode/tourchlight%20v1_i6/core/tools/implementations.py#L924)
+- **Root Cause**: `_parse_response()` step 6b (inline code interception) converts **any** bare markdown code block into a `WRITE_FILE` tool call. Small models (Qwen/Gemma) emitting planning/reasoning prose inside a ``` block during the `plan`/`code` phase get that prose written verbatim as a file (e.g. `inline_code_output_1.txt`). Compound causes: (1) the write gate only validated code extensions (`.py`/`.json`/`.js`/`.ts`) so `.txt`/`.md`/unknown extensions passed through unvalidated; (2) the `<WRITE_FILE>` regex fallback `(.*?)(?:</WRITE_FILE>|$)` swallowed trailing prose to end-of-string when the closing tag was stripped by stop tokens; (3) interception was excluded only for `chat`/`troubleshoot` phases, not `plan`.
+- **Fix**: Added `_looks_like_prose_or_outline()` guard so numbered outlines, step/plan lead-ins, and sentence-heavy prose are no longer intercepted; excluded the `plan` phase from inline interception (real code blocks with strong code signals and explicit `# file:` headers still intercepted); added `_trim_trailing_prose()` to strip trailing prose swallowed by the unclosed `<WRITE_FILE>` regex on code targets; extended `_detect_truncation_stubs()` with plain-text (`... rest of`), explicit (`code omitted`), and HTML truncation patterns now applied to non-code files.
+- **Tests**: Added 4 tests in `core/tests/test_rlm_engine.py` and 1 in `core/tests/test_code_quality_harness.py` covering plan-prose skipping, real-code interception, plan-phase exclusion, trailing-prose trimming, and non-code truncation-stub detection.
 
 ---
 
