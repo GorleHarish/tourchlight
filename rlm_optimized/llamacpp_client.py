@@ -26,6 +26,7 @@ class LlamaCppClient:
     def __init__(self, base_url: str = LOCAL_API_BASE_URL, model: str = MODEL_NAME):
         self.base_url = base_url.rstrip("/")
         self.model = model
+        self.temperature = TEMPERATURE
         self._grammar_content = self._load_grammar()
         print(f"[LlamaCppClient] connecting to {self.base_url} (model={self.model})")
 
@@ -69,11 +70,11 @@ class LlamaCppClient:
             p = {
                 "model": self.model,
                 "messages": cleaned_messages,
-                "temperature": TEMPERATURE,
+                "temperature": self.temperature,
                 "top_p": TOP_P,
                 "max_tokens": NUM_PREDICT,
                 "presence_penalty": 0.1,
-                "frequency_penalty": 0.1,
+                "frequency_penalty": 0.0,
                 "stop": [
                     "</TOOL>",
                     "</CODE>",
@@ -90,7 +91,7 @@ class LlamaCppClient:
                 ],
             }
             if include_extra:
-                p["repeat_penalty"] = 1.15
+                p["repeat_penalty"] = 1.1
                 if use_grammar and self._grammar_content:
                     p["grammar"] = self._grammar_content
             return p
@@ -159,12 +160,12 @@ class LlamaCppClient:
         payload = {
             "model": self.model,
             "messages": cleaned_messages,
-            "temperature": TEMPERATURE,
+            "temperature": self.temperature,
             "top_p": TOP_P,
             "max_tokens": NUM_PREDICT,
-            "repeat_penalty": 1.15,
+            "repeat_penalty": 1.1,
             "presence_penalty": 0.1,
-            "frequency_penalty": 0.1,
+            "frequency_penalty": 0.0,
             "stop": [
                 "</TOOL>",
                 "</CODE>",

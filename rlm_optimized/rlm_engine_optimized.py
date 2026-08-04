@@ -205,6 +205,7 @@ class RLMEngineOptimized:
         on_status_change: Optional[Callable[[dict], None]] = None,
         enable_debate: bool = False,
         debate_verifier: Optional[object] = None,
+        execution_mode: Optional[str] = None,
     ):
         if client is None:
             from rlm_optimized.llamacpp_client import LlamaCppClient
@@ -225,6 +226,7 @@ class RLMEngineOptimized:
         self.sandbox.set_llm_query_fn(self._sandbox_llm_query)
         self.approval_fn = approval_fn  # fn(tool_name, risk, args) -> bool or async
         self._inline_code_counter = 0
+        self.execution_mode = execution_mode or "unified"
 
         if debate_verifier is not None:
             self.debate_verifier = debate_verifier
@@ -377,10 +379,21 @@ class RLMEngineOptimized:
         after = getattr(target_mem, "total_tokens", 0)
         return before, after, max(0, before - after)
 
-    async def solve_async(self, task: str, depth: int = 0) -> SolveResult:
+    async def solve_async(self, task: str, depth: int = 0, phase: Optional[str] = None) -> SolveResult:
         result = SolveResult(answer="", depth=depth)
         self._total_llm_calls = 0
         self._final_answer_rejections = 0
+
+        # Determine effective phase: explicit param > execution_mode > "code" default
+        if phase is None:
+            if self.execution_mode == "chat":
+                phase = "chat"
+            elif self.execution_mode == "goal":
+                phase = "code"
+            else:
+                phase = "code"
+
+        self._current_phase = phase
 
         if TieredMemory and MemoryConfig:
             from .config import CTX_SIZE, estimate_metadata_overhead
@@ -397,7 +410,7 @@ class RLMEngineOptimized:
                     project_memory=pm,
                 )
                 memory.add_system_message(
-                    get_phase_system_prompt("code")
+                    get_phase_system_prompt(phase)
                 )
                 self._memory = memory
 
@@ -411,7 +424,7 @@ class RLMEngineOptimized:
                 self._messages = [
                     {
                         "role": "system",
-                        "content": get_phase_system_prompt("code"),
+                        "content": get_phase_system_prompt(phase),
                     }
                 ]
             self._messages.append({"role": "user", "content": task})
@@ -427,6 +440,10 @@ class RLMEngineOptimized:
         _last_tool_key: Optional[tuple[str, str]] = None
         consecutive_duplicates = 0
         MAX_DUPLICATES = 3  # force-break after this many consecutive identical calls
+
+        # ── REPL code duplicate detection & temperature recovery ──────
+        _executed_code_payloads: set[str] = set()
+        initial_temp = getattr(self.client, "temperature", 0.1)
 
         for iteration in range(MAX_ITERATIONS_PER_LEVEL):
             self._total_llm_calls += 1
@@ -456,7 +473,7 @@ class RLMEngineOptimized:
 
             # ── Debate & Self-Critique Verification Pass ──
             if self.debate_verifier:
-                phase_name = "plan" if action in ("thinking", "plan") else "code"
+                phase_name = "plan" if action in ("thinking", "plan") else phase
                 if self.debate_verifier.should_debate(
                     tool_name=tool_name, phase=phase_name
                 ):
@@ -492,26 +509,10 @@ class RLMEngineOptimized:
                             f"[RLMEngine] Debate verifier bypassed due to error: {verifier_err}"
                         )
 
-            step = Step(
-                step_number=iteration + 1,
-                depth=depth,
-                action=action,
-                thinking=thinking,
-                content=content,
-                tool_name=tool_name,
-                tool_args=tool_args,
-            )
-
-            # Reset thinking counter when model produces a non-thinking action
-            if action not in ("thinking", "rejected_final_answer"):
-                consecutive_thinking = 0
-
+            # ── Pre-compute final-answer rejection so Step reflects effective action ──
+            rejection_reason = None
+            has_failing = False
             if action == "final_answer":
-                # ── Verification Gate: Prevent Premature Final Answers ──
-                # Evaluate the CURRENT on-disk state: re-verify any edits made
-                # since the last successful test run before trusting the gate.
-                rejection_reason = None
-                has_failing = False
                 try:
                     pending_verified = await asyncio.to_thread(
                         self.feedback_loop.verify_pending_changes
@@ -554,6 +555,21 @@ class RLMEngineOptimized:
                         except Exception:
                             pass
 
+            step = Step(
+                step_number=iteration + 1,
+                depth=depth,
+                action="rejected_final_answer" if rejection_reason else action,
+                thinking=thinking,
+                content=content,
+                tool_name=tool_name,
+                tool_args=tool_args,
+            )
+
+            # Reset thinking counter when model produces a non-thinking action
+            if step.action not in ("thinking", "rejected_final_answer"):
+                consecutive_thinking = 0
+
+            if action == "final_answer":
                 if rejection_reason:
                     self._final_answer_rejections = (
                         getattr(self, "_final_answer_rejections", 0) + 1
@@ -565,7 +581,6 @@ class RLMEngineOptimized:
                             "Prefer abandoning broken edits (revert to a known-good state) and reporting "
                             "the blocker explicitly rather than repeating the same fix attempt."
                         )
-                    step.action = "rejected_final_answer"
                     step.result = rejection_reason
                     result.steps.append(step)
                     if self.on_step:
@@ -654,6 +669,8 @@ class RLMEngineOptimized:
                 # -----------------------------
 
                 self._notify_status("IDLE", {"depth": depth, "status": "complete"})
+                if hasattr(self.client, "temperature"):
+                    self.client.temperature = initial_temp
                 return result
 
             elif action == "tool":
@@ -737,6 +754,8 @@ class RLMEngineOptimized:
                                 self.on_step(step_forced)
                             result.answer = forced
                             result.total_llm_calls = self._total_llm_calls
+                            if hasattr(self.client, "temperature"):
+                                self.client.temperature = initial_temp
                             return result
 
                         feedback = (
@@ -886,6 +905,23 @@ class RLMEngineOptimized:
                         messages.append({"role": "user", "content": feedback})
                     continue
 
+                # Check for duplicate REPL execution
+                if content in _executed_code_payloads:
+                    step.result = "ERROR: Duplicate code execution block. You already executed this exact code on a previous turn and it failed. Do NOT repeat the exact same code block. Adjust your logic/syntax, or present your findings with <FINAL_ANSWER>."
+                    result.steps.append(step)
+                    if self.on_step:
+                        self.on_step(step)
+                    feedback = "⚠️ You already executed this exact code block and it failed. Do NOT repeat it. Modify the code to address the error."
+                    if hasattr(self.client, "temperature"):
+                        self.client.temperature = 0.4
+                    if use_memory:
+                        memory.add_assistant_message(response)
+                        memory.add_user_message(feedback)
+                    else:
+                        messages.append({"role": "assistant", "content": response})
+                        messages.append({"role": "user", "content": feedback})
+                    continue
+
                 # Check if code modifies files or executes system commands
                 modifies_files = bool(
                     re.search(
@@ -937,6 +973,8 @@ class RLMEngineOptimized:
                 if exec_result["success"]:
                     consecutive_code_errors = 0
                     _last_tool_key = None
+                    if hasattr(self.client, "temperature"):
+                        self.client.temperature = initial_temp
                     output = exec_result["stdout"].strip()
                     if not output:
                         output = "(Code executed successfully, no output)"
@@ -955,13 +993,25 @@ class RLMEngineOptimized:
                     )
                 else:
                     consecutive_code_errors += 1
+                    _executed_code_payloads.add(content)
                     error_msg = exec_result["error"] or "Unknown error"
                     if exec_result["stderr"]:
                         error_msg += f"\nstderr: {exec_result['stderr']}"
                     step.result = f"ERROR: {error_msg}"
                     last_code_output = None
                     feedback = build_step_message("code_error", error_msg)
-                    if consecutive_code_errors >= 5:
+
+                    # Eagerly update tried_and_failed memory state
+                    if use_memory and memory:
+                        tf_entry = f"Failed REPL execution: {error_msg[:120]}"
+                        if tf_entry not in memory.state.tried_and_failed:
+                            memory.state.tried_and_failed.append(tf_entry)
+
+                    # Raise temperature to break logic rut
+                    if hasattr(self.client, "temperature"):
+                        self.client.temperature = 0.4
+
+                    if consecutive_code_errors >= 3:
                         forced = f"Code execution failed {consecutive_code_errors} consecutive times: {error_msg}. Present your final findings using <FINAL_ANSWER>."
                         step_forced = Step(
                             step_number=iteration + 2,
@@ -976,9 +1026,11 @@ class RLMEngineOptimized:
                             self.on_step(step_forced)
                         result.answer = forced
                         result.total_llm_calls = self._total_llm_calls
+                        if hasattr(self.client, "temperature"):
+                            self.client.temperature = initial_temp
                         return result
-                    elif consecutive_code_errors >= 3:
-                        feedback += "\n⚠️ Code execution has failed 3 times consecutively. Do not retry the same code. Change approach or return <FINAL_ANSWER>."
+                    elif consecutive_code_errors >= 2:
+                        feedback += "\n⚠️ Code execution has failed 2 times consecutively. Do not retry the same code. Change approach or return <FINAL_ANSWER>."
                     self._notify_status(
                         "TOOL_DONE", {"tool_name": "REPL_CODE", "success": False}
                     )
@@ -1092,6 +1144,8 @@ class RLMEngineOptimized:
                         self.on_step(step_forced)
                     result.answer = forced
                     result.total_llm_calls = self._total_llm_calls
+                    if hasattr(self.client, "temperature"):
+                        self.client.temperature = initial_temp
                     return result
                 elif consecutive_thinking >= 4:
                     nudge = (
@@ -1141,6 +1195,8 @@ class RLMEngineOptimized:
 
         result.answer = final_content
         result.total_llm_calls = self._total_llm_calls
+        if hasattr(self.client, "temperature"):
+            self.client.temperature = initial_temp
         return result
 
     def _build_unresolved_failures_warning(self) -> str:
@@ -1466,6 +1522,14 @@ class RLMEngineOptimized:
                     is_valid_code = True
 
             if is_valid_code:
+                # In chat/troubleshoot mode, treat <CODE> blocks as
+                # thinking (displayed) rather than executable code.
+                current_phase = getattr(self, "_current_phase", "code")
+                if current_phase in ("chat", "troubleshoot"):
+                    thinking_text = (
+                        f"{thinking}\n\n{content}".strip() if thinking else content
+                    )
+                    return ("thinking", thinking_text, "", [], None, None)
                 return ("code", thinking, content, [], None, None)
             else:
                 # Content inside <CODE> tag is natural language/prose, reclassify as thinking
@@ -1522,36 +1586,40 @@ class RLMEngineOptimized:
                 return ("final_answer", thinking, raw_content, [], None, None)
 
         # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks)
+        # Skip in chat/troubleshoot mode — code blocks there are for
+        # display/reference, not file creation.
         bare_code_match = re.search(r"```(?:\w+)?\n?(.*?)```", response, re.DOTALL | re.IGNORECASE)
         if bare_code_match and not re.search(r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b", response, re.IGNORECASE):
-            content = bare_code_match.group(1).strip()
-            thinking = _get_thinking(bare_code_match.start())
-            
-            # Try to extract file path from comment inside block
-            file_match = re.search(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*([^\n\r]+)", content, re.IGNORECASE)
-            
-            if not file_match:
-                # Try to extract from text preceding the block
-                pre_text = response[:bare_code_match.start()].strip()
-                file_match_pre = re.search(r"(?:for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?\s*$", pre_text, re.IGNORECASE)
-                if file_match_pre:
-                    target_path = file_match_pre.group(1).strip()
+            current_phase = getattr(self, "_current_phase", "code")
+            if current_phase not in ("chat", "troubleshoot"):
+                content = bare_code_match.group(1).strip()
+                thinking = _get_thinking(bare_code_match.start())
+                
+                # Try to extract file path from comment inside block
+                file_match = re.search(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*([^\n\r]+)", content, re.IGNORECASE)
+                
+                if not file_match:
+                    # Try to extract from text preceding the block
+                    pre_text = response[:bare_code_match.start()].strip()
+                    file_match_pre = re.search(r"(?:for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?\s*$", pre_text, re.IGNORECASE)
+                    if file_match_pre:
+                        target_path = file_match_pre.group(1).strip()
+                    else:
+                        self._inline_code_counter += 1
+                        target_path = f"inline_code_output_{self._inline_code_counter}.txt"
                 else:
-                    self._inline_code_counter += 1
-                    target_path = f"inline_code_output_{self._inline_code_counter}.txt"
-            else:
-                target_path = file_match.group(1).replace("*/", "").replace("-->", "").strip()
-                # Remove header line from content
-                content = re.sub(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?", "", content, flags=re.IGNORECASE).strip()
+                    target_path = file_match.group(1).replace("*/", "").replace("-->", "").strip()
+                    # Remove header line from content
+                    content = re.sub(r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?", "", content, flags=re.IGNORECASE).strip()
 
-            return (
-                "tool",
-                thinking,
-                f"WRITE_FILE({target_path})",
-                [],
-                "WRITE_FILE",
-                {"path": target_path, "content": content},
-            )
+                return (
+                    "tool",
+                    thinking,
+                    f"WRITE_FILE({target_path})",
+                    [],
+                    "WRITE_FILE",
+                    {"path": target_path, "content": content},
+                )
 
 
         # 7. Direct answer / non-tool response handling

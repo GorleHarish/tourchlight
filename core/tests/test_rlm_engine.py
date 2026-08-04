@@ -307,3 +307,27 @@ def test_action_tag_no_json_args():
     assert action == "tool"
     assert tool_name == "LIST_DIR"
     assert tool_args == {}
+
+
+def test_rlm_engine_optimized_duplicate_code_execution(tmp_path):
+    import asyncio
+
+    async def _test():
+        mock_client = MagicMock()
+        mock_client.temperature = 0.1
+        mock_client.stream_chat_with_history.side_effect = [
+            ["<CODE>raise ValueError('fail')</CODE>"],
+            ["<CODE>raise ValueError('fail')</CODE>"],
+            ["<FINAL_ANSWER>42</FINAL_ANSWER>"],
+        ]
+        mock_client.chat_with_history.return_value = "Summary"
+        engine = RLMEngineOptimized(
+            client=mock_client, enable_debate=False, project_root=str(tmp_path)
+        )
+        res = await engine.solve_async("Do math")
+        
+        dup_steps = [s for s in res.steps if "Duplicate code execution block" in s.result]
+        assert len(dup_steps) >= 1
+        assert mock_client.temperature == 0.1
+
+    asyncio.run(_test())

@@ -2885,6 +2885,15 @@ class TorchlightApp(App):
         self.engine.on_token = self._append_token
         self.engine.on_status_change = self._handle_status_change
 
+        # Sync execution_mode from memory state into the engine
+        # so solve_async selects the correct system prompt.
+        _mem = getattr(self.engine, "memory", None)
+        if _mem and hasattr(_mem, "state") and hasattr(_mem.state, "execution_mode"):
+            _em = _mem.state.execution_mode
+            self.engine.execution_mode = (
+                _em.value if hasattr(_em, "value") else str(_em)
+            )
+
         self._streaming_text = ""
         self._ensure_streaming_widget()
 
@@ -3465,6 +3474,12 @@ class TorchlightApp(App):
                     and hasattr(mem.state, "execution_mode")
                 ):
                     mem.state.execution_mode = new_mode
+
+                # Wire execution_mode into the engine so solve_async
+                # selects the correct system prompt and behavior.
+                self.engine.execution_mode = (
+                    new_mode.value if hasattr(new_mode, "value") else str(new_mode)
+                )
 
                 if selected_mode == "goal":
                     try:

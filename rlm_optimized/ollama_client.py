@@ -6,6 +6,7 @@ from rlm_optimized.config import MODEL_NAME, TEMPERATURE, TOP_P, NUM_PREDICT, CT
 class OllamaClient:
     def __init__(self, model: str = MODEL_NAME):
         self.model = model
+        self.temperature = TEMPERATURE
         self._client = ollama.Client()
 
     def is_running(self) -> bool:
@@ -36,7 +37,7 @@ class OllamaClient:
                     model=self.model,
                     messages=messages,
                     options={
-                        "temperature": TEMPERATURE,
+                        "temperature": self.temperature,
                         "top_p": TOP_P,
                         "num_predict": NUM_PREDICT,
                         "num_ctx": CTX_SIZE,
@@ -64,7 +65,7 @@ class OllamaClient:
                 messages=messages,
                 stream=True,
                 options={
-                    "temperature": TEMPERATURE,
+                    "temperature": self.temperature,
                     "top_p": TOP_P,
                     "num_predict": NUM_PREDICT,
                     "num_ctx": CTX_SIZE,

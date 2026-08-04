@@ -130,6 +130,11 @@ log_info "  - Threads: $THREADS"
 log_info "  - Batch Size: $BATCH_SIZE"
 
 # Launch server
+EXTRA_ARGS=""
+if [[ "$MODEL_PATH" == *"qwen"* ]]; then
+    EXTRA_ARGS="--chat-template qwen2"
+fi
+
 exec "$LLAMA_SERVER_BIN" \
     -m "$MODEL_PATH" \
     --port "$PORT" \
@@ -141,4 +146,5 @@ exec "$LLAMA_SERVER_BIN" \
     -np 1 \
     --repeat-penalty 1.1 \
     --cache-type-k "$KV_CACHE_COMPRESSION" \
-    --cache-type-v "$KV_CACHE_COMPRESSION"
+    --cache-type-v "$KV_CACHE_COMPRESSION" \
+    $EXTRA_ARGS

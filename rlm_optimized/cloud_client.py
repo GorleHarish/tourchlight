@@ -54,6 +54,7 @@ class CloudClient:
             raise ValueError("No base URL configured.")
 
         self._client = OpenAI(api_key=self._api_key, base_url=self._base_url)
+        self.temperature = TEMPERATURE
 
     def is_running(self) -> bool:
         try:
@@ -110,7 +111,7 @@ class CloudClient:
                 kwargs = dict(
                     model=self.model,
                     messages=cleaned_messages,
-                    temperature=TEMPERATURE,
+                    temperature=self.temperature,
                     top_p=TOP_P,
                     stop=["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],
                 )
@@ -149,7 +150,7 @@ class CloudClient:
             kwargs = dict(
                 model=self.model,
                 messages=cleaned_messages,
-                temperature=TEMPERATURE,
+                temperature=self.temperature,
                 top_p=TOP_P,
                 stream=True,
                 stop=["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],
@@ -172,7 +173,7 @@ class CloudClient:
                         fallback_kwargs = dict(
                             model=target_model,
                             messages=messages,
-                            temperature=TEMPERATURE,
+                            temperature=self.temperature,
                             top_p=TOP_P,
                             stream=True,
                             stop=["</TOOL>", "</CODE>", "</FINAL_ANSWER>", "</SUB_QUERY>", "</action>", "\nAction:", "Action:", "Observation:"],

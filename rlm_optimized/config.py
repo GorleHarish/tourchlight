@@ -75,7 +75,7 @@ _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAMMAR_FILE = os.environ.get(
     "RLM_GRAMMAR_FILE", os.path.join(_PKG_DIR, "grammar.gbnf")
 )
-USE_GRAMMAR_CONSTRAINT = os.environ.get("RLM_USE_GRAMMAR", "false").lower() in (
+USE_GRAMMAR_CONSTRAINT = os.environ.get("RLM_USE_GRAMMAR", "true").lower() in (
     "true",
     "1",
     "yes",

@@ -207,11 +207,11 @@ class StreamingView(Container):
             yield Static("ASSISTANT", classes="streaming-role")
             self._meta_widget = Static(self._meta, classes="streaming-meta")
             yield self._meta_widget
-        self._body = Static("", classes="streaming-body")
+        self._body = Static("", classes="streaming-body", markup=False)
         yield self._body
 
     def update_markup(self, markup: str) -> None:
-        """Replace the streaming body with Rich markup."""
+        """Replace the streaming body with plain text (markup disabled)."""
         if self._body is not None:
             self._body.update(markup)
 
