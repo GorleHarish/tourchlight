@@ -490,8 +490,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_rlm_engine.py": {
-    "mtime": 1785847739.6884203,
-    "ast_hash": "fbdd6d7387f19be61fe2b2633e725006",
+    "mtime": 1785858048.0562901,
+    "ast_hash": "73276e276de9f2648f21cf972b59431a",
     "semantic_hash": ""
   },
   "core/tests/test_schemas.py": {
@@ -545,8 +545,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/cloud_client.py": {
-    "mtime": 1785777689.1354387,
-    "ast_hash": "f7c4931af3d36f416644f32c893c459c",
+    "mtime": 1785857872.0709872,
+    "ast_hash": "9e6e27eb00beba1a787fb8c6f656657d",
     "semantic_hash": ""
   },
   "rlm_optimized/config.py": {
@@ -570,8 +570,8 @@
     "semantic_hash": "c4e0e06e1e46f7e6ec0a54d059218a04"
   },
   "rlm_optimized/llamacpp_client.py": {
-    "mtime": 1785778110.6447706,
-    "ast_hash": "abc097fb2ddf4cc1a87bb45650ec6113",
+    "mtime": 1785857802.0816958,
+    "ast_hash": "bd0f61c83c2e6347b5e8ef4e93c18441",
     "semantic_hash": ""
   },
   "rlm_optimized/main.py": {
@@ -590,9 +590,9 @@
     "semantic_hash": "6a0cc49c9db961c19a7b28a89cc7d104"
   },
   "rlm_optimized/ollama_client.py": {
-    "mtime": 1784931423.139466,
-    "ast_hash": "d46bff76decbce47ad4c0417cdf6c9c9",
-    "semantic_hash": "d46bff76decbce47ad4c0417cdf6c9c9"
+    "mtime": 1785857832.172513,
+    "ast_hash": "4c03883b34816cedc85fb406046794c4",
+    "semantic_hash": ""
   },
   "rlm_optimized/prompts.py": {
     "mtime": 1785620725.8187792,
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1785779771.073461,
-    "ast_hash": "bf53f125a46579f14df8f96c616b21fc",
+    "mtime": 1785857982.1209886,
+    "ast_hash": "5ccabfb9b595b524cc9bab81b0606634",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785848525.9017189,
-    "ast_hash": "3a28f3e605b7713a59853c5ccb87dde7",
+    "mtime": 1785852339.7569559,
+    "ast_hash": "4f0625730f9a800e2535c5ab6393db92",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -970,8 +970,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/transcript.py": {
-    "mtime": 1785626935.1525412,
-    "ast_hash": "4d388738c76f1a4bbbf79513f3b7cf6b",
+    "mtime": 1785852882.619241,
+    "ast_hash": "6a0fd614046bc0faa2b07441dec7a3a6",
     "semantic_hash": ""
   },
   "rlm_optimized/UI_IMPROVEMENTS_PLAN.md": {
