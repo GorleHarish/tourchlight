@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785791269.7803552,
-    "ast_hash": "5037ebf5c9ae5fc7ce326a9063b77ba9",
+    "mtime": 1785841570.784154,
+    "ast_hash": "6864dbee1c6efdea3ef900fca53bd892",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -780,8 +780,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_plan_panel.py": {
-    "mtime": 1785658302.9265797,
-    "ast_hash": "587a8bd09df7708b05e4effc1e3db67d",
+    "mtime": 1785841540.2697678,
+    "ast_hash": "0f185192313a57d9e70965403c6fbf9a",
     "semantic_hash": ""
   },
   "core/tests/test_memory_sync.py": {
@@ -895,8 +895,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_diff_view.py": {
-    "mtime": 1785628358.2986772,
-    "ast_hash": "94386f4f8b83fcd0b4b287b0a5c31523",
+    "mtime": 1785841615.9124048,
+    "ast_hash": "c9c4c7008f6b8e2132efb268f89e3548",
     "semantic_hash": ""
   },
   "core/tests/test_tui_file_tree.py": {
@@ -905,8 +905,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_status_bar.py": {
-    "mtime": 1785630278.713166,
-    "ast_hash": "9981c3f3d91bf01752a27b8086f43134",
+    "mtime": 1785841418.8170826,
+    "ast_hash": "f258df9d39091f691526a2fcb7446d68",
     "semantic_hash": ""
   },
   "core/tests/test_tui_tool_cards.py": {
@@ -1055,8 +1055,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_accessibility.py": {
-    "mtime": 1785787947.1654088,
-    "ast_hash": "d65832bc6b7e0002529b4ff36420df7b",
+    "mtime": 1785841233.90418,
+    "ast_hash": "4d94ea80d0848279c876c66e9d773cb7",
     "semantic_hash": ""
   },
   "core/tests/test_tui_tabbed_editor.py": {
@@ -1065,8 +1065,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_theme.py": {
-    "mtime": 1785787947.1704547,
-    "ast_hash": "e72f421dddb660eacaaaf38e13359727",
+    "mtime": 1785841719.354822,
+    "ast_hash": "6fda9a90ba65adb1f659c5518b6ecaa0",
     "semantic_hash": ""
   },
   ".kilo/plans/1785779073413-non-security-improvements.md": {

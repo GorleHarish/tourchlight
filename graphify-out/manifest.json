@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_app.py": {
-    "mtime": 1785841570.784154,
-    "ast_hash": "6864dbee1c6efdea3ef900fca53bd892",
+    "mtime": 1785841774.7613668,
+    "ast_hash": "6e46638544bae68145fcc1182a633ff0",
     "semantic_hash": ""
   },
   "rlm_optimized/verify_m1_setup.py": {
@@ -875,8 +875,8 @@
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
-    "mtime": 1785399446.6373093,
-    "ast_hash": "6fe50b128fb9282edff864494aeba836",
+    "mtime": 1785841792.3864434,
+    "ast_hash": "88c3eb3330eb95cef35c141667113c3a",
     "semantic_hash": ""
   },
   "core/tests/test_session_modes.py": {
@@ -910,18 +910,18 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_tool_cards.py": {
-    "mtime": 1785627727.2664034,
-    "ast_hash": "1053fc82912cf99f9516e1765cafdca7",
+    "mtime": 1785841833.8791268,
+    "ast_hash": "33de88be2ac409ea861e5000ded084bd",
     "semantic_hash": ""
   },
   "core/tests/test_tui_trajectory_rail.py": {
-    "mtime": 1785627878.2573025,
-    "ast_hash": "967ce4e6d20abcd82e07d7fa13a579f3",
+    "mtime": 1785841936.0766873,
+    "ast_hash": "65f8ab8938252de0765b7f1306911869",
     "semantic_hash": ""
   },
   "core/tests/test_tui_transcript_widgets.py": {
-    "mtime": 1785626976.424632,
-    "ast_hash": "e8649c3816f941399218f0dd85e69882",
+    "mtime": 1785841989.0849907,
+    "ast_hash": "2d5d2eba0e31ccf52ba2c342d00f37f0",
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/__init__.py": {
@@ -1049,11 +1049,6 @@
     "ast_hash": "05ffc055f68882e86abe491af7673b23",
     "semantic_hash": ""
   },
-  "plans/agentic-loop-bugs-grammar.md": {
-    "mtime": 1785779308.9548714,
-    "ast_hash": "fdd47b42f1a7e405ec68789e3421ba09",
-    "semantic_hash": ""
-  },
   "core/tests/test_tui_accessibility.py": {
     "mtime": 1785841233.90418,
     "ast_hash": "4d94ea80d0848279c876c66e9d773cb7",
@@ -1065,7 +1060,7 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_theme.py": {
-    "mtime": 1785841719.354822,
+    "mtime": 1785841809.4376974,
     "ast_hash": "6fda9a90ba65adb1f659c5518b6ecaa0",
     "semantic_hash": ""
   },
