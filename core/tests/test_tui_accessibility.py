@@ -17,10 +17,11 @@ import pytest
 def _make_app():
     from rlm_optimized.tui_app import TorchlightApp
 
-    engine = MagicMock(spec=MagicMock)
+    engine = MagicMock()
     engine.project_root = tempfile.gettempdir()
     engine._total_llm_calls = 0
     engine.max_depth = 10
+    engine.memory.format_l0_scratchpad.return_value = ""
     return TorchlightApp(engine=engine, model_name="test", provider_name="llama-cpp")
 
 
@@ -229,8 +230,8 @@ async def test_tabs_render_with_accessibility_classes():
             assert btn is not None
             assert "tab-close-btn" in btn.classes
 
+            app._do_refresh_editor_split_view()
             tab_container = app.query_one("#tab-buttons-container")
-            await pilot.pause()
             tab_buttons = tab_container.query("Button")
             assert len(tab_buttons) >= 2
     finally:
@@ -248,15 +249,13 @@ async def test_toggle_split_btn_accessible_via_action():
     app = _make_app()
     async with app.run_test() as pilot:
         editor_pane = app.query_one("#editor-split-pane")
-        assert editor_pane.display is True
-
-        app.action_toggle_editor_split()
-        await pilot.pause()
         assert editor_pane.display is False
 
         app.action_toggle_editor_split()
-        await pilot.pause()
         assert editor_pane.display is True
+
+        app.action_toggle_editor_split()
+        assert editor_pane.display is False
 
 
 @pytest.mark.anyio
@@ -268,19 +267,15 @@ async def test_responsive_classes_applied_on_resize():
         pytest.skip(f"Textual not installed: {e}")
 
     app = _make_app()
-    async with app.run_test(size=(70, 20)) as pilot:
+    async with app.run_test(size=(70, 20)):
         app._apply_responsive_layout()
-        await pilot.pause()
-        screen = app.screen
-        assert screen.has_class("narrow-terminal")
-        assert not screen.has_class("very-narrow-terminal")
+        assert app.screen.has_class("narrow-terminal")
+        assert not app.screen.has_class("very-narrow-terminal")
 
     app2 = _make_app()
-    async with app2.run_test(size=(40, 20)) as pilot:
+    async with app2.run_test(size=(40, 20)):
         app2._apply_responsive_layout()
-        await pilot.pause()
-        screen = app2.screen
-        assert screen.has_class("very-narrow-terminal")
+        assert app2.screen.has_class("very-narrow-terminal")
 
 
 @pytest.mark.anyio
@@ -292,11 +287,9 @@ async def test_short_terminal_class_applied():
         pytest.skip(f"Textual not installed: {e}")
 
     app = _make_app()
-    async with app.run_test(size=(100, 20)) as pilot:
+    async with app.run_test(size=(100, 20)):
         app._apply_responsive_layout()
-        await pilot.pause()
-        screen = app.screen
-        assert screen.has_class("short-terminal")
+        assert app.screen.has_class("short-terminal")
 
 
 def test_ctrl_backslash_binding_documented():

@@ -1,16 +1,20 @@
 """Consolidated status bar for the Torchlight TUI.
 
-Phase 4: one glanceable row that replaces the scattered HUD badges and the
-plain-text context meter —
-``model ▸ phase ▸ [context gauge ████░ 62%] ▸ TPS ▸ tokens ▸ errors ▸ git``.
+Phase 5 (UX Overhaul): state-aware single-row footer.
 
-The context gauge is a real proportional block-art bar whose color escalates
-through green → yellow → red as the window fills (Rich named colors, matching
-the existing ``diff_view`` convention). Layout stays CSS-first: no
-``styles.set``, no hardcoded hex.
+Display modes:
+  • DISCONNECTED  → ``SYSTEM: IDLE │ ○ Offline │ ^M Connect Model │ ^B Sidebar``
+  • IDLE          → ``SYSTEM: IDLE │ ● Model │ Context: ▓▓░░ 24% │ ^⏎ Send │ ^B Sidebar``
+  • WORKING       → ``SYSTEM: GENERATING │ ● Model │ ▓▓▓▓ 45% │ Speed: 42 t/s │ ^C Stop``
 
-``gauge_markup`` / ``build_status_segments`` are pure helpers (no Textual
-imports) so the fill math and segment formatting are trivially unit-testable.
+Design rules:
+  - Speed metric is hidden (not zeroed) when idle or disconnected.
+  - ``$error`` reserved for actual runtime errors, never for offline state.
+  - Server ON/OFF indicator uses ``$success`` / ``$foreground-muted``.
+  - All layout is CSS-first; no ``styles.set`` calls.
+
+``gauge_markup`` / ``build_status_segments`` remain pure (no Textual imports)
+so the fill math is trivially unit-testable.
 """
 
 from __future__ import annotations
@@ -32,14 +36,13 @@ STATE_BADGES = {
     "SUBAGENT": "[bold purple]SUBAGENT[/]",
 }
 
-GAUGE_WIDTH = 16
+GAUGE_WIDTH = 14
 
 
 def gauge_markup(pct: float, width: int = GAUGE_WIDTH) -> str:
     """Rich-markup a proportional context gauge: ``███░░░`` blocks + color.
 
-    Returns the filled/empty block string (no percentage label). The color
-    escalates green (<50%) → yellow (<75%) → red (≥75%).
+    Color escalates green (<50%) → yellow (<75%) → red (≥75%).
     """
     pct = min(100.0, max(0.0, float(pct)))
     filled = round(pct / 100.0 * width)
@@ -64,46 +67,64 @@ def build_status_segments(
 ) -> dict[str, str]:
     """Build the per-segment Rich markup for the status bar.
 
-    Segments: ``sb-state`` (phase + server), ``sb-model``, ``sb-gauge``
-    (proportional bar + %), ``sb-tps``, ``sb-tokens``, ``sb-errors``,
-    ``sb-git``. Pure function — no widget access.
+    Segments:
+      ``sb-state``  — phase badge + server status indicator
+      ``sb-model``  — model name (muted; hidden when offline)
+      ``sb-gauge``  — proportional block bar + % (hidden when offline)
+      ``sb-tps``    — token speed (hidden when not generating)
+      ``sb-tokens`` — token count (hidden when offline)
+      ``sb-errors`` — error counter (always shown when > 0)
+      ``sb-git``    — git branch
     """
     badge = STATE_BADGES.get(state, f"[bold cyan]{escape(state)}[/]")
-    if port <= 0:
+
+    # Server status — use muted gray for offline (NOT red)
+    is_cloud = port <= 0
+    if is_cloud:
         srv = "[bold green]CLOUD[/]"
+    elif server_online:
+        srv = f"[bold green]●[/] [dim]port {port}[/]"
     else:
-        srv = (
-            f"[bold green]ON:{port}[/]" if server_online else f"[bold red]OFF:{port}[/]"
-        )
+        srv = "[dim]○ Offline[/]"
 
-    if tps > 0:
-        tps_str = f"[cyan]{tps:.1f} tps[/]"
+    # TPS — only show when actively generating; hide entirely when idle
+    if tps > 0 and is_running:
+        tps_str = f"[bold cyan]{tps:.1f} t/s[/]"
     elif is_running:
-        tps_str = "[dim]tps…[/]"
+        tps_str = "[dim]calculating…[/]"
     else:
-        tps_str = "[dim]-- tps[/]"
+        tps_str = ""  # hidden when idle — not "-- tps"
 
-    ctx = f"{int(tokens):,}/{int(ctx_max):,}"
-    err_str = f"✗ [bold red]{errors}[/]" if errors else "[dim]✗ 0[/]"
-    git_str = f"[magenta]{escape(branch)}[/]" if branch else "[dim]no-git[/]"
+    ctx = f"{int(tokens):,}/{int(ctx_max):,}" if ctx_max > 0 else ""
+    err_str = f"✗ [bold red]{errors}[/]" if errors else ""
+    git_str = f"[magenta]{escape(branch)}[/]" if branch else ""
+
+    # Model segment — only when connected
+    model_str = f"[bold]{escape(model)}[/]" if (server_online or is_cloud) and model else ""
+
+    # Gauge — only when connected
+    gauge_str = (
+        f"{gauge_markup(pct)} [dim]{int(pct)}%[/]"
+        if (server_online or is_cloud) and ctx_max > 0
+        else ""
+    )
 
     return {
-        "sb-state": f"{badge} │ {srv}",
-        "sb-model": escape(model),
-        "sb-gauge": f"{gauge_markup(pct)} [bold yellow]{int(pct)}%[/]",
+        "sb-state": f"{badge} [dim]│[/] {srv}",
+        "sb-model": model_str,
+        "sb-gauge": gauge_str,
         "sb-tps": tps_str,
-        "sb-tokens": f"[bold yellow]{ctx}[/]",
+        "sb-tokens": ctx,
         "sb-errors": err_str,
         "sb-git": git_str,
     }
 
 
 class StatusBar(Horizontal):
-    """Single-row consolidated status bar (Phase 4).
+    """Single-row consolidated status bar.
 
-    Hosted where the old text meter lived (``#context-meter-bar``). Every
-    segment is a ``Static`` updated via ``update_status``; the widget never
-    touches ``styles.set`` — all layout comes from DEFAULT_CSS.
+    Every segment is a ``Static`` updated via ``update_status``; the widget
+    never touches ``styles.set`` — all layout comes from DEFAULT_CSS.
     """
 
     DEFAULT_CSS = """
@@ -123,7 +144,7 @@ class StatusBar(Horizontal):
     }
 
     StatusBar > Static.sb-model {
-        color: $text-muted;
+        color: $foreground-muted;
     }
 
     StatusBar > Static.sb-spacer {
@@ -146,11 +167,16 @@ class StatusBar(Horizontal):
         yield Static("", id="sb-git", classes="sb-segment")
 
     def update_status(self, **kwargs) -> None:
-        """Apply ``build_status_segments`` to the live segments."""
+        """Apply ``build_status_segments`` to the live segments.
+
+        Empty strings cause the segment to be hidden (width: auto → 0).
+        """
         segments = build_status_segments(**kwargs)
         for seg_id, markup in segments.items():
             try:
                 widget = self.query_one(f"#{seg_id}", Static)
                 widget.update(markup)
-            except Exception:  # noqa: BLE001, S110 - not attached yet
+                # Hide segment entirely when empty to save space
+                widget.display = bool(markup.strip())
+            except Exception:  # noqa: BLE001, S110 — not yet attached
                 pass

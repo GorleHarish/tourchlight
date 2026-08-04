@@ -2248,6 +2248,7 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
     """SAVE_MEMORY — save a fact, decision, or failed strategy to project memory."""
     fact = args.get("entry") or args.get("fact", "")
     category = args.get("category", "decision")
+    channel_id = args.get("channel_id", "default")
 
     if not fact or not fact.strip():
         return "No memory entry provided."
@@ -2257,6 +2258,9 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
 
     try:
         from ..memory.persistence import ProjectMemory
+        from ..memory.models import MemoryObject
+        from ..memory.embeddings import tokenize_text
+        from datetime import datetime
 
         pm = ProjectMemory(Path(project_root))
         cat = category.lower()
@@ -2276,11 +2280,21 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
         else:
             pm.update(fact)
 
+        mo = MemoryObject(
+            kind=category,
+            summary=fact,
+            source="SAVE_MEMORY",
+            channel_id=channel_id,
+            vector_tokens=tokenize_text(fact),
+            timestamp=datetime.now(),
+        )
+        pm.add_memory_object(mo)
+
         # Also sync active memory manager if initialized
         if _global_memory_mgr is not None:
-            _global_memory_mgr.record_memory(fact, category=category)
+            _global_memory_mgr.record_memory(fact, category=category, channel_id=channel_id)
 
-        return f"Saved to project memory ({cat}): '{fact[:100]}'"
+        return f"Saved to project memory ({cat}, channel={channel_id}): '{fact[:100]}'"
     except Exception as e:
         return f"Failed to write memory file: {e}"
 

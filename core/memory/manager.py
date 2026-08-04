@@ -543,27 +543,60 @@ class TieredMemory:
         project_root: Optional[str] = None,
         budget: Optional[ContextBudget] = None,
     ) -> str:
-        """Format current SessionState into a dynamic L0 working memory scratchpad for system context.
+        """Format current SessionState into a dynamic L0 working memory scratchpad.
 
-        The budget is headroom-aware (see `get_effective_budget`): with ample
-        free context the scratchpad expands to surface more decisions, errors,
-        and tried-and-failed entries (richer grounding for code edits); under
-        pressure it shrinks to protect the conversation. Sections are ordered by
-        priority and assembled greedily so the scratchpad can never blow the
-        context window even with long or multiline state entries.
+        Enforces a maximum L0 budget cap (up to 1800 tokens / ~15% context window)
+        and priority-weighted injection order:
+        1. Active errors_seen (last 2 unique only)
+        2. Failing tests (names only, not full tracebacks)
+        3. Active goal / current task
+        4. Architecture decisions (max 3, most recent)
+        5. Files modified in last 3 turns
+        6. Tech stack (only if non-empty)
+        7. Tried_and_failed (max 2, only if relevant to current file/task)
+        8. Facts (skip entirely if budget exhausted)
         """
         if budget is None:
             budget = self.get_effective_budget()
         entry_limit = budget.scratchpad_entry_limit
-        section_cap = budget.scratchpad_section_cap
-        max_chars = budget.l0_chars
+        max_chars = min(1800 * budget.chars_per_token, budget.l0_chars)
         sections = []
 
+        # Priority 1: Active errors_seen (last 2 unique only)
+        if self.state.errors_seen:
+            unique_errors = list(dict.fromkeys(self.state.errors_seen))[-2:]
+            shown = "; ".join(
+                _scratchpad_clean(e, entry_limit) for e in unique_errors
+            )
+            sections.append((1, f"- Active Errors: {shown}"))
+
+        # Priority 2: Failing tests (names only, not full tracebacks)
+        if self.state.failing_tests:
+            clean_test_names = []
+            for t in self.state.failing_tests:
+                t_str = str(t).split("\n")[0]
+                t_name = t_str.split("::")[-1].strip()
+                if t_name and t_name not in clean_test_names:
+                    clean_test_names.append(t_name)
+            if clean_test_names:
+                shown = ", ".join(
+                    _scratchpad_clean(tn, entry_limit) for tn in clean_test_names[:4]
+                )
+                sections.append((2, f"- Failing Tests: {shown}"))
+
+        # Priority 3: Active goal / current task & active file
         if self.state.current_task:
             sections.append(
                 (
-                    0,
+                    3.0,
                     f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
+                )
+            )
+        if self.state.active_file:
+            sections.append(
+                (
+                    3.1,
+                    f"- Active File: {_scratchpad_clean(self.state.active_file, entry_limit)}",
                 )
             )
 
@@ -573,47 +606,63 @@ class TieredMemory:
             pending = get_workspace_pending_tasks(project_root)
             if pending:
                 shown = ", ".join(
-                    _scratchpad_clean(t, entry_limit) for t in pending[:5]
+                    _scratchpad_clean(t, entry_limit) for t in pending[:3]
                 )
-                sections.append((1, f"- Pending Tasks: {shown}"))
+                sections.append((3.5, f"- Pending Tasks: {shown}"))
 
-        if self.state.active_file:
-            sections.append(
-                (
-                    2,
-                    f"- Active File: {_scratchpad_clean(self.state.active_file, entry_limit)}",
-                )
+        # Priority 4: Architecture decisions (max 3, most recent)
+        decs_source = self.state.arch_decisions or self.state.decisions
+        if decs_source:
+            unique_decs = list(dict.fromkeys(decs_source))[-3:]
+            shown = "; ".join(
+                _scratchpad_clean(d, entry_limit) for d in unique_decs
             )
+            sections.append((4, f"- Key Decisions: {shown}"))
+
+        # Priority 5: Files modified in last 3 turns
         if self.state.files_modified:
+            recent_mod = self.state.files_modified[-3:]
             shown = ", ".join(
-                _scratchpad_clean(f, entry_limit)
-                for f in self.state.files_modified[-5:]
+                _scratchpad_clean(f, entry_limit) for f in recent_mod
             )
-            sections.append((3, f"- Modified Files: {shown}"))
-        if self.state.failing_tests:
+            sections.append((5, f"- Modified Files: {shown}"))
+
+        # Priority 6: Tech stack (only if non-empty)
+        if self.state.tech_stack:
             shown = ", ".join(
-                _scratchpad_clean(t, entry_limit)
-                for t in self.state.failing_tests[:section_cap]
+                _scratchpad_clean(t, entry_limit) for t in self.state.tech_stack[:4]
             )
-            sections.append((4, f"- Failing Tests: {shown}"))
-        if self.state.errors_seen:
-            shown = "; ".join(
-                _scratchpad_clean(e, entry_limit)
-                for e in self.state.errors_seen[-section_cap:]
-            )
-            sections.append((5, f"- Active Errors: {shown}"))
-        if self.state.decisions:
-            shown = "; ".join(
-                _scratchpad_clean(d, entry_limit)
-                for d in self.state.decisions[-section_cap:]
-            )
-            sections.append((6, f"- Key Decisions: {shown}"))
+            sections.append((6, f"- Tech Stack: {shown}"))
+
+        # Priority 7: Tried_and_failed (max 2, only if relevant to current file/task)
         if self.state.tried_and_failed:
+            tf_candidates = self.state.tried_and_failed
+            if self.state.active_file:
+                active_base = self.state.active_file.split("/")[-1].split(".")[0].lower()
+                rel_tf = [t for t in tf_candidates if active_base and active_base in str(t).lower()]
+                if rel_tf:
+                    tf_candidates = rel_tf
+            unique_tf = list(dict.fromkeys(tf_candidates))[-2:]
             shown = "; ".join(
-                _scratchpad_clean(t, entry_limit)
-                for t in self.state.tried_and_failed[-section_cap:]
+                _scratchpad_clean(t, entry_limit) for t in unique_tf
             )
             sections.append((7, f"- Tried & Failed: {shown}"))
+
+        # Priority 8: Facts (skip entirely if budget exhausted)
+        if self._project_memory and (self.state.current_task or self.state.intent):
+            try:
+                q_text = self.state.current_task or self.state.intent
+                retrieved = self._project_memory.search_memory(q_text, top_k=3)
+                if retrieved:
+                    mem_texts = [
+                        _scratchpad_clean(m[0].summary, entry_limit)
+                        for m in retrieved
+                        if m[0].summary
+                    ]
+                    if mem_texts:
+                        sections.append((8, f"- Facts & Past Context: {'; '.join(mem_texts)}"))
+            except Exception:
+                pass
 
         if not sections:
             return ""
@@ -622,13 +671,10 @@ class TieredMemory:
         lines = [_SCRATCHPAD_HEADER]
         used = len(_SCRATCHPAD_HEADER)
         for _, line in sections:
-            # Exact joined length: newline separator (1) + line content.
             if used + 1 + len(line) <= max_chars:
                 lines.append(line)
                 used += 1 + len(line)
                 continue
-            # A single section can still claim the remaining budget (truncated),
-            # but never push the scratchpad over its cap.
             remaining = max_chars - used
             if remaining > 21:
                 budget_chars = remaining - 1 - 4
@@ -636,7 +682,9 @@ class TieredMemory:
             break
         return "\n".join(lines)
 
-    def record_memory(self, entry: str, category: str = "decision") -> None:
+    def record_memory(
+        self, entry: str, category: str = "decision", channel_id: str = "default"
+    ) -> None:
         """Record an explicit memory entry into SessionState and persist to project memory."""
         cat_lower = category.lower().strip()
         if cat_lower in ("tried_failed", "tried_and_failed", "failed"):
@@ -650,6 +698,23 @@ class TieredMemory:
         else:
             if entry not in self.state.decisions:
                 self.state.decisions.append(entry)
+
+        from .embeddings import tokenize_text
+        mo = MemoryObject(
+            kind=category,
+            summary=entry,
+            source="user_record",
+            channel_id=channel_id,
+            vector_tokens=tokenize_text(entry),
+            file_paths=list(self.state.files_modified),
+            timestamp=datetime.now(),
+        )
+        self.state.memory_objects.append(mo)
+        if self._project_memory and hasattr(self._project_memory, "add_memory_object"):
+            try:
+                self._project_memory.add_memory_object(mo)
+            except Exception:
+                pass
 
         # Explicit memory saves must be durable immediately (debounce bypassed).
         self.persist_to_project_memory(force=True)

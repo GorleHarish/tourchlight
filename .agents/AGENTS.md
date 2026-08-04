@@ -1,7 +1,4 @@
 ## Codebase Exploration & Token Optimization Rules
-
-- **Unified Workspace Task Extraction & Verification Gate**: `get_workspace_pending_tasks()` extracts open tasks across `implementation_plan.md`, `.torchlight/tasks.md`, and `goal_spec.json`. Verification Gate in engine blocks premature `<FINAL_ANSWER>` output while tasks remain uncompleted (`- [ ]`).
-- **Explicit Session Modes (`💬 Chat Mode` vs `🎯 Goal Mode`)**: Core support for `ExecutionMode` enum (`CHAT` vs `GOAL`). Chat Mode suppresses `.torchlight/goal_spec.json` & `tasks.md` creation for clean Q&A sessions. Goal Mode lazily initializes task graphs on demand. `ensure_project_initialized()` auto-patches `.gitignore` to include `.torchlight/`. CLI (`--mode`, `context goal`, `/mode`) and TUI (`SessionModePickerModal`, `Ctrl+G`, `/mode`) provide interactive selection with Rich/Textual tooltips.
 - **Always Use Graphify Query First**: For understanding codebase architecture, module relationships, or finding specific components, always use `graphify query "<question>"`, `graphify path`, or `graphify explain` (or `query_graph` MCP tool) instead of re-reading raw source files line by line.
 - **Token Conservation**: Rely on targeted graph queries and graph output to save context tokens while preserving high analytical quality and accuracy.
 - **Keep Graph Current**: After modifying code files in a session, run `graphify update .` to keep the knowledge graph up to date.

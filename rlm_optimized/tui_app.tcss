@@ -62,6 +62,7 @@ Footer {
     ═══════════════════════════════════════════════════════════════════════ */
 
 #editor-split-pane {
+    display: none;
     width: 3fr;
     height: 100%;
     border-right: heavy $primary;
@@ -247,7 +248,7 @@ Footer {
     border-bottom: none;
 }
 
-#input-model-badge, #compact-btn, #help-btn {
+#compact-btn, #help-btn {
     width: auto;
     height: 1;
     margin-left: 1;
@@ -701,6 +702,7 @@ CollapsibleContents {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 #top-hud-header {
+    dock: top;
     height: 1;
     background: $surface;
     border-bottom: solid $primary;
@@ -781,15 +783,8 @@ CollapsibleContents {
     padding: 0 1;
 }
 
-#context-meter-bar {
-    height: 1;
-    min-height: 1;
-    background: transparent;
-    padding: 0;
-    color: $foreground;
-    text-style: bold;
-    border-top: none;
-}
+/* ── context-meter-bar removed in UX v2 (telemetry-bar height now = 1) ── */
+
 
 /* Bottom Nav Dock */
 #bottom-nav-dock {
@@ -858,4 +853,100 @@ CollapsibleContents {
 .context-chip:hover {
     background: $error;
     color: $text;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UX Overhaul v2 — New widget styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── ConnectionPill ───────────────────────────────────────────────────── */
+
+ConnectionPill {
+    width: auto;
+    height: 1;
+    padding: 0 1;
+    margin-right: 1;
+    border: none;
+    text-style: bold;
+    background: transparent;
+}
+
+ConnectionPill.connected {
+    color: $success;
+}
+
+ConnectionPill.disconnected {
+    color: $foreground-muted;
+}
+
+/* ── CenterEmptyState ─────────────────────────────────────────────────── */
+
+CenterEmptyState {
+    width: 1fr;
+    height: 1fr;
+    background: $background;
+    align: center middle;
+    content-align: center middle;
+    padding: 2 4;
+}
+
+CenterEmptyState .empty-state-title {
+    text-style: bold;
+    color: $primary;
+    width: auto;
+    margin-bottom: 1;
+    content-align: center middle;
+}
+
+CenterEmptyState .empty-state-subtitle {
+    color: $foreground-muted;
+    width: auto;
+    content-align: center middle;
+}
+
+CenterEmptyState .empty-state-hint {
+    color: $foreground-muted;
+    text-style: italic;
+    width: auto;
+    margin-top: 1;
+    content-align: center middle;
+}
+
+/* ── Disabled SEND button ─────────────────────────────────────────────── */
+
+#send-btn:disabled {
+    color: $foreground-muted;
+    background: $panel;
+    border: solid $panel;
+    opacity: 0.5;
+}
+
+/* ── Agent tab section titles (right sidebar) ─────────────────────────── */
+
+.sidebar-section-title {
+    text-style: bold;
+    color: $primary;
+    margin-top: 1;
+    margin-bottom: 0;
+    height: 1;
+    padding: 0 1;
+    content-align: left middle;
+    border-bottom: solid $panel;
+}
+
+/* ── Output tab log content ───────────────────────────────────────────── */
+
+#output-log-content {
+    width: 100%;
+    padding: 0 1;
+    color: $foreground;
+}
+
+/* ── Agent tab subwidgets ─────────────────────────────────────────────── */
+
+#agent-tab-conn-status, #agent-tab-model-info, #agent-tab-context-bar {
+    padding: 0 1 1 1;
+    width: 100%;
+    color: $foreground;
 }

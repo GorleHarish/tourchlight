@@ -5,7 +5,9 @@ each visual unit has a stable home with its own CSS / test surface.
 """
 
 __all__ = [
+    "center_empty_state",
     "command_palette",
+    "connection_pill",
     "diff_view",
     "file_tree",
     "format",

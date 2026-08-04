@@ -181,7 +181,6 @@ async def test_app_pending_step_updates_rail():
         assert len(rail._dots) == 0
 
         app._append_token('<tool_call>{"name": "READ_FILE", "path": "/tmp/x.py"}')
-        await pilot.pause()
         assert len(rail._dots) == 1
         assert "running" in rail._dots[0].classes
 
@@ -196,7 +195,5 @@ async def test_app_pending_step_updates_rail():
             tool_args={"path": "/tmp/x.py"},
         )
         app._handle_step(step)
-        await pilot.pause()
         assert "ok" in rail._dots[0].classes
         assert "●" in str(rail._dots[0].content)
-        await pilot.pause()

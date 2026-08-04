@@ -326,4 +326,98 @@ class ProjectMemory:
         data["failing_tests"] = state.failing_tests
         data["errors_seen"] = state.errors_seen
         data["tried_and_failed"] = state.tried_and_failed
+
+        if hasattr(state, "memory_objects") and state.memory_objects:
+            objs = []
+            for mo in state.memory_objects:
+                objs.append({
+                    "kind": mo.kind,
+                    "summary": mo.summary,
+                    "source": mo.source,
+                    "file_paths": mo.file_paths,
+                    "symbols": mo.symbols,
+                    "commands": mo.commands,
+                    "errors": mo.errors,
+                    "text": mo.text,
+                    "score": mo.score,
+                    "embedding": mo.embedding,
+                    "channel_id": getattr(mo, "channel_id", "default"),
+                    "user_id": getattr(mo, "user_id", None),
+                    "session_id": getattr(mo, "session_id", None),
+                    "vector_tokens": getattr(mo, "vector_tokens", []),
+                    "ast_symbols": getattr(mo, "ast_symbols", []),
+                    "timestamp": mo.timestamp.isoformat() if isinstance(mo.timestamp, datetime) else str(mo.timestamp),
+                })
+            data["memory_objects"] = objs
+
         self.save(data)
+
+    def add_memory_object(self, mem: MemoryObject) -> None:
+        data = self.load()
+        objs = data.get("memory_objects", [])
+        obj_dict = {
+            "kind": mem.kind,
+            "summary": mem.summary,
+            "source": mem.source,
+            "file_paths": mem.file_paths,
+            "symbols": mem.symbols,
+            "commands": mem.commands,
+            "errors": mem.errors,
+            "text": mem.text,
+            "score": mem.score,
+            "embedding": mem.embedding,
+            "channel_id": getattr(mem, "channel_id", "default"),
+            "user_id": getattr(mem, "user_id", None),
+            "session_id": getattr(mem, "session_id", None),
+            "vector_tokens": getattr(mem, "vector_tokens", []),
+            "ast_symbols": getattr(mem, "ast_symbols", []),
+            "timestamp": mem.timestamp.isoformat() if isinstance(mem.timestamp, datetime) else str(mem.timestamp),
+        }
+        # Deduplicate by summary
+        if not any(o.get("summary") == mem.summary for o in objs if isinstance(o, dict)):
+            objs.append(obj_dict)
+            data["memory_objects"] = objs
+            self.save(data)
+
+    def get_memory_objects(self, channel_id: Optional[str] = None) -> list[MemoryObject]:
+        data = self.load()
+        raw_objs = data.get("memory_objects", [])
+        result = []
+        for item in raw_objs:
+            if not isinstance(item, dict):
+                continue
+            ch = item.get("channel_id", "default")
+            if channel_id and ch and ch not in ("default", channel_id):
+                continue
+            try:
+                ts = datetime.fromisoformat(item["timestamp"]) if item.get("timestamp") else datetime.now()
+            except Exception:
+                ts = datetime.now()
+
+            result.append(MemoryObject(
+                kind=item.get("kind", "summary"),
+                summary=item.get("summary", ""),
+                source=item.get("source", ""),
+                file_paths=item.get("file_paths", []),
+                symbols=item.get("symbols", []),
+                commands=item.get("commands", []),
+                errors=item.get("errors", []),
+                text=item.get("text", ""),
+                score=item.get("score", 1.0),
+                embedding=item.get("embedding", []),
+                channel_id=ch,
+                user_id=item.get("user_id"),
+                session_id=item.get("session_id"),
+                vector_tokens=item.get("vector_tokens", []),
+                ast_symbols=item.get("ast_symbols", []),
+                timestamp=ts,
+            ))
+        return result
+
+    def search_memory(
+        self, query: str, channel_id: Optional[str] = None, top_k: int = 5
+    ) -> list[tuple[MemoryObject, float]]:
+        from .embeddings import HybridMemoryRetriever
+        objects = self.get_memory_objects(channel_id=channel_id)
+        retriever = HybridMemoryRetriever()
+        return retriever.retrieve(query, objects, channel_id=channel_id, top_k=top_k)

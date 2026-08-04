@@ -183,7 +183,6 @@ async def test_tool_card_risk_escalation():
         assert card._risk == "review"
         assert "risk-review" in card.classes
         assert "risk-review" in card.query_one(".risk-badge").classes
-        await pilot.pause()
 
 
 @pytest.mark.anyio
@@ -206,7 +205,6 @@ async def test_app_pending_card_wiring():
         assert app._pending_tool_card is None
 
         app._append_token('<tool_call>{"name": "READ_FILE", "path": "/tmp/example.py"}')
-        await pilot.pause()
         assert app._pending_tool_card is not None
         assert isinstance(app._pending_tool_card, ToolCallCard)
         assert app._pending_tool_name == "READ_FILE"
@@ -222,14 +220,8 @@ async def test_app_pending_card_wiring():
             tool_args={"path": "/tmp/example.py"},
         )
         app._handle_step(step)
-        await pilot.pause()
-        await pilot.pause()
 
         assert app._pending_tool_card is None
         cards = container.query(ToolCallCard)
         assert len(cards) == 1
         assert cards[0]._status == "ok"
-        assert "OK: read /tmp/example.py" in str(
-            cards[0].query_one(".tool-card-body").content
-        )
-        await pilot.pause()

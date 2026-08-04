@@ -60,6 +60,9 @@ class MemoryNeedle:
     value: str
     source: str = ""
     weight: float = 1.0
+    channel_id: Optional[str] = "default"
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -75,6 +78,11 @@ class MemoryObject:
     text: str = ""
     score: float = 1.0
     embedding: list[float] = field(default_factory=list)
+    channel_id: Optional[str] = "default"
+    user_id: Optional[str] = None
+    session_id: Optional[str] = None
+    vector_tokens: list[str] = field(default_factory=list)
+    ast_symbols: list[str] = field(default_factory=list)
     timestamp: datetime = field(default_factory=datetime.now)
 
 

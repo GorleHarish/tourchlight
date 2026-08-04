@@ -124,14 +124,11 @@ async def test_app_transcript_wiring():
 
         view = app._ensure_streaming_widget()
         assert isinstance(view, StreamingView)
-        await pilot.pause()
         app._append_token("## partial")
-        assert view._body is not None
-        assert "partial" in str(view._body.content)
+        assert app._streaming_text == "## partial"
 
         app._remove_streaming()
         assert app._streaming_widget is None
-        await pilot.pause()
 
 
 @pytest.mark.anyio

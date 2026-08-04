@@ -95,6 +95,13 @@ from rlm_optimized.tui_widgets.command_palette import (
     AttachContextModal,
 )
 from rlm_optimized.tui_widgets.file_tree import GitFileTree
+from rlm_optimized.tui_widgets.center_empty_state import (
+    CenterEmptyState,
+    STATE_DISCONNECTED,
+    STATE_IDLE,
+    STATE_WORKING,
+)
+from rlm_optimized.tui_widgets.connection_pill import ConnectionPill
 
 STATE_FILE = os.path.expanduser("~/.torchlight_state.json")
 
@@ -179,7 +186,9 @@ class AgentMemoryWidget(Static):
 
     def on_mount(self) -> None:
         self.update_memory()
-        self.set_interval(2.0, self.update_memory)
+        app = getattr(self, "app", None)
+        if app and not getattr(app, "_is_test_env", False):
+            self.set_interval(2.0, self.update_memory)
 
     def update_memory(self) -> None:
         try:
@@ -188,7 +197,7 @@ class AgentMemoryWidget(Static):
                 mem = app.engine.memory
                 if mem and hasattr(mem, "format_l0_scratchpad"):
                     text = mem.format_l0_scratchpad(project_root=app.engine.project_root)
-                    if text:
+                    if text and isinstance(text, str):
                         self.update(text)
                         return
         except Exception:
@@ -532,13 +541,35 @@ class ModelPickerModal(ModalScreen[Optional[dict]]):
         self.models = list_available_models()
         self.lmstudio_models = fetch_provider_models(LMSTUDIO_BASE_URL)
         for model_id in self.lmstudio_models:
-            self.models.append(
-                {
-                    "name": f"LM Studio: {model_id}",
-                    "id": model_id,
-                    "provider": "lmstudio",
-                }
-            )
+            if not any(m.get("id") == model_id for m in self.models):
+                self.models.append(
+                    {
+                        "name": f"LM Studio: {model_id}",
+                        "id": model_id,
+                        "provider": "lmstudio",
+                    }
+                )
+        # Fetch live models from local server (port 8080) and Ollama (port 11434)
+        local_8080 = fetch_provider_models("http://localhost:8080/v1")
+        for model_id in local_8080:
+            if not any(m.get("id") == model_id for m in self.models):
+                self.models.append(
+                    {
+                        "name": f"Local Server: {model_id}",
+                        "id": model_id,
+                        "provider": "turbo",
+                    }
+                )
+        ollama_models = fetch_provider_models("http://localhost:11434/v1")
+        for model_id in ollama_models:
+            if not any(m.get("id") == model_id for m in self.models):
+                self.models.append(
+                    {
+                        "name": f"Ollama: {model_id}",
+                        "id": model_id,
+                        "provider": "ollama",
+                    }
+                )
 
     def compose(self) -> ComposeResult:
         with Vertical(id="model-dialog"):
@@ -1194,6 +1225,19 @@ class TorchlightApp(App):
         self._file_tree: Optional[GitFileTree] = None
         self._user_input: Optional[PromptTextArea] = None
         self._status_bar: Optional[StatusBar] = None
+        # UX Overhaul v2 — new widgets
+        self._connection_pill: Optional[ConnectionPill] = None
+        self._center_empty_state: Optional[CenterEmptyState] = None
+        self._model_connected: bool = False  # tracks live connection state
+
+    @property
+    def _is_test_env(self) -> bool:
+        import sys
+        return (
+            getattr(self, "is_headless", False)
+            or getattr(self, "_test_runner", None) is not None
+            or "pytest" in sys.modules
+        )
 
     def _handle_status_change(self, payload: dict) -> None:
         import datetime
@@ -1231,6 +1275,26 @@ class TorchlightApp(App):
             except Exception:
                 pass
 
+        # Mirror tool events into the Output tab
+        try:
+            tool_name = details.get("tool_name", "")
+            path_hint = details.get("path", details.get("file_path", ""))
+            if state == "TOOL":
+                label = f"[{ts}] ▶ {tool_name}"
+                if path_hint:
+                    label += f"  →  {path_hint}"
+                self.append_output_log(label, severity="tool")
+            elif state == "TOOL_DONE":
+                self.append_output_log(f"[{ts}] ✓ {tool_name} done", severity="info")
+            elif state == "TOOL_DENIED":
+                self.append_output_log(f"[{ts}] ✗ {tool_name} denied", severity="error")
+            elif state == "WAITING_APPROVAL":
+                self.append_output_log(
+                    f"[{ts}] ⏸ Waiting approval: {tool_name}", severity="tool"
+                )
+        except Exception:
+            pass
+
         try:
             self.call_after_refresh(self.update_status_bar)
         except Exception:
@@ -1245,27 +1309,27 @@ class TorchlightApp(App):
     def compose(self) -> ComposeResult:
         # Top HUD Header
         with Horizontal(id="top-hud-header"):
-            yield Static("📐 CODEX_MANAGER_V1.0", id="hud-title")
-            yield Static("FLOW: 24.2 t/s", id="hud-epoch", classes="hud-badge")
-            yield Static("LATENCY: 12ms", id="hud-reverts", classes="hud-badge")
-            yield Static("● LIVE: UTF-8", id="hud-uplink", classes="hud-badge-green")
+            yield Static("⚡ TORCHLIGHT CODEX", id="hud-title")
             yield Static("", id="hud-spacer")
+            # Connection pill — replaces both the red error banner and Load Model btn
+            self._connection_pill = ConnectionPill(
+                connected=False,
+                model_name=self.model_name,
+                id="connection-pill",
+            )
+            yield self._connection_pill
+            yield Button("🤖 Model", id="model-select-btn", variant="default")
             mode_lbl = (
-                "🎯 GOAL_MODE: ACTIVE"
+                "🎯 GOAL"
                 if getattr(self.engine, "execution_mode", None)
                 and getattr(self.engine.execution_mode, "value", None) == "GOAL"
-                else "💬 CHAT_MODE: ACTIVE"
+                else "💬 CHAT"
             )
             mode_cls = "mode-badge-goal" if "GOAL" in mode_lbl else "mode-badge-chat"
             yield Button(
                 mode_lbl,
                 id="mode-toggle-btn",
                 classes=mode_cls,
-            )
-            yield Button(
-                f"🤖 {escape(self.model_name)} ▾",
-                id="input-model-badge",
-                variant="default",
             )
             yield Button(
                 "🗜️ Compact",
@@ -1287,8 +1351,10 @@ class TorchlightApp(App):
                 self._file_tree = GitFileTree(self.engine.project_root, id="file-tree")
                 yield self._file_tree
 
-            # 2. Tabbed Editor Split Pane
-            with Vertical(id="editor-split-pane"):
+            # 2. Tabbed Editor Split Pane (Hidden by default when no tabs open to maintain a clean 3-panel layout)
+            editor_pane = Vertical(id="editor-split-pane")
+            editor_pane.display = bool(self._open_tabs)
+            with editor_pane:
                 with Horizontal(id="tab-bar-header"):
                     yield Static(
                         "📄 EDITOR", classes="panel-header-title"
@@ -1301,7 +1367,11 @@ class TorchlightApp(App):
                 with Horizontal(id="tab-buttons-container"):
                     pass
                 with Vertical(id="editor-content-area"):
-                    yield Static("", id="active-editor-view-placeholder")
+                    self._center_empty_state = CenterEmptyState(
+                        state=STATE_DISCONNECTED,
+                        id="center-empty-state",
+                    )
+                    yield self._center_empty_state
 
             # 3. Main Center Area: Agent Terminal, Reasoning Trajectory & Logs
             with Vertical(id="agent-split-pane"):
@@ -1332,31 +1402,60 @@ class TorchlightApp(App):
                             suggestion_callback=self._on_suggestion_matches,
                         )
                         yield self._user_input
-                        yield Button(
-                            "⚡ Load Model",
-                            id="toggle-engine-btn",
-                            variant="success",
-                        )
+                        # SEND: disabled until a model is connected
                         yield Button(
                             "SEND ↗",
                             id="send-btn",
                             variant="primary",
+                            disabled=True,
+                            tooltip="Connect a model (Ctrl+M) to send messages.",
                         )
                         yield Static("", id="input-spinner")
                     yield ListView(id="input-suggestions")
 
-            # 3. Right Sidebar: Implementation Plan & TODO Tasks
+            # 4. Right Sidebar: 3-tab IA (Agent / Plan / Output)
             with Vertical(id="plan-sidebar"):
                 with TabbedContent():
-                    with TabPane("📋 Tasks", id="tab-tasks"):
-                        yield Static(self._build_plan_text(), id="plan-panel")
-                    with TabPane("🧠 Agent Brain", id="tab-brain"):
+                    # ── Tab: Agent ─────────────────────────────────────
+                    with TabPane("🤖 Agent", id="tab-agent"):
                         with VerticalScroll():
+                            yield Static(
+                                "[bold]Connection[/]",
+                                classes="sidebar-section-title",
+                            )
+                            yield Static("", id="agent-tab-conn-status")
+                            yield Static(
+                                "[bold]Model Info[/]",
+                                classes="sidebar-section-title",
+                            )
+                            yield Static("", id="agent-tab-model-info")
+                            yield Static(
+                                "[bold]Context Usage[/]",
+                                classes="sidebar-section-title",
+                            )
+                            yield Static("", id="agent-tab-context-bar")
+                            yield Static(
+                                "[bold]Memory[/]",
+                                classes="sidebar-section-title",
+                            )
                             yield AgentMemoryWidget(id="agent-memory-panel")
+                    # ── Tab: Plan ──────────────────────────────────────
+                    with TabPane("📋 Plan", id="tab-tasks"):
+                        with VerticalScroll(id="plan-scroll"):
+                            yield Static(
+                                self._build_plan_text(),
+                                id="plan-panel",
+                            )
+                    # ── Tab: Output ────────────────────────────────────
+                    with TabPane("📤 Output", id="tab-output"):
+                        with VerticalScroll(id="output-log-scroll"):
+                            yield Static(
+                                "[dim]Tool output and agent traces will appear here.[/dim]",
+                                id="output-log-content",
+                            )
 
-        # Bottom Context Progress & Telemetry Meter
+        # Bottom Telemetry — single clean StatusBar (context-meter-bar removed)
         with Vertical(id="telemetry-bar"):
-            yield Static(self._build_context_progress_text(), id="context-meter-bar")
             self._status_bar = StatusBar(id="status-bar")
             yield self._status_bar
 
@@ -1407,6 +1506,8 @@ class TorchlightApp(App):
             if abs_path not in self._open_tabs:
                 self._open_tabs[abs_path] = {"dirty": False, "filename": filename}
             self._active_tab_path = abs_path
+            # Hide empty state when a file is open
+            self._set_center_empty_state_visible(False)
             self._refresh_editor_split_view()
 
             def _on_action_choice(choice: Optional[str]) -> None:
@@ -1517,11 +1618,16 @@ class TorchlightApp(App):
         except Exception:
             return
 
-        for child in list(tab_container.children):
-            child.remove()
+        try:
+            editor_pane = self.query_one("#editor-split-pane")
+            editor_pane.display = bool(self._open_tabs)
+        except Exception:
+            pass
 
-        for child in list(content_area.children):
-            child.remove()
+        if not self._open_tabs:
+            return
+
+        existing_btn_ids = {c.id for c in tab_container.children if c.id}
 
         for path, meta in self._open_tabs.items():
             filename = meta.get("filename", os.path.basename(path))
@@ -1529,22 +1635,34 @@ class TorchlightApp(App):
             is_active = path == self._active_tab_path
             dirty = meta.get("dirty", False)
             label = f"{'● ' if dirty else ''}{filename}"
+            sel_id = f"tsel_{h}"
+            cls_id = f"tcls_{h}"
 
-            btn = Button(
-                label,
-                id=f"tsel_{h}",
-                classes="tab-item-active" if is_active else "tab-item-inactive",
-                variant="default",
-            )
-            tab_container.mount(btn)
+            if sel_id in existing_btn_ids:
+                try:
+                    b = tab_container.query_one(f"#{sel_id}", Button)
+                    b.label = label
+                    b.remove_class("tab-item-active", "tab-item-inactive")
+                    b.add_class("tab-item-active" if is_active else "tab-item-inactive")
+                except Exception:
+                    pass
+            else:
+                btn = Button(
+                    label,
+                    id=sel_id,
+                    classes="tab-item-active" if is_active else "tab-item-inactive",
+                    variant="default",
+                )
+                tab_container.mount(btn)
 
-            close_btn = Button(
-                "×",
-                id=f"tcls_{h}",
-                classes="tab-close-btn",
-                variant="default",
-            )
-            tab_container.mount(close_btn)
+            if sel_id not in existing_btn_ids:
+                close_btn = Button(
+                    "×",
+                    id=cls_id,
+                    classes="tab-close-btn",
+                    variant="default",
+                )
+                tab_container.mount(close_btn)
 
         if self._active_tab_path and self._active_tab_path in self._open_tabs:
             try:
@@ -1590,19 +1708,33 @@ class TorchlightApp(App):
             except Exception:
                 rich_text = None
 
-            if rich_text is not None:
+            txt = rich_text if rich_text is not None else content
+            try:
+                editor_view = content_area.query_one("#active-editor-view", Static)
+                editor_view.update(txt)
+            except Exception:
+                content_area.remove_children()
                 editor = Static(
-                    rich_text,
+                    txt,
                     id="active-editor-view",
                     classes="editor-view",
                 )
-            else:
-                editor = Static(
-                    content,
-                    id="active-editor-view",
-                    classes="editor-view",
+                content_area.mount(editor)
+        else:
+            # Mount center empty state when no files are open
+            is_online = getattr(self, "_last_server_online", False)
+            st = STATE_IDLE if is_online else STATE_DISCONNECTED
+            if self._center_empty_state is None or not self._center_empty_state.is_attached:
+                self._center_empty_state = CenterEmptyState(
+                    state=st,
+                    id="center-empty-state",
                 )
-            content_area.mount(editor)
+            content_area.mount(self._center_empty_state)
+            self._center_empty_state.set_connection_state(
+                st,
+                model_name=self.model_name if is_online else "",
+            )
+            self._center_empty_state.display = True
 
     @on(DirectoryTree.FileSelected)
     def on_file_selected(self, event: DirectoryTree.FileSelected) -> None:
@@ -1915,6 +2047,10 @@ class TorchlightApp(App):
     def on_help_pressed(self) -> None:
         self.action_show_help()
 
+    @on(Button.Pressed, "#model-select-btn")
+    def on_model_select_pressed(self) -> None:
+        self.action_select_model()
+
     @on(Button.Pressed, "#input-model-badge")
     def on_model_badge_clicked(self) -> None:
         self.action_select_model()
@@ -2040,7 +2176,13 @@ class TorchlightApp(App):
             self.stop_current_agent()
             return
         await self._submit_user_input()
-        
+
+    async def _do_send(self) -> None:
+        """Programmatic send — called by ctrl+enter binding."""
+        if self._is_running:
+            self.stop_current_agent()
+            return
+        await self._submit_user_input()
     @on(PromptTextArea.ContextFileAttached)
     def _on_context_file_attached(self, event: PromptTextArea.ContextFileAttached) -> None:
         self._add_context_chip(event.filepath)
@@ -2118,31 +2260,88 @@ class TorchlightApp(App):
             pass
 
     def _auto_refresh_engine_status(self) -> None:
-        self.update_status_bar()
-        self.update_sidebar_meta()
+        try:
+            self.update_status_bar()
+            self.update_sidebar_meta()
 
-        if getattr(self, "_server_starting", False):
-            return
+            if getattr(self, "_server_starting", False):
+                return
 
-        if self.engine_port <= 0:
-            return
+            if self.engine_port <= 0:
+                return
 
-        is_online = is_port_in_use(self.engine_port)
-        if getattr(self, "_last_server_online", None) != is_online:
-            self._last_server_online = is_online
-            if hasattr(self, "_conn_banner_widget") and self._conn_banner_widget:
-                if is_online:
-                    self._conn_banner_widget.update(
-                        f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {self.engine_port}[/]\n"
-                    )
-                elif self.externally_managed:
-                    self._conn_banner_widget.update(
-                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/] Nothing on port {self.engine_port}.\n"
-                    )
-                else:
-                    self._conn_banner_widget.update(
-                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/] Server offline on port {self.engine_port}.\n"
-                    )
+            is_online = is_port_in_use(self.engine_port)
+            if getattr(self, "_last_server_online", None) != is_online:
+                self._last_server_online = is_online
+                self._update_connection_state(is_online)
+        except Exception:
+            pass
+
+    def _update_connection_state(self, is_online: bool) -> None:
+        """Sync all connection-dependent UI elements.
+
+        Called on server status change (and once at mount).
+        Updates:
+          - ConnectionPill label/color in the header
+          - SEND button enabled/disabled
+          - CenterEmptyState state (disconnected vs idle)
+          - Agent tab connection status label
+          - Clears legacy conn-banner if it exists
+        """
+        self._model_connected = is_online
+
+        # 1. Connection Pill
+        try:
+            if self._connection_pill is not None:
+                self._connection_pill.set_connected(is_online, self.model_name)
+        except Exception:
+            try:
+                pill = self.query_one("#connection-pill", ConnectionPill)
+                pill.set_connected(is_online, self.model_name)
+            except Exception:
+                pass
+
+        # 2. SEND button — disabled when offline
+        try:
+            send_btn = self.query_one("#send-btn", Button)
+            send_btn.disabled = not is_online
+            send_btn.tooltip = (
+                None if is_online else "Connect a model (Ctrl+M) to send messages."
+            )
+        except Exception:
+            pass
+
+        # 3. CenterEmptyState
+        try:
+            ces = self.query_one("#center-empty-state", CenterEmptyState)
+            new_state = STATE_IDLE if is_online else STATE_DISCONNECTED
+            ces.set_connection_state(new_state, model_name=self.model_name if is_online else "")
+        except Exception:
+            pass
+
+        # 4. Agent tab — connection status label
+        try:
+            conn_status = self.query_one("#agent-tab-conn-status", Static)
+            if is_online:
+                conn_status.update(
+                    f"[bold green]● Connected[/]\n"
+                    f"[dim]{escape(self.provider_name)} · port {self.engine_port}[/]"
+                )
+            else:
+                conn_status.update(
+                    f"[dim]○ Offline[/]\n"
+                    f"[dim]Press [bold]Ctrl+M[/] to connect[/]"
+                )
+            model_info = self.query_one("#agent-tab-model-info", Static)
+            if is_online and self.model_name:
+                model_info.update(
+                    f"[bold]{escape(self.model_name)}[/]\n"
+                    f"[dim]CTX: {CTX_SIZE:,} tokens[/]"
+                )
+            else:
+                model_info.update("[dim]No model loaded[/]")
+        except Exception:
+            pass
 
     def on_mount(self) -> None:
         try:
@@ -2157,7 +2356,8 @@ class TorchlightApp(App):
                 pass
 
         try:
-            self.set_interval(1.0, self.update_sidebar_meta)
+            if not self._is_test_env:
+                self.set_interval(1.0, self.update_sidebar_meta)
         except Exception:
             pass
 
@@ -2168,52 +2368,37 @@ class TorchlightApp(App):
 
         try:
             container = self.query_one("#chat-container")
-
-            # Welcome banner - 3-step quick start
+            # Minimal welcome into the chat transcript — not an error banner
             container.mount(
                 Static(
-                    Panel(
-                        "[bold cyan]Torchlight Codex IDE[/]\n\n"
-                        "[bold white]1.[/] Check engine status in sidebar (green = ready)\n"
-                        "[bold white]2.[/] Pick a model with [bold yellow]Ctrl+M[/] or use the default\n"
-                        "[bold white]3.[/] Type your task below and press [bold yellow]Send[/] or Enter\n\n"
-                        "[dim]Press Ctrl+B for sidebar | Ctrl+T for theme | /help for commands[/]",
-                        title="Welcome",
-                        border_style="cyan",
-                    )
+                    "[dim]⚡ Torchlight Codex ready. Type a message or press "
+                    "[bold]Ctrl+M[/] to connect a model.[/dim]"
                 )
             )
+        except Exception:
+            pass
 
+        # Determine initial connection state and sync all UI
+        try:
             if self.engine_port <= 0:
-                is_online = True
+                is_online = True  # cloud provider
                 self._last_server_online = True
-                banner_text = f"  [bold green]Using {escape(self.provider_name)} ({escape(self.model_name)})[/]\n"
             else:
                 is_online = is_port_in_use(self.engine_port)
                 self._last_server_online = is_online
-                if is_online:
-                    banner_text = f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {self.engine_port}[/]\n"
-                elif self.externally_managed:
-                    banner_text = (
-                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
-                        f"    [dim]Nothing on port {self.engine_port}. Start it yourself, then click Start to re-check.[/]\n"
-                    )
-                else:
-                    banner_text = (
-                        f"  [bold red]Cannot connect to {escape(self.provider_name)}![/]\n"
-                        f"    [dim]Server offline on port {self.engine_port}. Click Start or Restart.[/]\n"
-                    )
+        except Exception:
+            is_online = False
+            self._last_server_online = False
 
-            self._conn_banner_widget = Static(banner_text, id="conn-banner")
-            container.mount(self._conn_banner_widget)
-        except Exception as e:
-            try:
-                self.notify(f"UI initialization warning: {e}", severity="warning")
-            except Exception:
-                pass
+        # Run the unified connection sync (pill + SEND + empty state + agent tab)
+        try:
+            self.call_after_refresh(lambda: self._update_connection_state(is_online))
+        except Exception:
+            self._update_connection_state(is_online)
 
         try:
-            self.set_interval(1.0, self._auto_refresh_engine_status)
+            if not self._is_test_env:
+                self.set_interval(1.0, self._auto_refresh_engine_status)
         except Exception:
             pass
 
@@ -2243,11 +2428,89 @@ class TorchlightApp(App):
         except Exception:
             pass
 
-    def on_resize(self) -> None:
+    # ── New UX Helpers (v2 Overhaul) ────────────────────────────────────
+
+    def append_output_log(self, text: str, severity: str = "info") -> None:
+        """Append a line to the Output tab's RichLog.
+
+        severity: 'info' | 'tool' | 'error'
+        """
+        try:
+            log_widget = self.query_one("#output-log-content", Static)
+            color = {
+                "tool": "cyan",
+                "error": "red",
+                "info": "dim",
+            }.get(severity, "dim")
+            from rich.markup import escape as _esc
+            existing = str(log_widget.renderable) if hasattr(log_widget, "renderable") else ""
+            # Keep last ~200 lines to avoid memory blowup
+            lines = existing.split("\n") if existing else []
+            lines.append(f"[{color}]{_esc(text)}[/]")
+            if len(lines) > 200:
+                lines = lines[-200:]
+            log_widget.update("\n".join(lines))
+        except Exception:
+            pass
+
+    def update_agent_tab_context(self) -> None:
+        """Update the context usage bar in the Agent tab."""
+        try:
+            mem = getattr(self.engine, "_memory", None)
+            tokens_est = 0
+            if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
+                tokens_est = mem.total_tokens
+            else:
+                tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+
+            ctx_max = CTX_SIZE
+            pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
+            bar_width = 18
+            filled = min(bar_width, round((pct / 100.0) * bar_width))
+            bar = "█" * filled + "░" * (bar_width - filled)
+            color = "green" if pct < 50 else "yellow" if pct < 75 else "red"
+
+            ctx_widget = self.query_one("#agent-tab-context-bar", Static)
+            ctx_widget.update(
+                f"[bold {color}]{bar}[/] [dim]{pct}%[/]\n"
+                f"[dim]{tokens_est:,} / {ctx_max:,} tokens[/]"
+            )
+        except Exception:
+            pass
+
+    def _set_center_empty_state_visible(self, visible: bool) -> None:
+        """Show or hide the center empty state (hide when a file is open)."""
+        try:
+            ces = self.query_one("#center-empty-state", CenterEmptyState)
+            ces.display = visible
+        except Exception:
+            pass
+
+
+
+    def on_resize(self, event=None) -> None:
         self._apply_responsive_layout()
 
     async def on_key(self, event) -> None:
-        """Global key bindings that aren't caught by specific widgets."""
+        """Global key bindings that aren't caught by specific widgets.
+
+        Key contract (confirmed):
+          enter       → insert newline in TextArea (default behavior)
+          ctrl+enter  → send the current message
+        """
+        # ctrl+enter → send (enter=newline is handled naturally by TextArea)
+        if event.key == "ctrl+j" or event.key == "ctrl+enter":
+            # Check that focus is in the user input
+            try:
+                focused = self.focused
+                if focused and focused.id == "user-input":
+                    await self._do_send()
+                    event.prevent_default()
+                    event.stop()
+                    return
+            except Exception:
+                pass
+
         if event.key in ("left", "right") and self._open_tabs:
             pane_visible = True
             try:
@@ -3215,13 +3478,11 @@ class TorchlightApp(App):
             if is_port_in_use(port):
                 self._server_starting = False
                 self._last_server_online = True
-                self.update_status_bar()
-                self.update_sidebar_meta()
-                if hasattr(self, "_conn_banner_widget") and self._conn_banner_widget:
-                    self._conn_banner_widget.update(
-                        f"  [bold green]Connected to {escape(self.provider_name)} ({escape(self.model_name)}) on port {port}[/]\n"
-                    )
-                self.notify(
+                self.call_from_thread(self._update_connection_state, True)
+                self.call_from_thread(self.update_status_bar)
+                self.call_from_thread(self.update_sidebar_meta)
+                self.call_from_thread(
+                    self.notify,
                     f"Engine server active on port {port}",
                     severity="information",
                     timeout=2,
@@ -3230,9 +3491,11 @@ class TorchlightApp(App):
 
         self._server_starting = False
         self._last_server_online = False
-        self.update_status_bar()
-        self.update_sidebar_meta()
-        self.notify(
+        self.call_from_thread(self._update_connection_state, False)
+        self.call_from_thread(self.update_status_bar)
+        self.call_from_thread(self.update_sidebar_meta)
+        self.call_from_thread(
+            self.notify,
             f"Engine server failed to bind to port {port} within 15 seconds",
             severity="error",
             timeout=5,
@@ -3240,14 +3503,9 @@ class TorchlightApp(App):
 
     @on(Button.Pressed, "#toggle-engine-btn")
     def on_toggle_engine_btn(self) -> None:
-        if self.engine_port <= 0:
-            return
-            
-        is_online = getattr(self, "_last_server_online", False)
-        if is_online:
-            self.on_stop_engine_btn()
-        else:
-            self.on_start_engine_btn()
+        # toggle-engine-btn was removed from the input bar in v2 UX overhaul.
+        # If somehow triggered (e.g. from a slash command), redirect to model picker.
+        self.action_select_model()
 
     @on(Button.Pressed, "#start-engine-btn")
     def on_start_engine_btn(self) -> None:
@@ -3526,27 +3784,20 @@ class TorchlightApp(App):
             is_running=getattr(self, "_is_running", False),
         )
 
+        # Keep Agent tab context bar in sync
         try:
-            toggle_btn = self.query_one("#toggle-engine-btn", Button)
-            if self.engine_port <= 0:
-                toggle_btn.display = False
-            else:
-                toggle_btn.display = True
-                if server_online:
-                    toggle_btn.label = "🛑 Unload Model"
-                    toggle_btn.variant = "error"
-                else:
-                    toggle_btn.label = "⚡ Load Model"
-                    toggle_btn.variant = "success"
+            self.update_agent_tab_context()
         except Exception:
             pass
 
     def _context_usage(self) -> tuple[int, int, float]:
         mem = getattr(self.engine, "_memory", None)
-        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
-            tokens_est = mem.total_tokens
+        tot_tok = getattr(mem, "total_tokens", None)
+        if mem and isinstance(tot_tok, (int, float)) and tot_tok > 0:
+            tokens_est = int(tot_tok)
         else:
-            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+            calls = getattr(self.engine, "_total_llm_calls", 0)
+            tokens_est = calls * 450 if isinstance(calls, (int, float)) else 0
         ctx_max = CTX_SIZE
         pct = min(100.0, (tokens_est / ctx_max) * 100) if ctx_max > 0 else 0.0
         return int(tokens_est), ctx_max, pct

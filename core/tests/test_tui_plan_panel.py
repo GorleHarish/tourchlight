@@ -192,12 +192,12 @@ async def test_torchlight_app_headless_run():
             explorer = app.query_one("#explorer-sidebar")
             agent_split = app.query_one("#agent-split-pane")
             chat_container = app.query_one("#chat-container")
-            context_bar = app.query_one("#context-meter-bar")
+            status_bar = app.query_one("#status-bar")
             compact_btn = app.query_one("#compact-btn")
             assert explorer is not None
             assert agent_split is not None
             assert chat_container is not None
-            assert context_bar is not None
+            assert status_bar is not None
             assert compact_btn is not None
 
             # Verify input state toggle preserves clickable Stop button
@@ -209,7 +209,6 @@ async def test_torchlight_app_headless_run():
             app._set_input_enabled(True)
             assert btn.disabled is False
             assert "SEND" in str(btn.label).upper()
-            await pilot.pause()
     except (ImportError, ModuleNotFoundError) as e:
         pytest.skip(f"Textual not installed in test environment: {e}")
 
