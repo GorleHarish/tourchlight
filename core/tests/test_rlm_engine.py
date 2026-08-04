@@ -36,7 +36,7 @@ def test_client_chat_protocol_methods():
         )
 
 
-def test_rlm_engine_debate_verifier_error_resilience():
+def test_rlm_engine_debate_verifier_error_resilience(tmp_path):
     import asyncio
 
     async def _test():
@@ -53,7 +53,9 @@ def test_rlm_engine_debate_verifier_error_resilience():
         )
 
         engine = RLMEngineOptimized(
-            client=mock_client, debate_verifier=failing_verifier
+            client=mock_client,
+            debate_verifier=failing_verifier,
+            project_root=str(tmp_path),
         )
         result = await engine.solve_async("What is 2+2?")
 
@@ -74,7 +76,7 @@ def test_rlm_engine_solve_method():
     assert res.answer == "Done"
 
 
-def test_rlm_engine_optimized_code_execution():
+def test_rlm_engine_optimized_code_execution(tmp_path):
     import asyncio
 
     async def _test():
@@ -84,7 +86,9 @@ def test_rlm_engine_optimized_code_execution():
             ["<FINAL_ANSWER>42</FINAL_ANSWER>"],
         ]
         mock_client.chat_with_history.return_value = "Summary"
-        engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
+        engine = RLMEngineOptimized(
+            client=mock_client, enable_debate=False, project_root=str(tmp_path)
+        )
         res = await engine.solve_async("Calculate 10+32")
         assert "42" in res.answer or len(res.steps) >= 2
 

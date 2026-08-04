@@ -2246,7 +2246,7 @@ def tool_web_verify_impl(args: dict, project_root: str) -> str:
 
 def tool_save_memory_impl(args: dict, project_root: str) -> str:
     """SAVE_MEMORY — save a fact, decision, or failed strategy to project memory."""
-    fact = args.get("entry") or args.get("fact", "")
+    fact = str(args.get("entry") or args.get("fact", ""))
     category = args.get("category", "decision")
     channel_id = args.get("channel_id", "default")
 
@@ -2292,7 +2292,9 @@ def tool_save_memory_impl(args: dict, project_root: str) -> str:
 
         # Also sync active memory manager if initialized
         if _global_memory_mgr is not None:
-            _global_memory_mgr.record_memory(fact, category=category, channel_id=channel_id)
+            _global_memory_mgr.record_memory(
+                fact, category=category, channel_id=channel_id
+            )
 
         return f"Saved to project memory ({cat}, channel={channel_id}): '{fact[:100]}'"
     except Exception as e:

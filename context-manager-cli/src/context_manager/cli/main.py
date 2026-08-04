@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -35,12 +36,22 @@ except ImportError:
     from ..memory.persistence import ProjectMemory
     from ..flashlight import SymbolIndex, Flashlight
     from ..execution.feedback_loop import ExecutionFeedbackLoop
-    from ..tools.core import AUTO, CONFIRM, REVIEW, classify_command, set_ctx_window as _set_ctx_window
+    from ..tools.core import (
+        AUTO,
+        CONFIRM,
+        REVIEW,
+        classify_command,
+        set_ctx_window as _set_ctx_window,
+    )
+
     try:
         from core.prompts.system import DEFAULT_SYSTEM_PROMPT, get_phase_system_prompt
     except ImportError:
         from ..prompts import DEFAULT_SYSTEM_PROMPT
-        def get_phase_system_prompt(phase="code"): return DEFAULT_SYSTEM_PROMPT
+
+        def get_phase_system_prompt(phase="code"):
+            return DEFAULT_SYSTEM_PROMPT
+
     try:
         from core.debate.verifier import DebateVerifier
     except ImportError:
@@ -51,7 +62,6 @@ except ImportError:
         AutonomousHarness = None
 
 
-
 from ..skills.unified import create_unified_registry
 from ..tools.core import get_core_registry
 
@@ -60,8 +70,9 @@ app = typer.Typer(help="Context Manager CLI - Chat with LLMs while managing cont
 console = Console()
 
 from .dashboard import ContextDashboard, ActionTracker
-dashboard  = ContextDashboard()
-_core_reg  = get_core_registry()
+
+dashboard = ContextDashboard()
+_core_reg = get_core_registry()
 
 # ── Token budget constants ─────────────────────────────────────────────────────
 #
@@ -77,53 +88,63 @@ _core_reg  = get_core_registry()
 # Skills prompts (get_all_prompts) are SKIPPED for models with ≤5000 token
 # windows because they are too large and the model uses bare tool syntax anyway.
 
-_SMALL_CTX = 5000   # models at or below this limit get the trimmed pipeline
+_SMALL_CTX = 5000  # models at or below this limit get the trimmed pipeline
 
 
 def _beam_budget(max_tokens: int) -> tuple[int, int]:
     """Return (max_beam_files, max_lines_per_file) for the given context size."""
     if max_tokens <= _SMALL_CTX:
-        return 1, 50    # 1 file, 50 lines ≈ 500 tokens
+        return 1, 50  # 1 file, 50 lines ≈ 500 tokens
     if max_tokens <= 9000:
-        return 2, 80    # 2 files, 80 lines ≈ 1300 tokens
-    return 3, 120       # default — full beam
+        return 2, 80  # 2 files, 80 lines ≈ 1300 tokens
+    return 3, 120  # default — full beam
 
 
 # ── Tool name → ActionTracker kind ───────────────────────────────────────────
 _TOOL_KIND: dict[str, str] = {
-    "READ_FILE":    "read_file",
-    "WRITE_FILE":   "write_file",
-    "RUN_COMMAND":  "run_command",
-    "WEB_SEARCH":   "web_search",
-    "WEB_FETCH":    "web_fetch",
-    "DOC_SEARCH":   "doc_search",
-    "WEB_VERIFY":   "web_verify",
-    "SAVE_MEMORY":  "save_memory",
+    "READ_FILE": "read_file",
+    "WRITE_FILE": "write_file",
+    "RUN_COMMAND": "run_command",
+    "WEB_SEARCH": "web_search",
+    "WEB_FETCH": "web_fetch",
+    "DOC_SEARCH": "doc_search",
+    "WEB_VERIFY": "web_verify",
+    "SAVE_MEMORY": "save_memory",
 }
+
 
 def _tool_kind(name: str) -> str:
     return _TOOL_KIND.get(name.upper(), "default")
 
+
 def _tool_label(name: str, params: dict) -> str:
     name_u = name.upper()
-    args   = list(params.values())
-    first  = str(args[0])[:60] if args else ""
-    if name_u == "READ_FILE":    return f"Reading  {first}"
-    if name_u == "WRITE_FILE":   return f"Writing  {first}"
-    if name_u == "RUN_COMMAND":  return f"Running  {first}"
-    if name_u == "WEB_SEARCH":   return f"Searching  \"{first}\""
-    if name_u == "WEB_FETCH":    return f"Fetching  {first}"
-    if name_u == "DOC_SEARCH":   return f"Doc search  \"{first}\""
+    args = list(params.values())
+    first = str(args[0])[:60] if args else ""
+    if name_u == "READ_FILE":
+        return f"Reading  {first}"
+    if name_u == "WRITE_FILE":
+        return f"Writing  {first}"
+    if name_u == "RUN_COMMAND":
+        return f"Running  {first}"
+    if name_u == "WEB_SEARCH":
+        return f'Searching  "{first}"'
+    if name_u == "WEB_FETCH":
+        return f"Fetching  {first}"
+    if name_u == "DOC_SEARCH":
+        return f'Doc search  "{first}"'
     if name_u == "WEB_VERIFY":
         lang = str(args[1])[:12] if len(args) > 1 else "code"
         return f"Verifying {lang}  {first[:40]}"
-    if name_u == "SAVE_MEMORY":  return f"Saving memory  \"{first[:40]}\""
+    if name_u == "SAVE_MEMORY":
+        return f'Saving memory  "{first[:40]}"'
     return f"{name}  {first}"
+
 
 def _risk_tier(name: str, params: dict) -> str:
     name_u = name.upper()
-    args   = [str(v) for v in params.values()]
-    tool   = _core_reg.get(name_u)
+    args = [str(v) for v in params.values()]
+    tool = _core_reg.get(name_u)
     if tool:
         return _core_reg.risk_level_for(name_u, args)
     return CONFIRM
@@ -150,11 +171,11 @@ class StreamingChatSession:
         self._project_dir = Path(project_dir).resolve() if project_dir else Path.cwd()
         self.project_path = self._project_dir
         self.project_memory = ProjectMemory(self.project_path)
-        
+
         self.tokenizer = get_token_counter()
-        self.skills         = create_unified_registry()
-        self.max_tokens     = max_tokens
-        
+        self.skills = create_unified_registry()
+        self.max_tokens = max_tokens
+
         # Calculate initial overhead
         overhead = self._calculate_metadata_overhead()
         self.memory_config = MemoryConfig.auto_tune(max_tokens, metadata_overhead=overhead)
@@ -163,18 +184,21 @@ class StreamingChatSession:
             config=self.memory_config,
             tokenizer=self.tokenizer,
             project_memory=self.project_memory,
-            llm_client=self.client,   # enables LLM-powered state extraction at compression time
+            llm_client=self.client,  # enables LLM-powered state extraction at compression time
         )
         if hasattr(self.memory.state, "execution_mode"):
             from core.memory.models import ExecutionMode
-            self.memory.state.execution_mode = ExecutionMode.GOAL if self.mode == "goal" else ExecutionMode.CHAT
 
-        self.compactor      = VerbatimCompactor(CompressionConfig())
-        self.summarizer     = ConversationSummarizer()
+            self.memory.state.execution_mode = (
+                ExecutionMode.GOAL if self.mode == "goal" else ExecutionMode.CHAT
+            )
+
+        self.compactor = VerbatimCompactor(CompressionConfig())
+        self.summarizer = ConversationSummarizer()
         self.stream_enabled = stream
         self._response_tokens = 0
-        self._start_time      = 0
-        
+        self._start_time = 0
+
         # Execution feedback loop - auto-run tests after code changes
         self._feedback_loop = ExecutionFeedbackLoop(
             project_root=self.project_path,
@@ -184,7 +208,7 @@ class StreamingChatSession:
         )
 
         self._index: Optional[SymbolIndex] = None
-        self._light: Optional[Flashlight]  = None
+        self._light: Optional[Flashlight] = None
 
         # Pre-compute beam limits for this model's context size
         self._beam_files, self._beam_lines = _beam_budget(max_tokens)
@@ -196,9 +220,9 @@ class StreamingChatSession:
         # _params holds the currently active InferenceParams for every call.
         # _params_locked = True means the user pinned a preset via /params <name>;
         # auto phase-detection is disabled and _params won't change mid-session.
-        self._params: InferenceParams        = InferenceParams.for_chat()
-        self._params_locked: bool            = False
-        self._current_phase: str             = "chat"
+        self._params: InferenceParams = InferenceParams.for_chat()
+        self._params_locked: bool = False
+        self._current_phase: str = "chat"
 
         # ── Autonomous Harness Initialization ─────────────────────────────────────
         if AutonomousHarness is not None:
@@ -208,9 +232,6 @@ class StreamingChatSession:
                 self.harness = None
         else:
             self.harness = None
-
-
-
 
     def _calculate_metadata_overhead(self) -> int:
         """Estimate tokens consumed by system prompt, tools, and flashlight beam."""
@@ -224,13 +245,16 @@ class StreamingChatSession:
                 tool_instruct = self.skills.get_all_prompts(max_tokens=self.max_tokens)
                 cli_suffix = "\n\n## Tool Calling Syntax (CLI)...\n"
                 system_content = DEFAULT_SYSTEM_PROMPT + cli_suffix + tool_instruct
-            
+
             base_tokens = self.tokenizer.count(system_content)
-            
+
             # Beam overhead (rough estimate based on budget)
-            if self.max_tokens <= _SMALL_CTX: overhead = base_tokens + 600
-            elif self.max_tokens <= 9000:     overhead = base_tokens + 1500
-            else:                             overhead = base_tokens + 3000
+            if self.max_tokens <= _SMALL_CTX:
+                overhead = base_tokens + 600
+            elif self.max_tokens <= 9000:
+                overhead = base_tokens + 1500
+            else:
+                overhead = base_tokens + 3000
             return overhead
         except Exception:
             return 1500
@@ -246,12 +270,14 @@ class StreamingChatSession:
         self._light = Flashlight(self._index)
         # Override beam limits in the Flashlight instance
         import context_manager.flashlight.beam as _bm
-        _bm.MAX_BEAM_FILES     = self._beam_files
+
+        _bm.MAX_BEAM_FILES = self._beam_files
         _bm.MAX_LINES_PER_FILE = self._beam_lines
         total_syms = sum(len(e.symbols) for e in self._index.files.values())
         graph_info = ""
         try:
             from core.flashlight.graph_engine import get_project_graph
+
             graph = get_project_graph(str(self._project_dir))
             graph_info = f", graph: {len(graph.nodes)} nodes"
         except Exception:
@@ -279,8 +305,9 @@ class StreamingChatSession:
         if self._light is None:
             return
         import re
+
         if tool_name in ("READ_FILE", "WRITE_FILE", "read_file", "write_file"):
-            m = re.search(r'📄\s*([\w/\.\-]+)|Written .+ to ([\w/\.\-]+)', content)
+            m = re.search(r"📄\s*([\w/\.\-]+)|Written .+ to ([\w/\.\-]+)", content)
             if m:
                 path = (m.group(1) or m.group(2) or "").strip()
                 if path:
@@ -305,19 +332,48 @@ class StreamingChatSession:
     # Signals checked against lowercased (user_input + last_response).
     # Priority on match: troubleshoot > plan > code > chat.
     _PLAN_SIGNALS = (
-        "<plan>", "<thought>", "let me plan", "step by step",
-        "here is my plan", "i will:", "steps:",
+        "<plan>",
+        "<thought>",
+        "let me plan",
+        "step by step",
+        "here is my plan",
+        "i will:",
+        "steps:",
     )
     _CODE_SIGNALS = (
-        "write_file", "<tool_call>", "```python", "```kotlin",
-        "```java", "```javascript", "```typescript", "```swift",
-        "```go", "```rust", "def ", "class ", "function ",
+        "write_file",
+        "<tool_call>",
+        "```python",
+        "```kotlin",
+        "```java",
+        "```javascript",
+        "```typescript",
+        "```swift",
+        "```go",
+        "```rust",
+        "def ",
+        "class ",
+        "function ",
     )
     _TROUBLESHOOT_SIGNALS = (
-        "error:", "exception:", "traceback", "failed", "not working",
-        "stack trace", "segfault", "crash", "adb ", "gradle ",
-        "anr", "nullpointer", "outofmemory", "build fail",
-        "why is", "why does", "what went wrong", "debug",
+        "error:",
+        "exception:",
+        "traceback",
+        "failed",
+        "not working",
+        "stack trace",
+        "segfault",
+        "crash",
+        "adb ",
+        "gradle ",
+        "anr",
+        "nullpointer",
+        "outofmemory",
+        "build fail",
+        "why is",
+        "why does",
+        "what went wrong",
+        "debug",
     )
 
     def _detect_phase(self, user_input: str, last_response: str = "") -> str:
@@ -343,10 +399,7 @@ class StreamingChatSession:
             return
         self._current_phase = phase
         self._params = PRESETS[phase]
-        console.print(
-            f"  [dim]◉ Phase → [bold]{phase}[/bold]  "
-            f"{self._params.describe()}[/dim]"
-        )
+        console.print(f"  [dim]◉ Phase → [bold]{phase}[/bold]  {self._params.describe()}[/dim]")
 
     # ── Tool execution — tier-aware ───────────────────────────────────────────
 
@@ -356,21 +409,25 @@ class StreamingChatSession:
         params: dict,
         tracker: ActionTracker,
     ) -> Optional[str]:
-        tier  = _risk_tier(name, params)
-        kind  = _tool_kind(name)
+        tier = _risk_tier(name, params)
+        kind = _tool_kind(name)
         label = _tool_label(name, params)
-        act   = tracker.start(kind, label)
+        act = tracker.start(kind, label)
 
         if tier == AUTO:
             try:
-                result  = await self.skills.execute_skill(name, params)
-                ok      = result.success
-                out     = f"Result of {name}:\n{result.output}" if ok else f"Error in {name}:\n{result.error}"
-                
+                result = await self.skills.execute_skill(name, params)
+                ok = result.success
+                out = (
+                    f"Result of {name}:\n{result.output}"
+                    if ok
+                    else f"Error in {name}:\n{result.error}"
+                )
+
                 # Agentic Self-Correction Hints
                 if not ok:
                     if "No such file" in result.error:
-                        out += "\n💡 HINT: Use DOC_SEARCH(\"filename\") or RUN_COMMAND(\"find . -name '...' \") to locate it."
+                        out += '\n💡 HINT: Use DOC_SEARCH("filename") or RUN_COMMAND("find . -name \'...\' ") to locate it.'
                     elif "Permission denied" in result.error:
                         out += "\n💡 HINT: Check file permissions or use 'ls -la' to inspect the directory."
                     elif "not enough arguments" in result.error.lower():
@@ -389,7 +446,7 @@ class StreamingChatSession:
                     fpath = params.get("path") or params.get("file")
                     if fpath:
                         self.memory.refresh_pin(fpath, self.project_root)
-                
+
                 # Execution feedback: auto-run tests or web inspector after code changes
                 test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
                 if test_result:
@@ -397,7 +454,7 @@ class StreamingChatSession:
                     feedback = self._feedback_loop.build_feedback_context()
                     if feedback:
                         self.memory.add_tool_result(feedback, tool_name="TEST_FEEDBACK")
-                
+
                 return out
             except Exception as e:
                 tracker.finish(act, ok=False)
@@ -415,9 +472,13 @@ class StreamingChatSession:
             )
             if confirmed:
                 try:
-                    result  = await self.skills.execute_skill(name, params)
-                    ok      = result.success
-                    out     = f"Result of {name}:\n{result.output}" if ok else f"Error in {name}:\n{result.error}"
+                    result = await self.skills.execute_skill(name, params)
+                    ok = result.success
+                    out = (
+                        f"Result of {name}:\n{result.output}"
+                        if ok
+                        else f"Error in {name}:\n{result.error}"
+                    )
                     tracker.finish(act, ok=ok)
                     self._notify_file_touched(name, out)
                     self.memory.add_tool_result(out, tool_name=name)
@@ -431,14 +492,14 @@ class StreamingChatSession:
                         fpath = params.get("path") or params.get("file")
                         if fpath:
                             self.memory.refresh_pin(fpath, self.project_root)
-                    
+
                     # Execution feedback: auto-run tests after code changes
                     test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
                     if test_result and not test_result.all_passed:
                         feedback = self._feedback_loop.build_feedback_context()
                         if feedback:
                             self.memory.add_tool_result(feedback, tool_name="TEST_FEEDBACK")
-                    
+
                     return out
                 except Exception as e:
                     tracker.finish(act, ok=False)
@@ -463,9 +524,13 @@ class StreamingChatSession:
             confirmed = typer.confirm("  Execute anyway?", default=False)
             if confirmed:
                 try:
-                    result  = await self.skills.execute_skill(name, params)
-                    ok      = result.success
-                    out     = f"Result of {name}:\n{result.output}" if ok else f"Error in {name}:\n{result.error}"
+                    result = await self.skills.execute_skill(name, params)
+                    ok = result.success
+                    out = (
+                        f"Result of {name}:\n{result.output}"
+                        if ok
+                        else f"Error in {name}:\n{result.error}"
+                    )
                     tracker.finish(act, ok=ok)
                     self._notify_file_touched(name, out)
                     self.memory.add_tool_result(out, tool_name=name)
@@ -479,14 +544,14 @@ class StreamingChatSession:
                         fpath = params.get("path") or params.get("file")
                         if fpath:
                             self.memory.refresh_pin(fpath, self.project_root)
-                    
+
                     # Execution feedback: auto-run tests after code changes
                     test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
                     if test_result and not test_result.all_passed:
                         feedback = self._feedback_loop.build_feedback_context()
                         if feedback:
                             self.memory.add_tool_result(feedback, tool_name="TEST_FEEDBACK")
-                    
+
                     return out
                 except Exception as e:
                     tracker.finish(act, ok=False)
@@ -503,14 +568,16 @@ class StreamingChatSession:
 
         return None
 
-    async def _verify_and_refine_if_needed(self, proposal: str, user_task: str, phase_name: str = "code") -> str:
+    async def _verify_and_refine_if_needed(
+        self, proposal: str, user_task: str, phase_name: str = "code"
+    ) -> str:
         """Run out-of-band DebateVerifier pass if candidate proposal needs verification."""
         if not hasattr(self, "debate_verifier") or not self.debate_verifier:
             return proposal
-            
+
         parsed_skills = self.skills.parse_skills(proposal) if hasattr(self, "skills") else []
         first_tool = parsed_skills[0][0] if parsed_skills else None
-        
+
         if self.debate_verifier.should_debate(tool_name=first_tool, phase=phase_name):
             dashboard.print_critique_start(tool_name=first_tool)
             try:
@@ -518,7 +585,7 @@ class StreamingChatSession:
                     proposal=proposal,
                     task_context=user_task,
                     tool_name=first_tool,
-                    phase=phase_name
+                    phase=phase_name,
                 )
                 if critique_res.has_flaws and refined_output != proposal:
                     dashboard.print_refined(flaws=critique_res.flaws, tool_name=first_tool)
@@ -552,9 +619,7 @@ class StreamingChatSession:
             while True:
                 try:
                     loop = asyncio.get_running_loop()
-                    user_input = await loop.run_in_executor(
-                        None, lambda: typer.prompt("\nYou")
-                    )
+                    user_input = await loop.run_in_executor(None, lambda: typer.prompt("\nYou"))
 
                     if user_input.startswith("/"):
                         await self._handle_command(user_input)
@@ -594,7 +659,6 @@ class StreamingChatSession:
                         )
                         self.memory.add_assistant_message(response)
 
-
                     dashboard.print_response(response)
                     dashboard.show_snapshot(self.memory.get_snapshot())
 
@@ -614,9 +678,7 @@ class StreamingChatSession:
 
                         with tool_tracker:
                             for name, params in parsed_skills:
-                                await self._execute_tool_with_approval(
-                                    name, params, tool_tracker
-                                )
+                                await self._execute_tool_with_approval(name, params, tool_tracker)
 
                             think2 = tool_tracker.start("thinking", "Processing tool results...")
                             # Use the last assistant response as the beam query so
@@ -638,7 +700,6 @@ class StreamingChatSession:
                                 response, user_task=user_input, phase_name=self._current_phase
                             )
                             self.memory.add_assistant_message(response)
-
 
                         dashboard.print_response(response)
 
@@ -677,8 +738,8 @@ class StreamingChatSession:
           - Full beam (3 files × 120 lines)
         """
         context = self.memory.get_context_for_llm(user_query)
-        small   = self.max_tokens <= _SMALL_CTX
-        phase   = self._detect_phase(user_query)
+        small = self.max_tokens <= _SMALL_CTX
+        phase = self._detect_phase(user_query)
         base_prompt = get_phase_system_prompt(phase)
         allowed_tools = PRESETS[phase].allowed_tools if phase in PRESETS else None
 
@@ -686,7 +747,7 @@ class StreamingChatSession:
         if small:
             # Bare tool syntax reminder only — skip get_all_prompts() entirely
             cli_suffix = (
-                "\nTool syntax: bare call at end of response, e.g.  READ_FILE(\"path\")\n"
+                '\nTool syntax: bare call at end of response, e.g.  READ_FILE("path")\n'
                 "Only ONE tool per response. Never put tools in backticks."
             )
             system_content = base_prompt + cli_suffix
@@ -708,7 +769,7 @@ class StreamingChatSession:
 
         critical = self.memory.build_critical_context()
         if critical:
-            system_content += f"\n\n{'='*50}\n{critical}\n{'='*50}"
+            system_content += f"\n\n{'=' * 50}\n{critical}\n{'=' * 50}"
 
         # Execution feedback: test results from recent changes
         test_feedback = self._feedback_loop.build_feedback_context()
@@ -721,15 +782,17 @@ class StreamingChatSession:
             system_content += f"\n\nLikely next tools: {', '.join(predicted_tools)}"
 
         system_msg = {"role": "system", "content": system_content}
-        messages   = [system_msg]
+        messages = [system_msg]
 
         # ── Flashlight beam with intent-aware selection ───────────────────────
         # Combine project intent + active file + current query for better beam
         intent_hint = self.memory.get_intent_for_retrieval()
         active_file_hint = self.memory.get_active_file_hint()
-        
+
         # Sanitize query: strip tool output tags/prefixes if present
-        clean_user_query = re.sub(r'(?:Result of|Error in|<tool_call>).*', '', user_query, flags=re.DOTALL).strip()
+        clean_user_query = re.sub(
+            r"(?:Result of|Error in|<tool_call>).*", "", user_query, flags=re.DOTALL
+        ).strip()
         if not clean_user_query:
             clean_user_query = user_query[:100]
 
@@ -740,11 +803,14 @@ class StreamingChatSession:
             beam_query = f"{intent_hint} | {clean_user_query}"
         else:
             beam_query = clean_user_query
-        
+
         beam_block = self._get_beam_block(beam_query)
         if beam_block:
-            beam_files = [r.path for r in self._light.beam(beam_query, max_files=self._beam_files)] \
-                         if self._light else []
+            beam_files = (
+                [r.path for r in self._light.beam(beam_query, max_files=self._beam_files)]
+                if self._light
+                else []
+            )
             if beam_files:
                 console.print(f"  [dim]◉ Flashlight → {', '.join(beam_files)}[/dim]")
 
@@ -768,17 +834,17 @@ class StreamingChatSession:
         messages = self._build_messages(user_query)
 
         self._response_tokens = 0
-        self._start_time      = time.time()
+        self._start_time = time.time()
         buffer = []
-        stats  = self._create_stats_panel()
+        stats = self._create_stats_panel()
 
         with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
             async for chunk in self.client.chat_stream(messages, params=self._params):
                 buffer.append(chunk)
                 self._response_tokens += 1
                 elapsed = time.time() - self._start_time
-                tps     = self._response_tokens / elapsed if elapsed > 0 else 0
-                stats   = self._create_stats_panel(
+                tps = self._response_tokens / elapsed if elapsed > 0 else 0
+                stats = self._create_stats_panel(
                     response_preview="".join(buffer[-50:]),
                     tokens_per_sec=tps,
                 )
@@ -791,12 +857,12 @@ class StreamingChatSession:
         response_preview: str = "",
         tokens_per_sec: float = 0,
     ) -> Panel:
-        snapshot  = self.memory.get_snapshot()
+        snapshot = self.memory.get_snapshot()
         usage_pct = snapshot.compression_ratio * 100
         bar_color = "green" if usage_pct < 50 else ("yellow" if usage_pct < 70 else "red")
-        fill      = int(usage_pct / 2)
-        bar       = "█" * fill + "░" * (50 - fill)
-        preview   = response_preview[:40] + "..." if len(response_preview) > 40 else response_preview
+        fill = int(usage_pct / 2)
+        bar = "█" * fill + "░" * (50 - fill)
+        preview = response_preview[:40] + "..." if len(response_preview) > 40 else response_preview
 
         lock_str = " 🔒" if self._params_locked else ""
         content = (
@@ -812,6 +878,7 @@ class StreamingChatSession:
             content += f" | [cyan]Speed[/cyan]: {tokens_per_sec:.1f} tok/s"
         if preview:
             from rich.markup import escape
+
             content += f"\n[dim]Streaming:[/dim] {escape(preview)}"
 
         return Panel(content, title="[bold]Live Stats[/bold]", border_style="blue")
@@ -822,7 +889,7 @@ class StreamingChatSession:
         if self.project_memory:
             self.project_memory.persist_session_state(self.memory.state)
             console.print("\n[dim]◉ Session findings persisted to project memory.[/dim]")
-        
+
         await self.memory.compress_recent_async(self.summarizer.simple_summarize, force=force)
         tokens_after = self.memory.total_tokens
         tokens_freed = max(0, tokens_before - tokens_after)
@@ -839,9 +906,9 @@ class StreamingChatSession:
     # ── Command handling ───────────────────────────────────────────────────────
 
     async def _handle_command(self, cmd: str):
-        parts   = cmd.split(maxsplit=1)
+        parts = cmd.split(maxsplit=1)
         command = parts[0].lower()
-        arg     = parts[1] if len(parts) > 1 else ""
+        arg = parts[1] if len(parts) > 1 else ""
 
         if command == "/help":
             self._print_help()
@@ -852,7 +919,9 @@ class StreamingChatSession:
             dashboard.print_info(f"Streaming {'enabled' if self.stream_enabled else 'disabled'}")
         elif command in ("/compress", "/compact"):
             tb, ta, tf = await self._compress_context(force=True)
-            dashboard.print_success(f"Context manually compressed: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)")
+            dashboard.print_success(
+                f"Context manually compressed: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)"
+            )
         elif command == "/clear":
             self.memory.clear()
             dashboard.print_success("Context cleared")
@@ -864,6 +933,7 @@ class StreamingChatSession:
             raise KeyboardInterrupt
         elif command == "/save":
             from ..memory.persistence import SessionPersistence
+
             persistence = SessionPersistence()
             name = arg.strip() if arg else None
             path = persistence.save_session(self.memory, session_name=name)
@@ -882,27 +952,43 @@ class StreamingChatSession:
                 self.mode = mode_arg
                 if hasattr(self.memory.state, "execution_mode"):
                     from core.memory.models import ExecutionMode
-                    self.memory.state.execution_mode = ExecutionMode.GOAL if mode_arg == "goal" else ExecutionMode.CHAT
+
+                    self.memory.state.execution_mode = (
+                        ExecutionMode.GOAL if mode_arg == "goal" else ExecutionMode.CHAT
+                    )
                 if mode_arg == "goal" and AutonomousHarness:
-                    harness = getattr(self, "harness", None) or AutonomousHarness(project_root=self.project_path, memory=self.memory)
+                    harness = getattr(self, "harness", None) or AutonomousHarness(
+                        project_root=self.project_path, memory=self.memory
+                    )
                     harness.ensure_goal_spec_initialized()
-                    dashboard.print_success("Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)")
+                    dashboard.print_success(
+                        "Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)"
+                    )
                 else:
-                    dashboard.print_success("Switched to Chat Mode (Lightweight Q&A & ad-hoc code edits)")
+                    dashboard.print_success(
+                        "Switched to Chat Mode (Lightweight Q&A & ad-hoc code edits)"
+                    )
             else:
-                current_label = "🎯 Goal Mode (Task tracking in .torchlight/tasks.md)" if self.mode == "goal" else "💬 Chat Mode (Lightweight Q&A)"
+                current_label = (
+                    "🎯 Goal Mode (Task tracking in .torchlight/tasks.md)"
+                    if self.mode == "goal"
+                    else "💬 Chat Mode (Lightweight Q&A)"
+                )
                 console.print(f"[bold cyan]Current Mode:[/bold cyan] {current_label}")
-                console.print("[dim]Usage: /mode chat  (Lightweight Q&A) | /mode goal  (Task tracking & Harness)[/dim]")
+                console.print(
+                    "[dim]Usage: /mode chat  (Lightweight Q&A) | /mode goal  (Task tracking & Harness)[/dim]"
+                )
 
         elif command in ("/tasks", "/goal", "/subagents"):
             if AutonomousHarness:
-                harness = getattr(self, "harness", None) or AutonomousHarness(project_root=self.project_path, memory=self.memory)
+                harness = getattr(self, "harness", None) or AutonomousHarness(
+                    project_root=self.project_path, memory=self.memory
+                )
                 harness.ensure_goal_spec_initialized()
                 summary = harness.get_status_summary()
                 dashboard.show_task_progress(summary)
             else:
                 dashboard.print_warning("AutonomousHarness is not available.")
-
 
         elif command == "/files":
             if self._index is None:
@@ -910,7 +996,7 @@ class StreamingChatSession:
             else:
                 for rel, entry in sorted(self._index.files.items()):
                     sym_names = ", ".join(s[0] for s in entry.symbols[:5])
-                    suffix    = f"  [dim]→ {sym_names}[/dim]" if sym_names else ""
+                    suffix = f"  [dim]→ {sym_names}[/dim]" if sym_names else ""
                     console.print(f"  [cyan]{rel}[/cyan]  [{entry.size} lines]{suffix}")
         else:
             dashboard.print_warning(f"Unknown command: {command}")
@@ -944,16 +1030,14 @@ class StreamingChatSession:
 
         # Named preset
         if arg in PRESETS:
-            self._params        = PRESETS[arg]
+            self._params = PRESETS[arg]
             self._current_phase = arg
             self._params_locked = True
-            dashboard.print_success(
-                f"Locked to preset '{arg}': {self._params.describe()}"
-            )
+            dashboard.print_success(f"Locked to preset '{arg}': {self._params.describe()}")
             return
 
         # Key=value overrides  e.g.  /params temp=0.15 top_k=25 seed=42
-        kv_pairs = _re.findall(r'(\w+)=([\d.]+)', arg)
+        kv_pairs = _re.findall(r"(\w+)=([\d.]+)", arg)
         if kv_pairs:
             for key, val in kv_pairs:
                 # Normalise aliases
@@ -977,8 +1061,11 @@ class StreamingChatSession:
 
     def _print_help(self):
         small = self.max_tokens <= _SMALL_CTX
-        mode  = f"[yellow]small-ctx ({self.max_tokens} tok)[/yellow]" if small \
-                else f"[green]full ({self.max_tokens} tok)[/green]"
+        mode = (
+            f"[yellow]small-ctx ({self.max_tokens} tok)[/yellow]"
+            if small
+            else f"[green]full ({self.max_tokens} tok)[/green]"
+        )
         help_text = f"""
 [bold]Context mode:[/bold] {mode}
 {"[yellow]Skills prompts skipped, beam=1×50L to fit 4k window[/yellow]" if small else ""}
@@ -1018,20 +1105,26 @@ class StreamingChatSession:
 
 @app.command()
 def chat(
-    url: str = typer.Option("http://localhost:1234/v1", "--url", "-u",
-                             help="LM Studio API URL"),
+    url: str = typer.Option("http://localhost:1234/v1", "--url", "-u", help="LM Studio API URL"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name"),
     max_tokens: int = typer.Option(
         4096,
-        "--max-tokens", "-t",
+        "--max-tokens",
+        "-t",
         help="Context window size. Match your model's actual n_ctx in LM Studio (default: 4096).",
-        min=100, max=200000,
+        min=100,
+        max=200000,
     ),
     no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming"),
-    project: Optional[str] = typer.Option(None, "--project", "-p",
-                                           help="Project directory (default: CWD)"),
-    mode: str = typer.Option("chat", "--mode", "-mode",
-                              help="Execution mode: 'chat' (lightweight Q&A) or 'goal' (task tracking & harness)"),
+    project: Optional[str] = typer.Option(
+        None, "--project", "-p", help="Project directory (default: CWD)"
+    ),
+    mode: str = typer.Option(
+        "chat",
+        "--mode",
+        "-mode",
+        help="Execution mode: 'chat' (lightweight Q&A) or 'goal' (task tracking & harness)",
+    ),
 ):
     """Start an interactive chat session with context management and flashlight."""
     console.print("[bold cyan]Context Manager CLI — Torchlight[/bold cyan]")
@@ -1040,9 +1133,13 @@ def chat(
 
     m_str = (mode or "chat").lower().strip()
     if m_str == "goal":
-        console.print("[bold green]🎯 Mode: Goal Mode[/bold green] [dim](Autonomous task tracking in .torchlight/tasks.md)[/dim]")
+        console.print(
+            "[bold green]🎯 Mode: Goal Mode[/bold green] [dim](Autonomous task tracking in .torchlight/tasks.md)[/dim]"
+        )
     else:
-        console.print("[bold cyan]💬 Mode: Chat Mode[/bold cyan] [dim](Lightweight Q&A & ad-hoc code edits, no task files)[/dim]")
+        console.print(
+            "[bold cyan]💬 Mode: Chat Mode[/bold cyan] [dim](Lightweight Q&A & ad-hoc code edits, no task files)[/dim]"
+        )
 
     if max_tokens <= _SMALL_CTX:
         console.print(
@@ -1051,8 +1148,12 @@ def chat(
         )
 
     session = StreamingChatSession(
-        base_url=url, model=model, max_tokens=max_tokens,
-        stream=not no_stream, project_dir=project, mode=m_str,
+        base_url=url,
+        model=model,
+        max_tokens=max_tokens,
+        stream=not no_stream,
+        project_dir=project,
+        mode=m_str,
     )
     asyncio.run(session.start())
 
@@ -1068,15 +1169,18 @@ def goal(
     """Start an autonomous goal execution session driven by .torchlight task tracking."""
     console.print(f"[bold green]🎯 Starting Goal Mode:[/bold green] {title}")
     session = StreamingChatSession(
-        base_url=url, model=model, max_tokens=max_tokens,
-        stream=True, project_dir=project, mode="goal",
+        base_url=url,
+        model=model,
+        max_tokens=max_tokens,
+        stream=True,
+        project_dir=project,
+        mode="goal",
     )
     if AutonomousHarness:
         harness = AutonomousHarness(project_root=session.project_path, memory=session.memory)
         harness.ensure_goal_spec_initialized(title=title, description=title)
         console.print("[dim]✓ Goal spec initialized in .torchlight/goal_spec.json & tasks.md[/dim]")
     asyncio.run(session.start())
-
 
 
 @app.command()
@@ -1089,15 +1193,17 @@ def compress_file(
     try:
         with open(input_file, "r") as f:
             content = f.read()
-        config     = CompressionConfig(aggressive_mode=aggressive)
-        compactor  = VerbatimCompactor(config)
+        config = CompressionConfig(aggressive_mode=aggressive)
+        compactor = VerbatimCompactor(config)
         compressed = compactor.compress(content)
         if output_file:
             with open(output_file, "w") as f:
                 f.write(compressed)
             ratio = len(content) / max(len(compressed), 1)
             console.print(f"[green]✓[/green] {input_file} -> {output_file}")
-            console.print(f"Original: {len(content):,} | Compressed: {len(compressed):,} | Ratio: {ratio:.2f}x")
+            console.print(
+                f"Original: {len(content):,} | Compressed: {len(compressed):,} | Ratio: {ratio:.2f}x"
+            )
         else:
             print(compressed)
     except FileNotFoundError:
@@ -1110,7 +1216,7 @@ def compress_file(
 def count_tokens(text: str = typer.Argument(..., help="Text to count tokens")):
     """Count tokens in text."""
     counter = get_token_counter()
-    count   = counter.count(text)
+    count = counter.count(text)
     console.print(f"[cyan]Tokens:[/cyan] {count:,}")
     console.print(f"[cyan]Chars:[/cyan] {len(text):,}")
     console.print(f"[cyan]Ratio:[/cyan] {len(text) / max(count, 1):.2f} chars/token")
@@ -1123,6 +1229,7 @@ def sessions(
 ):
     """Manage saved sessions."""
     from ..memory.persistence import SessionPersistence
+
     persistence = SessionPersistence()
 
     if action == "list":
@@ -1146,6 +1253,7 @@ def sessions(
 
     elif action == "show" and name:
         from ..memory.manager import TieredMemory
+
         memory = TieredMemory(tokenizer=get_token_counter())
         if persistence.load_session(name, memory):
             console.print(f"[green]Loaded:[/green] {name}")

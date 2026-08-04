@@ -10,8 +10,13 @@ import re
 from .models import Message, MessageRole, SessionState, MemoryNeedle, MemoryObject
 
 try:
-    from core.memory.persistence import ensure_project_initialized, init_new_project, ensure_git_repository
+    from core.memory.persistence import (
+        ensure_project_initialized,
+        init_new_project,
+        ensure_git_repository,
+    )
 except ImportError:
+
     def ensure_git_repository(project_path: Union[Path, str]) -> Path:
         path = Path(project_path).resolve()
         path.mkdir(parents=True, exist_ok=True)
@@ -19,17 +24,33 @@ except ImportError:
         if not git_dir.exists():
             try:
                 subprocess.run(["git", "init"], cwd=str(path), check=True, capture_output=True)
-                res_email = subprocess.run(["git", "config", "user.email"], cwd=str(path), capture_output=True, text=True)
+                res_email = subprocess.run(
+                    ["git", "config", "user.email"], cwd=str(path), capture_output=True, text=True
+                )
                 if not res_email.stdout.strip():
-                    subprocess.run(["git", "config", "user.email", "torchlight@local.dev"], cwd=str(path), check=True, capture_output=True)
-                res_name = subprocess.run(["git", "config", "user.name"], cwd=str(path), capture_output=True, text=True)
+                    subprocess.run(
+                        ["git", "config", "user.email", "torchlight@local.dev"],
+                        cwd=str(path),
+                        check=True,
+                        capture_output=True,
+                    )
+                res_name = subprocess.run(
+                    ["git", "config", "user.name"], cwd=str(path), capture_output=True, text=True
+                )
                 if not res_name.stdout.strip():
-                    subprocess.run(["git", "config", "user.name", "Torchlight Agent"], cwd=str(path), check=True, capture_output=True)
+                    subprocess.run(
+                        ["git", "config", "user.name", "Torchlight Agent"],
+                        cwd=str(path),
+                        check=True,
+                        capture_output=True,
+                    )
             except Exception:
                 pass
         return path
 
-    def ensure_project_initialized(project_path: Union[Path, str], create_git: bool = False) -> Path:
+    def ensure_project_initialized(
+        project_path: Union[Path, str], create_git: bool = False
+    ) -> Path:
         path = Path(project_path).resolve()
         path.mkdir(parents=True, exist_ok=True)
 
@@ -103,8 +124,8 @@ class SessionPersistence:
                 "files_modified": s.files_modified,
                 "files_read": s.files_read,
                 # Decisions
-                "decisions": s.decisions,
-                "arch_decisions": s.arch_decisions,
+                "decisions": [str(x) for x in s.decisions],
+                "arch_decisions": [str(x) for x in s.arch_decisions],
                 # Dev-session specific
                 "tech_stack": s.tech_stack,
                 "failing_tests": s.failing_tests,
@@ -176,8 +197,8 @@ class SessionPersistence:
                 files_modified=sd.get("files_modified", []),
                 files_read=sd.get("files_read", []),
                 # Decisions
-                decisions=sd.get("decisions", []),
-                arch_decisions=sd.get("arch_decisions", []),
+                decisions=[str(x) for x in sd.get("decisions", [])],
+                arch_decisions=[str(x) for x in sd.get("arch_decisions", [])],
                 # Dev-session specific
                 tech_stack=sd.get("tech_stack", []),
                 failing_tests=sd.get("failing_tests", []),
@@ -194,7 +215,9 @@ class SessionPersistence:
                         value=item.get("value", ""),
                         source=item.get("source", ""),
                         weight=item.get("weight", 1.0),
-                        timestamp=datetime.fromisoformat(item["timestamp"]) if item.get("timestamp") else datetime.now(),
+                        timestamp=datetime.fromisoformat(item["timestamp"])
+                        if item.get("timestamp")
+                        else datetime.now(),
                     )
                     for item in sd.get("needle_ledger", [])
                     if item.get("value")
@@ -211,7 +234,9 @@ class SessionPersistence:
                         text=item.get("text", ""),
                         score=item.get("score", 1.0),
                         embedding=item.get("embedding", []),
-                        timestamp=datetime.fromisoformat(item["timestamp"]) if item.get("timestamp") else datetime.now(),
+                        timestamp=datetime.fromisoformat(item["timestamp"])
+                        if item.get("timestamp")
+                        else datetime.now(),
                     )
                     for item in sd.get("memory_objects", [])
                     if item.get("summary")
@@ -247,17 +272,19 @@ class SessionPersistence:
                 with open(session_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 sd = data.get("state", {})
-                sessions.append({
-                    "name": data.get("name", session_file.stem),
-                    "created": data.get("created", ""),
-                    "project_path": data.get("project_path", ""),
-                    "message_count": len(data.get("messages", [])),
-                    "total_tokens": data.get("total_tokens", 0),
-                    # Surface key dev-session fields for the session list view
-                    "tech_stack": sd.get("tech_stack", []),
-                    "active_file": sd.get("active_file", ""),
-                    "failing_tests": sd.get("failing_tests", []),
-                })
+                sessions.append(
+                    {
+                        "name": data.get("name", session_file.stem),
+                        "created": data.get("created", ""),
+                        "project_path": data.get("project_path", ""),
+                        "message_count": len(data.get("messages", [])),
+                        "total_tokens": data.get("total_tokens", 0),
+                        # Surface key dev-session fields for the session list view
+                        "tech_stack": sd.get("tech_stack", []),
+                        "active_file": sd.get("active_file", ""),
+                        "failing_tests": sd.get("failing_tests", []),
+                    }
+                )
             except (json.JSONDecodeError, KeyError):
                 continue
         return sessions
@@ -273,7 +300,9 @@ class SessionPersistence:
 class ProjectMemory:
     def __init__(self, project_path: Optional[Union[Path, str]] = None, auto_init: bool = True):
         self.project_path = Path(project_path).resolve() if project_path else None
-        self.memory_file  = (self.project_path / ".context-memory.json") if self.project_path else None
+        self.memory_file = (
+            (self.project_path / ".context-memory.json") if self.project_path else None
+        )
         self._cache = None
         self._mtime = 0.0
         if self.project_path and auto_init:
@@ -303,14 +332,16 @@ class ProjectMemory:
             self.memory_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.memory_file, "w", encoding="utf-8") as f:
                 json.dump(memory, f, indent=2, ensure_ascii=False)
-            
+
             # Update cache to keep it in sync without re-reading from disk
             self._cache = memory
             self._mtime = self.memory_file.stat().st_mtime
         except Exception:
             pass
 
-    def update(self, fact: str, embedding: Optional[list] = None, memory: Optional[dict] = None) -> dict:
+    def update(
+        self, fact: str, embedding: Optional[list] = None, memory: Optional[dict] = None
+    ) -> dict:
         """Add a fact (and optional embedding) to project memory.
 
         Signature accepts both the old positional style:
@@ -330,7 +361,9 @@ class ProjectMemory:
         self.save(memory)
         return memory
 
-    def search(self, query_embedding: list[float], top_k: int = 2, threshold: float = 0.70) -> list[dict]:
+    def search(
+        self, query_embedding: list[float], top_k: int = 2, threshold: float = 0.70
+    ) -> list[dict]:
         facts = self.load().get("facts", [])
         if not facts:
             return []
@@ -338,7 +371,7 @@ class ProjectMemory:
         def cosine(v1, v2):
             if not v1 or not v2:
                 return 0.0
-            dot   = sum(a * b for a, b in zip(v1, v2))
+            dot = sum(a * b for a, b in zip(v1, v2))
             norm1 = math.sqrt(sum(a * a for a in v1))
             norm2 = math.sqrt(sum(b * b for b in v2))
             return dot / (norm1 * norm2) if norm1 and norm2 else 0.0
@@ -363,14 +396,16 @@ class ProjectMemory:
         scored: list[tuple[float, dict]] = []
 
         for item in memory.get("memory_objects", []):
-            haystack = " ".join([
-                item.get("summary", ""),
-                item.get("text", ""),
-                " ".join(item.get("file_paths", [])),
-                " ".join(item.get("symbols", [])),
-                " ".join(item.get("commands", [])),
-                " ".join(item.get("errors", [])),
-            ])
+            haystack = " ".join(
+                [
+                    item.get("summary", ""),
+                    item.get("text", ""),
+                    " ".join(item.get("file_paths", [])),
+                    " ".join(item.get("symbols", [])),
+                    " ".join(item.get("commands", [])),
+                    " ".join(item.get("errors", [])),
+                ]
+            )
             lexical = self._lexical_score(query_terms, haystack)
             semantic = 0.0
             if query_embedding and item.get("embedding"):
@@ -380,20 +415,29 @@ class ProjectMemory:
                 scored.append((score, item))
 
         for item in memory.get("needle_ledger", []):
-            haystack = " ".join([item.get("kind", ""), item.get("value", ""), item.get("source", "")])
-            score = self._lexical_score(query_terms, haystack) + float(item.get("weight", 1.0)) * 0.01
+            haystack = " ".join(
+                [item.get("kind", ""), item.get("value", ""), item.get("source", "")]
+            )
+            score = (
+                self._lexical_score(query_terms, haystack) + float(item.get("weight", 1.0)) * 0.01
+            )
             if score > 0:
-                scored.append((score, {
-                    "kind": "needle",
-                    "summary": item.get("value", ""),
-                    "source": item.get("source", ""),
-                    "file_paths": [],
-                    "symbols": [],
-                    "commands": [],
-                    "errors": [],
-                    "text": item.get("value", ""),
-                    "score": item.get("weight", 1.0),
-                }))
+                scored.append(
+                    (
+                        score,
+                        {
+                            "kind": "needle",
+                            "summary": item.get("value", ""),
+                            "source": item.get("source", ""),
+                            "file_paths": [],
+                            "symbols": [],
+                            "commands": [],
+                            "errors": [],
+                            "text": item.get("value", ""),
+                            "score": item.get("weight", 1.0),
+                        },
+                    )
+                )
 
         # Backward compatibility: also search legacy "facts" format
         for item in memory.get("facts", []):
@@ -402,17 +446,22 @@ class ProjectMemory:
                 continue
             score = self._lexical_score(query_terms, text)
             if score > 0:
-                scored.append((score, {
-                    "kind": "fact",
-                    "summary": text[:220],
-                    "source": item.get("source", "save_memory"),
-                    "file_paths": [],
-                    "symbols": [],
-                    "commands": [],
-                    "errors": [],
-                    "text": text,
-                    "score": 1.0,
-                }))
+                scored.append(
+                    (
+                        score,
+                        {
+                            "kind": "fact",
+                            "summary": text[:220],
+                            "source": item.get("source", "save_memory"),
+                            "file_paths": [],
+                            "symbols": [],
+                            "commands": [],
+                            "errors": [],
+                            "text": text,
+                            "score": 1.0,
+                        },
+                    )
+                )
 
         scored.sort(key=lambda x: x[0], reverse=True)
         results: list[dict] = []
@@ -448,34 +497,42 @@ class ProjectMemory:
         mem = self.load()
 
         def _exists(path_str: str) -> bool:
-            if not self.project_path: return True # Fallback
+            if not self.project_path:
+                return True  # Fallback
             try:
                 p = Path(path_str)
-                if not p.is_absolute(): p = self.project_path / p
+                if not p.is_absolute():
+                    p = self.project_path / p
                 return p.exists()
-            except Exception: return False
+            except Exception:
+                return False
 
         # Unique merge for architectural decisions
-        existing_arch = set(mem.get("arch_decisions", []))
+        existing_arch = set(str(x) for x in mem.get("arch_decisions", []))
         for d in state.arch_decisions:
-            if d not in existing_arch:
+            d = str(d).strip()
+            if d and d not in existing_arch:
                 mem.setdefault("arch_decisions", []).append(d)
+                existing_arch.add(d)
 
         # Unique merge for tried & failed
-        existing_failed = set(mem.get("tried_and_failed", []))
+        existing_failed = set(str(x) for x in mem.get("tried_and_failed", []))
         for f in state.tried_and_failed:
-            if f not in existing_failed:
+            f = str(f).strip()
+            if f and f not in existing_failed:
                 mem.setdefault("tried_and_failed", []).append(f)
+                existing_failed.add(f)
 
         # Merge tech stack
-        existing_tech = set(mem.get("tech_stack", []))
+        existing_tech = set(str(x) for x in mem.get("tech_stack", []))
         for t in state.tech_stack:
-            if t not in existing_tech:
+            t = str(t).strip()
+            if t and t not in existing_tech:
                 mem.setdefault("tech_stack", []).append(t)
+                existing_tech.add(t)
 
         existing_needles = {
-            (item.get("kind", ""), item.get("value", ""))
-            for item in mem.get("needle_ledger", [])
+            (item.get("kind", ""), item.get("value", "")) for item in mem.get("needle_ledger", [])
         }
         for needle in state.needle_ledger[-200:]:
             if needle.kind == "file" and not _exists(needle.value):
@@ -483,13 +540,15 @@ class ProjectMemory:
             key = (needle.kind, needle.value)
             if key in existing_needles:
                 continue
-            mem.setdefault("needle_ledger", []).append({
-                "kind": needle.kind,
-                "value": needle.value,
-                "source": needle.source,
-                "weight": needle.weight,
-                "timestamp": needle.timestamp.isoformat(),
-            })
+            mem.setdefault("needle_ledger", []).append(
+                {
+                    "kind": needle.kind,
+                    "value": needle.value,
+                    "source": needle.source,
+                    "weight": needle.weight,
+                    "timestamp": needle.timestamp.isoformat(),
+                }
+            )
 
         existing_objects = {
             (item.get("kind", ""), item.get("summary", ""))
@@ -499,27 +558,30 @@ class ProjectMemory:
             # Filter internal file paths
             if obj.file_paths:
                 obj.file_paths = [f for f in obj.file_paths if _exists(f)]
-            
+
             key = (obj.kind, obj.summary)
             if key in existing_objects:
                 continue
-            mem.setdefault("memory_objects", []).append({
-                "kind": obj.kind,
-                "summary": obj.summary,
-                "source": obj.source,
-                "file_paths": obj.file_paths,
-                "symbols": obj.symbols,
-                "commands": obj.commands,
-                "errors": obj.errors,
-                "text": obj.text,
-                "score": obj.score,
-                "embedding": obj.embedding,
-                "timestamp": obj.timestamp.isoformat(),
-            })
+            mem.setdefault("memory_objects", []).append(
+                {
+                    "kind": obj.kind,
+                    "summary": obj.summary,
+                    "source": obj.source,
+                    "file_paths": obj.file_paths,
+                    "symbols": obj.symbols,
+                    "commands": obj.commands,
+                    "errors": obj.errors,
+                    "text": obj.text,
+                    "score": obj.score,
+                    "embedding": obj.embedding,
+                    "timestamp": obj.timestamp.isoformat(),
+                }
+            )
 
         # Cleanup existing long-term needles/objects from deleted files
         mem["needle_ledger"] = [
-            n for n in mem.get("needle_ledger", [])
+            n
+            for n in mem.get("needle_ledger", [])
             if n.get("kind") != "file" or _exists(n.get("value", ""))
         ]
         for obj in mem.get("memory_objects", []):
@@ -541,7 +603,7 @@ class ProjectMemory:
             "memory_objects": [],
             "created": datetime.now().isoformat(),
         }
-    
+
     def update_tech_stack(self, tech_stack: list[str]):
         memory = self.load()
         existing = set(memory.get("tech_stack", []))
@@ -552,7 +614,9 @@ class ProjectMemory:
 
     @staticmethod
     def _normalize_terms(text: str) -> list[str]:
-        return [term for term in re.findall(r"[A-Za-z0-9_./:-]+", (text or "").lower()) if len(term) > 2]
+        return [
+            term for term in re.findall(r"[A-Za-z0-9_./:-]+", (text or "").lower()) if len(term) > 2
+        ]
 
     @staticmethod
     def _lexical_score(query_terms: list[str], haystack: str) -> float:

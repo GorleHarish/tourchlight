@@ -40,7 +40,7 @@ except ImportError:
 from textual.screen import ModalScreen
 from textual.theme import Theme
 from textual.binding import Binding
-from textual import work, on
+from textual import events, on, work
 
 from rich.text import Text
 from rich.panel import Panel
@@ -196,7 +196,9 @@ class AgentMemoryWidget(Static):
             if hasattr(app, "engine") and hasattr(app.engine, "memory"):
                 mem = app.engine.memory
                 if mem and hasattr(mem, "format_l0_scratchpad"):
-                    text = mem.format_l0_scratchpad(project_root=app.engine.project_root)
+                    text = mem.format_l0_scratchpad(
+                        project_root=app.engine.project_root
+                    )
                     if text and isinstance(text, str):
                         self.update(text)
                         return
@@ -1156,6 +1158,87 @@ _BLUEPRINT_LIGHT_THEME = Theme(
 )
 
 
+class PaneResizer(Static):
+    """Interactive splitter bar to resize the left/right side panes.
+
+    Drag the bar horizontally to resize; a click without dragging nudges the
+    adjacent pane by 2 columns (left click expands, right click shrinks).
+    """
+
+    DEFAULT_CSS = """
+    PaneResizer {
+        width: 1;
+        height: 100%;
+        background: $panel;
+        color: $text-muted;
+        content-align: center middle;
+    }
+    PaneResizer:hover {
+        background: $primary;
+        color: $text-primary;
+    }
+    """
+
+    MIN_WIDTH = 14
+    MAX_WIDTH = 60
+
+    def __init__(self, target_pane: str, id: str | None = None) -> None:
+        super().__init__("│", id=id)
+        self.target_pane = target_pane  # "left" or "right"
+        self._dragging = False
+        self._drag_moved = False
+
+    def _clamp(self, width: int) -> int:
+        return max(self.MIN_WIDTH, min(self.MAX_WIDTH, width))
+
+    def _expand(self) -> None:
+        if self.target_pane == "left":
+            self.app.action_expand_left_pane()
+        else:
+            self.app.action_expand_right_pane()
+
+    def _shrink(self) -> None:
+        if self.target_pane == "left":
+            self.app.action_shrink_left_pane()
+        else:
+            self.app.action_shrink_right_pane()
+
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        if event.button == 1:
+            self._dragging = True
+            self._drag_moved = False
+            self.capture_mouse()
+
+    def on_mouse_move(self, event: events.MouseMove) -> None:
+        if not self._dragging or not event.delta_x:
+            return
+        self._drag_moved = True
+        if self.target_pane == "left":
+            width = getattr(self.app, "left_pane_width", 24) + event.delta_x
+        else:
+            width = getattr(self.app, "right_pane_width", 30) - event.delta_x
+        width = self._clamp(width)
+        if self.target_pane == "left":
+            self.app.left_pane_width = width
+        else:
+            self.app.right_pane_width = width
+        self.app._apply_pane_widths()
+
+    def on_mouse_up(self, event: events.MouseUp) -> None:
+        if self._dragging:
+            self._dragging = False
+            self.release_mouse()
+
+    def on_click(self, event: events.Click) -> None:
+        if self._drag_moved:
+            self._drag_moved = False
+            return  # already resized by the preceding drag
+        if event.button == 1:
+            self._expand()
+        elif event.button == 3:
+            self._shrink()
+
+
 class TorchlightApp(App):
     """Codex / Tiny-Brain 2 Style Agent IDE TUI."""
 
@@ -1170,6 +1253,12 @@ class TorchlightApp(App):
         Binding("ctrl+g", "select_mode", "Mode", show=False),
         Binding("ctrl+b", "toggle_left_sidebar", "Left Sidebar", show=True),
         Binding("ctrl+r", "toggle_right_sidebar", "Right Sidebar", show=True),
+        Binding("ctrl+shift+left", "shrink_left_pane", "Shrink Left Pane", show=False),
+        Binding("ctrl+shift+right", "expand_left_pane", "Expand Left Pane", show=False),
+        Binding("alt+shift+left", "shrink_right_pane", "Shrink Right Pane", show=False),
+        Binding(
+            "alt+shift+right", "expand_right_pane", "Expand Right Pane", show=False
+        ),
         Binding("ctrl+t", "cycle_theme", "Theme", show=False),
         Binding("ctrl+n", "compact_context", "Compact Context", show=False),
         Binding("ctrl+o", "open_folder", "Open Folder", show=False),
@@ -1206,6 +1295,8 @@ class TorchlightApp(App):
         self._is_running = False
         self._show_sidebar = True
         self._show_plan_sidebar = True
+        self.left_pane_width: int = 24
+        self.right_pane_width: int = 30
         self._chat_history: list = []
         self._agent_state: str = "IDLE"
         self._agent_events: list[dict] = []
@@ -1233,6 +1324,7 @@ class TorchlightApp(App):
     @property
     def _is_test_env(self) -> bool:
         import sys
+
         return (
             getattr(self, "is_headless", False)
             or getattr(self, "_test_runner", None) is not None
@@ -1350,15 +1442,14 @@ class TorchlightApp(App):
                 )
                 self._file_tree = GitFileTree(self.engine.project_root, id="file-tree")
                 yield self._file_tree
+            yield PaneResizer("left", id="resizer-left")
 
             # 2. Tabbed Editor Split Pane (Hidden by default when no tabs open to maintain a clean 3-panel layout)
             editor_pane = Vertical(id="editor-split-pane")
             editor_pane.display = bool(self._open_tabs)
             with editor_pane:
                 with Horizontal(id="tab-bar-header"):
-                    yield Static(
-                        "📄 EDITOR", classes="panel-header-title"
-                    )
+                    yield Static("📄 EDITOR", classes="panel-header-title")
                     yield Button(
                         "≡",
                         id="toggle-split-btn",
@@ -1412,6 +1503,8 @@ class TorchlightApp(App):
                         )
                         yield Static("", id="input-spinner")
                     yield ListView(id="input-suggestions")
+
+            yield PaneResizer("right", id="resizer-right")
 
             # 4. Right Sidebar: 3-tab IA (Agent / Plan / Output)
             with Vertical(id="plan-sidebar"):
@@ -1666,7 +1759,9 @@ class TorchlightApp(App):
 
         if self._active_tab_path and self._active_tab_path in self._open_tabs:
             try:
-                with open(self._active_tab_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(
+                    self._active_tab_path, "r", encoding="utf-8", errors="replace"
+                ) as f:
                     content = f.read()
             except OSError:
                 content = ""
@@ -1724,7 +1819,10 @@ class TorchlightApp(App):
             # Mount center empty state when no files are open
             is_online = getattr(self, "_last_server_online", False)
             st = STATE_IDLE if is_online else STATE_DISCONNECTED
-            if self._center_empty_state is None or not self._center_empty_state.is_attached:
+            if (
+                self._center_empty_state is None
+                or not self._center_empty_state.is_attached
+            ):
                 self._center_empty_state = CenterEmptyState(
                     state=st,
                     id="center-empty-state",
@@ -1866,8 +1964,14 @@ class TorchlightApp(App):
             else ("0ms" if not self._is_running else "--")
         )
 
-        is_engine_ready = (self.engine_port <= 0 or getattr(self, "_last_server_online", False))
-        status_badge = "[bold green]● ENGINE READY[/bold green]" if is_engine_ready else "[bold red]○ ENGINE OFFLINE (Port 1234)[/bold red]"
+        is_engine_ready = self.engine_port <= 0 or getattr(
+            self, "_last_server_online", False
+        )
+        status_badge = (
+            "[bold green]● ENGINE READY[/bold green]"
+            if is_engine_ready
+            else "[bold red]○ ENGINE OFFLINE (Port 1234)[/bold red]"
+        )
 
         speedometer = (
             f"[bold cyan]⚡ INFERENCE SPEEDOMETER[/bold cyan]  {status_badge}\n"
@@ -2096,20 +2200,22 @@ class TorchlightApp(App):
             return
 
         if not self.model_name or self.model_name == "local-model":
-            self.notify("No model selected. Please select a model first.", severity="error")
+            self.notify(
+                "No model selected. Please select a model first.", severity="error"
+            )
             self.action_select_model()
             return
-            
+
         if self.engine_port > 0 and not is_port_in_use(self.engine_port):
             if self.externally_managed:
                 self.notify(
                     f"{escape(self.provider_name)} is offline on port {self.engine_port}. Please start it and try again.",
-                    severity="error"
+                    severity="error",
                 )
             else:
                 self.notify(
                     f"Model '{escape(self.model_name)}' is not loaded. Please click '⚡ Start Engine' in the top bar.",
-                    severity="error"
+                    severity="error",
                 )
             return
 
@@ -2120,15 +2226,17 @@ class TorchlightApp(App):
             chips_bar = self.query_one("#context-chips-bar", Horizontal)
             context_files = []
             for btn in chips_bar.query(".context-chip"):
-                filepath = getattr(btn, "_filepath", getattr(btn, "tooltip", None)) or btn.label.plain.replace("✕", "").strip().lstrip("@")
+                filepath = getattr(
+                    btn, "_filepath", getattr(btn, "tooltip", None)
+                ) or btn.label.plain.replace("✕", "").strip().lstrip("@")
                 context_files.append(f"@{filepath}")
-            
+
             # Append context to task if not already inline
             if context_files:
                 chip_context = " ".join(context_files)
                 if chip_context not in user_text:
                     user_text = f"{user_text} {chip_context}"
-                    
+
             # Remove chips after submission
             for btn in chips_bar.query(Button):
                 btn.remove()
@@ -2141,7 +2249,9 @@ class TorchlightApp(App):
             try:
                 container = self.query_one("#chat-container")
                 if container.children:
-                    self._safe_mount(container, Static("─" * 40, classes="turn-separator"))
+                    self._safe_mount(
+                        container, Static("─" * 40, classes="turn-separator")
+                    )
             except Exception:
                 pass
 
@@ -2175,6 +2285,13 @@ class TorchlightApp(App):
         if self._is_running:
             self.stop_current_agent()
             return
+        if (
+            not getattr(self, "_model_connected", False)
+            or not self.model_name
+            or self.model_name == "local-model"
+        ):
+            self.action_select_model()
+            return
         await self._submit_user_input()
 
     async def _do_send(self) -> None:
@@ -2182,9 +2299,19 @@ class TorchlightApp(App):
         if self._is_running:
             self.stop_current_agent()
             return
+        if (
+            not getattr(self, "_model_connected", False)
+            or not self.model_name
+            or self.model_name == "local-model"
+        ):
+            self.action_select_model()
+            return
         await self._submit_user_input()
+
     @on(PromptTextArea.ContextFileAttached)
-    def _on_context_file_attached(self, event: PromptTextArea.ContextFileAttached) -> None:
+    def _on_context_file_attached(
+        self, event: PromptTextArea.ContextFileAttached
+    ) -> None:
         self._add_context_chip(event.filepath)
         self.set_focus(event.text_area)
 
@@ -2227,6 +2354,13 @@ class TorchlightApp(App):
 
     @on(PromptTextArea.SubmitRequested, "#user-input")
     async def on_user_input_submit(self, event: PromptTextArea.SubmitRequested) -> None:
+        if (
+            not getattr(self, "_model_connected", False)
+            or not self.model_name
+            or self.model_name == "local-model"
+        ):
+            self.action_select_model()
+            return
         await self._submit_user_input()
 
     def stop_current_agent(self) -> None:
@@ -2268,10 +2402,15 @@ class TorchlightApp(App):
                 return
 
             if self.engine_port <= 0:
+                if not getattr(self, "_model_connected", False):
+                    self._update_connection_state(True)
                 return
 
             is_online = is_port_in_use(self.engine_port)
-            if getattr(self, "_last_server_online", None) != is_online:
+            if (
+                getattr(self, "_last_server_online", None) != is_online
+                or getattr(self, "_model_connected", False) != is_online
+            ):
                 self._last_server_online = is_online
                 self._update_connection_state(is_online)
         except Exception:
@@ -2301,12 +2440,12 @@ class TorchlightApp(App):
             except Exception:
                 pass
 
-        # 2. SEND button — disabled when offline
+        # 2. SEND button — keep interactive so clicking when offline opens ModelPickerModal
         try:
             send_btn = self.query_one("#send-btn", Button)
-            send_btn.disabled = not is_online
+            send_btn.disabled = False
             send_btn.tooltip = (
-                None if is_online else "Connect a model (Ctrl+M) to send messages."
+                None if is_online else "Click to connect a model (Ctrl+M)"
             )
         except Exception:
             pass
@@ -2315,7 +2454,9 @@ class TorchlightApp(App):
         try:
             ces = self.query_one("#center-empty-state", CenterEmptyState)
             new_state = STATE_IDLE if is_online else STATE_DISCONNECTED
-            ces.set_connection_state(new_state, model_name=self.model_name if is_online else "")
+            ces.set_connection_state(
+                new_state, model_name=self.model_name if is_online else ""
+            )
         except Exception:
             pass
 
@@ -2329,8 +2470,7 @@ class TorchlightApp(App):
                 )
             else:
                 conn_status.update(
-                    f"[dim]○ Offline[/]\n"
-                    f"[dim]Press [bold]Ctrl+M[/] to connect[/]"
+                    f"[dim]○ Offline[/]\n[dim]Press [bold]Ctrl+M[/] to connect[/]"
                 )
             model_info = self.query_one("#agent-tab-model-info", Static)
             if is_online and self.model_name:
@@ -2443,7 +2583,10 @@ class TorchlightApp(App):
                 "info": "dim",
             }.get(severity, "dim")
             from rich.markup import escape as _esc
-            existing = str(log_widget.renderable) if hasattr(log_widget, "renderable") else ""
+
+            existing = (
+                str(log_widget.renderable) if hasattr(log_widget, "renderable") else ""
+            )
             # Keep last ~200 lines to avoid memory blowup
             lines = existing.split("\n") if existing else []
             lines.append(f"[{color}]{_esc(text)}[/]")
@@ -2485,8 +2628,6 @@ class TorchlightApp(App):
             ces.display = visible
         except Exception:
             pass
-
-
 
     def on_resize(self, event=None) -> None:
         self._apply_responsive_layout()
@@ -2662,11 +2803,15 @@ class TorchlightApp(App):
                 self.model_name = normalized
                 if hasattr(self.engine.client, "model"):
                     self.engine.client.model = normalized
-                save_last_state({
-                    "last_model": normalized,
-                    "last_provider": getattr(self.engine.client, "_provider", "custom"),
-                    "last_provider_name": provider,
-                })
+                save_last_state(
+                    {
+                        "last_model": normalized,
+                        "last_provider": getattr(
+                            self.engine.client, "_provider", "custom"
+                        ),
+                        "last_provider_name": provider,
+                    }
+                )
                 self.update_status_bar()
                 self.update_sidebar_meta()
                 self.notify(
@@ -3102,9 +3247,7 @@ class TorchlightApp(App):
                             else {}
                         )
                         wp = str(
-                            step_args.get("path")
-                            or step_args.get("file_path")
-                            or ""
+                            step_args.get("path") or step_args.get("file_path") or ""
                         )
                         if wp and os.path.isabs(wp) and wp in self._open_tabs:
                             self._open_tabs[wp]["dirty"] = True
@@ -3358,12 +3501,14 @@ class TorchlightApp(App):
             if selected:
                 new_model = selected["id"]
                 new_provider = selected["provider"]
-                
-                save_last_state({
-                    "last_model": new_model,
-                    "last_provider": new_provider,
-                    "last_provider_name": selected["name"]
-                })
+
+                save_last_state(
+                    {
+                        "last_model": new_model,
+                        "last_provider": new_provider,
+                        "last_provider_name": selected["name"],
+                    }
+                )
 
                 self.notify(
                     f"Switching to {escape(selected['name'])}...",
@@ -3427,13 +3572,22 @@ class TorchlightApp(App):
                     new_provider
                 )
 
-                # (Removed auto-start so the user must click '⚡ Start Engine')
-
-                self.notify(
-                    f"Switched to {escape(selected['name'])}. Click '⚡ Start Engine' to load into RAM.", 
-                    severity="information", 
-                    timeout=4
-                )
+                if self.engine_port <= 0 or is_port_in_use(self.engine_port):
+                    self._update_connection_state(True)
+                    self.notify(
+                        f"Connected to {escape(selected['name'])}.",
+                        severity="information",
+                        timeout=3,
+                    )
+                elif not self.externally_managed:
+                    self.on_start_engine_btn()
+                else:
+                    self._update_connection_state(False)
+                    self.notify(
+                        f"Switched to {escape(selected['name'])}. Start service on port {self.engine_port}.",
+                        severity="warning",
+                        timeout=5,
+                    )
                 self.update_status_bar()
                 self.update_sidebar_meta()
 
@@ -3478,11 +3632,10 @@ class TorchlightApp(App):
             if is_port_in_use(port):
                 self._server_starting = False
                 self._last_server_online = True
-                self.call_from_thread(self._update_connection_state, True)
-                self.call_from_thread(self.update_status_bar)
-                self.call_from_thread(self.update_sidebar_meta)
-                self.call_from_thread(
-                    self.notify,
+                self._update_connection_state(True)
+                self.update_status_bar()
+                self.update_sidebar_meta()
+                self.notify(
                     f"Engine server active on port {port}",
                     severity="information",
                     timeout=2,
@@ -3491,11 +3644,10 @@ class TorchlightApp(App):
 
         self._server_starting = False
         self._last_server_online = False
-        self.call_from_thread(self._update_connection_state, False)
-        self.call_from_thread(self.update_status_bar)
-        self.call_from_thread(self.update_sidebar_meta)
-        self.call_from_thread(
-            self.notify,
+        self._update_connection_state(False)
+        self.update_status_bar()
+        self.update_sidebar_meta()
+        self.notify(
             f"Engine server failed to bind to port {port} within 15 seconds",
             severity="error",
             timeout=5,
@@ -3524,6 +3676,7 @@ class TorchlightApp(App):
         if is_port_in_use(self.engine_port):
             self._server_starting = False
             self._last_server_online = True
+            self._update_connection_state(True)
             self.notify(
                 f"Connected to {escape(self.provider_name)} on port {self.engine_port}",
                 severity="information",
@@ -3574,8 +3727,12 @@ class TorchlightApp(App):
             try:
                 # Terminate any previously running server processes to ensure the new model loads
                 try:
-                    subprocess.run(["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL)
-                    subprocess.run(["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL)
+                    subprocess.run(
+                        ["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL
+                    )
+                    subprocess.run(
+                        ["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL
+                    )
                     time.sleep(0.5)
                 except Exception:
                     pass
@@ -3720,7 +3877,11 @@ class TorchlightApp(App):
         )
         if res == "always":
             self._auto_approve_session = True
-            self.notify("Session auto-approval enabled for all tools", severity="information", timeout=3)
+            self.notify(
+                "Session auto-approval enabled for all tools",
+                severity="information",
+                timeout=3,
+            )
             return True
         return bool(res)
 
@@ -3872,12 +4033,12 @@ class TorchlightApp(App):
         chips_bar = self.query_one("#context-chips-bar", Horizontal)
         # Avoid duplicate chips
         existing_chips = [
-            getattr(btn, "_filepath", getattr(btn, "tooltip", "")) 
+            getattr(btn, "_filepath", getattr(btn, "tooltip", ""))
             for btn in chips_bar.query(".context-chip")
         ]
         if filepath in existing_chips:
             return
-            
+
         btn = Button(f"@{filepath} ✕", classes="context-chip")
         # Store original path for submission reconstruction
         btn._filepath = filepath
@@ -3926,6 +4087,11 @@ class TorchlightApp(App):
             sidebar = self.query_one("#explorer-sidebar")
             self._show_sidebar = not getattr(self, "_show_sidebar", True)
             sidebar.display = self._show_sidebar
+            try:
+                resizer = self.query_one("#resizer-left")
+                resizer.display = self._show_sidebar
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -3945,6 +4111,44 @@ class TorchlightApp(App):
             sidebar = self.query_one("#plan-sidebar")
             self._show_plan_sidebar = not getattr(self, "_show_plan_sidebar", True)
             sidebar.display = self._show_plan_sidebar
+            try:
+                resizer = self.query_one("#resizer-right")
+                resizer.display = self._show_plan_sidebar
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def action_expand_left_pane(self) -> None:
+        self.left_pane_width = min(60, getattr(self, "left_pane_width", 24) + 2)
+        self._apply_pane_widths()
+        self.notify(f"Left Pane: {self.left_pane_width} cols", timeout=1)
+
+    def action_shrink_left_pane(self) -> None:
+        self.left_pane_width = max(14, getattr(self, "left_pane_width", 24) - 2)
+        self._apply_pane_widths()
+        self.notify(f"Left Pane: {self.left_pane_width} cols", timeout=1)
+
+    def action_expand_right_pane(self) -> None:
+        self.right_pane_width = min(60, getattr(self, "right_pane_width", 30) + 2)
+        self._apply_pane_widths()
+        self.notify(f"Right Pane: {self.right_pane_width} cols", timeout=1)
+
+    def action_shrink_right_pane(self) -> None:
+        self.right_pane_width = max(16, getattr(self, "right_pane_width", 30) - 2)
+        self._apply_pane_widths()
+        self.notify(f"Right Pane: {self.right_pane_width} cols", timeout=1)
+
+    def _apply_pane_widths(self) -> None:
+        try:
+            explorer = self.query_one("#explorer-sidebar")
+            explorer.styles.width = getattr(self, "left_pane_width", 24)
+        except Exception:
+            pass
+
+        try:
+            plan = self.query_one("#plan-sidebar")
+            plan.styles.width = getattr(self, "right_pane_width", 30)
         except Exception:
             pass
 

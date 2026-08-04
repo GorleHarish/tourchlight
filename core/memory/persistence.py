@@ -54,8 +54,8 @@ class SessionPersistence:
                 "next_steps": s.next_steps,
                 "files_modified": s.files_modified,
                 "files_read": s.files_read,
-                "decisions": s.decisions,
-                "arch_decisions": s.arch_decisions,
+                "decisions": [str(x) for x in s.decisions],
+                "arch_decisions": [str(x) for x in s.arch_decisions],
                 "tech_stack": s.tech_stack,
                 "failing_tests": s.failing_tests,
                 "errors_seen": s.errors_seen,
@@ -317,37 +317,41 @@ class ProjectMemory:
         data = self.load()
         data["intent"] = state.intent
         data["current_task"] = state.current_task
-        data["next_steps"] = state.next_steps
-        data["files_modified"] = state.files_modified
-        data["files_read"] = state.files_read
-        data["decisions"] = state.decisions
-        data["arch_decisions"] = state.arch_decisions
-        data["tech_stack"] = state.tech_stack
-        data["failing_tests"] = state.failing_tests
-        data["errors_seen"] = state.errors_seen
-        data["tried_and_failed"] = state.tried_and_failed
+        data["next_steps"] = [str(x) for x in state.next_steps]
+        data["files_modified"] = [str(x) for x in state.files_modified]
+        data["files_read"] = [str(x) for x in state.files_read]
+        data["decisions"] = [str(x) for x in state.decisions]
+        data["arch_decisions"] = [str(x) for x in state.arch_decisions]
+        data["tech_stack"] = [str(x) for x in state.tech_stack]
+        data["failing_tests"] = [str(x) for x in state.failing_tests]
+        data["errors_seen"] = [str(x) for x in state.errors_seen]
+        data["tried_and_failed"] = [str(x) for x in state.tried_and_failed]
 
         if hasattr(state, "memory_objects") and state.memory_objects:
             objs = []
             for mo in state.memory_objects:
-                objs.append({
-                    "kind": mo.kind,
-                    "summary": mo.summary,
-                    "source": mo.source,
-                    "file_paths": mo.file_paths,
-                    "symbols": mo.symbols,
-                    "commands": mo.commands,
-                    "errors": mo.errors,
-                    "text": mo.text,
-                    "score": mo.score,
-                    "embedding": mo.embedding,
-                    "channel_id": getattr(mo, "channel_id", "default"),
-                    "user_id": getattr(mo, "user_id", None),
-                    "session_id": getattr(mo, "session_id", None),
-                    "vector_tokens": getattr(mo, "vector_tokens", []),
-                    "ast_symbols": getattr(mo, "ast_symbols", []),
-                    "timestamp": mo.timestamp.isoformat() if isinstance(mo.timestamp, datetime) else str(mo.timestamp),
-                })
+                objs.append(
+                    {
+                        "kind": mo.kind,
+                        "summary": mo.summary,
+                        "source": mo.source,
+                        "file_paths": mo.file_paths,
+                        "symbols": mo.symbols,
+                        "commands": mo.commands,
+                        "errors": mo.errors,
+                        "text": mo.text,
+                        "score": mo.score,
+                        "embedding": mo.embedding,
+                        "channel_id": getattr(mo, "channel_id", "default"),
+                        "user_id": getattr(mo, "user_id", None),
+                        "session_id": getattr(mo, "session_id", None),
+                        "vector_tokens": getattr(mo, "vector_tokens", []),
+                        "ast_symbols": getattr(mo, "ast_symbols", []),
+                        "timestamp": mo.timestamp.isoformat()
+                        if isinstance(mo.timestamp, datetime)
+                        else str(mo.timestamp),
+                    }
+                )
             data["memory_objects"] = objs
 
         self.save(data)
@@ -371,15 +375,21 @@ class ProjectMemory:
             "session_id": getattr(mem, "session_id", None),
             "vector_tokens": getattr(mem, "vector_tokens", []),
             "ast_symbols": getattr(mem, "ast_symbols", []),
-            "timestamp": mem.timestamp.isoformat() if isinstance(mem.timestamp, datetime) else str(mem.timestamp),
+            "timestamp": mem.timestamp.isoformat()
+            if isinstance(mem.timestamp, datetime)
+            else str(mem.timestamp),
         }
         # Deduplicate by summary
-        if not any(o.get("summary") == mem.summary for o in objs if isinstance(o, dict)):
+        if not any(
+            o.get("summary") == mem.summary for o in objs if isinstance(o, dict)
+        ):
             objs.append(obj_dict)
             data["memory_objects"] = objs
             self.save(data)
 
-    def get_memory_objects(self, channel_id: Optional[str] = None) -> list[MemoryObject]:
+    def get_memory_objects(
+        self, channel_id: Optional[str] = None
+    ) -> list[MemoryObject]:
         data = self.load()
         raw_objs = data.get("memory_objects", [])
         result = []
@@ -390,34 +400,41 @@ class ProjectMemory:
             if channel_id and ch and ch not in ("default", channel_id):
                 continue
             try:
-                ts = datetime.fromisoformat(item["timestamp"]) if item.get("timestamp") else datetime.now()
+                ts = (
+                    datetime.fromisoformat(item["timestamp"])
+                    if item.get("timestamp")
+                    else datetime.now()
+                )
             except Exception:
                 ts = datetime.now()
 
-            result.append(MemoryObject(
-                kind=item.get("kind", "summary"),
-                summary=item.get("summary", ""),
-                source=item.get("source", ""),
-                file_paths=item.get("file_paths", []),
-                symbols=item.get("symbols", []),
-                commands=item.get("commands", []),
-                errors=item.get("errors", []),
-                text=item.get("text", ""),
-                score=item.get("score", 1.0),
-                embedding=item.get("embedding", []),
-                channel_id=ch,
-                user_id=item.get("user_id"),
-                session_id=item.get("session_id"),
-                vector_tokens=item.get("vector_tokens", []),
-                ast_symbols=item.get("ast_symbols", []),
-                timestamp=ts,
-            ))
+            result.append(
+                MemoryObject(
+                    kind=item.get("kind", "summary"),
+                    summary=item.get("summary", ""),
+                    source=item.get("source", ""),
+                    file_paths=item.get("file_paths", []),
+                    symbols=item.get("symbols", []),
+                    commands=item.get("commands", []),
+                    errors=item.get("errors", []),
+                    text=item.get("text", ""),
+                    score=item.get("score", 1.0),
+                    embedding=item.get("embedding", []),
+                    channel_id=ch,
+                    user_id=item.get("user_id"),
+                    session_id=item.get("session_id"),
+                    vector_tokens=item.get("vector_tokens", []),
+                    ast_symbols=item.get("ast_symbols", []),
+                    timestamp=ts,
+                )
+            )
         return result
 
     def search_memory(
         self, query: str, channel_id: Optional[str] = None, top_k: int = 5
     ) -> list[tuple[MemoryObject, float]]:
         from .embeddings import HybridMemoryRetriever
+
         objects = self.get_memory_objects(channel_id=channel_id)
         retriever = HybridMemoryRetriever()
         return retriever.retrieve(query, objects, channel_id=channel_id, top_k=top_k)

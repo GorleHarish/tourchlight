@@ -181,6 +181,9 @@ class TieredMemory:
             data = self._project_memory.load()
             if data:
                 for d in data.get("arch_decisions", []) + data.get("decisions", []):
+                    if not isinstance(d, str):
+                        d = d.get("text") if isinstance(d, dict) else str(d)
+                    d = d.strip() if d else ""
                     if d and d not in self.state.decisions:
                         self.state.decisions.append(d)
                 for f in data.get("files_modified", []):
@@ -196,6 +199,8 @@ class TieredMemory:
                     if e and e not in self.state.errors_seen:
                         self.state.errors_seen.append(e)
                 for f in data.get("facts", []):
+                    if isinstance(f, dict):
+                        f = f.get("text") or f.get("summary") or ""
                     if f and f not in self.state.decisions:
                         self.state.decisions.append(f)
         except Exception:
@@ -461,7 +466,7 @@ class TieredMemory:
                 )
             if self.state.decisions:
                 state_parts.append(
-                    f"Key decisions: {', '.join(list(self.state.decisions)[-3:])}"
+                    f"Key decisions: {', '.join(str(d) for d in list(self.state.decisions)[-3:])}"
                 )
 
             summary_text = (
@@ -565,9 +570,7 @@ class TieredMemory:
         # Priority 1: Active errors_seen (last 2 unique only)
         if self.state.errors_seen:
             unique_errors = list(dict.fromkeys(self.state.errors_seen))[-2:]
-            shown = "; ".join(
-                _scratchpad_clean(e, entry_limit) for e in unique_errors
-            )
+            shown = "; ".join(_scratchpad_clean(e, entry_limit) for e in unique_errors)
             sections.append((1, f"- Active Errors: {shown}"))
 
         # Priority 2: Failing tests (names only, not full tracebacks)
@@ -613,18 +616,15 @@ class TieredMemory:
         # Priority 4: Architecture decisions (max 3, most recent)
         decs_source = self.state.arch_decisions or self.state.decisions
         if decs_source:
-            unique_decs = list(dict.fromkeys(decs_source))[-3:]
-            shown = "; ".join(
-                _scratchpad_clean(d, entry_limit) for d in unique_decs
-            )
+            decs_strs = [str(d) for d in decs_source]
+            unique_decs = list(dict.fromkeys(decs_strs))[-3:]
+            shown = "; ".join(_scratchpad_clean(d, entry_limit) for d in unique_decs)
             sections.append((4, f"- Key Decisions: {shown}"))
 
         # Priority 5: Files modified in last 3 turns
         if self.state.files_modified:
             recent_mod = self.state.files_modified[-3:]
-            shown = ", ".join(
-                _scratchpad_clean(f, entry_limit) for f in recent_mod
-            )
+            shown = ", ".join(_scratchpad_clean(f, entry_limit) for f in recent_mod)
             sections.append((5, f"- Modified Files: {shown}"))
 
         # Priority 6: Tech stack (only if non-empty)
@@ -638,14 +638,18 @@ class TieredMemory:
         if self.state.tried_and_failed:
             tf_candidates = self.state.tried_and_failed
             if self.state.active_file:
-                active_base = self.state.active_file.split("/")[-1].split(".")[0].lower()
-                rel_tf = [t for t in tf_candidates if active_base and active_base in str(t).lower()]
+                active_base = (
+                    self.state.active_file.split("/")[-1].split(".")[0].lower()
+                )
+                rel_tf = [
+                    t
+                    for t in tf_candidates
+                    if active_base and active_base in str(t).lower()
+                ]
                 if rel_tf:
                     tf_candidates = rel_tf
             unique_tf = list(dict.fromkeys(tf_candidates))[-2:]
-            shown = "; ".join(
-                _scratchpad_clean(t, entry_limit) for t in unique_tf
-            )
+            shown = "; ".join(_scratchpad_clean(t, entry_limit) for t in unique_tf)
             sections.append((7, f"- Tried & Failed: {shown}"))
 
         # Priority 8: Facts (skip entirely if budget exhausted)
@@ -660,7 +664,9 @@ class TieredMemory:
                         if m[0].summary
                     ]
                     if mem_texts:
-                        sections.append((8, f"- Facts & Past Context: {'; '.join(mem_texts)}"))
+                        sections.append(
+                            (8, f"- Facts & Past Context: {'; '.join(mem_texts)}")
+                        )
             except Exception:
                 pass
 
@@ -686,6 +692,7 @@ class TieredMemory:
         self, entry: str, category: str = "decision", channel_id: str = "default"
     ) -> None:
         """Record an explicit memory entry into SessionState and persist to project memory."""
+        entry = str(entry).strip()
         cat_lower = category.lower().strip()
         if cat_lower in ("tried_failed", "tried_and_failed", "failed"):
             if entry not in self.state.tried_and_failed:
@@ -700,6 +707,7 @@ class TieredMemory:
                 self.state.decisions.append(entry)
 
         from .embeddings import tokenize_text
+
         mo = MemoryObject(
             kind=category,
             summary=entry,
