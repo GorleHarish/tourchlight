@@ -36,6 +36,10 @@ def test_detect_code_phase():
     assert s._detect_phase("def foo():") == "code"
     assert s._detect_phase("```python\nprint('hi')") == "code"
     assert s._detect_phase("class MyClass:") == "code"
+    assert s._detect_phase("create index.html file") == "code"
+    assert s._detect_phase("modify main.py to add logging") == "code"
+    assert s._detect_phase("build a new feature") == "code"
+    assert s._detect_phase("implement user auth") == "code"
 
 
 def test_detect_troubleshoot_phase():

@@ -5,6 +5,7 @@ Provides robust parsing, unclosed-tag repair, prose stripping, double-encoded JS
 unwrapping, and tolerant schema validation for LLM tool invocations.
 """
 
+import ast
 import json
 import re
 from typing import Any, Dict, Optional, Tuple, Union
@@ -91,26 +92,43 @@ def extract_balanced_json_object(text: str) -> Optional[str]:
 
 def repair_unclosed_tool_call_tag(text: str) -> str:
     """
-    Detect unclosed <tool_call> tags (e.g. truncated output) and auto-append </tool_call>.
+    Detect unclosed <tool_call> and action tags (e.g. truncated output) and auto-append closing tag.
     """
     if not text:
         return text
-    if "<tool_call>" in text and "</tool_call>" not in text:
-        return text.strip() + "</tool_call>"
+    tag_pairs = [
+        ("<tool_call>", "</tool_call>"),
+        ("<WRITE_FILE", "</WRITE_FILE>"),
+        ("<TOOL", "</TOOL>"),
+        ("<action>", "</action>"),
+        ("<CODE>", "</CODE>"),
+    ]
+    for open_tag, close_tag in tag_pairs:
+        if open_tag.lower() in text.lower() and close_tag.lower() not in text.lower():
+            return text.strip() + close_tag
     return text
 
 
 def strip_interleaved_prose(text: str) -> str:
     """
-    Isolate <tool_call>...</tool_call> block from surrounding conversational prose.
+    Isolate <tool_call>...</tool_call> block from surrounding conversational prose,
+    stripping reasoning/thinking blocks (<think>...</think> or <thought>...</thought>) first.
     If no tags are present, returns the original text.
     """
     if not text:
         return ""
-    match = re.search(r"<tool_call>([\s\S]*?)(?:</tool_call>|$)", text, re.IGNORECASE)
+    # Remove thinking/reasoning blocks first
+    cleaned = re.sub(
+        r"<(?:think|thought|thinking|reasoning)>[\s\S]*?(?:</(?:think|thought|thinking|reasoning)>|$)",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
+
+    match = re.search(r"<tool_call>([\s\S]*?)(?:</tool_call>|$)", cleaned, re.IGNORECASE)
     if match:
         return match.group(1).strip()
-    return text.strip()
+    return cleaned
 
 
 def unwrap_double_encoded_json(args: Any) -> Dict[str, Any]:
@@ -179,6 +197,16 @@ def clean_and_parse_json(raw_str: str) -> dict:
     try:
         repaired = tolerant_json_repair(raw)
         data = json.loads(repaired)
+        last_parsed = data
+        extracted = _extract_dict(data)
+        if extracted is not None:
+            return extracted
+    except Exception:
+        pass
+
+    # 2b. Python dict literal fallback (ast.literal_eval for single-quoted dict strings)
+    try:
+        data = ast.literal_eval(raw)
         last_parsed = data
         extracted = _extract_dict(data)
         if extracted is not None:

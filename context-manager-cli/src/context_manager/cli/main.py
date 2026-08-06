@@ -395,6 +395,8 @@ class StreamingChatSession:
     )
     _CODE_SIGNALS = (
         "write_file",
+        "edit_file",
+        "run_command",
         "<tool_call>",
         "```python",
         "```kotlin",
@@ -407,6 +409,17 @@ class StreamingChatSession:
         "def ",
         "class ",
         "function ",
+        "create ",
+        "write ",
+        "modify ",
+        "fix ",
+        "add ",
+        "edit ",
+        "build ",
+        "implement ",
+        "update ",
+        "generate ",
+        "refactor ",
     )
     _TROUBLESHOOT_SIGNALS = (
         "error:",
@@ -1030,6 +1043,7 @@ class StreamingChatSession:
                     harness = getattr(self, "harness", None) or AutonomousHarness(
                         project_root=self.project_path, memory=self.memory
                     )
+                    self.harness = harness
                     harness.ensure_goal_spec_initialized()
                     dashboard.print_success(
                         "Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)"
@@ -1054,6 +1068,7 @@ class StreamingChatSession:
                 harness = getattr(self, "harness", None) or AutonomousHarness(
                     project_root=self.project_path, memory=self.memory
                 )
+                self.harness = harness
                 harness.ensure_goal_spec_initialized()
                 summary = harness.get_status_summary()
                 dashboard.show_task_progress(summary)

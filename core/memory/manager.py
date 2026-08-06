@@ -36,9 +36,26 @@ _SCRATCHPAD_ENTRY_LIMIT = 120
 _SCRATCHPAD_HEADER = "[L0 WORKING MEMORY SCRATCHPAD]"
 
 
+def _is_valid_decision(entry) -> bool:
+    """Filter out empty, generic, or noisy session summary strings."""
+    if not entry:
+        return False
+    val = str(entry).strip()
+    if len(val) < 5:
+        return False
+    lower = val.lower()
+    if lower.startswith("session on ") or "no summary to provide" in lower:
+        return False
+    if lower.startswith("- **") or lower.startswith("--") or lower == "- **":
+        return False
+    return True
+
+
 def _scratchpad_clean(entry, limit: int = _SCRATCHPAD_ENTRY_LIMIT) -> str:
     """Flatten whitespace/newlines and truncate a scratchpad entry to a bounded length."""
-    flat = " ".join(str(entry).split())
+    val = str(entry).strip()
+    val = re.sub(r"^(?:[-*]\s*)+", "", val).strip()
+    flat = " ".join(val.split())
     if len(flat) > limit:
         return flat[: limit - 3].rstrip() + "..."
     return flat
@@ -184,7 +201,7 @@ class TieredMemory:
                     if not isinstance(d, str):
                         d = d.get("text") if isinstance(d, dict) else str(d)
                     d = d.strip() if d else ""
-                    if d and d not in self.state.decisions:
+                    if _is_valid_decision(d) and d not in self.state.decisions:
                         self.state.decisions.append(d)
                 for f in data.get("files_modified", []):
                     if f and f not in self.state.files_modified:
@@ -201,7 +218,7 @@ class TieredMemory:
                 for f in data.get("facts", []):
                     if isinstance(f, dict):
                         f = f.get("text") or f.get("summary") or ""
-                    if f and f not in self.state.decisions:
+                    if _is_valid_decision(f) and f not in self.state.decisions:
                         self.state.decisions.append(f)
         except Exception:
             pass

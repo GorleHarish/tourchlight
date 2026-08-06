@@ -112,13 +112,14 @@ def ensure_git_repository(
     if not git_dir.exists() or force_init:
         try:
             subprocess.run(
-                ["git", "init"], cwd=str(path), check=True, capture_output=True
+                ["git", "init"], cwd=str(path), check=True, capture_output=True, timeout=5
             )
             res_email = subprocess.run(
                 ["git", "config", "user.email"],
                 cwd=str(path),
                 capture_output=True,
                 text=True,
+                timeout=5,
             )
             if not res_email.stdout.strip():
                 subprocess.run(
@@ -126,12 +127,14 @@ def ensure_git_repository(
                     cwd=str(path),
                     check=True,
                     capture_output=True,
+                    timeout=5,
                 )
             res_name = subprocess.run(
                 ["git", "config", "user.name"],
                 cwd=str(path),
                 capture_output=True,
                 text=True,
+                timeout=5,
             )
             if not res_name.stdout.strip():
                 subprocess.run(
@@ -139,6 +142,7 @@ def ensure_git_repository(
                     cwd=str(path),
                     check=True,
                     capture_output=True,
+                    timeout=5,
                 )
             # Mark the repo as harness-managed ONLY when the harness itself
             # created it (fresh init), never for pre-existing user repositories.

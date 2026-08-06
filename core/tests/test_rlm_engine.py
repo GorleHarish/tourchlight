@@ -365,18 +365,17 @@ def test_inline_interception_skips_plan_prose_blocks():
     assert tool_name2 != "WRITE_FILE"
 
 
-def test_inline_interception_still_catches_real_code_and_file_header():
+def test_inline_interception_requires_explicit_file_or_header():
     mock_client = MagicMock()
     engine = RLMEngineOptimized(client=mock_client, enable_debate=False)
 
-    # A real code block with code tokens + punctuation is still intercepted.
+    # Bare code without an explicit file header or pre-text path is NOT auto-written to inline_code_output.txt
     resp_code = "```python\ndef add(a, b):\n    return a + b\n```"
     action, _, _, _, tool_name, tool_args = engine._parse_response(resp_code)
-    assert action == "tool"
-    assert tool_name == "WRITE_FILE"
-    assert "def add" in tool_args["content"]
+    assert action != "tool"
+    assert tool_name is None
 
-    # An explicit `# file:` header overrides the prose guard.
+    # An explicit `# file:` header correctly triggers WRITE_FILE
     resp_header = "```\n# file: notes.txt\nThis is a short note without code.\n```"
     action2, _, _, _, tool_name2, tool_args2 = engine._parse_response(resp_header)
     assert action2 == "tool"

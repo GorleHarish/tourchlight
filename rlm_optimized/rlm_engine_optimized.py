@@ -98,11 +98,12 @@ def _looks_like_prose_or_outline(content: str) -> bool:
         joined,
         re.IGNORECASE,
     )
-    code_punct = len(re.findall(r"[{}();\[\]=<>+\-*/\"'`]", joined))
+    # Exclude markdown formatting chars (*, -, `, #, /) from structural code punctuation
+    code_punct = len(re.findall(r"[{}();\[\]=<>+]", joined))
 
-    # Outline markers: "# 1. ...", "1. ...", "## Step ...", "- [ ] ..."
+    # Outline markers: "### Heading", "1. ...", "## Step ...", "- [ ] ...", "* Item"
     outline_lines = re.findall(
-        r"^\s*(?:#{1,6}\s*)?(?:\d+[\.\)]\s+\S|[-*]\s*\[\s*\]\s+\S)",
+        r"^\s*(?:#{1,6}\s+\S|\d+[\.\)]\s+\S|[-*+]\s+(?:\[\s*\]\s+)?\S)",
         joined,
         re.MULTILINE,
     )
@@ -121,7 +122,7 @@ def _looks_like_prose_or_outline(content: str) -> bool:
         for ln in lines
         if len(ln) >= 16
         and re.search(r"[.!?]\s*$", ln)
-        and len(re.findall(r"[{}();\[\]=<>+\-*/\"'`]", ln)) <= 2
+        and len(re.findall(r"[{}();\[\]=<>+]", ln)) <= 2
     )
 
     # 1. Strong code signals (tokens + structural punctuation) -> definitely code.
@@ -554,7 +555,8 @@ class RLMEngineOptimized:
                             pending_tasks = get_workspace_pending_tasks(
                                 self.project_root
                             )
-                            if pending_tasks:
+                            # Enforce task verification gate during active coding / troubleshoot phases
+                            if pending_tasks and phase in ("code", "troubleshoot"):
                                 task_descs = [f"- {t}" for t in pending_tasks[:3]]
                                 rejection_reason = (
                                     "❌ [VERIFICATION GATE REJECTION]\n"
@@ -1605,7 +1607,7 @@ class RLMEngineOptimized:
                 thinking = _get_thinking(final_match.start())
                 return ("final_answer", thinking, raw_content, [], None, None)
 
-        # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks)
+        # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks with target paths)
         # Skip in chat/troubleshoot/plan mode — code blocks there are for
         # display/reference or planning, not file creation.
         bare_code_match = re.search(
@@ -1626,44 +1628,41 @@ class RLMEngineOptimized:
                     re.IGNORECASE,
                 )
 
-                # Guard: bare blocks that look like a plan/outline/prose dump must
-                # NOT be auto-written (gibberish file bug). An explicit
-                # `# file: ...` header signals a deliberate write and overrides.
-                intercept = True
-                if not file_match and _looks_like_prose_or_outline(content):
-                    intercept = False
+                file_match_pre = None
+                if not file_match:
+                    # Try to extract from text preceding the block
+                    pre_text = response[: bare_code_match.start()].strip()
+                    recent_pre = "\n".join(pre_text.splitlines()[-6:]) if pre_text else ""
+                    file_match_pre = re.search(
+                        r"(?:#{1,6}\s*`?|for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?",
+                        recent_pre,
+                        re.IGNORECASE,
+                    )
+
+                # Only auto-write if an explicit target file path was declared (inside comment or pre-text)
+                # and content does not look like a prose/plan outline.
+                intercept = False
+                if file_match:
+                    target_path = (
+                        file_match.group(1)
+                        .replace("*/", "")
+                        .replace("-->", "")
+                        .strip()
+                    )
+                    # Remove header line from content
+                    content = re.sub(
+                        r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?",
+                        "",
+                        content,
+                        flags=re.IGNORECASE,
+                    ).strip()
+                    intercept = True
+                elif file_match_pre:
+                    target_path = file_match_pre.group(1).strip()
+                    if not _looks_like_prose_or_outline(content):
+                        intercept = True
 
                 if intercept:
-                    if not file_match:
-                        # Try to extract from text preceding the block
-                        pre_text = response[: bare_code_match.start()].strip()
-                        file_match_pre = re.search(
-                            r"(?:for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?\s*$",
-                            pre_text,
-                            re.IGNORECASE,
-                        )
-                        if file_match_pre:
-                            target_path = file_match_pre.group(1).strip()
-                        else:
-                            self._inline_code_counter += 1
-                            target_path = (
-                                f"inline_code_output_{self._inline_code_counter}.txt"
-                            )
-                    else:
-                        target_path = (
-                            file_match.group(1)
-                            .replace("*/", "")
-                            .replace("-->", "")
-                            .strip()
-                        )
-                        # Remove header line from content
-                        content = re.sub(
-                            r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?",
-                            "",
-                            content,
-                            flags=re.IGNORECASE,
-                        ).strip()
-
                     return (
                         "tool",
                         thinking,

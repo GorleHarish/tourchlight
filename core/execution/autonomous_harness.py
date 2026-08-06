@@ -127,13 +127,7 @@ class AutonomousHarness:
             description=description
             or title
             or "Continuous codebase maintenance, debugging, and feature development.",
-            tasks=[
-                {
-                    "id": "plan_01",
-                    "description": "Analyze goal requirements, review architecture via SEARCH_AST, and use UPDATE_TASK_GRAPH to formulate a detailed, test-driven execution plan",
-                    "target_files": [],
-                },
-            ],
+            tasks=[],
         )
 
     def initialize_goal(

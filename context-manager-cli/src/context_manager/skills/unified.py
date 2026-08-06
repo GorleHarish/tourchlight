@@ -77,7 +77,7 @@ class UnifiedSkillRegistry(SkillRegistry):
         # Medium/Large context: full tool list
         prompts = [
             "## TOOLS",
-            "Format: <tool_call>{'name': 'TOOL_NAME', 'arguments': {'key': 'value'}}</tool_call>",
+            'Format: <tool_call>{"name": "TOOL_NAME", "arguments": {"key": "value"}}</tool_call>',
             ""
         ]
         for t in self._core_reg.all():

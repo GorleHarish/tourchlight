@@ -87,3 +87,23 @@ def test_validate_tool_call_with_unwrapping_and_coercion():
     assert is_valid is True
     assert norm["path"] == "src/app.py"
     assert norm.get("start_line") == 10
+
+
+def test_single_quoted_dict_parsing():
+    raw_single_quotes = "<tool_call>{'name': 'READ_FILE', 'arguments': {'path': 'src/index.py'}}</tool_call>"
+    tool_name, args, meta = parse_tool_call_payload(raw_single_quotes)
+    assert tool_name == "READ_FILE"
+    assert args == {"path": "src/index.py"}
+
+
+def test_strip_thinking_tags():
+    raw = "<think>Let me analyze the repo structure first...</think><tool_call>{\"name\": \"SEARCH_AST\", \"arguments\": {\"query\": \"main\"}}</tool_call>"
+    stripped = strip_interleaved_prose(raw)
+    assert stripped == '{"name": "SEARCH_AST", "arguments": {"query": "main"}}'
+
+
+def test_repair_unclosed_action_tags():
+    raw_write = '<WRITE_FILE path="test.py">def main(): pass'
+    repaired = repair_unclosed_tool_call_tag(raw_write)
+    assert repaired.endswith("</WRITE_FILE>")
+

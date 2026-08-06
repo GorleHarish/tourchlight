@@ -45,23 +45,11 @@ def main():
     goal = harness.load_goal_spec()
     if not goal:
         print(f"Initializing new goal: {args.title}")
-        demo_tasks = [
-            {
-                "id": "task_01",
-                "description": "Audit codebase structure",
-                "target_files": ["core/execution/feedback_loop.py"],
-            },
-            {
-                "id": "task_02",
-                "description": "Verify test suite health",
-                "target_files": ["core/tests/test_autonomous_harness.py"],
-            },
-        ]
         goal = harness.initialize_goal(
             goal_id=args.goal_id,
             title=args.title,
             description=args.description,
-            tasks=demo_tasks,
+            tasks=[],
         )
 
     print(f"Goal loaded: {goal.title} ({len(goal.tasks)} tasks)")
