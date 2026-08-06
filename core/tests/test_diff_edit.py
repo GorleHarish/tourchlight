@@ -288,3 +288,13 @@ def test_edit_file_line_range_no_old_text_full_range_replace():
         assert "within line range 2-3" in res
         with open(test_file, "r", encoding="utf-8") as f:
             assert f.read() == "a = 1\nb = 20\nc = 30\n"
+
+
+def test_write_file_content_hash_dedup():
+    from core.tools.implementations import tool_write_file_impl
+    with tempfile.TemporaryDirectory() as tmpdir:
+        res1 = tool_write_file_impl({"path": "doc.txt", "content": "Hello World\n"}, project_root=tmpdir)
+        assert "Written" in res1
+
+        res2 = tool_write_file_impl({"path": "doc.txt", "content": "Hello World\n"}, project_root=tmpdir)
+        assert "No change: file content of doc.txt is already identical" in res2

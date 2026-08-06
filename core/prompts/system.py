@@ -74,12 +74,29 @@ PHASE_PROMPTS = {
 }
 
 
+CRITICAL_DIRECTIVES = """
+[CRITICAL NEGATIVE CONSTRAINTS & DIRECTIVE LOCK]
+1. NEVER run `cd` in RUN_COMMAND shell calls. Pass the target directory via the `cwd` argument instead.
+2. NEVER mask symptoms or swallow exceptions (e.g. `except: pass`, returning dummy empty objects, or deleting failing unit tests).
+3. ALWAYS inspect full error logs or test tracebacks before editing code.
+4. Replace placeholders like `<SYMBOL>` or `N-M` with actual workspace values.
+""".strip()
+
+
 def get_phase_system_prompt(phase: str = "code") -> str:
-    """Generate phase-tailored system prompt by appending phase instructions."""
-    phase_key = phase.lower() if phase else "code"
+    """Generate phase-tailored system prompt by appending phase instructions, critical directives, and active tool tail."""
+    phase_key = (phase or "code").lower().strip()
     extra = PHASE_PROMPTS.get(phase_key, PHASE_PROMPTS["code"])
-    return f"{SYSTEM_PROMPT}\n\n{extra}"
+
+    try:
+        from core.tools.schemas import get_schemas_for_phase
+        allowed_tools = list(get_schemas_for_phase(phase_key).keys())
+        tool_suffix = f"[ACTIVE PHASE TOOLS ({phase_key.upper()}): {', '.join(allowed_tools)}]"
+        return f"{SYSTEM_PROMPT}\n\n{extra}\n\n{CRITICAL_DIRECTIVES}\n\n{tool_suffix}"
+    except ImportError:
+        return f"{SYSTEM_PROMPT}\n\n{extra}\n\n{CRITICAL_DIRECTIVES}"
 
 
 # Legacy alias
 DEFAULT_SYSTEM_PROMPT = SYSTEM_PROMPT
+

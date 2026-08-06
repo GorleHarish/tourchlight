@@ -8,8 +8,12 @@ def test_classify_safe_commands():
     assert classify_command("cat file.py") == AUTO
     assert classify_command("pwd") == AUTO
     assert classify_command("git status") == AUTO
-    assert classify_command("git log") == AUTO
+    assert classify_command("git log --oneline -n 5") == AUTO
     assert classify_command("git diff") == AUTO
+    assert classify_command("python -c 'print(1)'") == AUTO
+    assert classify_command("python3 -c 'import sys'") == AUTO
+    assert classify_command("pip show requests") == AUTO
+    assert classify_command("cargo tree") == AUTO
     assert classify_command("python --version") == AUTO
     assert classify_command("npm test") == AUTO
     assert classify_command("cargo test") == AUTO

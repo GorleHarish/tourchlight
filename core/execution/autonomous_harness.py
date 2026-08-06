@@ -73,6 +73,7 @@ class HarnessConfig:
     # Blanket `git checkout -- .` + `git clean -fd` requires BOTH this flag AND
     # a `.torchlight/.harness_managed` marker (proving the harness created the repo).
     allow_blanket_revert: bool = False
+    protect_tests_during_recovery: bool = True
 
 
 class AutonomousHarness:

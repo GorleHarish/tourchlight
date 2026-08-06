@@ -133,3 +133,16 @@ def test_grep_hyphen_pattern(tmp_path):
     result = tool_grep_impl({"pattern": "-m", "path": "."}, str(tmp_path))
     assert "-m" in result
 
+
+def test_normalize_whitespace_tab_preservation():
+    from core.tools.implementations import _normalize_whitespace
+    c_code = "\tint main() {\n\t\treturn 0;\n\t}"
+    assert "\t" in _normalize_whitespace(c_code, "main.c")
+    assert "\t" in _normalize_whitespace(c_code, "main.h")
+    assert "\t" in _normalize_whitespace(c_code, "main.asm")
+
+    py_code = "\tdef foo():\n\t\tpass"
+    assert "\t" not in _normalize_whitespace(py_code, "script.py")
+    assert "    " in _normalize_whitespace(py_code, "script.py")
+
+

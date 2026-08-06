@@ -5,7 +5,7 @@ Provides structured recovery strategies and hint generation for the LLM.
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from .types import (
     TorchlightError,
@@ -122,6 +122,21 @@ def get_recovery_hint(error: TorchlightError) -> str:
         )
 
     return "An error occurred. Try a different approach."
+
+
+def inject_recovery_into_memory(memory: Any, error: TorchlightError, action: RecoveryAction) -> Optional[str]:
+    """
+    Push recovery hint into memory state's tried_and_failed scratchpad list
+    to ensure the LLM has explicit visibility on subsequent turns.
+    """
+    if memory is None or not hasattr(memory, "state") or memory.state is None:
+        return None
+    hint = get_recovery_hint(error)
+    entry = f"Failed {type(error).__name__}: {hint} [Action: {action.value}]"
+    if hasattr(memory.state, "tried_and_failed"):
+        if entry not in memory.state.tried_and_failed:
+            memory.state.tried_and_failed.append(entry)
+    return hint
 
 
 

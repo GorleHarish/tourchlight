@@ -29,7 +29,7 @@ def test_effective_budget_shrinks_under_pressure():
     memory.add_user_message("tokens " * 3500)
     budget = memory.get_effective_budget()
 
-    assert budget.l0_chars < 1600
+    assert budget.l0_chars <= 2400
     assert budget.l0_tokens == budget.l0_min_tokens
     assert budget.headroom_tokens == 0
     assert budget.utilization() > 0.9

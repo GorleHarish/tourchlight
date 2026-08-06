@@ -80,6 +80,24 @@ class KeywordEmbedder(Embedder):
         return [v / norm for v in vec]
 
 
+import os
+
+
+def _is_low_memory() -> bool:
+    """Return True on machines with <= 8GB RAM or when TORCHLIGHT_FORCE_KEYWORD_EMBEDDINGS is set."""
+    if os.environ.get("TORCHLIGHT_FORCE_KEYWORD_EMBEDDINGS"):
+        return True
+    try:
+        import psutil
+        return psutil.virtual_memory().total <= 8 * 1024**3
+    except ImportError:
+        try:
+            mem = int(os.popen("sysctl -n hw.memsize").read().strip())
+            return mem <= 8 * 1024**3
+        except Exception:
+            return False
+
+
 class HybridEmbedder(Embedder):
     """Hybrid embedder: uses LLM embeddings when available, falls back to keyword vectors."""
     def __init__(self, llm_client=None):
@@ -87,6 +105,8 @@ class HybridEmbedder(Embedder):
         self.keyword_embedder = KeywordEmbedder()
 
     def embed_sync(self, text: str) -> list[float]:
+        if _is_low_memory():
+            return self.keyword_embedder.embed_sync(text)
         if self.llm_client and hasattr(self.llm_client, "get_embeddings"):
             try:
                 emb = self.llm_client.get_embeddings(text)

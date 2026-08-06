@@ -134,10 +134,16 @@ class ProjectGraph:
         self.nodes.clear()
         self.edges.clear()
 
-        for root, dirs, files in os.walk(self.project_dir):
-            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        for root, dirs, files in os.walk(self.project_dir, followlinks=False):
+            dirs[:] = [
+                d for d in dirs
+                if d not in IGNORE_DIRS
+                and not os.path.islink(os.path.join(root, d))
+            ]
             for file in files:
                 path = Path(root) / file
+                if path.is_symlink():
+                    continue
                 if path.suffix not in SUPPORTED_EXTENSIONS:
                     continue
                 try:
@@ -252,6 +258,21 @@ class ProjectGraph:
                 pass
 
         # 4. Save updated graph state
+        self.save()
+
+    def remove_file(self, rel_path: str) -> None:
+        """Remove all nodes and edges referencing a deleted file."""
+        to_remove_nodes = [
+            nid for nid, n in self.nodes.items()
+            if nid == rel_path or n.get("file") == rel_path or nid.startswith(f"{rel_path}::")
+        ]
+        for nid in to_remove_nodes:
+            self.nodes.pop(nid, None)
+        self.edges = [
+            e for e in self.edges
+            if not (e["from"] == rel_path or e["from"].startswith(f"{rel_path}::") or
+                    e["to"] == rel_path or e["to"].startswith(f"{rel_path}::"))
+        ]
         self.save()
 
     def save(self):

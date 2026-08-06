@@ -263,3 +263,22 @@ def test_truncation_stubs_detected_in_non_code_files():
         "# just a readme\n\nThis describes the project.\n", "README.md", os.getcwd()
     )
     assert status_ok == "ok"
+
+
+def test_detect_symptom_patching():
+    from core.tools.implementations import _detect_symptom_patching
+
+    # Test exception swallowing
+    swallow_code = "try:\n    do_something()\nexcept: pass\n"
+    assert _detect_symptom_patching(swallow_code, "app.py") is not None
+
+    swallow_generic = "try:\n    do_something()\nexcept Exception: pass\n"
+    assert _detect_symptom_patching(swallow_generic, "app.py") is not None
+
+    # Test commented-out assertion in test file
+    commented_assert = "def test_foo():\n    # assert result == 42\n    pass\n"
+    assert _detect_symptom_patching(commented_assert, "test_app.py") is not None
+
+    # Clean code should pass
+    clean_code = "try:\n    do_something()\nexcept ValueError as e:\n    logger.error(e)\n    raise\n"
+    assert _detect_symptom_patching(clean_code, "app.py") is None

@@ -76,6 +76,21 @@ class DebateVerifier:
                 task=task_context, proposed_output=proposal
             )
 
+        # Pre-critique: check if Python code blocks have actual syntax/compile errors
+        import ast
+        code_blocks = re.findall(r'```python\n(.*?)```', proposal, re.DOTALL)
+        compile_errors = []
+        for block in code_blocks:
+            try:
+                ast.parse(block)
+            except SyntaxError as e:
+                compile_errors.append(f"L{e.lineno}: {e.msg}")
+
+        if compile_errors:
+            user_content += f"\n\nConfirmed compile errors: {compile_errors}"
+        elif code_blocks:
+            user_content += "\n\nNote: Code compiles cleanly without syntax errors. Focus on semantic/logic issues only."
+
         messages = [
             {"role": "system", "content": CRITIC_SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
@@ -143,8 +158,17 @@ Synthesize the revised and improved final response/tool-call directly."""
         return proposal, critique_res
 
     def _parse_critique_json(self, text: str) -> CritiqueResult:
-        """Helper to extract JSON payload from LLM response."""
+        """Helper to extract JSON payload or XML tags from LLM response."""
         result = CritiqueResult(raw_response=text)
+
+        # Try XML tag extraction first (more robust for 7B models)
+        flaw_matches = re.findall(r'<flaw>(.*?)</flaw>', text, re.DOTALL)
+        rec_matches = re.findall(r'<recommendation>(.*?)</recommendation>', text, re.DOTALL)
+        if flaw_matches or rec_matches:
+            result.has_flaws = bool(flaw_matches)
+            result.flaws = [f.strip() for f in flaw_matches]
+            result.recommendations = [r.strip() for r in rec_matches]
+            return result
 
         # Strip markdown ```json ... ``` codeblocks if present
         clean_text = text.strip()
@@ -165,9 +189,13 @@ Synthesize the revised and improved final response/tool-call directly."""
             result.flaws = data.get("flaws", [])
             result.recommendations = data.get("recommendations", [])
         except (json.JSONDecodeError, AttributeError):
-            # If JSON parsing fails, check for heuristic indicators of flaws
+            # If JSON parsing fails, check for specific multi-word indicators of flaws
             lower_text = text.lower()
-            if "flaw" in lower_text or "error" in lower_text or "missing" in lower_text:
+            flaw_indicators = [
+                "syntax error", "logic flaw", "missing import", "undefined variable",
+                "type mismatch", "incorrect return", "broken reference", "critical flaw"
+            ]
+            if sum(1 for ind in flaw_indicators if ind in lower_text) >= 1:
                 result.has_flaws = True
                 result.flaws = [text.strip()]
 

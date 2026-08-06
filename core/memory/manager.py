@@ -167,8 +167,8 @@ class TieredMemory:
             tokenizer=self.tokenizer,
         )
         # Active file pinning: keeps recently-read file content in context
-        # even after compression. Max 2 files (FIFO eviction).
-        self._pinned_files: deque[tuple[str, str]] = deque(maxlen=2)
+        # even after compression. Max 4 files (FIFO eviction).
+        self._pinned_files: deque[tuple[str, str]] = deque(maxlen=4)
         self._pinned_token_budget: int = config.pinned_token_budget
         self._cached_msg_tokens: int = 0
         self._last_persist_ts: float = 0.0
@@ -551,25 +551,28 @@ class TieredMemory:
         """Format current SessionState into a dynamic L0 working memory scratchpad.
 
         Enforces a maximum L0 budget cap (up to 1800 tokens / ~15% context window)
-        and priority-weighted injection order:
-        1. Active errors_seen (last 2 unique only)
+        and priority-weighted injection order. Each section surfaces up to
+        `budget.scratchpad_section_cap` entries (3 tight ... 8 rich) so the
+        scratchpad expands to use idle headroom and shrinks under pressure:
+        1. Active errors_seen (most recent)
         2. Failing tests (names only, not full tracebacks)
         3. Active goal / current task
-        4. Architecture decisions (max 3, most recent)
+        4. Architecture decisions (most recent)
         5. Files modified in last 3 turns
         6. Tech stack (only if non-empty)
-        7. Tried_and_failed (max 2, only if relevant to current file/task)
+        7. Tried_and_failed (only if relevant to current file/task)
         8. Facts (skip entirely if budget exhausted)
         """
         if budget is None:
             budget = self.get_effective_budget()
         entry_limit = budget.scratchpad_entry_limit
+        section_cap = budget.scratchpad_section_cap
         max_chars = min(1800 * budget.chars_per_token, budget.l0_chars)
         sections = []
 
-        # Priority 1: Active errors_seen (last 2 unique only)
+        # Priority 1: Active errors_seen (most recent, up to section cap)
         if self.state.errors_seen:
-            unique_errors = list(dict.fromkeys(self.state.errors_seen))[-2:]
+            unique_errors = list(dict.fromkeys(self.state.errors_seen))[-section_cap:]
             shown = "; ".join(_scratchpad_clean(e, entry_limit) for e in unique_errors)
             sections.append((1, f"- Active Errors: {shown}"))
 
@@ -583,7 +586,8 @@ class TieredMemory:
                     clean_test_names.append(t_name)
             if clean_test_names:
                 shown = ", ".join(
-                    _scratchpad_clean(tn, entry_limit) for tn in clean_test_names[:4]
+                    _scratchpad_clean(tn, entry_limit)
+                    for tn in clean_test_names[:section_cap]
                 )
                 sections.append((2, f"- Failing Tests: {shown}"))
 
@@ -613,12 +617,13 @@ class TieredMemory:
                 )
                 sections.append((3.5, f"- Pending Tasks: {shown}"))
 
-        # Priority 4: Architecture decisions (max 3, most recent)
+        # Priority 4: Architecture decisions (most recent, up to section cap)
         decs_source = self.state.arch_decisions or self.state.decisions
         if decs_source:
             decs_strs = [str(d) for d in decs_source]
-            unique_decs = list(dict.fromkeys(decs_strs))[-3:]
-            shown = "; ".join(_scratchpad_clean(d, entry_limit) for d in unique_decs)
+            shown = "; ".join(
+                _scratchpad_clean(d, entry_limit) for d in decs_strs[-section_cap:]
+            )
             sections.append((4, f"- Key Decisions: {shown}"))
 
         # Priority 5: Files modified in last 3 turns
@@ -634,7 +639,7 @@ class TieredMemory:
             )
             sections.append((6, f"- Tech Stack: {shown}"))
 
-        # Priority 7: Tried_and_failed (max 2, only if relevant to current file/task)
+        # Priority 7: Tried_and_failed (up to section cap, only if relevant to current file/task)
         if self.state.tried_and_failed:
             tf_candidates = self.state.tried_and_failed
             if self.state.active_file:
@@ -648,8 +653,10 @@ class TieredMemory:
                 ]
                 if rel_tf:
                     tf_candidates = rel_tf
-            unique_tf = list(dict.fromkeys(tf_candidates))[-2:]
-            shown = "; ".join(_scratchpad_clean(t, entry_limit) for t in unique_tf)
+            shown = "; ".join(
+                _scratchpad_clean(t, entry_limit)
+                for t in list(dict.fromkeys(tf_candidates))[-section_cap:]
+            )
             sections.append((7, f"- Tried & Failed: {shown}"))
 
         # Priority 8: Facts (skip entirely if budget exhausted)

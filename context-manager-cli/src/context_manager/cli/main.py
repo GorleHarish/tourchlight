@@ -223,15 +223,68 @@ class StreamingChatSession:
         self._params: InferenceParams = InferenceParams.for_chat()
         self._params_locked: bool = False
         self._current_phase: str = "chat"
+        self._phase_lock: Optional[str] = None
+        self._phase_lock_turns: int = 0
+        self._recent_tool_hashes: list[str] = []
 
-        # ── Autonomous Harness Initialization ─────────────────────────────────────
-        if AutonomousHarness is not None:
-            try:
-                self.harness = AutonomousHarness(project_root=self.project_path, memory=self.memory)
-            except Exception:
-                self.harness = None
-        else:
-            self.harness = None
+    def _hash_tool_call(self, name: str, params: dict) -> str:
+        payload = f"{name}:{sorted(params.items()) if isinstance(params, dict) else str(params)}"
+        return hashlib.md5(payload.encode()).hexdigest()[:12]
+
+    def _event_lock_phase(self, event: str, data: str = "") -> None:
+        """Lock phase based on concrete execution events."""
+        if event == "tool_error":
+            self._phase_lock = "troubleshoot"
+            self._phase_lock_turns = 2
+        elif event == "file_edit":
+            self._phase_lock = "code"
+            self._phase_lock_turns = 2
+        elif event == "user_explicit":
+            self._phase_lock = None
+            self._phase_lock_turns = 0
+
+    def _detect_phase(self, user_input: str, last_response: str = "") -> str:
+        """
+        Infer the current agent phase from user input and the last model response.
+        Returns one of: "plan" | "code" | "troubleshoot" | "chat".
+        """
+        if self._phase_lock:
+            if self._phase_lock_turns > 0:
+                self._phase_lock_turns -= 1
+                return self._phase_lock
+            self._phase_lock = None
+
+        combined = (user_input + " " + last_response).lower()
+        if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
+            return "troubleshoot"
+        if any(s in combined for s in self._PLAN_SIGNALS):
+            return "plan"
+        if any(s in combined for s in self._CODE_SIGNALS):
+            return "code"
+        return "chat"
+
+        # ── Stop Token & Truncation Recovery ──────────────────────────────────────
+        self._STOP_TAG_PAIRS = [
+            ("<WRITE_FILE", "</WRITE_FILE>"),
+            ("<TOOL", "</TOOL>"),
+            ("<CODE>", "</CODE>"),
+            ("<FINAL_ANSWER>", "</FINAL_ANSWER>"),
+            ("<action>", "</action>"),
+            ("<tool_call>", "</tool_call>"),
+        ]
+
+    def _repair_stop_tokens(self, text: str) -> str:
+        """Re-append closing tags and unclosed JSON braces that were consumed as stop tokens or truncated by LLM."""
+        if not text:
+            return ""
+        for open_tag, close_tag in self._STOP_TAG_PAIRS:
+            if open_tag.lower() in text.lower() and close_tag.lower() not in text.lower():
+                text = text.rstrip() + close_tag
+                break
+        open_braces = text.count("{") - text.count("}")
+        if open_braces > 0:
+            text = text.rstrip() + "}" * open_braces
+        return text
 
     def _calculate_metadata_overhead(self) -> int:
         """Estimate tokens consumed by system prompt, tools, and flashlight beam."""
@@ -414,6 +467,17 @@ class StreamingChatSession:
         label = _tool_label(name, params)
         act = tracker.start(kind, label)
 
+        call_hash = self._hash_tool_call(name, params)
+        if call_hash in self._recent_tool_hashes:
+            self._params.temperature = min(0.9, self._params.temperature + 0.3)
+            out = f"STOP: You just repeated the exact same '{name}' call. Try a DIFFERENT tool or approach."
+            self.memory.add_tool_result(out, tool_name=name)
+            tracker.finish(act, ok=False)
+            return out
+        self._recent_tool_hashes.append(call_hash)
+        if len(self._recent_tool_hashes) > 3:
+            self._recent_tool_hashes.pop(0)
+
         if tier == AUTO:
             try:
                 result = await self.skills.execute_skill(name, params)
@@ -426,6 +490,7 @@ class StreamingChatSession:
 
                 # Agentic Self-Correction Hints
                 if not ok:
+                    self._event_lock_phase("tool_error", name)
                     if "No such file" in result.error:
                         out += '\n💡 HINT: Use DOC_SEARCH("filename") or RUN_COMMAND("find . -name \'...\' ") to locate it.'
                     elif "Permission denied" in result.error:
@@ -443,6 +508,7 @@ class StreamingChatSession:
                     if fpath and result.output:
                         self.memory.pin_file(fpath, result.output)
                 elif ok and name.upper() in ("EDIT_FILE", "WRITE_FILE"):
+                    self._event_lock_phase("file_edit", name)
                     fpath = params.get("path") or params.get("file")
                     if fpath:
                         self.memory.refresh_pin(fpath, self.project_root)
@@ -630,6 +696,7 @@ class StreamingChatSession:
 
                     dashboard.print_user_input(user_input)
                     self.memory.add_user_message(user_input)
+                    self._recent_tool_hashes.clear()
 
                     # Detect phase from user input before generating
                     self._update_params(user_input)
@@ -828,7 +895,8 @@ class StreamingChatSession:
 
     async def _generate_response(self, user_query: str = "") -> str:
         messages = self._build_messages(user_query)
-        return await self.client.chat(messages, params=self._params)
+        res = await self.client.chat(messages, params=self._params)
+        return self._repair_stop_tokens(res)
 
     async def _generate_streaming_response(self, user_query: str = "") -> str:
         messages = self._build_messages(user_query)
@@ -841,7 +909,7 @@ class StreamingChatSession:
         with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
             async for chunk in self.client.chat_stream(messages, params=self._params):
                 buffer.append(chunk)
-                self._response_tokens += 1
+                self._response_tokens += max(1, len(chunk) // 3)
                 elapsed = time.time() - self._start_time
                 tps = self._response_tokens / elapsed if elapsed > 0 else 0
                 stats = self._create_stats_panel(
@@ -850,7 +918,8 @@ class StreamingChatSession:
                 )
                 live.update(stats)
 
-        return "".join(buffer)
+        full_text = "".join(buffer)
+        return self._repair_stop_tokens(full_text)
 
     def _create_stats_panel(
         self,
@@ -858,7 +927,8 @@ class StreamingChatSession:
         tokens_per_sec: float = 0,
     ) -> Panel:
         snapshot = self.memory.get_snapshot()
-        usage_pct = snapshot.compression_ratio * 100
+        ctx_tokens = snapshot.token_count + self._response_tokens
+        usage_pct = (ctx_tokens / self.max_tokens) * 100 if self.max_tokens > 0 else 0
         bar_color = "green" if usage_pct < 50 else ("yellow" if usage_pct < 70 else "red")
         fill = int(usage_pct / 2)
         bar = "█" * fill + "░" * (50 - fill)
@@ -866,7 +936,7 @@ class StreamingChatSession:
 
         lock_str = " 🔒" if self._params_locked else ""
         content = (
-            f"[cyan]Context[/cyan]: {snapshot.token_count:,}/{self.max_tokens:,} "
+            f"[cyan]Context[/cyan]: {ctx_tokens:,}/{self.max_tokens:,} "
             f"tokens ({usage_pct:.0f}%)\n"
             f"[{bar_color}]{bar}[/{bar_color}]\n"
             f"[cyan]Messages[/cyan]: {snapshot.message_count} | "

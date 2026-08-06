@@ -54,10 +54,16 @@ class SymbolIndex:
         old_files = self.files
         new_files: dict[str, FileEntry] = {}
 
-        for root, dirs, files in os.walk(self.project_dir):
-            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        for root, dirs, files in os.walk(self.project_dir, followlinks=False):
+            dirs[:] = [
+                d for d in dirs
+                if d not in IGNORE_DIRS
+                and not os.path.islink(os.path.join(root, d))
+            ]
             for file in files:
                 path = Path(root) / file
+                if path.is_symlink():
+                    continue
                 if path.suffix not in SUPPORTED_EXTENSIONS:
                     continue
                 try:

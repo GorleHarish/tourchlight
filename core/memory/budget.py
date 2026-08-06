@@ -36,7 +36,7 @@ class ContextBudget:
     base_pinned_tokens: int
     target_utilization: float = 0.85
     # L0 scratchpad
-    l0_min_tokens: int = 150
+    l0_min_tokens: int = 600  # Static safety floor to preserve goal/errors under context pressure
     l0_max_tokens: int = 1800  # Cap at 1800 tokens (~15% of 12K context)
     l0_headroom_share: float = 0.20
     # Pinned files

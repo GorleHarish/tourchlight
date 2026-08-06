@@ -11,6 +11,7 @@ import json
 import subprocess
 import ast
 import difflib
+import hashlib
 from pathlib import Path
 from typing import Optional, Tuple
 from html.parser import HTMLParser
@@ -175,9 +176,25 @@ def _resolve_path(path: str, project_root: str) -> str:
     return str(resolved)
 
 
-def _truncate(text: str, limit: int = _MAX_TOOL_OUTPUT) -> str:
+def _truncate(text: str, limit: Optional[int] = None, tool_name: Optional[str] = None) -> str:
+    if limit is None:
+        if tool_name:
+            tool_upper = tool_name.upper().strip()
+            if tool_upper == "RUN_COMMAND":
+                limit = 3000
+            elif tool_upper in ("GREP", "SEARCH_AST"):
+                limit = 3500
+            elif tool_upper == "READ_FILE":
+                _, limit = _read_budget_for_ctx()
+            else:
+                limit = _MAX_TOOL_OUTPUT
+        else:
+            limit = _MAX_TOOL_OUTPUT
+
     if len(text) > limit:
-        return text[:limit] + f"\n... [Truncated at {limit} chars]"
+        truncated_chars = len(text) - limit
+        truncated_lines = text[limit:].count("\n")
+        return text[:limit] + f"\n... [Truncated {truncated_chars} chars / {truncated_lines} lines. Use line ranges or specific queries to narrow search.]"
     return text
 
 
@@ -688,16 +705,20 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         return f"Error reading file: {e}"
 
 
+_TAB_PRESERVE_EXTS = {
+    ".go", ".tsv", ".tab", ".mk", ".c", ".h", ".cpp", ".hpp",
+    ".asm", ".s", ".zig", ".lua", ".just"
+}
+_TAB_PRESERVE_BASENAMES = {"makefile", "gnumakefile", "justfile", "kbuild"}
+
+
 def _normalize_whitespace(content: str, filename: str = "") -> str:
-    """Normalize mixed tabs to spaces (except Makefiles/TSV/Go), remove trailing line spaces, and ensure trailing newline."""
+    """Normalize mixed tabs to spaces (except Makefiles/TSV/Go/C/ASM/etc.), remove trailing line spaces, and ensure trailing newline."""
     if not content:
         return ""
     ext = os.path.splitext(filename)[1].lower() if filename else ""
     basename = os.path.basename(filename).lower() if filename else ""
-    preserve_tabs = ext in (".go", ".tsv", ".tab", ".mk") or basename in (
-        "makefile",
-        "gnumakefile",
-    )
+    preserve_tabs = ext in _TAB_PRESERVE_EXTS or basename in _TAB_PRESERVE_BASENAMES
 
     lines = content.splitlines()
     if preserve_tabs:
@@ -866,8 +887,12 @@ def _check_syntax(content: str, filename: str) -> Optional[str]:
     elif ext in (".json", ".jsonc"):
         import json
 
+        if not content.strip():
+            return "\n⚠️ JSON Syntax Warning: Empty file content"
         try:
-            json.loads(content)
+            data = json.loads(content)
+            if isinstance(data, dict) and not data:
+                return "\n⚠️ JSON Syntax Warning: Empty JSON object"
         except json.JSONDecodeError as je:
             return (
                 f"\n⚠️ JSON Syntax Warning (line {je.lineno}, col {je.colno}): {je.msg}"
@@ -1102,7 +1127,51 @@ def _validate_and_repair(
                     ),
                 )
 
+        # 5. Anti-Symptom Patching Gate
+        symptom_note = _detect_symptom_patching(content, filename)
+        if symptom_note:
+            return (
+                "error",
+                (
+                    f"Error: Anti-Symptom-Patching Gate rejected write to {os.path.basename(filename)}:\n"
+                    f"{symptom_note}\n"
+                    f"File NOT written. Locate the underlying root cause and fix the contract instead of swallowing errors or disabling assertions."
+                ),
+            )
+
     return "ok", content
+
+
+def _detect_symptom_patching(content: str, filename: str) -> Optional[str]:
+    """Detect exception-swallowing and test assertion commenting out anti-patterns."""
+    if not content:
+        return None
+
+    # Check exception swallowing patterns
+    swallow_patterns = [
+        (r'except\s*:\s*pass\b', "Blank 'except: pass' block swallowing all exceptions"),
+        (r'except\s+Exception\s*:\s*pass\b', "Generic 'except Exception: pass' block swallowing exceptions"),
+        (r'except\s+Exception\s*:\s*return\s+(?:None|0|""|\{\}|\[\])\b', "Generic 'except Exception: return <dummy>' swallowing exceptions"),
+    ]
+
+    for pat, desc in swallow_patterns:
+        if re.search(pat, content):
+            return desc
+
+    # Check test assertion comment-out patterns in test files
+    if _is_test_file(filename):
+        lines = content.splitlines()
+        for idx, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if stripped.startswith("#") and ("assert " in stripped or "self.assert" in stripped):
+                return f"Commented-out test assertion on line {idx}: '{stripped[:60]}'"
+
+    return None
+
+
+def _is_test_file(filepath: str) -> bool:
+    """Check if filepath matches known test file patterns."""
+    return any(pat in filepath.lower() for pat in ["test_", "_test.py", "tests/", "spec/", ".test.", ".spec."])
 
 
 def tool_write_file_impl(args: dict, project_root: str) -> str:
@@ -1144,6 +1213,10 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         return "Error: Missing required 'path' parameter for WRITE_FILE."
 
     path_str = str(path_raw).strip()
+    protect_tests = args.get("protect_tests", False) or os.environ.get("TORCHLIGHT_PROTECT_TESTS") == "1"
+    if protect_tests and _is_test_file(path_str):
+        return "Error: Test files are protected during automated recovery. Fix the source code instead."
+
     p = (
         os.path.join(project_root, path_str)
         if not os.path.isabs(path_str)
@@ -1157,6 +1230,7 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         parent_dir = os.path.dirname(p)
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
+
         force = bool(args.get("force", False))
         reject_on_stub = bool(args.get("reject_on_stub", _REJECT_ON_STUB_DEFAULT))
         status, payload = _validate_and_repair(
@@ -1165,6 +1239,16 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         if status != "ok":
             return payload
         content = payload
+
+        if os.path.exists(p) and os.path.isfile(p):
+            try:
+                with open(p, "r", encoding="utf-8") as existing_f:
+                    existing_content = existing_f.read()
+                if hashlib.sha256(existing_content.encode("utf-8")).hexdigest() == hashlib.sha256(content.encode("utf-8")).hexdigest():
+                    return f"No change: file content of {path_str} is already identical."
+            except Exception:
+                pass
+
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
         line_count = content.count("\n") + (
@@ -1254,6 +1338,17 @@ def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
         except Exception:
             pass
 
+    # 3. Fallback C: No structural tags — try splitting on double blank-line heuristic
+    parts = re.split(r"\n\s*\n\s*\n", text.strip(), maxsplit=1)
+    if len(parts) == 2 and len(parts[0]) > 10 and len(parts[1]) > 10:
+        return _clean_segment(parts[0]), _clean_segment(parts[1])
+
+    # 4. Fallback D: Line alignment fallback
+    lines = text.strip().splitlines()
+    if len(lines) >= 4:
+        mid = len(lines) // 2
+        return _clean_segment("\n".join(lines[:mid])), _clean_segment("\n".join(lines[mid:]))
+
     return None, None
 
 
@@ -1276,6 +1371,27 @@ def _get_symbol_bounds_ast(content: str, symbol_name: str) -> Optional[Tuple[int
     except Exception:
         pass
     return None
+
+
+def _commit_edit_file(
+    p: str,
+    new_content: str,
+    original_content: str,
+    project_root: str,
+    force: bool,
+    reject_on_stub: bool,
+) -> tuple[bool, str]:
+    if hashlib.sha256(original_content.encode("utf-8")).hexdigest() == hashlib.sha256(new_content.encode("utf-8")).hexdigest():
+        return False, "No change: file content is already identical."
+    status, payload = _validate_and_repair(
+        new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+    )
+    if status != "ok":
+        return False, payload
+    new_content = payload
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    return True, new_content
 
 
 def tool_edit_file_impl(args: dict, project_root: str) -> str:
@@ -1347,6 +1463,10 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         if not path:
             return "EDIT_FILE requires a file path."
+
+        protect_tests = args.get("protect_tests", False) or os.environ.get("TORCHLIGHT_PROTECT_TESTS") == "1"
+        if protect_tests and _is_test_file(path):
+            return "Error: Test files are protected during automated recovery. Fix the source code instead."
 
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
 

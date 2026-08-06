@@ -242,23 +242,30 @@ class ToolRegistry:
         return results
 
 
-    def get_description_block(self, max_tokens: int = 4096) -> str:
-
+    def get_description_block(self, max_tokens: int = 4096, phase: Optional[str] = None) -> str:
         """
         Generate tool descriptions for injection into the system prompt.
 
-        Scales verbosity based on context window size.
+        Scales verbosity based on context window size and filters tools by active phase.
         """
+        tools = list(self._tools.values())
+        if phase:
+            from .schemas import _PHASE_TOOL_VISIBILITY
+            phase_key = phase.lower().strip()
+            if phase_key in _PHASE_TOOL_VISIBILITY:
+                allowed = _PHASE_TOOL_VISIBILITY[phase_key]
+                tools = [t for t in tools if t.name in allowed]
+
         if max_tokens <= 5000:
             # Minimal: just names and one-line descriptions
             lines = ["Available tools:"]
-            for tool in self._tools.values():
+            for tool in tools:
                 lines.append(f"  {tool.icon} {tool.name}: {tool.description[:60]}")
             return "\n".join(lines)
 
         # Full descriptions
         lines = ["## Available Tools\n"]
-        for tool in self._tools.values():
+        for tool in tools:
             risk_note = ""
             if tool.risk_level == CONFIRM:
                 risk_note = " [requires approval]"

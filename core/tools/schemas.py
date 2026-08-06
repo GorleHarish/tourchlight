@@ -405,6 +405,49 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
 # ── Validation ─────────────────────────────────────────────────────────────
 
 
+def _coerce_param(value, expected_type: str):
+    """Coerce LLM-provided values to expected schema types."""
+    if value is None or (isinstance(value, str) and value.lower() in ("null", "none", "")):
+        if expected_type != "string":
+            return None
+    if expected_type == "integer" and isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+    if expected_type == "number" and isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            pass
+    if expected_type == "boolean" and isinstance(value, str):
+        return value.lower() in ("true", "1", "yes")
+    if expected_type == "string" and not isinstance(value, str):
+        return str(value)
+    if expected_type == "array":
+        if isinstance(value, (list, tuple)):
+            return list(value)
+        if isinstance(value, str):
+            import json
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return parsed
+            except Exception:
+                pass
+            return [value]
+        return [value]
+    if expected_type == "object" and isinstance(value, str):
+        import json
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
+    return value
+
+
 def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
     """
     Validate a tool call against its schema and resolve parameter aliases.
@@ -418,7 +461,13 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
         return False, f"Unknown tool '{tool_name}'. Allowed tools are: {allowed}", args
 
     schema = TOOL_SCHEMAS[tool_upper]
-    normalized = dict(args) if isinstance(args, dict) else {}
+    if isinstance(args, str):
+        from core.tools.parser import unwrap_double_encoded_json
+        normalized = unwrap_double_encoded_json(args)
+    elif isinstance(args, dict):
+        normalized = dict(args)
+    else:
+        normalized = {}
 
     # Map parameter aliases to canonical schema keys
     aliases = schema.get("aliases", {})
@@ -428,6 +477,13 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
                 if alias in normalized and normalized[alias]:
                     normalized[target_key] = normalized[alias]
                     break
+
+    # Coerce parameter types to match schema expectations
+    properties = schema.get("properties", {})
+    for key, prop_def in properties.items():
+        if key in normalized and normalized[key] is not None:
+            expected = prop_def.get("type", "string")
+            normalized[key] = _coerce_param(normalized[key], expected)
 
     # Check required fields
     required = schema.get("required", [])
@@ -465,3 +521,21 @@ def get_openai_tools_schema() -> list[dict]:
             }
         )
     return tools
+
+
+_PHASE_TOOL_VISIBILITY = {
+    "plan": {"READ_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "ASK_USER", "SAVE_MEMORY", "WEB_SEARCH", "WEB_FETCH", "DOC_SEARCH", "WEB_VERIFY", "UPDATE_TASK_GRAPH"},
+    "chat": {"READ_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "ASK_USER", "SAVE_MEMORY", "WEB_SEARCH", "WEB_FETCH", "DOC_SEARCH", "WEB_VERIFY"},
+    "code": {"READ_FILE", "WRITE_FILE", "EDIT_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "RUN_COMMAND", "VERIFY", "GIT", "INSPECT_WEB", "FORMAT_CODE", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "ASK_USER"},
+    "troubleshoot": {"READ_FILE", "EDIT_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "RUN_COMMAND", "INSPECT_WEB", "GIT", "VERIFY", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "ASK_USER"},
+}
+
+
+def get_schemas_for_phase(phase: str = "code") -> dict:
+    """Filter TOOL_SCHEMAS based on the active agent phase to save context tokens."""
+    phase_key = (phase or "code").lower().strip()
+    if phase_key in _PHASE_TOOL_VISIBILITY:
+        allowed = _PHASE_TOOL_VISIBILITY[phase_key]
+        return {name: schema for name, schema in TOOL_SCHEMAS.items() if name in allowed}
+    return TOOL_SCHEMAS
+

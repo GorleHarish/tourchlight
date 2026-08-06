@@ -11,13 +11,8 @@ Your job is to inspect proposed LLM responses or tool calls for:
 
 CRITICAL INSTRUCTIONS:
 - Be strict and objective. Do NOT flatter or agree blindly with the proposal.
-- Output your analysis as a JSON object matching this schema:
-{
-  "has_flaws": true/false,
-  "flaws": ["list of specific flaws or missing elements"],
-  "recommendations": ["list of actionable fixes"]
-}
-- If the proposal is fully sound and free of errors, set "has_flaws" to false and "flaws" to [].
+- Output each flaw wrapped in <flaw>...</flaw> tags and each recommendation in <recommendation>...</recommendation> tags (or as a JSON object with "has_flaws", "flaws", and "recommendations").
+- If the proposal is fully sound and free of errors, do not output any <flaw> tags.
 """
 
 REFINER_SYSTEM_PROMPT = """You are Torchlight, a precision software engineer.

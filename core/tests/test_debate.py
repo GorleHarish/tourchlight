@@ -138,3 +138,21 @@ def test_verify_and_refine_bypasses_auto_tools():
 
     asyncio.run(_test())
 
+
+def test_critique_parsing_xml_tags():
+    async def _test():
+        critic_response = """Here is my review:
+<flaw>Undefined variable 'total' in calculate_sum</flaw>
+<recommendation>Initialize total = 0 before the loop</recommendation>"""
+        client = MockLLMClient(responses=[critic_response])
+        verifier = DebateVerifier(client)
+
+        res = await verifier.critique("def calculate_sum(items): for x in items: total += x", "Sum items")
+
+        assert res.has_flaws is True
+        assert "Undefined variable 'total' in calculate_sum" in res.flaws
+        assert "Initialize total = 0 before the loop" in res.recommendations
+
+    asyncio.run(_test())
+
+

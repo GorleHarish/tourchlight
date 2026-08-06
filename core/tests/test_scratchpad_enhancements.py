@@ -62,7 +62,7 @@ def test_l0_scratchpad_budget_drops_low_priority_sections():
     from core.memory.budget import ContextBudget
 
     memory = TieredMemory(MemoryConfig(max_tokens=4096))
-    long = "long" * 40
+    long = "long" * 250
     memory.state.current_task = long
     memory.state.active_file = long
     memory.state.files_modified = [long] * 5
@@ -73,7 +73,7 @@ def test_l0_scratchpad_budget_drops_low_priority_sections():
 
     # Under pressure the L0 budget shrinks, so low-priority sections are dropped
     # rather than crowding the conversation.
-    tight = ContextBudget(max_tokens=4096, used_tokens=3900, base_pinned_tokens=600)
+    tight = ContextBudget(max_tokens=4096, used_tokens=3900, base_pinned_tokens=600, l0_min_tokens=150)
     pad = memory.format_l0_scratchpad(budget=tight)
     assert pad.startswith("[L0 WORKING MEMORY SCRATCHPAD]")
     assert len(pad) <= tight.l0_chars

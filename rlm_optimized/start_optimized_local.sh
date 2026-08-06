@@ -129,10 +129,19 @@ log_info "  - Metal GPU Layers: ALL (-ngl 99)"
 log_info "  - Threads: $THREADS"
 log_info "  - Batch Size: $BATCH_SIZE"
 
+# Set global default parameters that can be overridden per model
+FLASH_ATTENTION="on"
+REPEAT_PENALTY="1.1"
+
 # Launch server
 EXTRA_ARGS=()
 if [[ "$MODEL_PATH" == *"qwen"* ]]; then
-    EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja")
+    EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja" --rope-freq-base 1000000)
+    # Qwen 2.5 overrides to fix GQA / TurboQuant noise amplification (q8_0)
+    # Note: FLASH_ATTENTION must be 'on' because llama.cpp requires it for V cache quantization
+    KV_CACHE_COMPRESSION="q8_0"
+    FLASH_ATTENTION="on"
+    REPEAT_PENALTY="1.0"
 fi
 
 exec "$LLAMA_SERVER_BIN" \
@@ -140,11 +149,11 @@ exec "$LLAMA_SERVER_BIN" \
     --port "$PORT" \
     -c "$CTX_SIZE" \
     -ngl 99 \
-    -fa on \
+    -fa "$FLASH_ATTENTION" \
     -t "$THREADS" \
     -b "$BATCH_SIZE" \
     -np 1 \
-    --repeat-penalty 1.1 \
+    --repeat-penalty "$REPEAT_PENALTY" \
     --cache-type-k "$KV_CACHE_COMPRESSION" \
     --cache-type-v "$KV_CACHE_COMPRESSION" \
     "${EXTRA_ARGS[@]}"

@@ -77,7 +77,9 @@ class TestRunResult:
         return self.return_code == 0 and self.failed == 0
 
 
-def extract_surgical_traceback(output: str, command: str = "") -> str:
+def extract_surgical_traceback(
+    output: str, command: str = "", max_lines: int = 20
+) -> str:
     """Extract strictly surgical failure traceback from test output, removing passing test lists, ANSI codes, and noise."""
     if not output:
         return ""
@@ -102,7 +104,8 @@ def extract_surgical_traceback(output: str, command: str = "") -> str:
                 break
             extracted.append(line)
         if extracted:
-            return "\n".join(extracted[:40])
+            result = "\n".join(extracted[:max_lines])
+            return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
 
     # 2. Python Traceback / SyntaxError search
     tb_idx = -1
@@ -121,7 +124,8 @@ def extract_surgical_traceback(output: str, command: str = "") -> str:
             break
 
     if tb_idx != -1:
-        return "\n".join(lines[tb_idx : tb_idx + 35])
+        result = "\n".join(lines[tb_idx : tb_idx + max_lines])
+        return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
 
     # 3. Cargo / Jest / npm test failure search
     fail_indices = [
@@ -134,11 +138,13 @@ def extract_surgical_traceback(output: str, command: str = "") -> str:
     ]
     if fail_indices:
         start = max(0, fail_indices[0] - 2)
-        end = min(len(lines), fail_indices[-1] + 15)
-        return "\n".join(lines[start:end])
+        end = min(len(lines), fail_indices[-1] + max_lines)
+        result = "\n".join(lines[start:end])
+        return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
 
-    # Fallback to last 20 lines
-    return "\n".join(lines[-20:])
+    # Fallback to last max_lines
+    result = "\n".join(lines[-max_lines:])
+    return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
 
 
 class ExecutionFeedbackLoop:

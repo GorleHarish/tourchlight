@@ -60,141 +60,20 @@ class SolveResult:
     steps: list[Step] = field(default_factory=list)
     depth: int = 0
     total_llm_calls: int = 0
+    quality_score: float = 1.0
+    gate_bypasses: int = 0
 
 
-def _tolerant_json_repair(raw: str) -> str:
-    """Repair common LLM JSON corruption inside string values:
-    raw (unescaped) newlines/tabs, and a trailing unterminated string.
-    Existing escape sequences are preserved."""
-    out = []
-    in_str = False
-    esc = False
-    for ch in raw:
-        if in_str:
-            if esc:
-                esc = False
-                if ch == "\n":
-                    out.append("n")  # backslash already emitted -> forms \n
-                elif ch == "\r":
-                    out.append("r")
-                else:
-                    out.append(ch)
-                continue
-            if ch == "\\":
-                out.append(ch)
-                esc = True
-                continue
-            if ch == '"':
-                in_str = False
-                out.append(ch)
-                continue
-            if ch == "\n" or ch == "\r":
-                out.append("\\n")
-                continue
-            if ch == "\t":
-                out.append("\\t")
-                continue
-            out.append(ch)
-        else:
-            if ch == '"':
-                in_str = True
-            out.append(ch)
-    if in_str:
-        out.append('"')
-    return "".join(out)
-
-
-def _extract_balanced_json_object(text: str) -> Optional[str]:
-    """Return the first balanced top-level JSON object literal in text.
-    Handles nested braces and braces inside string values, and stops cleanly
-    at the `}` that closes the object instead of swallowing trailing prose."""
-    start = text.find("{")
-    if start == -1:
-        return None
-    depth = 0
-    in_str = False
-    esc = False
-    for i in range(start, len(text)):
-        ch = text[i]
-        if in_str:
-            if esc:
-                esc = False
-            elif ch == "\\":
-                esc = True
-            elif ch == '"':
-                in_str = False
-        else:
-            if ch == '"':
-                in_str = True
-            elif ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    return text[start : i + 1]
-    return text[start:]
-
-
-def _clean_and_parse_json(raw_str: str) -> dict:
-    raw = (raw_str or "").strip()
-    if not raw:
-        return {}
-
-    def _extract_dict(data):
-        if isinstance(data, dict):
-            return data
-        if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-            return data[0]
-        return None
-
-    last_parsed = None
-    # 1. Direct JSON parse
-    try:
-        data = json.loads(raw)
-        last_parsed = data
-        extracted = _extract_dict(data)
-        if extracted is not None:
-            return extracted
-    except Exception:
-        pass
-
-    # 2. Tolerant repair: raw newlines/tabs in strings, unterminated trailing string
-    try:
-        data = json.loads(_tolerant_json_repair(raw))
-        last_parsed = data
-        extracted = _extract_dict(data)
-        if extracted is not None:
-            return extracted
-    except Exception:
-        pass
-
-    # 3. Regex fallback extraction for key properties
-    result = {}
-    path_match = re.search(
-        r'["\']?(?:path|file|filepath|filename)["\']?\s*:\s*["\']([^"\']+)["\']', raw
-    )
-    if path_match:
-        result["path"] = path_match.group(1)
-
-    content_match = re.search(
-        r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*?)["\']\s*(?:,|\}|\])?$',
-        raw,
-    )
-    if content_match:
-        result["content"] = content_match.group(1)
-
-    if not result:
-        if isinstance(last_parsed, dict):
-            return last_parsed
-        if (
-            isinstance(last_parsed, list)
-            and len(last_parsed) > 0
-            and isinstance(last_parsed[0], dict)
-        ):
-            return last_parsed[0]
-        result = {"raw": raw}
-
-    return result
+from core.tools.parser import (
+    tolerant_json_repair as _tolerant_json_repair,
+    extract_balanced_json_object as _extract_balanced_json_object,
+    clean_and_parse_json as _clean_and_parse_json,
+    parse_tool_call_payload,
+    repair_unclosed_tool_call_tag,
+    strip_interleaved_prose,
+    unwrap_double_encoded_json,
+)
+from core.tools.dedup import TrajectoryLock
 
 
 def _looks_like_prose_or_outline(content: str) -> bool:
@@ -569,8 +448,7 @@ class RLMEngineOptimized:
         last_code_output = None  # Track last successful CODE result
 
         # ── Consecutive duplicate tool call detection ─────────────────
-        _last_tool_key: Optional[tuple[str, str]] = None
-        consecutive_duplicates = 0
+        trajectory_lock = TrajectoryLock(window_size=5, max_duplicates=3)
         MAX_DUPLICATES = 3  # force-break after this many consecutive identical calls
 
         # ── REPL code duplicate detection & temperature recovery ──────
@@ -727,8 +605,16 @@ class RLMEngineOptimized:
 
                 # Gate exhausted or passed: if failures are still unresolved, surface
                 # them so callers/users never see a clean success on broken work.
+                if getattr(self, "_final_answer_rejections", 0) >= 2 and rejection_reason:
+                    if not content.startswith("[UNVERIFIED CHANGES]"):
+                        content = f"[UNVERIFIED CHANGES]\n{content}"
+                    result.gate_bypasses = getattr(self, "_final_answer_rejections", 0)
+
                 if has_failing:
                     content = content + self._build_unresolved_failures_warning()
+
+                quality_score = (0.5 if has_failing else 1.0) * (0.5 if pending_tasks else 1.0)
+                result.quality_score = quality_score
 
                 step.result = content
                 result.steps.append(step)
@@ -850,13 +736,11 @@ class RLMEngineOptimized:
                     "VERIFY",
                     "ASK_USER",
                 }
-                canonical_args = json.dumps(tool_args, sort_keys=True, default=str)
                 tool_name_upper = tool_name.upper() if tool_name else ""
-                tool_key = (tool_name_upper, canonical_args)
 
                 if tool_name_upper not in _READ_ONLY_TOOLS:
-                    if tool_key == _last_tool_key:
-                        consecutive_duplicates += 1
+                    is_dup, dup_count, hint = trajectory_lock.is_duplicate(tool_name, tool_args)
+                    if is_dup:
                         step.result = f"(duplicate — already executed {tool_name})"
                         result.steps.append(step)
                         if self.on_step:
@@ -870,14 +754,20 @@ class RLMEngineOptimized:
                             },
                         )
 
-                        if consecutive_duplicates >= MAX_DUPLICATES:
+                        if use_memory and hasattr(memory, "state") and memory.state is not None:
+                            if hasattr(memory.state, "tried_and_failed"):
+                                entry = f"Duplicate {tool_name_upper} call blocked ({dup_count}x)"
+                                if entry not in memory.state.tried_and_failed:
+                                    memory.state.tried_and_failed.append(entry)
+
+                        if dup_count >= MAX_DUPLICATES:
                             # Force-extract — the model is stuck in a loop
-                            forced = f"Tool {tool_name} was executed {consecutive_duplicates} times with identical arguments. The result is unchanged. Present whatever you have using <FINAL_ANSWER>."
+                            forced = f"Tool {tool_name} was executed {dup_count} times with identical or semantically-equivalent arguments. Present whatever you have using <FINAL_ANSWER>."
                             step_forced = Step(
                                 step_number=iteration + 2,
                                 depth=depth,
                                 action="final_answer",
-                                thinking=f"(forced after {consecutive_duplicates} duplicate {tool_name} calls)",
+                                thinking=f"(forced after {dup_count} duplicate {tool_name} calls)",
                                 content=forced,
                                 result=forced,
                             )
@@ -890,13 +780,7 @@ class RLMEngineOptimized:
                                 self.client.temperature = initial_temp
                             return result
 
-                        feedback = (
-                            f"⚠️ You already called {tool_name} with identical arguments on a previous turn. "
-                            "Do NOT repeat the exact same tool call. "
-                            "If you need to verify the result, use READ_FILE instead. "
-                            "Otherwise, use a different tool or parameters, "
-                            "or wrap your response in <FINAL_ANSWER>your answer</FINAL_ANSWER>."
-                        )
+                        feedback = hint
                         if use_memory:
                             memory.add_assistant_message(response)
                             memory.add_user_message(feedback)
@@ -905,8 +789,7 @@ class RLMEngineOptimized:
                             messages.append({"role": "user", "content": feedback})
                         continue
                     else:
-                        _last_tool_key = tool_key
-                        consecutive_duplicates = 0
+                        trajectory_lock.register(tool_name, tool_args)
 
                 # Tiered approval
                 registry = get_tool_registry()

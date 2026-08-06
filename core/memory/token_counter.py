@@ -35,9 +35,10 @@ class TokenCounter:
         if not text:
             return 0
         cjk = len(re.findall(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", text))
-        tokens = len(re.findall(r"\b\w+\b", text))
-        symbols = len(re.findall(r"[^\w\s]", text))
-        return tokens + cjk + (symbols // 2)
+        words = len(re.findall(r"\b\w+\b", text))
+        operators = len(re.findall(r"[{}()\[\]<>!=+\-*/&|^~%@;:,.]", text))
+        newlines = text.count("\n")
+        return int((words + cjk + operators + (newlines // 2)) * 1.1)
 
     def truncate(self, text: str, max_tokens: int) -> str:
         if not text:

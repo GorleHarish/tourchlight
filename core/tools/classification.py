@@ -33,6 +33,16 @@ _SAFE_COMMANDS = {
 }
 
 
+_SAFE_PATTERNS = [
+    r'^git\s+(?:status|log|diff|show|branch|blame|rev-parse|tag|remote|stash\s+list|fetch)\b',
+    r'^python[3]?\s+-c\b',
+    r'^(?:cat|head|tail|grep|rg|wc|file|type|ls|dir|which|whereis|find|pwd|echo)\b',
+    r'^(?:pip\s+(?:show|list|freeze)|npm\s+(?:ls|list|outdated)|cargo\s+(?:tree|metadata|check|test|clippy))\b',
+    r'^(?:pytest|mypy|flake8|ruff\s+check)\b',
+]
+_SAFE_RE = re.compile("|".join(_SAFE_PATTERNS), re.IGNORECASE)
+
+
 # ── Destructive patterns (always REVIEW risk) ─────────────────────────────
 
 _DESTRUCTIVE_PATTERNS = [
@@ -62,11 +72,13 @@ def classify_command(cmd: str) -> str:
     """
     Classify a shell command into AUTO, CONFIRM, or REVIEW risk tier.
 
-    Priority: REVIEW > safe list > CONFIRM > default CONFIRM
+    Priority: REVIEW > safe list / safe regex > CONFIRM > default CONFIRM
     """
     cmd_stripped = cmd.strip()
     if _DESTRUCTIVE_RE.search(cmd_stripped):
         return REVIEW
+    if _SAFE_RE.search(cmd_stripped):
+        return AUTO
     for safe in _SAFE_COMMANDS:
         if cmd_stripped.startswith(safe) or cmd_stripped == safe:
             return AUTO

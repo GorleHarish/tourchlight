@@ -1941,11 +1941,7 @@ class TorchlightApp(App):
                 ram_pct = 0
 
         # Context Token Calculation
-        mem = getattr(self.engine, "_memory", None)
-        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
-            tokens_est = mem.total_tokens
-        else:
-            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+        tokens_est = self._live_context_tokens()
 
         ctx_max = CTX_SIZE
         ctx_pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
@@ -2019,11 +2015,7 @@ class TorchlightApp(App):
         return build_plan_text(project_root, is_goal)
 
     def _build_context_progress_text(self) -> str:
-        mem = getattr(self.engine, "_memory", None)
-        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
-            tokens_est = mem.total_tokens
-        else:
-            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+        tokens_est = self._live_context_tokens()
 
         ctx_max = CTX_SIZE
         pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
@@ -2049,10 +2041,7 @@ class TorchlightApp(App):
 
     def _build_meta_text(self) -> str:
         mem = getattr(self.engine, "_memory", None)
-        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
-            tokens_est = mem.total_tokens
-        else:
-            tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+        tokens_est = self._live_context_tokens()
 
         server_status_str = getattr(self, "engine_server_status", "● Active")
         if (
@@ -2199,6 +2188,10 @@ class TorchlightApp(App):
         if not user_text or self._is_running:
             return
 
+        if getattr(self, "_server_starting", False):
+            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            return
+
         if not self.model_name or self.model_name == "local-model":
             self.notify(
                 "No model selected. Please select a model first.", severity="error"
@@ -2285,6 +2278,9 @@ class TorchlightApp(App):
         if self._is_running:
             self.stop_current_agent()
             return
+        if getattr(self, "_server_starting", False):
+            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            return
         if (
             not getattr(self, "_model_connected", False)
             or not self.model_name
@@ -2298,6 +2294,9 @@ class TorchlightApp(App):
         """Programmatic send — called by ctrl+enter binding."""
         if self._is_running:
             self.stop_current_agent()
+            return
+        if getattr(self, "_server_starting", False):
+            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
             return
         if (
             not getattr(self, "_model_connected", False)
@@ -2354,6 +2353,9 @@ class TorchlightApp(App):
 
     @on(PromptTextArea.SubmitRequested, "#user-input")
     async def on_user_input_submit(self, event: PromptTextArea.SubmitRequested) -> None:
+        if getattr(self, "_server_starting", False):
+            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            return
         if (
             not getattr(self, "_model_connected", False)
             or not self.model_name
@@ -2599,12 +2601,7 @@ class TorchlightApp(App):
     def update_agent_tab_context(self) -> None:
         """Update the context usage bar in the Agent tab."""
         try:
-            mem = getattr(self.engine, "_memory", None)
-            tokens_est = 0
-            if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
-                tokens_est = mem.total_tokens
-            else:
-                tokens_est = getattr(self.engine, "_total_llm_calls", 0) * 450
+            tokens_est = self._live_context_tokens()
 
             ctx_max = CTX_SIZE
             pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
@@ -2972,6 +2969,7 @@ class TorchlightApp(App):
             self._is_running = False
             self._set_input_enabled(True)
             self._agent_state = "IDLE"
+            self._stream_token_count = 0
             self.update_status_bar()
             try:
                 self.set_focus(self.query_one("#user-input", TextArea))
@@ -3030,6 +3028,14 @@ class TorchlightApp(App):
         self._stream_token_count += max(1, len(chunk) // 3)
         if self._first_token_time and (now - self._first_token_time) > 0.05:
             self._live_tps = self._stream_token_count / (now - self._first_token_time)
+
+        # Keep the status-bar context gauge climbing during generation
+        try:
+            if now - getattr(self, "_last_status_refresh_ts", 0.0) > 0.5:
+                self._last_status_refresh_ts = now
+                self.call_after_refresh(self.update_status_bar)
+        except Exception:
+            pass
 
         throttled = now - self._token_throttle_last < self._token_throttle_interval
 
@@ -3587,7 +3593,7 @@ class TorchlightApp(App):
                     new_provider
                 )
 
-                if self.engine_port <= 0 or is_port_in_use(self.engine_port):
+                if self.engine_port <= 0:
                     self._update_connection_state(True)
                     self.notify(
                         f"Connected to {escape(selected['name'])}.",
@@ -3595,14 +3601,22 @@ class TorchlightApp(App):
                         timeout=3,
                     )
                 elif not self.externally_managed:
-                    self.on_start_engine_btn()
+                    self._start_engine(force_restart=True)
                 else:
-                    self._update_connection_state(False)
-                    self.notify(
-                        f"Switched to {escape(selected['name'])}. Start service on port {self.engine_port}.",
-                        severity="warning",
-                        timeout=5,
-                    )
+                    if is_port_in_use(self.engine_port):
+                        self._update_connection_state(True)
+                        self.notify(
+                            f"Connected to {escape(selected['name'])}.",
+                            severity="information",
+                            timeout=3,
+                        )
+                    else:
+                        self._update_connection_state(False)
+                        self.notify(
+                            f"Switched to {escape(selected['name'])}. Start service on port {self.engine_port}.",
+                            severity="warning",
+                            timeout=5,
+                        )
                 self.update_status_bar()
                 self.update_sidebar_meta()
 
@@ -3676,6 +3690,9 @@ class TorchlightApp(App):
 
     @on(Button.Pressed, "#start-engine-btn")
     def on_start_engine_btn(self) -> None:
+        self._start_engine(force_restart=False)
+
+    def _start_engine(self, force_restart: bool = False) -> None:
         container = self.query_one("#chat-container")
 
         if self.engine_port <= 0:
@@ -3688,7 +3705,7 @@ class TorchlightApp(App):
             self.update_sidebar_meta()
             return
 
-        if is_port_in_use(self.engine_port):
+        if not force_restart and is_port_in_use(self.engine_port):
             self._server_starting = False
             self._last_server_online = True
             self._update_connection_state(True)
@@ -3837,7 +3854,7 @@ class TorchlightApp(App):
             pass
 
         # 3. Re-launch local server
-        self.on_start_engine_btn()
+        self._start_engine(force_restart=True)
         self.update_status_bar()
         self.update_sidebar_meta()
 
@@ -3966,14 +3983,22 @@ class TorchlightApp(App):
         except Exception:
             pass
 
-    def _context_usage(self) -> tuple[int, int, float]:
+    def _live_context_tokens(self) -> int:
+        """Committed memory tokens plus in-flight streamed tokens for the context gauge.
+
+        Memory only receives a message once the full LLM response is parsed, so the
+        streamed tokens are added on top here to make the gauge climb during generation.
+        """
         mem = getattr(self.engine, "_memory", None)
-        tot_tok = getattr(mem, "total_tokens", None)
-        if mem and isinstance(tot_tok, (int, float)) and tot_tok > 0:
-            tokens_est = int(tot_tok)
+        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
+            base = int(mem.total_tokens)
         else:
             calls = getattr(self.engine, "_total_llm_calls", 0)
-            tokens_est = calls * 450 if isinstance(calls, (int, float)) else 0
+            base = int(calls) * 450 if calls else 0
+        return base + getattr(self, "_stream_token_count", 0)
+
+    def _context_usage(self) -> tuple[int, int, float]:
+        tokens_est = self._live_context_tokens()
         ctx_max = CTX_SIZE
         pct = min(100.0, (tokens_est / ctx_max) * 100) if ctx_max > 0 else 0.0
         return int(tokens_est), ctx_max, pct

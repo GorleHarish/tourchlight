@@ -59,6 +59,7 @@ class Flashlight:
         self._anchor_pre = _DEFAULT_ANCHOR_PRE
         self._graph_nodes = None  # Lazy-loaded AST graph node cache
         self._git_churn_scores = None  # Lazy-loaded Git churn score cache
+        self._MAX_QUERY_DEPTH = 2
 
     def configure(self, max_context_tokens: int) -> None:
         self._max_files, self._max_lines, self._anchor_pre = _beam_config_for_context(max_context_tokens)
@@ -91,7 +92,12 @@ class Flashlight:
         self._git_churn_scores = churn
         return self._git_churn_scores
 
-    def beam(self, query: str, max_files: Optional[int] = None) -> list[BeamResult]:
+    def beam(
+        self, query: str, max_files: Optional[int] = None, _depth: int = 0
+    ) -> list[BeamResult]:
+        if _depth >= self._MAX_QUERY_DEPTH:
+            return []
+
         if max_files is None:
             max_files = self._max_files
 
