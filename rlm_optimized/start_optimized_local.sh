@@ -37,9 +37,16 @@ fi
 
 # Default configuration
 PORT=${PORT:-8080}
-# q8_0 is the safe default: q4_0 KV quantization degrades output quality on
-# Q4_K_M models (documented llama.cpp issue). q4_0, q8_0, or f16 accepted.
-KV_CACHE_COMPRESSION=${KV_CACHE_COMPRESSION:-q8_0}
+# KV cache: asymmetric real TurboQuant (TheTom/llama-cpp-turboquant fork).
+# K stays q8_0 (exact, cheap); V uses turbo4 (~4.125 bpv) — verified safe on M1
+# via the prefix-reuse quality gate (unlike q4_0 which garbles output).
+# Legacy KV_CACHE_COMPRESSION env still accepted and sets BOTH K and V.
+KV_CACHE_TYPE_K=${KV_CACHE_TYPE_K:-q8_0}
+KV_CACHE_TYPE_V=${KV_CACHE_TYPE_V:-turbo4}
+if [ -n "${KV_CACHE_COMPRESSION:-}" ]; then
+    KV_CACHE_TYPE_K="$KV_CACHE_COMPRESSION"
+    KV_CACHE_TYPE_V="$KV_CACHE_COMPRESSION"
+fi
 MODEL_INPUT=${1:-""}
 
 if [ -n "$MODEL_INPUT" ]; then
@@ -104,19 +111,19 @@ else
     log_warn "Non-macOS system detected. Metal optimizations are skipped."
 fi
 
-# Locate llama-server / llama-cli
-LLAMA_SERVER_BIN="/Users/harishgorle/.lmstudio/extensions/backends/llama.cpp-mac-arm64-apple-metal-advsimd-2.25.2/llama-server"
-if ! command -v "$LLAMA_SERVER_BIN" &>/dev/null; then
-    # Check common build directories
-    if [ -f "./llama-cpp-turboquant/build/bin/llama-server" ]; then
-        LLAMA_SERVER_BIN="./llama-cpp-turboquant/build/bin/llama-server"
-    elif [ -f "./llama.cpp/build/bin/llama-server" ]; then
-        LLAMA_SERVER_BIN="./llama.cpp/build/bin/llama-server"
-    elif command -v "llama-server" &>/dev/null; then
-        LLAMA_SERVER_BIN="llama-server"
-    else
-        log_error "llama-server command not found. Please install llama.cpp or compile in './llama-cpp-turboquant'."
-    fi
+# Locate llama-server: prefer the TurboQuant fork (enables turbo2/3/4 KV cache
+# types), then the LM Studio bundled build, then common builds / PATH.
+LLAMA_SERVER_BIN=""
+if [ -f "./llama-cpp-turboquant/build/bin/llama-server" ]; then
+    LLAMA_SERVER_BIN="./llama-cpp-turboquant/build/bin/llama-server"
+elif [ -f "/Users/harishgorle/.lmstudio/extensions/backends/llama.cpp-mac-arm64-apple-metal-advsimd-2.25.2/llama-server" ]; then
+    LLAMA_SERVER_BIN="/Users/harishgorle/.lmstudio/extensions/backends/llama.cpp-mac-arm64-apple-metal-advsimd-2.25.2/llama-server"
+elif [ -f "./llama.cpp/build/bin/llama-server" ]; then
+    LLAMA_SERVER_BIN="./llama.cpp/build/bin/llama-server"
+elif command -v "llama-server" &>/dev/null; then
+    LLAMA_SERVER_BIN="llama-server"
+else
+    log_error "llama-server command not found. Please install the TurboQuant fork or compile in './llama-cpp-turboquant'."
 fi
 
 # Free port if in use by an existing server process
@@ -134,9 +141,11 @@ REPEAT_PENALTY="1.1"
 EXTRA_ARGS=()
 if [[ "$MODEL_PATH" == *"qwen"* ]]; then
     EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja" --rope-freq-base 1000000)
-    # Qwen 2.5 KV cache stays q8_0 (never q4_0 — produces garbled output).
-    # Note: FLASH_ATTENTION must be 'on' because llama.cpp requires it for V cache quantization
-    KV_CACHE_COMPRESSION="q8_0"
+    # Qwen 2.5: K stays q8_0, V uses turbo4 (asymmetric — symmetric turbo is
+    # catastrophic on Qwen2.5 Q4_K_M, PPL 3556). turbo4 V verified coherent via
+    # the prefix-reuse quality gate.
+    KV_CACHE_TYPE_K="q8_0"
+    KV_CACHE_TYPE_V="turbo4"
     FLASH_ATTENTION="on"
     REPEAT_PENALTY="1.0"
 fi
@@ -145,7 +154,7 @@ log_info "Booting llama-server with the following parameters:"
 log_info "  - Model: $MODEL_PATH"
 log_info "  - Port: $PORT"
 log_info "  - Context Size: $CTX_SIZE"
-log_info "  - KV Cache Compression: $KV_CACHE_COMPRESSION"
+log_info "  - KV Cache (K/V): $KV_CACHE_TYPE_K / $KV_CACHE_TYPE_V (TurboQuant)"
 log_info "  - FlashAttention: ON"
 log_info "  - Metal GPU Layers: ALL (-ngl 99)"
 log_info "  - Threads: $THREADS"
@@ -161,6 +170,6 @@ exec "$LLAMA_SERVER_BIN" \
     -b "$BATCH_SIZE" \
     -np 1 \
     --repeat-penalty "$REPEAT_PENALTY" \
-    --cache-type-k "$KV_CACHE_COMPRESSION" \
-    --cache-type-v "$KV_CACHE_COMPRESSION" \
+    --cache-type-k "$KV_CACHE_TYPE_K" \
+    --cache-type-v "$KV_CACHE_TYPE_V" \
     "${EXTRA_ARGS[@]}"
