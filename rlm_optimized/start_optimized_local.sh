@@ -24,15 +24,22 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Redirect output to log file if attached to an interactive terminal to protect TUI
+# Always capture server output to the log file (protects the TUI and preserves
+# boot diagnostics such as ggml_metal_init / offload lines for troubleshooting).
 mkdir -p "$PROJECT_ROOT/.torchlight"
 if [ -t 1 ]; then
+    # Interactive launch: mirror to the terminal AND the log file.
+    exec > >(tee -a "$PROJECT_ROOT/.torchlight/llama_server.log") 2>&1
+else
+    # Non-interactive (TUI / daemonized) launch: log only.
     exec >> "$PROJECT_ROOT/.torchlight/llama_server.log" 2>&1
 fi
 
 # Default configuration
 PORT=${PORT:-8080}
-KV_CACHE_COMPRESSION=${KV_CACHE_COMPRESSION:-q4_0} # q4_0, q8_0, or f16
+# q8_0 is the safe default: q4_0 KV quantization degrades output quality on
+# Q4_K_M models (documented llama.cpp issue). q4_0, q8_0, or f16 accepted.
+KV_CACHE_COMPRESSION=${KV_CACHE_COMPRESSION:-q8_0}
 MODEL_INPUT=${1:-""}
 
 if [ -n "$MODEL_INPUT" ]; then
@@ -119,6 +126,21 @@ if lsof -ti :"$PORT" &>/dev/null; then
     sleep 1
 fi
 
+# Set global default parameters that can be overridden per model
+FLASH_ATTENTION="on"
+REPEAT_PENALTY="1.1"
+
+# Per-model overrides (must run before the boot-log block so the log reflects reality)
+EXTRA_ARGS=()
+if [[ "$MODEL_PATH" == *"qwen"* ]]; then
+    EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja" --rope-freq-base 1000000)
+    # Qwen 2.5 KV cache stays q8_0 (never q4_0 — produces garbled output).
+    # Note: FLASH_ATTENTION must be 'on' because llama.cpp requires it for V cache quantization
+    KV_CACHE_COMPRESSION="q8_0"
+    FLASH_ATTENTION="on"
+    REPEAT_PENALTY="1.0"
+fi
+
 log_info "Booting llama-server with the following parameters:"
 log_info "  - Model: $MODEL_PATH"
 log_info "  - Port: $PORT"
@@ -128,21 +150,6 @@ log_info "  - FlashAttention: ON"
 log_info "  - Metal GPU Layers: ALL (-ngl 99)"
 log_info "  - Threads: $THREADS"
 log_info "  - Batch Size: $BATCH_SIZE"
-
-# Set global default parameters that can be overridden per model
-FLASH_ATTENTION="on"
-REPEAT_PENALTY="1.1"
-
-# Launch server
-EXTRA_ARGS=()
-if [[ "$MODEL_PATH" == *"qwen"* ]]; then
-    EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja" --rope-freq-base 1000000)
-    # Qwen 2.5 TurboQuant 4-bit KV cache quantization (q4_0)
-    # Note: FLASH_ATTENTION must be 'on' because llama.cpp requires it for V cache quantization
-    KV_CACHE_COMPRESSION="q8_0"
-    FLASH_ATTENTION="on"
-    REPEAT_PENALTY="1.0"
-fi
 
 exec "$LLAMA_SERVER_BIN" \
     -m "$MODEL_PATH" \

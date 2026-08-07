@@ -62,29 +62,160 @@ def _scratchpad_clean(entry, limit: int = _SCRATCHPAD_ENTRY_LIMIT) -> str:
 
 
 _NON_FILE_EXTENSIONS = {
-    "name", "role", "state", "get", "set", "items", "keys", "values", "count",
-    "data", "id", "type", "val", "arg", "args", "kwarg", "kwargs", "attr", "func",
-    "self", "this", "parent", "child", "len", "split", "join", "strip", "lower",
-    "upper", "append", "extend", "pop", "update", "clear", "group", "search",
-    "match", "findall", "finditer", "sub", "replace", "start", "end", "stdout",
-    "stderr", "stdin", "path", "result", "error", "status", "code", "message",
-    "content", "text", "length", "format", "read", "write", "close", "open",
-    "flush", "is_dir", "is_file", "exists", "copy", "move", "remove", "delete",
-    "add", "sub", "mul", "div", "mod", "eq", "ne", "lt", "gt", "le", "ge",
-    "target", "source", "output", "input", "params", "options", "config", "spec",
-    "value", "key", "node", "element", "component", "class", "module", "object",
-    "enabled", "active", "default", "factory", "args", "kwargs", "parent"
+    "name",
+    "role",
+    "state",
+    "get",
+    "set",
+    "items",
+    "keys",
+    "values",
+    "count",
+    "data",
+    "id",
+    "type",
+    "val",
+    "arg",
+    "args",
+    "kwarg",
+    "kwargs",
+    "attr",
+    "func",
+    "self",
+    "this",
+    "parent",
+    "child",
+    "len",
+    "split",
+    "join",
+    "strip",
+    "lower",
+    "upper",
+    "append",
+    "extend",
+    "pop",
+    "update",
+    "clear",
+    "group",
+    "search",
+    "match",
+    "findall",
+    "finditer",
+    "sub",
+    "replace",
+    "start",
+    "end",
+    "stdout",
+    "stderr",
+    "stdin",
+    "path",
+    "result",
+    "error",
+    "status",
+    "code",
+    "message",
+    "content",
+    "text",
+    "length",
+    "format",
+    "read",
+    "write",
+    "close",
+    "open",
+    "flush",
+    "is_dir",
+    "is_file",
+    "exists",
+    "copy",
+    "move",
+    "remove",
+    "delete",
+    "add",
+    "sub",
+    "mul",
+    "div",
+    "mod",
+    "eq",
+    "ne",
+    "lt",
+    "gt",
+    "le",
+    "ge",
+    "target",
+    "source",
+    "output",
+    "input",
+    "params",
+    "options",
+    "config",
+    "spec",
+    "value",
+    "key",
+    "node",
+    "element",
+    "component",
+    "class",
+    "module",
+    "object",
+    "enabled",
+    "active",
+    "default",
+    "factory",
+    "args",
+    "kwargs",
+    "parent",
 }
 
 _VALID_FILE_EXTENSIONS = {
-    "py", "js", "ts", "jsx", "tsx", "json", "md", "txt", "html", "css", "tcss",
-    "rs", "go", "sh", "c", "cpp", "h", "hpp", "yml", "yaml", "toml", "xml",
-    "ini", "cfg", "sql", "java", "rb", "php", "kt", "swift", "bat", "ps1",
-    "log", "csv", "tsv", "diff", "patch", "lock", "rst", "env"
+    "py",
+    "js",
+    "ts",
+    "jsx",
+    "tsx",
+    "json",
+    "md",
+    "txt",
+    "html",
+    "css",
+    "tcss",
+    "rs",
+    "go",
+    "sh",
+    "c",
+    "cpp",
+    "h",
+    "hpp",
+    "yml",
+    "yaml",
+    "toml",
+    "xml",
+    "ini",
+    "cfg",
+    "sql",
+    "java",
+    "rb",
+    "php",
+    "kt",
+    "swift",
+    "bat",
+    "ps1",
+    "log",
+    "csv",
+    "tsv",
+    "diff",
+    "patch",
+    "lock",
+    "rst",
+    "env",
 }
 
 _VALID_EXACT_FILENAMES = {
-    "makefile", "dockerfile", ".gitignore", ".env", "license", "docker-compose.yml"
+    "makefile",
+    "dockerfile",
+    ".gitignore",
+    ".env",
+    "license",
+    "docker-compose.yml",
 }
 
 
@@ -117,11 +248,26 @@ def is_valid_file_path(path: str) -> bool:
     if ext in _NON_FILE_EXTENSIONS:
         return False
 
-    if prefix in {"self", "this", "msg", "context", "obj", "object", "item", "data", "res", "req", "response", "request", "node", "element", "e"}:
+    if prefix in {
+        "self",
+        "this",
+        "msg",
+        "context",
+        "obj",
+        "object",
+        "item",
+        "data",
+        "res",
+        "req",
+        "response",
+        "request",
+        "node",
+        "element",
+        "e",
+    }:
         return False
 
     return ext in _VALID_FILE_EXTENSIONS
-
 
 
 @dataclass
@@ -324,9 +470,13 @@ class TieredMemory:
         """Update or set the primary system prompt (first system message in history)."""
         token_count = self.tokenizer.count(content)
         for msg in self.messages:
-            role = msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
+            role = (
+                msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
+            )
             if role == "system":
-                self._cached_msg_tokens = max(0, self._cached_msg_tokens - msg.token_count + token_count)
+                self._cached_msg_tokens = max(
+                    0, self._cached_msg_tokens - msg.token_count + token_count
+                )
                 msg.content = content
                 msg.token_count = token_count
                 return
@@ -579,12 +729,15 @@ class TieredMemory:
     ) -> list[dict]:
         """Build the message list for the LLM.
 
-        Pinned files and dynamic L0 Scratchpad are injected into system context
-        so the model always has exact file content and goal progress available,
-        even after compression.
+        Pinned files and dynamic L0 Scratchpad are appended as trailing system
+        messages AFTER the conversation history so the stable system + history
+        prefix stays byte-identical across agent iterations. This lets the
+        inference server reuse its cached KV prefix (cached_tokens > 0) instead
+        of re-evaluating the full context on every tool call, while keeping exact
+        file content and goal progress visible to the model right before it
+        generates.
         """
         context = []
-        pinned_injected = False
         pinned_budget = self.get_effective_budget().pinned_tokens
         l0_scratchpad = self.format_l0_scratchpad(project_root=project_root)
 
@@ -593,45 +746,22 @@ class TieredMemory:
                 msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
             )
             context.append({"role": role, "content": msg.content})
-            # Inject L0 Scratchpad and pinned files after the first system message
-            if not pinned_injected and role == "system":
-                if l0_scratchpad:
-                    context.append({"role": "system", "content": l0_scratchpad})
-                if self._pinned_files:
-                    pinned_lines = [
-                        "[Pinned file contents — use for EDIT_FILE old_text:]"
-                    ]
-                    pinned_tokens = 0
-                    for path, content in self._pinned_files:
-                        entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
-                        entry_tokens = self.tokenizer.count(entry)
-                        if pinned_tokens + entry_tokens > pinned_budget:
-                            break
-                        pinned_lines.append(entry)
-                        pinned_tokens += entry_tokens
-                    if len(pinned_lines) > 1:
-                        context.append(
-                            {"role": "system", "content": "\n".join(pinned_lines)}
-                        )
-                pinned_injected = True
 
-        if not pinned_injected:
-            if l0_scratchpad:
-                context.insert(0, {"role": "system", "content": l0_scratchpad})
-            if self._pinned_files:
-                pinned_lines = ["[Pinned file contents — use for EDIT_FILE old_text:]"]
-                pinned_tokens = 0
-                for path, content in self._pinned_files:
-                    entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
-                    entry_tokens = self.tokenizer.count(entry)
-                    if pinned_tokens + entry_tokens > pinned_budget:
-                        break
-                    pinned_lines.append(entry)
-                    pinned_tokens += entry_tokens
-                if len(pinned_lines) > 1:
-                    context.insert(
-                        0, {"role": "system", "content": "\n".join(pinned_lines)}
-                    )
+        # Append L0 Scratchpad and pinned files after history (trailing system blocks)
+        if l0_scratchpad:
+            context.append({"role": "system", "content": l0_scratchpad})
+        if self._pinned_files:
+            pinned_lines = ["[Pinned file contents — use for EDIT_FILE old_text:]"]
+            pinned_tokens = 0
+            for path, content in self._pinned_files:
+                entry = f"\n--- {path} ---\n{content}\n--- end {path} ---"
+                entry_tokens = self.tokenizer.count(entry)
+                if pinned_tokens + entry_tokens > pinned_budget:
+                    break
+                pinned_lines.append(entry)
+                pinned_tokens += entry_tokens
+            if len(pinned_lines) > 1:
+                context.append({"role": "system", "content": "\n".join(pinned_lines)})
 
         return context
 
@@ -911,11 +1041,17 @@ class TieredMemory:
 
     def _update_state_from_message(self, msg: Message) -> None:
         content = msg.content
-        role_str = msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role).lower()
+        role_str = (
+            msg.role.value
+            if isinstance(msg.role, MessageRole)
+            else str(msg.role).lower()
+        )
 
         # User messages: extract explicit valid file paths requested/read
         if role_str == "user":
-            candidates = re.findall(r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content)
+            candidates = re.findall(
+                r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content
+            )
             for p in candidates:
                 if is_valid_file_path(p) and p not in self.state.files_read:
                     self.state.files_read.append(p)
@@ -923,12 +1059,20 @@ class TieredMemory:
         # Assistant messages: scan ONLY for explicit tool calls (JSON or XML or tool syntax) writing/editing files
         elif role_str == "assistant":
             # 1. JSON tool calls: <tool_call>{"name": "WRITE_FILE", "arguments": {"path": "..."}}</tool_call>
-            for match in re.finditer(r"<tool_call>\s*({[\s\S]*?})\s*</tool_call>", content):
+            for match in re.finditer(
+                r"<tool_call>\s*({[\s\S]*?})\s*</tool_call>", content
+            ):
                 try:
                     import json
+
                     data = json.loads(match.group(1))
                     name = (data.get("name") or "").upper()
-                    if name in ("WRITE_FILE", "EDIT_FILE", "WRITE_FILE_IMPL", "EDIT_FILE_IMPL"):
+                    if name in (
+                        "WRITE_FILE",
+                        "EDIT_FILE",
+                        "WRITE_FILE_IMPL",
+                        "EDIT_FILE_IMPL",
+                    ):
                         args = data.get("arguments") or data.get("params") or {}
                         fpath = args.get("path") or args.get("file")
                         if fpath and is_valid_file_path(fpath):
@@ -937,19 +1081,32 @@ class TieredMemory:
                     pass
 
             # 2. XML tool calls: <WRITE_FILE path="..."> or <EDIT_FILE path="...">
-            for xml_call in re.finditer(r'<(?:WRITE_FILE|EDIT_FILE)\s+path=["\']([^"\'\n]+)["\']', content, re.IGNORECASE):
+            for xml_call in re.finditer(
+                r'<(?:WRITE_FILE|EDIT_FILE)\s+path=["\']([^"\'\n]+)["\']',
+                content,
+                re.IGNORECASE,
+            ):
                 if is_valid_file_path(xml_call.group(1)):
                     self.record_file_modified(xml_call.group(1))
 
         # Tool result messages: check for tool execution results of WRITE_FILE / EDIT_FILE / READ_FILE
         elif role_str in ("tool", "tool_result"):
             tool_name = (msg.metadata.get("tool_name") or "").upper()
-            if tool_name in ("WRITE_FILE", "EDIT_FILE", "WRITE_FILE_IMPL", "EDIT_FILE_IMPL"):
-                for p in re.findall(r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content):
+            if tool_name in (
+                "WRITE_FILE",
+                "EDIT_FILE",
+                "WRITE_FILE_IMPL",
+                "EDIT_FILE_IMPL",
+            ):
+                for p in re.findall(
+                    r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content
+                ):
                     if is_valid_file_path(p):
                         self.record_file_modified(p)
             elif tool_name in ("READ_FILE", "READ_FILE_IMPL"):
-                for p in re.findall(r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content):
+                for p in re.findall(
+                    r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content
+                ):
                     if is_valid_file_path(p):
                         self.record_file_read(p)
 

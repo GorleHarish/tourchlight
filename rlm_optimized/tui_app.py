@@ -2187,7 +2187,11 @@ class TorchlightApp(App):
             return
 
         if getattr(self, "_server_starting", False):
-            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            self.notify(
+                "Server is currently starting. Please wait...",
+                severity="warning",
+                timeout=3,
+            )
             return
 
         if not self.model_name or self.model_name == "local-model":
@@ -2277,7 +2281,11 @@ class TorchlightApp(App):
             self.stop_current_agent()
             return
         if getattr(self, "_server_starting", False):
-            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            self.notify(
+                "Server is currently starting. Please wait...",
+                severity="warning",
+                timeout=3,
+            )
             return
         if (
             not getattr(self, "_model_connected", False)
@@ -2294,7 +2302,11 @@ class TorchlightApp(App):
             self.stop_current_agent()
             return
         if getattr(self, "_server_starting", False):
-            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            self.notify(
+                "Server is currently starting. Please wait...",
+                severity="warning",
+                timeout=3,
+            )
             return
         if (
             not getattr(self, "_model_connected", False)
@@ -2352,7 +2364,11 @@ class TorchlightApp(App):
     @on(PromptTextArea.SubmitRequested, "#user-input")
     async def on_user_input_submit(self, event: PromptTextArea.SubmitRequested) -> None:
         if getattr(self, "_server_starting", False):
-            self.notify("Server is currently starting. Please wait...", severity="warning", timeout=3)
+            self.notify(
+                "Server is currently starting. Please wait...",
+                severity="warning",
+                timeout=3,
+            )
             return
         if (
             not getattr(self, "_model_connected", False)
@@ -2373,6 +2389,31 @@ class TorchlightApp(App):
         self._is_running = False
         self._set_input_enabled(True)
         self.notify("Agent execution stopped by user", severity="warning", timeout=2)
+
+    def _update_running_indicator(self) -> None:
+        """Show elapsed time + live state in the input spinner so long runs
+        read as progress instead of a stuck symbol."""
+        if not getattr(self, "_is_running", False):
+            return
+        try:
+            spinner = self.query_one("#input-spinner")
+        except Exception:
+            return
+        import time
+
+        start = getattr(self, "_stream_start_time", None)
+        if not start:
+            return
+        elapsed = max(0, int(time.time() - start))
+        m, s = divmod(elapsed, 60)
+        state = getattr(self, "_agent_state", "RUNNING")
+        label = f"[bold cyan]● {m:02d}:{s:02d} {state}[/]"
+        if getattr(self, "_live_tps", 0) > 0:
+            label += f" [bold yellow]{self._live_tps:.1f} tps[/]"
+        try:
+            spinner.update(label)
+        except Exception:
+            pass
 
     def _set_input_enabled(self, enabled: bool) -> None:
         try:
@@ -2397,6 +2438,7 @@ class TorchlightApp(App):
         try:
             self.update_status_bar()
             self.update_sidebar_meta()
+            self._update_running_indicator()
 
             if getattr(self, "_server_starting", False):
                 return
@@ -2782,7 +2824,9 @@ class TorchlightApp(App):
                     self.update_status_bar()
                 else:
                     self.notify(
-                        "Usage: /mode chat, /mode goal, or /mode unified", severity="warning", timeout=3
+                        "Usage: /mode chat, /mode goal, or /mode unified",
+                        severity="warning",
+                        timeout=3,
                     )
 
         elif cmd in ("/phase", "/params"):
@@ -2801,13 +2845,27 @@ class TorchlightApp(App):
                     ok = self.engine.lock_phase(p_arg)
                     if ok:
                         if p_arg in ("auto", "unlock", "reset"):
-                            self.notify("Phase lock removed — auto phase detection enabled 🔓", severity="success", timeout=3)
+                            self.notify(
+                                "Phase lock removed — auto phase detection enabled 🔓",
+                                severity="success",
+                                timeout=3,
+                            )
                         else:
-                            self.notify(f"Phase locked to '{p_arg}' 🔒", severity="success", timeout=3)
+                            self.notify(
+                                f"Phase locked to '{p_arg}' 🔒",
+                                severity="success",
+                                timeout=3,
+                            )
                     else:
-                        self.notify("Usage: /phase code | /phase plan | /phase troubleshoot | /phase chat | /phase auto", severity="warning", timeout=4)
+                        self.notify(
+                            "Usage: /phase code | /phase plan | /phase troubleshoot | /phase chat | /phase auto",
+                            severity="warning",
+                            timeout=4,
+                        )
                 else:
-                    self.notify("Phase locking unavailable", severity="error", timeout=3)
+                    self.notify(
+                        "Phase locking unavailable", severity="error", timeout=3
+                    )
 
         elif cmd in ("/cd", "/workdir", "/open", "/browse"):
             if not arg:
@@ -2938,12 +2996,18 @@ class TorchlightApp(App):
 
         # Register callback to sync engine mode changes back to memory
         def _on_mode_change(new_mode: str):
-            if _mem and hasattr(_mem, "state") and hasattr(_mem.state, "execution_mode"):
+            if (
+                _mem
+                and hasattr(_mem, "state")
+                and hasattr(_mem.state, "execution_mode")
+            ):
                 from core.memory.models import ExecutionMode
+
                 try:
                     _mem.state.execution_mode = ExecutionMode(new_mode)
                 except ValueError:
                     pass
+
         self.engine.set_execution_mode_callback(_on_mode_change)
 
         self._streaming_text = ""

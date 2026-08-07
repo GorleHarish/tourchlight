@@ -7788,8 +7788,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_compression_init",
-      "community": 36,
-      "community_name": "VerbatimCompactor",
+      "community": 148,
+      "community_name": "ConversationSummarizer",
       "norm_label": "core/compression/__init__.py"
     },
     {
@@ -13234,7 +13234,7 @@
       "_origin": "ast",
       "id": "core_prompts_init",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "prompts/__init__.py"
     },
     {
@@ -13244,8 +13244,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_prompts_system",
-      "community": 159,
-      "community_name": "get_phase_system_prompt",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "system.py"
     },
     {
@@ -13255,8 +13255,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "core_prompts_system_sanitize_assistant_text",
-      "community": 175,
-      "community_name": "sanitize_assistant_text",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "sanitize_assistant_text()"
     },
     {
@@ -13277,8 +13277,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_prompts_system_rationale_1",
-      "community": 159,
-      "community_name": "get_phase_system_prompt",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "unified system prompts for torchlight.  single source of truth for all frontends"
     },
     {
@@ -13288,8 +13288,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "core_prompts_system_rationale_101",
-      "community": 175,
-      "community_name": "sanitize_assistant_text",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "remove raw tool payload dumps (params:, result:, writing code to file: ...) from"
     },
     {
@@ -13311,7 +13311,7 @@
       "_origin": "ast",
       "id": "core_prompts_tool_syntax",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "tool_syntax.py"
     },
     {
@@ -13322,7 +13322,7 @@
       "_origin": "ast",
       "id": "core_prompts_tool_syntax_get_tool_syntax_for_context_size",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "get_tool_syntax_for_context_size()"
     },
     {
@@ -13333,7 +13333,7 @@
       "_origin": "ast",
       "id": "core_prompts_tool_syntax_build_tool_syntax_prompt",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "build_tool_syntax_prompt()"
     },
     {
@@ -13344,7 +13344,7 @@
       "_origin": "ast",
       "id": "core_prompts_tool_syntax_rationale_1",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "tool syntax instructions for torchlight.  generates the appropriate tool calling"
     },
     {
@@ -13355,7 +13355,7 @@
       "_origin": "ast",
       "id": "core_prompts_tool_syntax_rationale_9",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "return the tool calling syntax instructions appropriate for the model's context"
     },
     {
@@ -13366,7 +13366,7 @@
       "_origin": "ast",
       "id": "core_prompts_tool_syntax_rationale_36",
       "community": 171,
-      "community_name": "prompts/__init__.py",
+      "community_name": "system.py",
       "norm_label": "build the complete tool syntax prompt for the system message.      args:"
     },
     {
@@ -16063,7 +16063,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "test_model_normalization.py"
     },
@@ -16074,7 +16074,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_normalize_gemma_4_4e4b_variants",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "test_normalize_gemma_4_4e4b_variants()"
     },
@@ -16085,7 +16085,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_normalize_gemma_4_e2b_variants",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "test_normalize_gemma_4_e2b_variants()"
     },
@@ -16096,7 +16096,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_normalize_mlx_gemma_4_4e4b",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "test_normalize_mlx_gemma_4_4e4b()"
     },
@@ -16107,7 +16107,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "core_tests_test_model_normalization_test_list_available_models_includes_gemma4e4b",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "test_list_available_models_includes_gemma4e4b()"
     },
@@ -16602,8 +16602,8 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "core_tests_test_prompts_and_memory_test_sanitize_assistant_text",
-      "community": 175,
-      "community_name": "sanitize_assistant_text",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "test_sanitize_assistant_text()"
     },
     {
@@ -19661,7 +19661,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_tui_transcript_widgets.py"
     },
     {
@@ -19672,7 +19672,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_estimate_token_count",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_estimate_token_count()"
     },
     {
@@ -19683,7 +19683,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_card_meta_for",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_card_meta_for()"
     },
     {
@@ -19694,7 +19694,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_py_anyio",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "anyio"
     },
     {
@@ -19705,7 +19705,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_thinking_block_factory",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_thinking_block_factory()"
     },
     {
@@ -19716,7 +19716,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_message_card_composes",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_message_card_composes()"
     },
     {
@@ -19727,7 +19727,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_streaming_view_updates",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_streaming_view_updates()"
     },
     {
@@ -19738,7 +19738,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_app_transcript_wiring",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_app_transcript_wiring()"
     },
     {
@@ -19749,7 +19749,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_test_transcript_view_prunes_over_cap",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "test_transcript_view_prunes_over_cap()"
     },
     {
@@ -19760,7 +19760,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_rationale_1",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "tests for phase-1 transcript widgets (message cards, streaming, thinking)."
     },
     {
@@ -19771,7 +19771,7 @@
       "_origin": "ast",
       "id": "core_tests_test_tui_transcript_widgets_rationale_105",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "smoke test: the real app mounts messagecards and drives the streaming view."
     },
     {
@@ -22399,8 +22399,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_config",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "config.py"
     },
     {
@@ -22410,8 +22410,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "rlm_optimized_config_detect_apple_silicon_ram",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "_detect_apple_silicon_ram()"
     },
     {
@@ -22421,8 +22421,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "rlm_optimized_config_detect_chip",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "_detect_chip()"
     },
     {
@@ -22443,7 +22443,7 @@
       "source_location": "L166",
       "_origin": "ast",
       "id": "rlm_optimized_config_normalize_model_name",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "normalize_model_name()"
     },
@@ -22454,7 +22454,7 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "rlm_optimized_config_list_available_models",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "list_available_models()"
     },
@@ -22465,7 +22465,7 @@
       "source_location": "L266",
       "_origin": "ast",
       "id": "rlm_optimized_config_fetch_provider_models",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "fetch_provider_models()"
     },
@@ -22476,8 +22476,8 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "rlm_optimized_config_is_port_in_use",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 45,
+      "community_name": "PromptTextArea",
       "norm_label": "is_port_in_use()"
     },
     {
@@ -22487,8 +22487,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_10",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "detect total ram in gb on macos."
     },
     {
@@ -22498,8 +22498,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_21",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "detect apple silicon chip name (e.g., 'apple m1')."
     },
     {
@@ -22520,7 +22520,7 @@
       "source_location": "L167",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_167",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 e2b', 'gemma 4"
     },
@@ -22531,7 +22531,7 @@
       "source_location": "L215",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_215",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "scan local models directory and returns available gguf and mlx models."
     },
@@ -22542,7 +22542,7 @@
       "source_location": "L267",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_267",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "query an openai-compatible /models endpoint (lm studio, ollama, llama.cpp)     a"
     },
@@ -22553,8 +22553,8 @@
       "source_location": "L288",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_288",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 45,
+      "community_name": "PromptTextArea",
       "norm_label": "check if server port 8080 is actively listening."
     },
     {
@@ -22564,8 +22564,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "rlm_optimized_config_rationale_47",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "# note: previously this defaulted to ollama's port (11434) even when provider"
     },
     {
@@ -23180,8 +23180,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_ollama_client",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "ollama_client.py"
     },
     {
@@ -23342,7 +23342,7 @@
       "label": "build_step_message()",
       "file_type": "code",
       "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L154",
+      "source_location": "L153",
       "_origin": "ast",
       "id": "rlm_optimized_prompts_build_step_message",
       "community": 19,
@@ -23950,8 +23950,8 @@
       "source_location": "L358",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rlmengineoptimized_notify_status",
-      "community": 31,
-      "community_name": "RLMEngineOptimized",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "._notify_status()"
     },
     {
@@ -24126,8 +24126,8 @@
       "source_location": "L359",
       "_origin": "ast",
       "id": "rlm_optimized_rlm_engine_optimized_rationale_359",
-      "community": 31,
-      "community_name": "RLMEngineOptimized",
+      "community": 19,
+      "community_name": "LlamaCppClient",
       "norm_label": "notify listeners of real-time background status and action telemetry."
     },
     {
@@ -24831,7 +24831,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "tui_app.py"
     },
@@ -24853,7 +24853,7 @@
       "source_location": "L147",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_load_last_state",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "load_last_state()"
     },
@@ -24864,7 +24864,7 @@
       "source_location": "L157",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_save_last_state",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "save_last_state()"
     },
@@ -24886,8 +24886,8 @@
       "source_location": "L185",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentmemorywidget",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "agentmemorywidget"
     },
     {
@@ -24908,8 +24908,8 @@
       "source_location": "L188",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentmemorywidget_on_mount",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": ".on_mount()"
     },
     {
@@ -24919,8 +24919,8 @@
       "source_location": "L194",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentmemorywidget_update_memory",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": ".update_memory()"
     },
     {
@@ -24931,7 +24931,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "approvalmodal"
     },
     {
@@ -24942,7 +24942,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -24975,7 +24975,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_on_mount",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".on_mount()"
     },
     {
@@ -24986,7 +24986,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_action_allow",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".action_allow()"
     },
     {
@@ -24997,7 +24997,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_action_deny",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".action_deny()"
     },
     {
@@ -25008,7 +25008,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_approvalmodal_action_always_allow",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".action_always_allow()"
     },
     {
@@ -25074,7 +25074,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_folderpickermodal_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25228,7 +25228,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_modelpickermodal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "modelpickermodal"
     },
     {
@@ -25238,7 +25238,7 @@
       "source_location": "L542",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_modelpickermodal_init",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
@@ -25283,7 +25283,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_copyselectionmodal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "copyselectionmodal"
     },
     {
@@ -25294,7 +25294,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_copyselectionmodal_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25327,7 +25327,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_sessionmodepickermodal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "sessionmodepickermodal"
     },
     {
@@ -25338,7 +25338,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_sessionmodepickermodal_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25404,7 +25404,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_sessionmodepickermodal_action_cancel",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".action_cancel()"
     },
     {
@@ -25415,7 +25415,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_fileactionmodal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "fileactionmodal"
     },
     {
@@ -25426,7 +25426,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_fileactionmodal_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25491,8 +25491,8 @@
       "source_location": "L863",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentstatusmodal",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 104,
+      "community_name": "AgentStatusModal",
       "norm_label": "agentstatusmodal"
     },
     {
@@ -25503,7 +25503,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentstatusmodal_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25524,8 +25524,8 @@
       "source_location": "L984",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentstatusmodal_action_dismiss_modal",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 104,
+      "community_name": "AgentStatusModal",
       "norm_label": ".action_dismiss_modal()"
     },
     {
@@ -25535,8 +25535,8 @@
       "source_location": "L987",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentstatusmodal_action_clear_logs",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 104,
+      "community_name": "AgentStatusModal",
       "norm_label": ".action_clear_logs()"
     },
     {
@@ -25546,8 +25546,8 @@
       "source_location": "L997",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_agentstatusmodal_on_clear",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 104,
+      "community_name": "AgentStatusModal",
       "norm_label": ".on_clear()"
     },
     {
@@ -25569,7 +25569,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_shortcutshelpmodal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "shortcutshelpmodal"
     },
     {
@@ -25613,7 +25613,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_paneresizer_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25767,7 +25767,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -25777,8 +25777,8 @@
       "source_location": "L1337",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_is_test_env",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "._is_test_env()"
     },
     {
@@ -26437,8 +26437,8 @@
       "source_location": "L3144",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_torchlightapp_flush_streaming_widget",
-      "community": 175,
-      "community_name": "sanitize_assistant_text",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "._flush_streaming_widget()"
     },
     {
@@ -26932,7 +26932,7 @@
       "source_location": "L4314",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_create_client",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "create_client()"
     },
@@ -26943,7 +26943,7 @@
       "source_location": "L4374",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_main",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "main()"
     },
@@ -26954,7 +26954,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_1",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "torchlight agent \u2014 codex / tiny-brain 2 style ide tui (textual) full-featured id"
     },
@@ -26987,8 +26987,8 @@
       "source_location": "L186",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_186",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "displays the live l0 agent brain scratchpad."
     },
     {
@@ -26999,7 +26999,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_215",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "production-grade modal dialog for tool & file modification approval."
     },
     {
@@ -27021,7 +27021,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_528",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "modal dialog to visually pick models and engine providers."
     },
     {
@@ -27032,7 +27032,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_618",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "modal dialog to select and copy specific messages, code blocks, or text turns."
     },
     {
@@ -27043,7 +27043,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_681",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "modal dialog for selecting session execution mode (chat vs goal)."
     },
     {
@@ -27054,7 +27054,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_781",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "modal dialog presenting os options when a file is selected in the explorer tree."
     },
     {
@@ -27064,8 +27064,8 @@
       "source_location": "L864",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_864",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 104,
+      "community_name": "AgentStatusModal",
       "norm_label": "modal dialog for complete visibility into background agent actions & status tele"
     },
     {
@@ -27076,7 +27076,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_1011",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "modal dialog displaying keyboard shortcuts and slash commands."
     },
     {
@@ -27207,8 +27207,8 @@
       "source_location": "L3145",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_3145",
-      "community": 175,
-      "community_name": "sanitize_assistant_text",
+      "community": 171,
+      "community_name": "system.py",
       "norm_label": "apply any pending streaming text that was throttled."
     },
     {
@@ -27284,7 +27284,7 @@
       "source_location": "L3947",
       "_origin": "ast",
       "id": "rlm_optimized_tui_app_rationale_3947",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "# note: the model badge button click is handled by on_model_badge_clicked"
     },
@@ -27317,8 +27317,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "center_empty_state.py"
     },
     {
@@ -27328,8 +27328,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_centeremptystate",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "centeremptystate"
     },
     {
@@ -27339,8 +27339,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_py_container",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "container"
     },
     {
@@ -27350,8 +27350,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_centeremptystate_init",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": ".__init__()"
     },
     {
@@ -27383,8 +27383,8 @@
       "source_location": "L126",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_centeremptystate_on_mount",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": ".on_mount()"
     },
     {
@@ -27394,8 +27394,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_centeremptystate_set_connection_state",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": ".set_connection_state()"
     },
     {
@@ -27405,8 +27405,8 @@
       "source_location": "L193",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_centeremptystate_on_button_pressed",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": ".on_button_pressed()"
     },
     {
@@ -27416,8 +27416,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_py_pressed",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "pressed"
     },
     {
@@ -27427,8 +27427,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_rationale_1",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "centeremptystate \u2014 the welcome / idle screen shown in the editor pane.  replaces"
     },
     {
@@ -27438,8 +27438,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_rationale_39",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "full-pane empty state widget for the editor / center area.      mount this insid"
     },
     {
@@ -27449,8 +27449,8 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_rationale_132",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "switch displayed content based on connection state."
     },
     {
@@ -27460,8 +27460,8 @@
       "source_location": "L194",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_center_empty_state_rationale_194",
-      "community": 55,
-      "community_name": "ApprovalModal",
+      "community": 138,
+      "community_name": "PaneResizer",
       "norm_label": "route chip buttons to app-level actions."
     },
     {
@@ -27758,7 +27758,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_command_palette_paletteresult",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "paletteresult"
     },
     {
@@ -27769,7 +27769,7 @@
       "_origin": "ast",
       "id": "namedtuple",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "namedtuple"
     },
     {
@@ -28330,7 +28330,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "connection_pill.py"
     },
     {
@@ -28341,7 +28341,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_connectionpill",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "connectionpill"
     },
     {
@@ -28352,7 +28352,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_py_horizontal",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "horizontal"
     },
     {
@@ -28363,7 +28363,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_connectionpill_init",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": ".__init__()"
     },
     {
@@ -28374,7 +28374,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_connectionpill_compose",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": ".compose()"
     },
     {
@@ -28385,7 +28385,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_py_composeresult",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "composeresult"
     },
     {
@@ -28396,7 +28396,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_connectionpill_build_label",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "._build_label()"
     },
     {
@@ -28407,7 +28407,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_connectionpill_set_connected",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": ".set_connected()"
     },
     {
@@ -28418,7 +28418,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_connectionpill_on_button_pressed",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": ".on_button_pressed()"
     },
     {
@@ -28429,7 +28429,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_py_pressed",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "pressed"
     },
     {
@@ -28440,7 +28440,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_rationale_1",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "connectionpill \u2014 compact header widget showing live model/server status.  replac"
     },
     {
@@ -28451,7 +28451,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_rationale_20",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "compact connection status pill for the top hud header.      usage in compose()::"
     },
     {
@@ -28462,7 +28462,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_connection_pill_rationale_88",
       "community": 104,
-      "community_name": "ConnectionPill",
+      "community_name": "AgentStatusModal",
       "norm_label": "update the pill's connected state and model name."
     },
     {
@@ -28528,7 +28528,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_diff_view_diffview",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "diffview"
     },
     {
@@ -28539,7 +28539,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_diff_view_py_container",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "container"
     },
     {
@@ -28550,7 +28550,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_diff_view_diffview_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -28638,7 +28638,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_diff_view_rationale_167",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "a unified diff card: header (path + +n \u2212m) + colored body.      rendered client-"
     },
     {
@@ -28759,7 +28759,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_file_tree_gitfiletree",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "gitfiletree"
     },
     {
@@ -28770,7 +28770,7 @@
       "_origin": "ast",
       "id": "directorytree",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "directorytree"
     },
     {
@@ -28924,7 +28924,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_file_tree_rationale_140",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "directorytree whose file labels carry git status decorations."
     },
     {
@@ -29055,7 +29055,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "status_bar.py"
     },
@@ -29089,7 +29089,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_statusbar",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "statusbar"
     },
     {
@@ -29100,7 +29100,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_py_horizontal",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "horizontal"
     },
     {
@@ -29111,7 +29111,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_statusbar_init",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": ".__init__()"
     },
     {
@@ -29121,8 +29121,8 @@
       "source_location": "L159",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_statusbar_compose",
-      "community": 113,
-      "community_name": "Static",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": ".compose()"
     },
     {
@@ -29132,8 +29132,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_py_composeresult",
-      "community": 113,
-      "community_name": "Static",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "composeresult"
     },
     {
@@ -29154,7 +29154,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_rationale_1",
-      "community": 66,
+      "community": 55,
       "community_name": "tui_app.py",
       "norm_label": "consolidated status bar for the torchlight tui.  phase 5 (ux overhaul): state-aw"
     },
@@ -29188,7 +29188,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_status_bar_rationale_124",
       "community": 55,
-      "community_name": "ApprovalModal",
+      "community_name": "tui_app.py",
       "norm_label": "single-row consolidated status bar.      every segment is a ``static`` updated v"
     },
     {
@@ -29209,8 +29209,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_thinking_block",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 46,
+      "community_name": "MessageCard",
       "norm_label": "thinking_block.py"
     },
     {
@@ -29220,8 +29220,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_thinking_block_thinking_block",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 46,
+      "community_name": "MessageCard",
       "norm_label": "thinking_block()"
     },
     {
@@ -29231,8 +29231,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_thinking_block_rationale_1",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 46,
+      "community_name": "MessageCard",
       "norm_label": "per-step thinking blocks for the torchlight tui.  phase 1 of the ui-improvements"
     },
     {
@@ -29242,8 +29242,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_thinking_block_rationale_18",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 46,
+      "community_name": "MessageCard",
       "norm_label": "build a per-step thinking ``collapsible``.      falls back to a plain ``static``"
     },
     {
@@ -29506,8 +29506,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_trajectory_rail",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 113,
+      "community_name": "Static",
       "norm_label": "trajectory_rail.py"
     },
     {
@@ -29627,8 +29627,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_trajectory_rail_rationale_1",
-      "community": 66,
-      "community_name": "tui_app.py",
+      "community": 113,
+      "community_name": "Static",
       "norm_label": "trajectory rail for the torchlight tui.  phase 2: a collapsed, status-colored ra"
     },
     {
@@ -29683,7 +29683,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "transcript.py"
     },
     {
@@ -29694,7 +29694,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_estimate_token_count",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "estimate_token_count()"
     },
     {
@@ -29705,7 +29705,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_card_meta_for",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "card_meta_for()"
     },
     {
@@ -29716,7 +29716,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_timestamp_str",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "timestamp_str()"
     },
     {
@@ -29727,7 +29727,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_messagecard",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "messagecard"
     },
     {
@@ -29738,7 +29738,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_py_container",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "container"
     },
     {
@@ -29749,7 +29749,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_messagecard_init",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".__init__()"
     },
     {
@@ -29760,7 +29760,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_messagecard_role_label",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "._role_label()"
     },
     {
@@ -29771,7 +29771,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_messagecard_time_str",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "._time_str()"
     },
     {
@@ -29782,7 +29782,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_messagecard_compose",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".compose()"
     },
     {
@@ -29793,7 +29793,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_py_composeresult",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "composeresult"
     },
     {
@@ -29804,7 +29804,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_streamingview",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "streamingview"
     },
     {
@@ -29815,7 +29815,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_streamingview_init",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".__init__()"
     },
     {
@@ -29826,7 +29826,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_streamingview_compose",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".compose()"
     },
     {
@@ -29837,7 +29837,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_streamingview_update_markup",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".update_markup()"
     },
     {
@@ -29848,7 +29848,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_streamingview_set_meta",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".set_meta()"
     },
     {
@@ -29858,8 +29858,8 @@
       "source_location": "L225",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_transcriptview",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "transcriptview"
     },
     {
@@ -29881,7 +29881,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_transcriptview_init",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": ".__init__()"
     },
     {
@@ -29891,8 +29891,8 @@
       "source_location": "L243",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_transcriptview_append_card",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": ".append_card()"
     },
     {
@@ -29902,8 +29902,8 @@
       "source_location": "L258",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_transcriptview_scroll_to_end",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": ".scroll_to_end()"
     },
     {
@@ -29914,7 +29914,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_1",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "rich transcript widgets for the torchlight tui.  phase 1 of the ui-improvements"
     },
     {
@@ -29925,7 +29925,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_24",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "cheap token estimate (\u22483 chars/token, matching the engine heuristic)."
     },
     {
@@ -29936,7 +29936,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_29",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "footer summary for an assistant card: word count + token estimate."
     },
     {
@@ -29947,7 +29947,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_35",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "current time as a compact hh:mm label (local time, display only)."
     },
     {
@@ -29958,7 +29958,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_40",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "a chat turn rendered as a rich markdown card with header chrome.      styled wit"
     },
     {
@@ -29969,7 +29969,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_147",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "live streaming turn: header, cheap body, and live meta footer.      the body sta"
     },
     {
@@ -29980,7 +29980,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_214",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "replace the streaming body with plain text (markup disabled)."
     },
     {
@@ -29991,7 +29991,7 @@
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_219",
       "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community_name": "MessageCard",
       "norm_label": "update the live meta footer (tps / tokens / latency)."
     },
     {
@@ -30001,8 +30001,8 @@
       "source_location": "L226",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_226",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "bounded scroll container hosting the transcript.      encapsulates the 120-child"
     },
     {
@@ -30012,8 +30012,8 @@
       "source_location": "L244",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_244",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "mount a card, prune the oldest when over the cap, and scroll."
     },
     {
@@ -30023,8 +30023,8 @@
       "source_location": "L259",
       "_origin": "ast",
       "id": "rlm_optimized_tui_widgets_transcript_rationale_259",
-      "community": 46,
-      "community_name": "AgentMemoryWidget",
+      "community": 55,
+      "community_name": "tui_app.py",
       "norm_label": "scroll the transcript to the bottom without animation."
     },
     {
@@ -86326,7 +86326,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L146",
+      "source_location": "L145",
       "weight": 1.0,
       "_origin": "ast",
       "source": "rlm_optimized_prompts",
@@ -88570,7 +88570,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "rlm_optimized/prompts.py",
-      "source_location": "L154",
+      "source_location": "L153",
       "weight": 1.0,
       "_origin": "ast",
       "source": "rlm_optimized_prompts",

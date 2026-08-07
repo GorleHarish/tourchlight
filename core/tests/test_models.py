@@ -1,7 +1,14 @@
 import pytest
 from core.memory.models import (
-    Message, MessageRole, ContentType, ContentChunk,
-    SessionState, ContextSnapshot, MemoryNeedle, MemoryObject, WorkingSetSnapshot,
+    Message,
+    MessageRole,
+    ContentType,
+    ContentChunk,
+    SessionState,
+    ContextSnapshot,
+    MemoryNeedle,
+    MemoryObject,
+    WorkingSetSnapshot,
 )
 
 
@@ -22,8 +29,10 @@ def test_session_state_defaults():
 
 def test_session_state_populated():
     s = SessionState(
-        intent="code", current_task="fix bug",
-        files_modified=["a.py"], errors_seen=["Error"],
+        intent="code",
+        current_task="fix bug",
+        files_modified=["a.py"],
+        errors_seen=["Error"],
     )
     assert s.intent == "code"
     assert s.files_modified == ["a.py"]
@@ -62,12 +71,12 @@ def test_content_chunk():
 
 def test_tiered_memory_pinned_files_without_system_message():
     from core.memory.manager import TieredMemory, MemoryConfig
+
     mem = TieredMemory(config=MemoryConfig())
     mem.pin_file("test.py", "def foo(): pass")
     mem.add_user_message("hello")
     ctx = mem.get_context_for_llm()
     assert len(ctx) == 2
-    assert ctx[0]["role"] == "system"
-    assert "test.py" in ctx[0]["content"]
-    assert ctx[1]["role"] == "user"
-
+    assert ctx[0]["role"] == "user"
+    assert ctx[1]["role"] == "system"
+    assert "test.py" in ctx[1]["content"]
