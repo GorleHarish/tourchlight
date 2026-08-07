@@ -305,8 +305,8 @@
     "semantic_hash": "634c41eaca622a39df58aa713cd385bd"
   },
   "core/execution/autonomous_harness.py": {
-    "mtime": 1786042920.7565818,
-    "ast_hash": "4baa0f7ca7f96c165b2d9551111fe162",
+    "mtime": 1786117501.6785836,
+    "ast_hash": "d9be58ab8ef49d63a44f054a747b4e00",
     "semantic_hash": ""
   },
   "core/execution/feedback_loop.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1786113185.5039628,
-    "ast_hash": "f32e8d1db5e56d173f4a77c6c5d9b368",
+    "mtime": 1786115251.4040098,
+    "ast_hash": "50829e8434d08a7cd7289918328ab15b",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -495,8 +495,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_schemas.py": {
-    "mtime": 1786113200.851104,
-    "ast_hash": "798d345ff61318f043997ec7f68fa863",
+    "mtime": 1786116022.6091788,
+    "ast_hash": "b05908e169d3997cabc795e8ae2bc017",
     "semantic_hash": ""
   },
   "core/tests/test_selective_compression.py": {
@@ -535,8 +535,8 @@
     "semantic_hash": ""
   },
   "core/tools/schemas.py": {
-    "mtime": 1786111802.4409747,
-    "ast_hash": "72325408171757df3b9b2a2344e3645f",
+    "mtime": 1786116218.4419317,
+    "ast_hash": "ff2706bfcbd35c559d83ee14702966b1",
     "semantic_hash": ""
   },
   "rlm_optimized/ast_indexer.py": {
@@ -595,8 +595,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/prompts.py": {
-    "mtime": 1785620725.8187792,
-    "ast_hash": "4a80a18d85b99657bed9713aa45781e7",
+    "mtime": 1786115255.1273844,
+    "ast_hash": "982b17b51a3d431b9055ae735d75af73",
     "semantic_hash": ""
   },
   "rlm_optimized/repl_sandbox.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1786113290.593274,
-    "ast_hash": "327ff51863aa58fa96e70209b57c0412",
+    "mtime": 1786117522.5519664,
+    "ast_hash": "7b94e79f07d7a7b9957b55a795357d8c",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -625,8 +625,8 @@
     "semantic_hash": "7a2d226f7c052c7912ce20e72c6487c7"
   },
   "rlm_optimized/start_optimized_local.sh": {
-    "mtime": 1786114390.7760644,
-    "ast_hash": "095a375971bf01409224734486d06ced",
+    "mtime": 1786114725.45406,
+    "ast_hash": "202a7af62414684a9bc61df361456893",
     "semantic_hash": ""
   },
   "rlm_optimized/test_parse.py": {
@@ -680,8 +680,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1785660040.8031888,
-    "ast_hash": "478ca6ae5f4b24d9f84ef52d561a9053",
+    "mtime": 1786115148.4856706,
+    "ast_hash": "abb0388f83b55d629c4a84b883949c02",
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
@@ -770,8 +770,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_tui_plan_panel.py": {
-    "mtime": 1785841540.2697678,
-    "ast_hash": "0f185192313a57d9e70965403c6fbf9a",
+    "mtime": 1786117535.235217,
+    "ast_hash": "4604350c64070a5f71caf2781f9f7ce0",
     "semantic_hash": ""
   },
   "core/tests/test_memory_sync.py": {
@@ -800,8 +800,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_prompts_and_memory.py": {
-    "mtime": 1786112045.602408,
-    "ast_hash": "2c313191c494905e39f3de520e053c33",
+    "mtime": 1786115261.3880684,
+    "ast_hash": "4dfdf509945b051da1063b4a5f9ff855",
     "semantic_hash": ""
   },
   "core/tests/test_code_quality_harness.py": {
@@ -855,13 +855,13 @@
     "semantic_hash": ""
   },
   "core/tests/test_plan_execution_loop.py": {
-    "mtime": 1785484679.4989822,
-    "ast_hash": "c0b79267a7f9888372012163d07e2d17",
+    "mtime": 1786117545.3039877,
+    "ast_hash": "3e54d4cc737b63fd523f47fc4f4da59b",
     "semantic_hash": ""
   },
   "core/tools/task_helpers.py": {
-    "mtime": 1785631335.083791,
-    "ast_hash": "4385d59ee1e18d270b1ab9533c92c684",
+    "mtime": 1786117557.9125273,
+    "ast_hash": "bb0a9f1807f3990a1b95fe9b9ace496a",
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
@@ -930,8 +930,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/format.py": {
-    "mtime": 1785658302.9553635,
-    "ast_hash": "1f6da7027c88906da007a12554333b53",
+    "mtime": 1786117514.4706151,
+    "ast_hash": "ce062b585638375f4fd09512318b7860",
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/status_bar.py": {

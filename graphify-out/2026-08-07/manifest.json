@@ -80,8 +80,8 @@
     "semantic_hash": "9b5eae8113e9d607b6336851cb1248b6"
   },
   "context-manager-cli/src/context_manager/cli/main.py": {
-    "mtime": 1786108810.0707586,
-    "ast_hash": "20bc37129c988a9f36e400c758634cf2",
+    "mtime": 1786113224.331897,
+    "ast_hash": "3b03310d5bb9bda0943d59eb013e763b",
     "semantic_hash": ""
   },
   "context-manager-cli/src/context_manager/compression/__init__.py": {
@@ -380,8 +380,8 @@
     "semantic_hash": "f76e2810a69d8a0cd269b4f991b4fed7"
   },
   "core/prompts/system.py": {
-    "mtime": 1786111522.1790133,
-    "ast_hash": "314bc7c9708d7d855e6f568ba79bc7a9",
+    "mtime": 1786113185.5039628,
+    "ast_hash": "f32e8d1db5e56d173f4a77c6c5d9b368",
     "semantic_hash": ""
   },
   "core/prompts/tool_syntax.py": {
@@ -495,8 +495,8 @@
     "semantic_hash": ""
   },
   "core/tests/test_schemas.py": {
-    "mtime": 1786041930.7262878,
-    "ast_hash": "95679d775b47b25b71993944923eba34",
+    "mtime": 1786113200.851104,
+    "ast_hash": "798d345ff61318f043997ec7f68fa863",
     "semantic_hash": ""
   },
   "core/tests/test_selective_compression.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1786112014.832017,
-    "ast_hash": "338f6c739b699f49131eaa10fc633b84",
+    "mtime": 1786113290.593274,
+    "ast_hash": "327ff51863aa58fa96e70209b57c0412",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -625,8 +625,8 @@
     "semantic_hash": "7a2d226f7c052c7912ce20e72c6487c7"
   },
   "rlm_optimized/start_optimized_local.sh": {
-    "mtime": 1785967530.373475,
-    "ast_hash": "226e364880d6143b7367a326d919bdda",
+    "mtime": 1786114390.7760644,
+    "ast_hash": "095a375971bf01409224734486d06ced",
     "semantic_hash": ""
   },
   "rlm_optimized/test_parse.py": {
@@ -1112,6 +1112,11 @@
   ".kilo/plans/1786041608978-goal-mode-issues-plan.md": {
     "mtime": 1786042166.5317993,
     "ast_hash": "04c3e85e874f58871f3f200c3635cc9f",
+    "semantic_hash": ""
+  },
+  "core/tests/test_goal_mode_process.py": {
+    "mtime": 1786113232.1841865,
+    "ast_hash": "4533d55e315e19ba9c3e0799f9deced0",
     "semantic_hash": ""
   }
 }

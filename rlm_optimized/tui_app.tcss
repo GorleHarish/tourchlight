@@ -542,11 +542,13 @@ TextArea:disabled {
 
 .thinking-block {
     margin: 0 0 1 0;
+    padding: 0;
 }
 
 .thinking-block-body {
     color: $foreground-muted;
-    margin: 0 0 0 2;
+    padding: 1 2;
+    margin: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -686,6 +688,7 @@ CollapsibleTitle {
     background: $panel;
     color: $foreground;
     padding: 0 1;
+    height: 1;
 }
 
 CollapsibleTitle:hover {
@@ -693,7 +696,8 @@ CollapsibleTitle:hover {
 }
 
 CollapsibleContents {
-    padding: 0 1;
+    padding: 0;
+    margin: 0;
     background: $background;
 }
 

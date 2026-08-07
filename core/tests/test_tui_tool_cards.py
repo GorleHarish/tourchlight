@@ -100,6 +100,10 @@ async def test_tool_card_complete_ok():
         assert card._status == "ok"
         assert card._status_widget.content == "✓"
         assert {"tool-card-status", "ok"} <= card._status_widget.classes
+        assert "status-ok" in card.classes
+        badge = card.query_one(".risk-badge")
+        assert badge.content == "✓ DONE"
+        assert "risk-done" in badge.classes
         assert "500ms" in str(card._time_widget.content)
         body = card.query_one(".tool-card-body")
         assert "OK: read /tmp/x.py" in str(body.content)
@@ -128,6 +132,10 @@ async def test_tool_card_complete_error_expands():
         await pilot.pause()
         assert card._status == "error"
         assert card._status_widget.content == "✗"
+        assert "status-error" in card.classes
+        badge = card.query_one(".risk-badge")
+        assert badge.content == "✗ FAILED"
+        assert "risk-error" in badge.classes
         if tc.Collapsible is not None:
             section = card.query_one(".tool-card-section")
             assert section.collapsed is False
@@ -159,6 +167,10 @@ async def test_tool_card_complete_denied():
         assert card._status == "denied"
         assert card._status_widget.content == "⚠️"
         assert {"tool-card-status", "denied"} <= card._status_widget.classes
+        assert "status-denied" in card.classes
+        badge = card.query_one(".risk-badge")
+        assert badge.content == "⚠️ DENIED"
+        assert "risk-denied" in badge.classes
         await pilot.pause()
 
 

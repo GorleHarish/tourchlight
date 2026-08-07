@@ -167,6 +167,36 @@ class ToolCallCard(Container):
         color: $error;
     }
 
+    Static.risk-badge.risk-done {
+        color: $success;
+        text-style: bold;
+    }
+
+    Static.risk-badge.risk-error {
+        color: $error;
+        text-style: bold;
+    }
+
+    Static.risk-badge.risk-denied {
+        color: $warning;
+        text-style: bold;
+    }
+
+    ToolCallCard.status-ok,
+    ToolCallCard.risk-done {
+        border-left: thick $success;
+    }
+
+    ToolCallCard.status-error,
+    ToolCallCard.risk-error {
+        border-left: thick $error;
+    }
+
+    ToolCallCard.status-denied,
+    ToolCallCard.risk-denied {
+        border-left: thick $warning;
+    }
+
     Static.tool-card-target {
         width: 1fr;
         color: $text-muted;
@@ -204,11 +234,33 @@ class ToolCallCard(Container):
         text-style: bold;
     }
 
+    Collapsible.tool-card-section {
+        background: transparent;
+        border: none;
+        border-top: solid $panel;
+        margin: 0;
+        padding: 0;
+    }
+
+    Collapsible.tool-card-section > CollapsibleTitle {
+        background: $panel;
+        color: $text-muted;
+        padding: 0 1;
+        height: 1;
+    }
+
+    Collapsible.tool-card-section > CollapsibleContents {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+    }
+
     Collapsible.tool-card-section > CollapsibleContents > Static.tool-card-body,
     Static.tool-card-body {
         width: 1fr;
         color: $foreground;
         padding: 1 2;
+        margin: 0;
     }
 
     ToolCallCard:hover {
@@ -331,6 +383,22 @@ class ToolCallCard(Container):
         if status is None:
             status = self._status_from_result(result)
         self._set_status(status)
+
+        if status == "ok":
+            self.set_classes(f"tool-card risk-{self._risk} status-ok")
+            if self._risk_widget is not None:
+                self._risk_widget.update("✓ DONE")
+                self._risk_widget.set_classes(f"risk-badge risk-{self._risk} risk-done")
+        elif status == "error":
+            self.set_classes(f"tool-card risk-{self._risk} status-error")
+            if self._risk_widget is not None:
+                self._risk_widget.update("✗ FAILED")
+                self._risk_widget.set_classes(f"risk-badge risk-{self._risk} risk-error")
+        elif status == "denied":
+            self.set_classes(f"tool-card risk-{self._risk} status-denied")
+            if self._risk_widget is not None:
+                self._risk_widget.update("⚠️ DENIED")
+                self._risk_widget.set_classes(f"risk-badge risk-{self._risk} risk-denied")
 
         body_parts = []
         if thinking:
