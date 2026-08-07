@@ -722,8 +722,9 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
             yield Static("⚙️ Select Torchlight Execution Mode", id="mode-title")
             yield Static(
                 "Choose the operation mode for your session:\n\n"
-                "• 💬 Chat Mode: Fast, lightweight Q&A and ad-hoc edits. No disk task tracking files created.\n"
-                "• 🎯 Goal Mode: Continuous autonomous harness with disk-backed task graph (.torchlight/tasks.md).",
+                "• 💬 Chat Mode: Fast, lightweight Q&A. No disk task tracking files created.\n"
+                "• 🎯 Goal Mode: Continuous autonomous harness with disk-backed task graph (.torchlight/tasks.md).\n"
+                "• ⚡ Unified Mode: Dynamic phase auto-detection with full developer toolset.",
                 id="mode-desc",
             )
             yield Static(
@@ -733,15 +734,21 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
             )
             with Horizontal():
                 yield Button(
-                    "💬 Chat Mode (Lightweight)",
+                    "💬 Chat Mode",
                     id="select-chat-btn",
                     variant="primary",
                     classes="mode-btn",
                 )
                 yield Button(
-                    "🎯 Goal Mode (Harness)",
+                    "🎯 Goal Mode",
                     id="select-goal-btn",
                     variant="success",
+                    classes="mode-btn",
+                )
+                yield Button(
+                    "⚡ Unified Mode",
+                    id="select-unified-btn",
+                    variant="warning",
                     classes="mode-btn",
                 )
             yield Button("Cancel", id="cancel-mode-btn", variant="default")
@@ -753,6 +760,10 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
     @on(Button.Pressed, "#select-goal-btn")
     def select_goal(self) -> None:
         self.dismiss("goal")
+
+    @on(Button.Pressed, "#select-unified-btn")
+    def select_unified(self) -> None:
+        self.dismiss("unified")
 
     @on(Button.Pressed, "#cancel-mode-btn")
     def cancel_btn(self) -> None:
@@ -1411,12 +1422,7 @@ class TorchlightApp(App):
             )
             yield self._connection_pill
             yield Button("🤖 Model", id="model-select-btn", variant="default")
-            mode_lbl = (
-                "🎯 GOAL"
-                if getattr(self.engine, "execution_mode", None)
-                and getattr(self.engine.execution_mode, "value", None) == "GOAL"
-                else "💬 CHAT"
-            )
+            mode_lbl = "🎯 GOAL" if self._is_goal_mode() else "💬 CHAT"
             mode_cls = "mode-badge-goal" if "GOAL" in mode_lbl else "mode-badge-chat"
             yield Button(
                 mode_lbl,
@@ -1990,29 +1996,23 @@ class TorchlightApp(App):
 
         return f"{speedometer}\n{memory_block}"
 
+    def _is_goal_mode(self) -> bool:
+        mode = getattr(self.engine, "execution_mode", "chat")
+        if hasattr(mode, "value"):
+            mode = mode.value
+        return str(mode).lower() == "goal"
+
     def _build_plan_overview_text(self) -> str:
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        is_goal = bool(
-            getattr(self.engine, "execution_mode", None)
-            and getattr(self.engine.execution_mode, "value", None) == "GOAL"
-        )
-        return build_plan_overview_text(project_root, is_goal)
+        return build_plan_overview_text(project_root, self._is_goal_mode())
 
     def _build_task_checklist_text(self) -> str:
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        is_goal = bool(
-            getattr(self.engine, "execution_mode", None)
-            and getattr(self.engine.execution_mode, "value", None) == "GOAL"
-        )
-        return build_task_checklist_text(project_root, is_goal)
+        return build_task_checklist_text(project_root, self._is_goal_mode())
 
     def _build_plan_text(self) -> str:
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        is_goal = bool(
-            getattr(self.engine, "execution_mode", None)
-            and getattr(self.engine.execution_mode, "value", None) == "GOAL"
-        )
-        return build_plan_text(project_root, is_goal)
+        return build_plan_text(project_root, self._is_goal_mode())
 
     def _build_context_progress_text(self) -> str:
         tokens_est = self._live_context_tokens()
@@ -2119,10 +2119,7 @@ class TorchlightApp(App):
             pass
         try:
             mtb = self.query_one("#mode-toggle-btn", Button)
-            is_goal = (
-                getattr(self.engine, "execution_mode", None)
-                and getattr(self.engine.execution_mode, "value", None) == "GOAL"
-            )
+            is_goal = self._is_goal_mode()
             mtb.label = "🎯 GOAL_MODE: ACTIVE" if is_goal else "💬 CHAT_MODE: ACTIVE"
             if is_goal:
                 mtb.remove_class("mode-badge-chat")
@@ -2726,14 +2723,19 @@ class TorchlightApp(App):
                 self.action_select_mode()
             else:
                 m_str = arg.lower().strip()
-                if m_str in ("chat", "goal"):
+                if m_str in ("chat", "goal", "unified"):
                     from core.memory.models import ExecutionMode
 
-                    new_mode = (
-                        ExecutionMode.GOAL if m_str == "goal" else ExecutionMode.CHAT
-                    )
+                    if m_str == "goal":
+                        new_mode = ExecutionMode.GOAL
+                    elif m_str == "unified":
+                        new_mode = ExecutionMode.UNIFIED
+                    else:
+                        new_mode = ExecutionMode.CHAT
+
                     if hasattr(self.engine.memory.state, "execution_mode"):
                         self.engine.memory.state.execution_mode = new_mode
+                    self.engine.execution_mode = m_str
                     if m_str == "goal":
                         try:
                             from core.execution.autonomous_harness import (
@@ -2744,12 +2746,30 @@ class TorchlightApp(App):
                                 project_root=self.engine.project_root,
                                 memory=self.engine.memory,
                             )
-                            harness.ensure_goal_spec_initialized()
-                        except Exception:
-                            pass
+                            success = harness.ensure_goal_spec_initialized()
+                            if not success:
+                                self.notify(
+                                    "Failed to initialize Goal Mode task graph",
+                                    severity="error",
+                                    timeout=5,
+                                )
+                                return
+                        except Exception as e:
+                            self.notify(
+                                f"Failed to initialize Goal Mode: {e}",
+                                severity="error",
+                                timeout=5,
+                            )
+                            return
                         self.notify(
                             "Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)",
                             severity="success",
+                            timeout=3,
+                        )
+                    elif m_str == "unified":
+                        self.notify(
+                            "Switched to Unified Mode (Dynamic Phase Auto-Detection)",
+                            severity="information",
                             timeout=3,
                         )
                     else:
@@ -2761,8 +2781,32 @@ class TorchlightApp(App):
                     self.update_status_bar()
                 else:
                     self.notify(
-                        "Usage: /mode chat or /mode goal", severity="warning", timeout=3
+                        "Usage: /mode chat, /mode goal, or /mode unified", severity="warning", timeout=3
                     )
+
+        elif cmd in ("/phase", "/params"):
+            if not arg or arg == "show":
+                curr_p = getattr(self.engine, "_current_phase", "code")
+                is_l = getattr(self.engine, "_params_locked", False)
+                lock_st = " 🔒 (locked)" if is_l else " 🔓 (auto)"
+                self.notify(
+                    f"Current Phase: {curr_p}{lock_st}\nUsage: /phase code | /phase plan | /phase troubleshoot | /phase chat | /phase auto",
+                    severity="information",
+                    timeout=5,
+                )
+            else:
+                p_arg = arg.lower().strip()
+                if hasattr(self.engine, "lock_phase"):
+                    ok = self.engine.lock_phase(p_arg)
+                    if ok:
+                        if p_arg in ("auto", "unlock", "reset"):
+                            self.notify("Phase lock removed — auto phase detection enabled 🔓", severity="success", timeout=3)
+                        else:
+                            self.notify(f"Phase locked to '{p_arg}' 🔒", severity="success", timeout=3)
+                    else:
+                        self.notify("Usage: /phase code | /phase plan | /phase troubleshoot | /phase chat | /phase auto", severity="warning", timeout=4)
+                else:
+                    self.notify("Phase locking unavailable", severity="error", timeout=3)
 
         elif cmd in ("/cd", "/workdir", "/open", "/browse"):
             if not arg:
@@ -2890,6 +2934,16 @@ class TorchlightApp(App):
             self.engine.execution_mode = (
                 _em.value if hasattr(_em, "value") else str(_em)
             )
+
+        # Register callback to sync engine mode changes back to memory
+        def _on_mode_change(new_mode: str):
+            if _mem and hasattr(_mem, "state") and hasattr(_mem.state, "execution_mode"):
+                from core.memory.models import ExecutionMode
+                try:
+                    _mem.state.execution_mode = ExecutionMode(new_mode)
+                except ValueError:
+                    pass
+        self.engine.set_execution_mode_callback(_on_mode_change)
 
         self._streaming_text = ""
         self._ensure_streaming_widget()
@@ -3469,11 +3523,12 @@ class TorchlightApp(App):
                 mem = getattr(self.engine, "memory", None)
                 from core.memory.models import ExecutionMode
 
-                new_mode = (
-                    ExecutionMode.GOAL
-                    if selected_mode == "goal"
-                    else ExecutionMode.CHAT
-                )
+                if selected_mode == "goal":
+                    new_mode = ExecutionMode.GOAL
+                elif selected_mode == "unified":
+                    new_mode = ExecutionMode.UNIFIED
+                else:
+                    new_mode = ExecutionMode.CHAT
                 if (
                     mem
                     and hasattr(mem, "state")
@@ -3494,9 +3549,21 @@ class TorchlightApp(App):
                         harness = AutonomousHarness(
                             project_root=self.engine.project_root, memory=mem
                         )
-                        harness.ensure_goal_spec_initialized()
-                    except Exception:
-                        pass
+                        success = harness.ensure_goal_spec_initialized()
+                        if not success:
+                            self.notify(
+                                "Failed to initialize Goal Mode task graph",
+                                severity="error",
+                                timeout=5,
+                            )
+                            return
+                    except Exception as e:
+                        self.notify(
+                            f"Failed to initialize Goal Mode: {e}",
+                            severity="error",
+                            timeout=5,
+                        )
+                        return
                     self.notify(
                         "Switched to Goal Mode (Task Graph in .torchlight/tasks.md)",
                         severity="success",

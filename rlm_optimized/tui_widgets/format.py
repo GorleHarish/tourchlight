@@ -49,22 +49,17 @@ def build_plan_overview_text(project_root: str, is_goal: bool = False) -> str:
 
 def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
     """Render Task Checklist hierarchy & progress bar."""
+    from core.tools.task_helpers import parse_all_tasks_from_markdown, sync_workspace_tasks
+
     plan_path = os.path.join(project_root, "implementation_plan.md")
     alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
     alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
 
-    target_file = None
-    file_type = None
-
-    if os.path.exists(plan_path):
-        target_file = plan_path
-        file_type = "markdown"
-    elif os.path.exists(alt_tasks_path):
-        target_file = alt_tasks_path
-        file_type = "markdown"
-    elif os.path.exists(alt_goal_path):
-        target_file = alt_goal_path
-        file_type = "json"
+    candidates = [
+        (plan_path, "markdown"),
+        (alt_tasks_path, "markdown"),
+        (alt_goal_path, "json"),
+    ]
 
     active_tasks = []
     completed_tasks = []
@@ -74,7 +69,14 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
     def _norm(text: str) -> str:
         return re.sub(r"\s+", " ", text.strip().lower())
 
-    if target_file and os.path.exists(target_file):
+    for target_file, file_type in candidates:
+        if not os.path.exists(target_file):
+            continue
+        active_tasks.clear()
+        completed_tasks.clear()
+        in_progress_tasks.clear()
+        seen.clear()
+
         try:
             if file_type == "json":
                 with open(target_file, "r", encoding="utf-8") as f:
@@ -94,33 +96,34 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
                     else:
                         active_tasks.append(f"[dim]  [ ] {desc}[/dim]")
             else:
-                with open(target_file, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-
-                chk_regex = re.compile(
-                    r"^(?:[-*+>]|\d+[\.\)])?\s*\[([ xX/\-v✓~])\]\s*(.*)$"
-                )
-                for line in lines:
-                    stripped = line.strip()
-                    m = chk_regex.match(stripped)
-                    if m:
-                        state, task_raw = m.group(1), m.group(2).strip()
-                        if task_raw.lower().startswith("progress:"):
-                            continue
-                        if _norm(task_raw) in seen:
-                            continue
-                        seen.add(_norm(task_raw))
-                        task_text = escape(task_raw)
-                        if state in ("x", "X", "v", "✓"):
-                            completed_tasks.append(f"[bold green]  [✓] {task_text}[/bold green]")
-                        elif state in ("/", "-", "~"):
-                            in_progress_tasks.append(f"[bold yellow]  [►] {task_text} █[/bold yellow]")
-                        else:
-                            active_tasks.append(f"[dim]  [ ] {task_text}[/dim]")
+                parsed = parse_all_tasks_from_markdown(target_file)
+                for t in parsed:
+                    desc_raw = t["description"]
+                    if _norm(desc_raw) in seen:
+                        continue
+                    seen.add(_norm(desc_raw))
+                    task_text = escape(desc_raw)
+                    if t["status"] == "completed":
+                        completed_tasks.append(f"[bold green]  [✓] {task_text}[/bold green]")
+                    elif t["status"] == "in_progress":
+                        in_progress_tasks.append(f"[bold yellow]  [►] {task_text} █[/bold yellow]")
+                    else:
+                        active_tasks.append(f"[dim]  [ ] {task_text}[/dim]")
         except Exception:  # noqa: BLE001, S110
             pass
 
+        if len(completed_tasks) + len(in_progress_tasks) + len(active_tasks) > 0:
+            break
+
     total = len(completed_tasks) + len(in_progress_tasks) + len(active_tasks)
+    if total == 0 and is_goal:
+        # Trigger self-healing sync if 0 tasks found in Goal Mode
+        try:
+            sync_workspace_tasks(project_root)
+            return build_task_checklist_text(project_root, is_goal=False)
+        except Exception:
+            pass
+
     completed = len(completed_tasks)
 
     if total == 0:
@@ -148,22 +151,17 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
 
 def build_plan_text(project_root: str, is_goal: bool = False) -> str:
     """Render Production-Grade Implementation Plan & Task Hierarchy."""
+    from core.tools.task_helpers import parse_all_tasks_from_markdown, sync_workspace_tasks
+
     plan_path = os.path.join(project_root, "implementation_plan.md")
     alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
     alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
 
-    target_file = None
-    file_type = None
-
-    if os.path.exists(plan_path):
-        target_file = plan_path
-        file_type = "markdown"
-    elif os.path.exists(alt_tasks_path):
-        target_file = alt_tasks_path
-        file_type = "markdown"
-    elif os.path.exists(alt_goal_path):
-        target_file = alt_goal_path
-        file_type = "json"
+    candidates = [
+        (plan_path, "markdown"),
+        (alt_tasks_path, "markdown"),
+        (alt_goal_path, "json"),
+    ]
 
     plan_title = "Active Development Goal"
     active_tasks = []
@@ -174,7 +172,14 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
     def _norm(text: str) -> str:
         return re.sub(r"\s+", " ", text.strip().lower())
 
-    if target_file and os.path.exists(target_file):
+    for target_file, file_type in candidates:
+        if not os.path.exists(target_file):
+            continue
+        active_tasks.clear()
+        completed_tasks.clear()
+        in_progress_tasks.clear()
+        seen.clear()
+
         try:
             if file_type == "json":
                 with open(target_file, "r", encoding="utf-8") as f:
@@ -197,36 +202,39 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
             else:
                 with open(target_file, "r", encoding="utf-8") as f:
                     lines = f.readlines()
-
                 for line in lines:
                     if line.startswith("# "):
                         plan_title = line.lstrip("# ").strip()
                         break
 
-                chk_regex = re.compile(
-                    r"^(?:[-*+>]|\d+[\.\)])?\s*\[([ xX/\-v✓~])\]\s*(.*)$"
-                )
-                for line in lines:
-                    stripped = line.strip()
-                    m = chk_regex.match(stripped)
-                    if m:
-                        state, task_raw = m.group(1), m.group(2).strip()
-                        if task_raw.lower().startswith("progress:"):
-                            continue
-                        if _norm(task_raw) in seen:
-                            continue
-                        seen.add(_norm(task_raw))
-                        task_text = escape(task_raw)
-                        if state in ("x", "X", "v", "✓"):
-                            completed_tasks.append(f"[bold green]  [✓] {task_text}[/bold green]")
-                        elif state in ("/", "-", "~"):
-                            in_progress_tasks.append(f"[bold yellow]  [►] {task_text} █[/bold yellow]")
-                        else:
-                            active_tasks.append(f"[dim]  [ ] {task_text}[/dim]")
+                parsed = parse_all_tasks_from_markdown(target_file)
+                for t in parsed:
+                    desc_raw = t["description"]
+                    if _norm(desc_raw) in seen:
+                        continue
+                    seen.add(_norm(desc_raw))
+                    task_text = escape(desc_raw)
+                    if t["status"] == "completed":
+                        completed_tasks.append(f"[bold green]  [✓] {task_text}[/bold green]")
+                    elif t["status"] == "in_progress":
+                        in_progress_tasks.append(f"[bold yellow]  [►] {task_text} █[/bold yellow]")
+                    else:
+                        active_tasks.append(f"[dim]  [ ] {task_text}[/dim]")
         except Exception:  # noqa: BLE001, S110
             pass
 
+        if len(completed_tasks) + len(in_progress_tasks) + len(active_tasks) > 0:
+            break
+
     total = len(completed_tasks) + len(in_progress_tasks) + len(active_tasks)
+    if total == 0 and is_goal:
+        # Trigger self-healing sync if 0 tasks found in Goal Mode
+        try:
+            sync_workspace_tasks(project_root)
+            return build_plan_text(project_root, is_goal=False)
+        except Exception:
+            pass
+
     completed = len(completed_tasks)
 
     # 1. Header & Goal Title

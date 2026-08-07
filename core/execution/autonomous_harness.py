@@ -113,22 +113,37 @@ class AutonomousHarness:
 
     def ensure_goal_spec_initialized(
         self, title: Optional[str] = None, description: Optional[str] = None
-    ) -> GoalSpec:
-        """Ensure a goal spec exists on disk in .torchlight, initializing a default workspace goal if absent."""
+    ) -> bool:
+        """Ensure a goal spec exists on disk in .torchlight, initializing a default workspace goal if absent.
+        
+        Returns True if successful (files created and verified), False otherwise.
+        """
         spec = self.load_goal_spec()
         if spec:
             self.goal_spec = spec
-            return spec
+            # Verify files exist
+            return self.goal_json_path.exists() and self.tasks_md_path.exists()
 
         safe_name = self.project_root.name.lower().replace(" ", "_")
-        return self.initialize_goal(
+        goal_title = title or f"{self.project_root.name} Autonomous Goal"
+        self.initialize_goal(
             goal_id=f"goal_{safe_name}",
-            title=title or f"{self.project_root.name} Autonomous Goal",
+            title=goal_title,
             description=description
             or title
             or "Continuous codebase maintenance, debugging, and feature development.",
             tasks=[],
         )
+
+        try:
+            from core.tools.task_helpers import sync_workspace_tasks
+
+            sync_workspace_tasks(self.project_root, default_goal_title=goal_title)
+        except Exception:
+            pass
+
+        # Verify files were created
+        return self.goal_json_path.exists() and self.tasks_md_path.exists()
 
     def initialize_goal(
         self, goal_id: str, title: str, description: str, tasks: list[dict]

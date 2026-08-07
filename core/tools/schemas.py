@@ -131,11 +131,22 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "LIST_DIR": {
         "type": "object",
         "properties": {
-            "path": {"type": "string", "description": "Directory path to list"},
+            "path": {
+                "type": "string",
+                "description": "Directory path to list (defaults to '.' if omitted)",
+                "default": ".",
+            },
         },
-        "required": ["path"],
+        "required": [],
         "aliases": {
-            "path": ["dir", "directory", "folder", "p"],
+            "path": [
+                "dir",
+                "directory",
+                "folder",
+                "p",
+                "DirectoryPath",
+                "dir_path",
+            ],
         },
     },
     "GREP": {
@@ -160,10 +171,15 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "cmd": {"type": "string", "description": "Shell command line to execute"},
+            "cwd": {
+                "type": "string",
+                "description": "Optional working directory path for execution",
+            },
         },
         "required": ["cmd"],
         "aliases": {
             "cmd": ["command", "shell", "exec", "c"],
+            "cwd": ["dir", "path", "directory", "working_dir"],
         },
     },
     "WEB_SEARCH": {
@@ -206,21 +222,6 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "aliases": {
             "snippet": ["code", "text"],
             "language": ["lang"],
-        },
-    },
-    "SAVE_MEMORY": {
-        "type": "object",
-        "properties": {
-            "fact": {"type": "string", "description": "Fact to save to project memory"},
-            "category": {
-                "type": "string",
-                "description": "Category: fact, decision, tech, fail",
-            },
-        },
-        "required": ["fact"],
-        "aliases": {
-            "fact": ["content", "text", "value"],
-            "category": ["cat", "type"],
         },
     },
     "FORMAT_CODE": {
@@ -399,6 +400,24 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
             "target_files": ["files", "targets"],
         },
     },
+    "SET_PHASE": {
+        "type": "object",
+        "properties": {
+            "phase": {
+                "type": "string",
+                "description": "Target phase to switch to: 'code', 'plan', 'troubleshoot', or 'chat'",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Short explanation for changing phase",
+            },
+        },
+        "required": ["phase"],
+        "aliases": {
+            "phase": ["mode", "target_phase", "p"],
+            "reason": ["why", "explanation"],
+        },
+    },
 }
 
 
@@ -407,7 +426,9 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
 
 def _coerce_param(value, expected_type: str):
     """Coerce LLM-provided values to expected schema types."""
-    if value is None or (isinstance(value, str) and value.lower() in ("null", "none", "")):
+    if value is None or (
+        isinstance(value, str) and value.lower() in ("null", "none", "")
+    ):
         if expected_type != "string":
             return None
     if expected_type == "integer" and isinstance(value, str):
@@ -429,6 +450,7 @@ def _coerce_param(value, expected_type: str):
             return list(value)
         if isinstance(value, str):
             import json
+
             try:
                 parsed = json.loads(value)
                 if isinstance(parsed, list):
@@ -439,6 +461,7 @@ def _coerce_param(value, expected_type: str):
         return [value]
     if expected_type == "object" and isinstance(value, str):
         import json
+
         try:
             parsed = json.loads(value)
             if isinstance(parsed, dict):
@@ -463,6 +486,7 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
     schema = TOOL_SCHEMAS[tool_upper]
     if isinstance(args, str):
         from core.tools.parser import unwrap_double_encoded_json
+
         normalized = unwrap_double_encoded_json(args)
     elif isinstance(args, dict):
         normalized = dict(args)
@@ -478,9 +502,12 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
                     normalized[target_key] = normalized[alias]
                     break
 
-    # Coerce parameter types to match schema expectations
+    # Coerce parameter types and inject defaults
     properties = schema.get("properties", {})
     for key, prop_def in properties.items():
+        if key not in normalized or normalized[key] is None:
+            if "default" in prop_def:
+                normalized[key] = prop_def["default"]
         if key in normalized and normalized[key] is not None:
             expected = prop_def.get("type", "string")
             normalized[key] = _coerce_param(normalized[key], expected)
@@ -524,10 +551,77 @@ def get_openai_tools_schema() -> list[dict]:
 
 
 _PHASE_TOOL_VISIBILITY = {
-    "plan": {"READ_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "ASK_USER", "SAVE_MEMORY", "WEB_SEARCH", "WEB_FETCH", "DOC_SEARCH", "WEB_VERIFY", "UPDATE_TASK_GRAPH"},
-    "chat": {"READ_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "ASK_USER", "SAVE_MEMORY", "WEB_SEARCH", "WEB_FETCH", "DOC_SEARCH", "WEB_VERIFY"},
-    "code": {"READ_FILE", "WRITE_FILE", "EDIT_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "RUN_COMMAND", "VERIFY", "GIT", "INSPECT_WEB", "FORMAT_CODE", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "ASK_USER"},
-    "troubleshoot": {"READ_FILE", "EDIT_FILE", "READ_SYMBOLS", "GREP", "SEARCH_AST", "LIST_DIR", "RUN_COMMAND", "INSPECT_WEB", "GIT", "VERIFY", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "ASK_USER"},
+    "plan": {
+        "READ_FILE",
+        "WRITE_FILE",
+        "EDIT_FILE",
+        "READ_SYMBOLS",
+        "GREP",
+        "SEARCH_AST",
+        "LIST_DIR",
+        "RUN_COMMAND",
+        "VERIFY",
+        "GIT",
+        "INSPECT_WEB",
+        "FORMAT_CODE",
+        "SAVE_MEMORY",
+        "UPDATE_TASK_GRAPH",
+        "SET_PHASE",
+        "ASK_USER",
+        "WEB_SEARCH",
+        "WEB_FETCH",
+        "DOC_SEARCH",
+        "WEB_VERIFY",
+    },
+    "chat": {
+        "READ_FILE",
+        "READ_SYMBOLS",
+        "GREP",
+        "SEARCH_AST",
+        "LIST_DIR",
+        "ASK_USER",
+        "SAVE_MEMORY",
+        "SET_PHASE",
+        "WEB_SEARCH",
+        "WEB_FETCH",
+        "DOC_SEARCH",
+        "WEB_VERIFY",
+    },
+    "code": {
+        "READ_FILE",
+        "WRITE_FILE",
+        "EDIT_FILE",
+        "READ_SYMBOLS",
+        "GREP",
+        "SEARCH_AST",
+        "LIST_DIR",
+        "RUN_COMMAND",
+        "VERIFY",
+        "GIT",
+        "INSPECT_WEB",
+        "FORMAT_CODE",
+        "SAVE_MEMORY",
+        "UPDATE_TASK_GRAPH",
+        "SET_PHASE",
+        "ASK_USER",
+    },
+    "troubleshoot": {
+        "READ_FILE",
+        "WRITE_FILE",
+        "EDIT_FILE",
+        "READ_SYMBOLS",
+        "GREP",
+        "SEARCH_AST",
+        "LIST_DIR",
+        "RUN_COMMAND",
+        "INSPECT_WEB",
+        "GIT",
+        "VERIFY",
+        "SAVE_MEMORY",
+        "UPDATE_TASK_GRAPH",
+        "SET_PHASE",
+        "ASK_USER",
+    },
 }
 
 
@@ -536,6 +630,7 @@ def get_schemas_for_phase(phase: str = "code") -> dict:
     phase_key = (phase or "code").lower().strip()
     if phase_key in _PHASE_TOOL_VISIBILITY:
         allowed = _PHASE_TOOL_VISIBILITY[phase_key]
-        return {name: schema for name, schema in TOOL_SCHEMAS.items() if name in allowed}
+        return {
+            name: schema for name, schema in TOOL_SCHEMAS.items() if name in allowed
+        }
     return TOOL_SCHEMAS
-

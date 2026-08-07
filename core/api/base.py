@@ -10,6 +10,7 @@ from typing import AsyncIterator, Optional, Protocol, runtime_checkable
 
 # ── Inference parameters ──────────────────────────────────────────────────
 
+
 @dataclass
 class InferenceParams:
     """
@@ -22,6 +23,7 @@ class InferenceParams:
       TROUBLESHOOT  — slightly more exploration than coding
       CHAT          — default conversational settings
     """
+
     temperature: float = 0.7
     top_k: int = 50
     top_p: float = 0.95
@@ -61,49 +63,74 @@ class InferenceParams:
     def for_coding(cls) -> "InferenceParams":
         """Writing code files. Near-deterministic — exact syntax matters."""
         return cls(
-            temperature=0.1, top_k=20, top_p=0.90,
-            min_p=0.05, repeat_penalty=1.10, seed=-1,
+            temperature=0.1,
+            top_k=20,
+            top_p=0.90,
+            min_p=0.05,
+            repeat_penalty=1.10,
+            seed=-1,
         )
 
     @classmethod
     def for_planning(cls) -> "InferenceParams":
-        """Reasoning through plans. Moderate creativity. Locks out WRITE_FILE to prevent hallucinated changes."""
+        """Reasoning through plans. Moderate creativity. All tools remain available."""
         return cls(
-            temperature=0.4, top_k=40, top_p=0.92,
-            min_p=0.05, repeat_penalty=1.05, seed=-1,
-            allowed_tools=["SEARCH_AST", "GREP", "READ_FILE", "READ_SYMBOLS", "LIST_DIR", "RUN_COMMAND", "SAVE_MEMORY", "ASK_USER"]
+            temperature=0.4,
+            top_k=40,
+            top_p=0.92,
+            min_p=0.05,
+            repeat_penalty=1.05,
+            seed=-1,
         )
 
     @classmethod
     def for_troubleshoot(cls) -> "InferenceParams":
         """Diagnosing errors. Slightly more exploration."""
         return cls(
-            temperature=0.3, top_k=35, top_p=0.92,
-            min_p=0.05, repeat_penalty=1.05, seed=-1,
+            temperature=0.3,
+            top_k=35,
+            top_p=0.92,
+            min_p=0.05,
+            repeat_penalty=1.05,
+            seed=-1,
         )
 
     @classmethod
     def for_chat(cls) -> "InferenceParams":
         """General conversation."""
         return cls(
-            temperature=0.7, top_k=50, top_p=0.95,
-            min_p=0.05, repeat_penalty=1.05, seed=-1,
+            temperature=0.7,
+            top_k=50,
+            top_p=0.95,
+            min_p=0.05,
+            repeat_penalty=1.05,
+            seed=-1,
         )
 
     @classmethod
     def for_critic(cls) -> "InferenceParams":
         """Adversarial critique / debate. Focused flaw identification."""
         return cls(
-            temperature=0.2, top_k=25, top_p=0.90,
-            min_p=0.05, repeat_penalty=1.05, seed=-1, use_grammar=False,
+            temperature=0.2,
+            top_k=25,
+            top_p=0.90,
+            min_p=0.05,
+            repeat_penalty=1.05,
+            seed=-1,
+            use_grammar=False,
         )
 
     @classmethod
     def for_refine(cls) -> "InferenceParams":
         """Synthesis and refinement following critique. Deterministic."""
         return cls(
-            temperature=0.1, top_k=20, top_p=0.90,
-            min_p=0.05, repeat_penalty=1.10, seed=-1, use_grammar=False,
+            temperature=0.1,
+            top_k=20,
+            top_p=0.90,
+            min_p=0.05,
+            repeat_penalty=1.10,
+            seed=-1,
+            use_grammar=False,
         )
 
 
@@ -120,6 +147,7 @@ PRESETS: dict[str, InferenceParams] = {
 
 
 # ── LLM Client Protocol ──────────────────────────────────────────────────
+
 
 @runtime_checkable
 class LLMClient(Protocol):

@@ -127,6 +127,26 @@ def test_build_plan_text_goal_spec_json_dedupes():
         assert "[ ] Ship it" in res
 
 
+def test_build_plan_text_fallback_bullet_parsing():
+    """Verify build_plan_text handles bulleted plan lists without explicit checkboxes."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plan_path = os.path.join(tmpdir, "implementation_plan.md")
+        with open(plan_path, "w", encoding="utf-8") as f:
+            f.write(
+                "# Goal: Build App\n\n"
+                "## Proposed Changes\n"
+                "- Create index.html markup\n"
+                "- Add styles.css layout\n"
+            )
+
+        res = _build_plan_text(tmpdir)
+        assert "PLAN & TASKS" in res
+        assert "(0/2)" in res
+        assert "Create index.html markup" in res
+        assert "Add styles.css layout" in res
+
+
+
 def test_tui_app_tcss_valid_syntax():
     tcss_path = os.path.abspath(
         os.path.join(

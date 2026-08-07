@@ -126,7 +126,7 @@ def _looks_like_prose_or_outline(content: str) -> bool:
     )
 
     # 1. Strong code signals (tokens + structural punctuation) -> definitely code.
-    if code_tokens and code_punct >= 6 and not outline_lines:
+    if (code_tokens or code_punct >= 4) and not outline_lines and not has_plan_leadin:
         return False
 
     # 2. Outlined plan beats weak code signals ("# 1. ...", "## Step ...").
@@ -138,7 +138,39 @@ def _looks_like_prose_or_outline(content: str) -> bool:
         return True
 
     # 4. No code tokens and almost no code punctuation -> prose.
-    return bool(not code_tokens and code_punct < 6)
+    return bool(not code_tokens and code_punct < 4)
+
+
+def _looks_like_full_file(content: str, path: str = "", project_root: str = "") -> bool:
+    """Helper to check if content looks like a complete standalone file rather than a small snippet."""
+    if not content:
+        return False
+    lines = [ln for ln in content.strip().splitlines() if ln.strip()]
+    
+    # If target file exists on disk, compare snippet size with existing file
+    full_p = os.path.join(project_root, path) if project_root and not os.path.isabs(path) else path
+    if os.path.exists(full_p) and os.path.isfile(full_p):
+        try:
+            with open(full_p, "r", encoding="utf-8", errors="ignore") as f:
+                existing_lines = [ln for ln in f.read().splitlines() if ln.strip()]
+            if len(existing_lines) >= 10 and len(lines) < 15 and len(lines) < len(existing_lines) * 0.5:
+                # Snippet is significantly smaller than existing file -> partial snippet!
+                return False
+        except Exception:
+            pass
+
+    if len(lines) >= 15:
+        return True
+    ext = os.path.splitext(path)[1].lower() if path else ""
+    if ext in (".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java", ".c", ".cpp", ".rb", ".php"):
+        # Check for top-level code declarations / imports
+        if re.search(r"^\s*(?:import|from|require|package|use|#include)\b", content, re.MULTILINE):
+            return True
+        if re.search(r"^\s*(?:def|class|function|const|let|var|pub\s+fn|func)\b", content, re.MULTILINE):
+            return True
+    elif ext in (".html", ".json", ".yaml", ".yml", ".md", ".toml", ".xml"):
+        return True
+    return False
 
 
 def _trim_trailing_prose(content: str, path: str = "") -> str:
@@ -238,7 +270,8 @@ class RLMEngineOptimized:
         self.sandbox.set_llm_query_fn(self._sandbox_llm_query)
         self.approval_fn = approval_fn  # fn(tool_name, risk, args) -> bool or async
         self._inline_code_counter = 0
-        self.execution_mode = execution_mode or "unified"
+        self._execution_mode = execution_mode or "unified"
+        self._execution_mode_callback = None
 
         if debate_verifier is not None:
             self.debate_verifier = debate_verifier
@@ -256,6 +289,37 @@ class RLMEngineOptimized:
             )
         except Exception:
             self.feedback_loop = None
+
+    @property
+    def execution_mode(self) -> str:
+        return self._execution_mode
+
+    @execution_mode.setter
+    def execution_mode(self, value) -> None:
+        if hasattr(value, "value"):
+            str_val = str(value.value).lower()
+        else:
+            str_val = str(value).lower()
+        self._execution_mode = str_val
+        # Sync to memory state if available
+        mem = getattr(self, "_memory", None)
+        if mem and hasattr(mem, "state"):
+            from core.memory.models import ExecutionMode
+            try:
+                mem.state.execution_mode = ExecutionMode(str_val)
+            except ValueError:
+                pass
+        # Call callback if registered
+        cb = getattr(self, "_execution_mode_callback", None)
+        if cb:
+            try:
+                cb(str_val)
+            except Exception:
+                pass
+
+    def set_execution_mode_callback(self, callback) -> None:
+        """Register callback to be notified of execution mode changes."""
+        self._execution_mode_callback = callback
 
     @property
     def memory(self):
@@ -391,6 +455,529 @@ class RLMEngineOptimized:
         after = getattr(target_mem, "total_tokens", 0)
         return before, after, max(0, before - after)
 
+    # Phase detection signals (ported from CLI)
+    _PLAN_SIGNALS = (
+        "plan",
+        "design",
+        "architecture",
+        "approach",
+        "strategy",
+        "how to",
+        "what should",
+        "what would",
+        "think about",
+        "consider",
+        "evaluate",
+        "compare",
+        "tradeoff",
+        "pros and cons",
+        "roadmap",
+        "spec",
+        "requirements",
+        "break down",
+        "decompose",
+        "sketch",
+        "outline",
+        "propose",
+    )
+
+    _CODE_SIGNALS = (
+        "implement",
+        "write",
+        "create",
+        "build",
+        "add",
+        "modify",
+        "change",
+        "update",
+        "edit",
+        "refactor",
+        "fix",
+        "code",
+        "function",
+        "class",
+        "method",
+        "api",
+        "endpoint",
+        "handler",
+        "component",
+        "module",
+        "script",
+        "test",
+        "mock",
+        "stub",
+        "prototype",
+        "integrate",
+        "connect",
+        "wire",
+        "hook",
+        "register",
+        "define",
+        "declare",
+        "instantiate",
+        "initialize",
+        "configure",
+        "setup",
+        "install",
+        "deploy",
+        "release",
+        "publish",
+        "ship",
+        "run",
+        "execute",
+        "call",
+        "invoke",
+        "trigger",
+        "emit",
+        "dispatch",
+        "send",
+        "receive",
+        "fetch",
+        "query",
+        "read",
+        "write",
+        "save",
+        "load",
+        "parse",
+        "serialize",
+        "deserialize",
+        "transform",
+        "map",
+        "filter",
+        "reduce",
+        "aggregate",
+        "validate",
+        "sanitize",
+        "normalize",
+        "encode",
+        "decode",
+        "encrypt",
+        "decrypt",
+        "hash",
+        "sign",
+        "verify",
+        "authenticate",
+        "authorize",
+        "login",
+        "logout",
+        "session",
+        "token",
+        "cookie",
+        "header",
+        "body",
+        "payload",
+        "request",
+        "response",
+        "status",
+        "error",
+        "exception",
+        "throw",
+        "catch",
+        "try",
+        "finally",
+        "raise",
+        "assert",
+        "expect",
+        "should",
+        "must",
+        "will",
+        "shall",
+        "return",
+        "yield",
+        "await",
+        "async",
+        "promise",
+        "future",
+        "callback",
+        "handler",
+        "listener",
+        "observer",
+        "subscriber",
+        "publisher",
+        "event",
+        "signal",
+        "emit",
+        "broadcast",
+        "notify",
+        "dispatch",
+        "fire",
+        "trigger",
+    )
+
+    _TROUBLESHOOT_SIGNALS = (
+        "error",
+        "fail",
+        "bug",
+        "issue",
+        "problem",
+        "crash",
+        "exception",
+        "traceback",
+        "stack",
+        "segfault",
+        "outofmemory",
+        "timeout",
+        "hang",
+        "deadlock",
+        "race",
+        "leak",
+        "corrupt",
+        "invalid",
+        "unexpected",
+        "wrong",
+        "broken",
+        "stuck",
+        "freeze",
+        "slow",
+        "performance",
+        "latency",
+        "bottleneck",
+        "optimize",
+        "memory",
+        "cpu",
+        "disk",
+        "network",
+        "connection",
+        "refused",
+        "reset",
+        "abort",
+        "kill",
+        "oom",
+        "null",
+        "nil",
+        "undefined",
+        "index",
+        "bounds",
+        "overflow",
+        "underflow",
+        "division",
+        "zero",
+        "nan",
+        "inf",
+        "assertion",
+        "panic",
+        "abort",
+        "segmentation",
+        "fault",
+        "access",
+        "violation",
+        "protection",
+        "permission",
+        "denied",
+        "forbidden",
+        "unauthorized",
+        "authentication",
+        "certificate",
+        "ssl",
+        "tls",
+        "handshake",
+        "verify",
+        "trust",
+        "chain",
+        "expired",
+        "revoked",
+        "self-signed",
+        "hostname",
+        "mismatch",
+        "cipher",
+        "protocol",
+        "version",
+        "alpn",
+        "sni",
+        "ocsp",
+        "crl",
+        "dp",
+        "api",
+        "endpoint",
+        "route",
+        "path",
+        "url",
+        "uri",
+        "query",
+        "param",
+        "header",
+        "body",
+        "json",
+        "xml",
+        "yaml",
+        "form",
+        "multipart",
+        "file",
+        "upload",
+        "download",
+        "stream",
+        "buffer",
+        "chunk",
+        "pipe",
+        "channel",
+        "socket",
+        "port",
+        "host",
+        "address",
+        "interface",
+        "bind",
+        "listen",
+        "accept",
+        "connect",
+        "dial",
+        "resolve",
+        "lookup",
+        "dns",
+        "nameserver",
+        "record",
+        "zone",
+        "ttl",
+        "cache",
+        "expire",
+        "stale",
+        "fresh",
+        "hit",
+        "miss",
+        "evict",
+        "purge",
+        "invalidate",
+        "refresh",
+        "warm",
+        "cold",
+        "preload",
+        "prefetch",
+        "bundle",
+        "chunk",
+        "split",
+        "lazy",
+        "dynamic",
+        "import",
+        "module",
+        "export",
+        "default",
+        "named",
+        "namespace",
+        "scope",
+        "closure",
+        "hoisting",
+        "temporal",
+        "dead",
+        "zone",
+        "tdz",
+        "const",
+        "let",
+        "var",
+        "function",
+        "arrow",
+        "class",
+        "extends",
+        "super",
+        "constructor",
+        "prototype",
+        "instanceof",
+        "typeof",
+        "delete",
+        "new",
+        "this",
+        "arguments",
+        "rest",
+        "spread",
+        "destructuring",
+        "template",
+        "literal",
+        "tagged",
+        "raw",
+        "escape",
+        "unicode",
+        "regexp",
+        "regex",
+        "pattern",
+        "match",
+        "replace",
+        "split",
+        "search",
+        "exec",
+        "test",
+        "flags",
+        "global",
+        "ignore",
+        "case",
+        "multiline",
+        "sticky",
+        "unicode",
+        "dotall",
+        "lookahead",
+        "lookbehind",
+        "capture",
+        "group",
+        "backreference",
+        "quantifier",
+        "greedy",
+        "lazy",
+        "possessive",
+        "alternation",
+        "anchor",
+        "boundary",
+        "word",
+        "digit",
+        "whitespace",
+        "character",
+        "class",
+        "range",
+        "negation",
+        "escape",
+        "literal",
+        "meta",
+        "special",
+        "why is",
+        "why does",
+        "what went wrong",
+        "debug",
+        "diagnose",
+        "trace",
+        "log",
+        "monitor",
+        "alert",
+        "metric",
+        "dashboard",
+        "grafana",
+        "prometheus",
+        "datadog",
+        "newrelic",
+        "splunk",
+        "elk",
+        "loki",
+        "tempo",
+        "jaeger",
+        "zipkin",
+        "opentelemetry",
+        "otel",
+        "trace",
+        "span",
+        "context",
+        "baggage",
+        "propagation",
+        "w3c",
+        "b3",
+        "jaeger",
+        "zipkin",
+        "otlp",
+        "grpc",
+        "http",
+        "protobuf",
+        "json",
+        "thrift",
+        "avro",
+        "parquet",
+        "orc",
+        "csv",
+        "tsv",
+        "psv",
+        "jsonl",
+        "ndjson",
+        "logfmt",
+        "key",
+        "value",
+        "structured",
+        "unstructured",
+        "semi",
+        "schema",
+        "field",
+        "type",
+        "format",
+        "encoding",
+        "compression",
+        "encryption",
+        "signing",
+        "verification",
+        "authentication",
+        "authorization",
+        "error",
+        "fail",
+        "failing",
+        "failure",
+        "bug",
+        "issue",
+        "problem",
+        "crash",
+        "exception",
+        "traceback",
+        "stacktrace",
+        "fix",
+        "broken",
+        "panic",
+    )
+
+    def _detect_phase(self, user_input: str, last_response: str = "") -> str:
+        """
+        Infer the current agent phase from user input and the last model response.
+        Returns one of: "plan" | "code" | "troubleshoot" | "chat".
+        """
+        current_mode = getattr(self, "execution_mode", "unified")
+        if current_mode == "goal":
+            plan_file = os.path.join(self.project_root, "implementation_plan.md")
+            if not os.path.exists(plan_file):
+                return "plan"
+
+        inp_lower = user_input.lower()
+        if any(w in inp_lower for w in ("write", "create file", "add file", "save file", "make file", "edit file", "build file", ".txt", ".py", ".js", ".ts", ".go", ".rs", ".java", ".json", ".html", ".css", ".md")):
+            return "code"
+        combined = (user_input + " " + last_response).lower()
+        if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
+            return "troubleshoot"
+        if any(s in combined for s in self._PLAN_SIGNALS):
+            return "plan"
+        if any(s in combined for s in self._CODE_SIGNALS):
+            return "code"
+        if current_mode == "goal":
+            return "code"
+        return "chat"
+
+    def lock_phase(self, phase: str) -> bool:
+        """Manually lock or unlock the agent phase ('code', 'plan', 'troubleshoot', 'chat', or 'auto')."""
+        phase_key = (phase or "").lower().strip()
+        if phase_key in ("auto", "unlock", "reset"):
+            self._params_locked = False
+            return True
+        if phase_key in ("code", "plan", "troubleshoot", "chat"):
+            self._current_phase = phase_key
+            self._params_locked = True
+            presets = {
+                "plan": {"temperature": 0.7, "top_k": 50},
+                "code": {"temperature": 0.1, "top_k": 20},
+                "troubleshoot": {"temperature": 0.3, "top_k": 30},
+                "chat": {"temperature": 0.7, "top_k": 50},
+            }
+            preset = presets.get(phase_key, presets["code"])
+            if hasattr(self.client, "temperature"):
+                self.client.temperature = preset["temperature"]
+            if hasattr(self.client, "top_k"):
+                self.client.top_k = preset["top_k"]
+            mem = getattr(self, "_memory", None)
+            if mem and hasattr(mem, "update_system_prompt"):
+                mem.update_system_prompt(get_phase_system_prompt(phase_key))
+            return True
+        return False
+
+    def _update_params(self, user_input: str, last_response: str = "") -> None:
+        """Auto-switch inference parameters based on detected phase."""
+        if getattr(self, "_params_locked", False):
+            return
+        phase = self._detect_phase(user_input, last_response)
+        if phase == getattr(self, "_current_phase", "code"):
+            return
+        self._current_phase = phase
+        # Update client temperature and other params based on phase
+        presets = {
+            "plan": {"temperature": 0.7, "top_k": 50},
+            "code": {"temperature": 0.1, "top_k": 20},
+            "troubleshoot": {"temperature": 0.3, "top_k": 30},
+            "chat": {"temperature": 0.7, "top_k": 50},
+        }
+        preset = presets.get(phase, presets["code"])
+        if hasattr(self.client, "temperature"):
+            self.client.temperature = preset["temperature"]
+        if hasattr(self.client, "top_k"):
+            self.client.top_k = preset["top_k"]
+        mem = getattr(self, "_memory", None)
+        if mem and hasattr(mem, "update_system_prompt"):
+            mem.update_system_prompt(get_phase_system_prompt(phase))
+
     async def solve_async(
         self, task: str, depth: int = 0, phase: Optional[str] = None
     ) -> SolveResult:
@@ -403,7 +990,9 @@ class RLMEngineOptimized:
             if self.execution_mode == "chat":
                 phase = "chat"
             elif self.execution_mode == "goal":
-                phase = "code"
+                phase = "code"  # Goal mode starts in code phase but can auto-detect
+            elif self.execution_mode == "unified":
+                phase = "code"  # Unified mode defaults to code but enables auto-detection
             else:
                 phase = "code"
 
@@ -425,6 +1014,9 @@ class RLMEngineOptimized:
                 )
                 memory.add_system_message(get_phase_system_prompt(phase))
                 self._memory = memory
+            else:
+                if hasattr(self._memory, "update_system_prompt"):
+                    self._memory.update_system_prompt(get_phase_system_prompt(phase))
 
             self._memory.add_user_message(task)
             memory = self._memory
@@ -819,9 +1411,15 @@ class RLMEngineOptimized:
                         "TOOL",
                         {"tool_name": tool_name, "args": tool_args, "depth": depth},
                     )
-                    tool_result = await asyncio.to_thread(
-                        registry.execute, tool_name, tool_args, self.project_root
-                    )
+                    if tool_name and tool_name.upper() == "SET_PHASE":
+                        target_phase = str(tool_args.get("phase", "code")).lower().strip()
+                        self.lock_phase(target_phase)
+                        from core.tools.registry import ToolResult
+                        tool_result = ToolResult(success=True, output=f"Agent phase switched to '{target_phase}' successfully.")
+                    else:
+                        tool_result = await asyncio.to_thread(
+                            registry.execute, tool_name, tool_args, self.project_root
+                        )
                     step.result = tool_result.output
                     result.steps.append(step)
                     if self.on_step:
@@ -866,7 +1464,18 @@ class RLMEngineOptimized:
                             feedback += f"\n\n[AUTOMATIC POST-EDIT EXECUTION FEEDBACK]\n{fb_ctx}"
 
                     if tool_result.success:
-                        feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."
+                        fpath = (tool_args.get("path") or tool_args.get("file", "")).lower()
+                        if "implementation_plan" in fpath or "tasks.md" in fpath or "goal_spec" in fpath:
+                            self._current_phase = "code"
+                            try:
+                                from core.tools.task_helpers import sync_workspace_tasks
+
+                                sync_workspace_tasks(self.project_root)
+                            except Exception:
+                                pass
+                            feedback += "\n\n🚀 Implementation plan created/updated successfully! Switched to SURGICAL CODING phase. Proceed immediately to execute open tasks (- [ ]) using tools (WRITE_FILE, EDIT_FILE, RUN_COMMAND, etc.)."
+                        else:
+                            feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."
                     elif tool_name and "EDIT_FILE" in tool_name.upper():
                         # Inject READ_FILE nudge — small models often skip the read step
                         target_path = tool_args.get("path", "the file")
@@ -1178,6 +1787,10 @@ class RLMEngineOptimized:
                 else:
                     messages.append({"role": "user", "content": nudge})
 
+            # Auto-detect phase and update inference params (for unified/goal modes)
+            if self.execution_mode in ("unified", "goal"):
+                self._update_params(task, response)
+
         # Iteration limit reached
         if use_memory:
             memory.add_user_message(build_step_message("iteration_limit", ""))
@@ -1437,13 +2050,39 @@ class RLMEngineOptimized:
             except Exception:
                 pass
 
-        # 4. Check for <CODE>...</CODE>
+        # 3c. Check for single bare JSON tool call object (e.g. {"name": "EDIT_FILE", "arguments": ...})
+        if "{" in response and any(k in response for k in ('"name"', '"tool"', '"action"', '"tool_name"')):
+            try:
+                codeblock_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", response, re.IGNORECASE)
+                json_str = codeblock_match.group(1) if codeblock_match else _extract_balanced_json_object(response)
+                if json_str:
+                    p_name, p_args, _ = parse_tool_call_payload(json_str)
+                    if p_name:
+                        t_name = str(p_name).upper()
+                        from core.tools.schemas import TOOL_SCHEMAS
+                        if t_name in TOOL_SCHEMAS or t_name in ("WRITE_FILE", "EDIT_FILE", "READ_FILE", "SEARCH_AST", "GREP", "RUN_COMMAND", "VERIFY", "INSPECT_WEB", "GIT", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "ASK_USER"):
+                            start_pos = response.find(json_str) if json_str in response else response.find("{")
+                            thinking = _get_thinking(max(0, start_pos))
+                            return (
+                                "tool",
+                                thinking,
+                                f"{t_name}({json.dumps(p_args)})",
+                                [],
+                                t_name,
+                                p_args,
+                            )
+            except Exception:
+                pass
+
+        # 4. Check for <CODE>...</CODE>, <REPL>...</REPL>, or <PYTHON>...</PYTHON>
         code_match = re.search(
-            r"<CODE(?:\s+[^>]*)?>(.*?)(?:</CODE>|$)", response, re.DOTALL
+            r"<(?:CODE|REPL|PYTHON)(?:\s+[^>]*)?>(.*?)(?:</(?:CODE|REPL|PYTHON)>|$)",
+            response,
+            re.DOTALL | re.IGNORECASE,
         )
         if not code_match:
             code_match = re.search(
-                r"(?<!`)<CODE(?:\s+[^>]*)?>(.*?)</(?:CODE|code)>",
+                r"(?<!`)<(?:CODE|REPL|PYTHON)(?:\s+[^>]*)?>(.*?)</(?:CODE|REPL|PYTHON|code|repl|python)>",
                 response,
                 re.DOTALL | re.IGNORECASE,
             )
@@ -1544,14 +2183,6 @@ class RLMEngineOptimized:
                     is_valid_code = True
 
             if is_valid_code:
-                # In chat/troubleshoot mode, treat <CODE> blocks as
-                # thinking (displayed) rather than executable code.
-                current_phase = getattr(self, "_current_phase", "code")
-                if current_phase in ("chat", "troubleshoot"):
-                    thinking_text = (
-                        f"{thinking}\n\n{content}".strip() if thinking else content
-                    )
-                    return ("thinking", thinking_text, "", [], None, None)
                 return ("code", thinking, content, [], None, None)
             else:
                 # Content inside <CODE> tag is natural language/prose, reclassify as thinking
@@ -1608,20 +2239,26 @@ class RLMEngineOptimized:
                 return ("final_answer", thinking, raw_content, [], None, None)
 
         # 6b. Inline code interception (Auto-WRITE_FILE for bare markdown blocks with target paths)
-        # Skip in chat/troubleshoot/plan mode — code blocks there are for
-        # display/reference or planning, not file creation.
-        bare_code_match = re.search(
-            r"```(?:\w+)?\n?(.*?)```", response, re.DOTALL | re.IGNORECASE
-        )
-        if bare_code_match and not re.search(
+        if not re.search(
             r"<(?:TOOL|CODE|SUB_QUERY|WRITE_FILE|action)\b", response, re.IGNORECASE
         ):
+            current_mode = getattr(self, "execution_mode", "unified")
             current_phase = getattr(self, "_current_phase", "code")
-            if current_phase not in ("chat", "troubleshoot", "plan"):
-                content = bare_code_match.group(1).strip()
-                thinking = _get_thinking(bare_code_match.start())
 
-                # Try to extract file path from comment inside block
+            code_blocks = list(
+                re.finditer(
+                    r"```(?:\w+)?\n?(.*?)```", response, re.DOTALL | re.IGNORECASE
+                )
+            )
+            intercepted_tools = []
+            thinking = ""
+
+            for block_match in code_blocks:
+                content = block_match.group(1).strip()
+                if not thinking:
+                    thinking = _get_thinking(block_match.start())
+
+                # 1. Try to extract file path from comment inside block
                 file_match = re.search(
                     r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*([^\n\r]+)",
                     content,
@@ -1630,47 +2267,74 @@ class RLMEngineOptimized:
 
                 file_match_pre = None
                 if not file_match:
-                    # Try to extract from text preceding the block
-                    pre_text = response[: bare_code_match.start()].strip()
-                    recent_pre = "\n".join(pre_text.splitlines()[-6:]) if pre_text else ""
-                    file_match_pre = re.search(
-                        r"(?:#{1,6}\s*`?|for|file|filename|filepath|path|in)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?",
-                        recent_pre,
-                        re.IGNORECASE,
-                    )
+                    # 2. Try to extract from text preceding the block
+                    if current_phase not in ("chat", "troubleshoot", "plan") or current_mode in ("unified", "goal"):
+                        pre_text = response[: block_match.start()].strip()
+                        recent_pre = (
+                            "\n".join(pre_text.splitlines()[-6:]) if pre_text else ""
+                        )
+                        file_match_pre = re.search(
+                            r"(?:#{1,6}\s*`?|file|filename|filepath|path|save\s+to|write\s+to|created?\s+file|creating|output\s+to)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?",
+                            recent_pre,
+                            re.IGNORECASE,
+                        )
 
-                # Only auto-write if an explicit target file path was declared (inside comment or pre-text)
-                # and content does not look like a prose/plan outline.
                 intercept = False
-                if file_match:
+                target_path = ""
+                if file_match and current_mode != "chat":
+                    # Explicit in-block annotation ALWAYS triggers unless session mode is explicitly Chat
                     target_path = (
                         file_match.group(1)
                         .replace("*/", "")
                         .replace("-->", "")
                         .strip()
                     )
-                    # Remove header line from content
+                    # Remove only the explicit file annotation line
                     content = re.sub(
                         r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?",
                         "",
                         content,
+                        count=1,
                         flags=re.IGNORECASE,
                     ).strip()
                     intercept = True
-                elif file_match_pre:
+                elif file_match_pre and current_mode != "chat":
                     target_path = file_match_pre.group(1).strip()
                     if not _looks_like_prose_or_outline(content):
                         intercept = True
 
-                if intercept:
-                    return (
-                        "tool",
-                        thinking,
-                        f"WRITE_FILE({target_path})",
-                        [],
-                        "WRITE_FILE",
-                        {"path": target_path, "content": content},
+                if intercept and target_path:
+                    # Safeguard: check if target file exists in workspace
+                    full_p = (
+                        os.path.join(self.project_root, target_path)
+                        if hasattr(self, "project_root") and self.project_root
+                        else target_path
                     )
+                    proj_r = getattr(self, "project_root", "") or ""
+                    if os.path.exists(full_p) and not _looks_like_full_file(content, target_path, proj_r):
+                        # Skip destructive overwrite of an existing file by a small snippet or prose
+                        continue
+
+                    intercepted_tools.append(
+                        ("WRITE_FILE", {"path": target_path, "content": content})
+                    )
+
+            if intercepted_tools:
+                first_name, first_args = intercepted_tools[0]
+                first_path = first_args.get("path", "")
+                summary = (
+                    f"{first_name}({first_path})"
+                    if len(intercepted_tools) == 1
+                    else f"INTERCEPTED_{len(intercepted_tools)}_FILES"
+                )
+                return (
+                    "tool",
+                    thinking,
+                    summary,
+                    intercepted_tools,
+                    first_name,
+                    first_args,
+                )
 
         # 7. Direct answer / non-tool response handling
         cleaned_body = re.sub(

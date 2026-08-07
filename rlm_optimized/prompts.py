@@ -128,13 +128,14 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
 - **NO RAW CODE DUMPING ON SCREEN**: NEVER print raw source code blocks in your text output, reasoning, or `<FINAL_ANSWER>`. Always write/edit code using `<TOOL>` calls (`WRITE_FILE` or `EDIT_FILE`). Simply state: "Writing code to file: <filename> (<line_count> lines, <description>)".
 
 - **Workflow for coding tasks**:
-  1. Always refer to the Current Implementation Plan and Persistent Project Memory provided above.
-  2. Use LIST_DIR and GREP to locate files and search for code patterns across the codebase before reading files.
-  3. NEVER use WRITE_FILE on an existing file. To modify existing code, ALWAYS use READ_FILE first to see the exact text, then use EDIT_FILE.
-  4. If making or updating a plan, use WRITE_FILE (if it doesn't exist) or EDIT_FILE (if it does) to physically save it to `implementation_plan.md`. Format it as a concise bulleted checklist using `- [ ]` for pending tasks and `- [x]` for completed tasks. Writing or updating `implementation_plan.md` is ONLY the planning step — do NOT deliver a `FINAL_ANSWER` right after creating the plan. Proceed immediately to execute the pending tasks using tools.
-  5. Use EDIT_FILE to mark tasks as `- [x]` in `implementation_plan.md` as you complete them.
-  6. BEFORE delivering a FINAL_ANSWER, review your findings and you MUST use EDIT_FILE to append any newly discovered project rules, tech stack details, or architecture patterns to `.torchlight_memory.md`.
-  7. Deliver a FINAL_ANSWER summarizing what you did.
+  1. In Goal Mode, FIRST check available workspace files (`LIST_DIR`, `SEARCH_AST`, `GREP`) to understand existing project context (whether new or existing codebase) BEFORE writing `implementation_plan.md` or executing edits.
+  2. Always refer to the Current Implementation Plan and Persistent Project Memory provided above.
+  3. Use LIST_DIR, SEARCH_AST, and GREP to locate files and search for code patterns across the codebase before reading files.
+  4. NEVER use WRITE_FILE on an existing file. To modify existing code, ALWAYS use READ_FILE first to see the exact text, then use EDIT_FILE.
+  5. If making or updating a plan, use WRITE_FILE (if it doesn't exist) or EDIT_FILE (if it does) to physically save it to `implementation_plan.md`. Format it as a concise bulleted checklist using `- [ ]` for pending tasks and `- [x]` for completed tasks. Writing or updating `implementation_plan.md` is ONLY the planning step — do NOT deliver a `FINAL_ANSWER` right after creating the plan. Proceed immediately to execute the pending tasks using tools.
+  6. Use EDIT_FILE to mark tasks as `- [x]` in `implementation_plan.md` as you complete them.
+  7. BEFORE delivering a FINAL_ANSWER, review your findings and you MUST use EDIT_FILE to append any newly discovered project rules, tech stack details, or architecture patterns to `.torchlight_memory.md`.
+  8. Deliver a FINAL_ANSWER summarizing what you did.
 
 - **Persistent Project Memory**: You MUST continuously maintain `.torchlight_memory.md` and `implementation_plan.md` as instructed above so you never forget project context across sessions!
 - Variables in `<CODE>` blocks persist across steps. Use `print()` to see results.

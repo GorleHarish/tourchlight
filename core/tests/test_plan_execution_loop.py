@@ -106,3 +106,28 @@ async def test_verification_gate_allows_final_answer_when_all_done():
 
         assert engine._final_answer_rejections == 0
         assert res.answer == "All tasks complete."
+
+
+def test_sync_workspace_tasks_populates_tasks_md():
+    from core.tools.task_helpers import sync_workspace_tasks
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plan_path = os.path.join(tmpdir, "implementation_plan.md")
+        with open(plan_path, "w", encoding="utf-8") as f:
+            f.write("# Web App Goal\n\n- [ ] Task A: Add index.html\n- [x] Task B: Setup repo\n")
+
+        res = sync_workspace_tasks(tmpdir)
+        assert res["synced"] is True
+        assert res["task_count"] == 2
+
+        tasks_md = os.path.join(tmpdir, ".torchlight", "tasks.md")
+        assert os.path.exists(tasks_md)
+        content = open(tasks_md, "r", encoding="utf-8").read()
+        assert "- [ ] Task A: Add index.html" in content
+        assert "- [x] Task B: Setup repo" in content
+
+        goal_json = os.path.join(tmpdir, ".torchlight", "goal_spec.json")
+        assert os.path.exists(goal_json)
+        gdata = json.load(open(goal_json, "r", encoding="utf-8"))
+        assert len(gdata["tasks"]) == 2
+

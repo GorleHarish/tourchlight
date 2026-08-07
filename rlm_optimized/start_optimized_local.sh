@@ -137,7 +137,7 @@ REPEAT_PENALTY="1.1"
 EXTRA_ARGS=()
 if [[ "$MODEL_PATH" == *"qwen"* ]]; then
     EXTRA_ARGS=(--jinja --chat-template-file "$SCRIPT_DIR/qwen2.jinja" --rope-freq-base 1000000)
-    # Qwen 2.5 overrides to fix GQA / TurboQuant noise amplification (q8_0)
+    # Qwen 2.5 TurboQuant 4-bit KV cache quantization (q4_0)
     # Note: FLASH_ATTENTION must be 'on' because llama.cpp requires it for V cache quantization
     KV_CACHE_COMPRESSION="q8_0"
     FLASH_ATTENTION="on"

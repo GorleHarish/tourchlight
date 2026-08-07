@@ -257,6 +257,18 @@ class TieredMemory:
         self._append_message(msg)
         self._update_state_from_message(msg)
 
+    def update_system_prompt(self, content: str) -> None:
+        """Update or set the primary system prompt (first system message in history)."""
+        token_count = self.tokenizer.count(content)
+        for msg in self.messages:
+            role = msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
+            if role == "system":
+                self._cached_msg_tokens = max(0, self._cached_msg_tokens - msg.token_count + token_count)
+                msg.content = content
+                msg.token_count = token_count
+                return
+        self.add_system_message(content)
+
     def add_user_message(self, content: str) -> None:
         msg = Message(
             role=MessageRole.USER,

@@ -67,3 +67,16 @@ def test_goal_mode_initializes_task_files(tmp_path):
 
     tasks_md = (project_dir / ".torchlight" / "tasks.md").read_text()
     assert "Feature Auth" in tasks_md
+
+
+def test_execution_mode_normalization_and_sync():
+    """Verify RLMEngineOptimized normalizes string and Enum execution mode values."""
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    engine = RLMEngineOptimized()
+    engine.execution_mode = ExecutionMode.GOAL
+    assert engine.execution_mode == "goal"
+
+    engine.execution_mode = "chat"
+    assert engine.execution_mode == "chat"
+

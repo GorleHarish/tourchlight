@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import re
 import time
@@ -243,36 +244,6 @@ class StreamingChatSession:
             self._phase_lock = None
             self._phase_lock_turns = 0
 
-    def _detect_phase(self, user_input: str, last_response: str = "") -> str:
-        """
-        Infer the current agent phase from user input and the last model response.
-        Returns one of: "plan" | "code" | "troubleshoot" | "chat".
-        """
-        if self._phase_lock:
-            if self._phase_lock_turns > 0:
-                self._phase_lock_turns -= 1
-                return self._phase_lock
-            self._phase_lock = None
-
-        combined = (user_input + " " + last_response).lower()
-        if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
-            return "troubleshoot"
-        if any(s in combined for s in self._PLAN_SIGNALS):
-            return "plan"
-        if any(s in combined for s in self._CODE_SIGNALS):
-            return "code"
-        return "chat"
-
-        # ── Stop Token & Truncation Recovery ──────────────────────────────────────
-        self._STOP_TAG_PAIRS = [
-            ("<WRITE_FILE", "</WRITE_FILE>"),
-            ("<TOOL", "</TOOL>"),
-            ("<CODE>", "</CODE>"),
-            ("<FINAL_ANSWER>", "</FINAL_ANSWER>"),
-            ("<action>", "</action>"),
-            ("<tool_call>", "</tool_call>"),
-        ]
-
     def _repair_stop_tokens(self, text: str) -> str:
         """Re-append closing tags and unclosed JSON braces that were consumed as stop tokens or truncated by LLM."""
         if not text:
@@ -382,6 +353,17 @@ class StreamingChatSession:
 
     # ── Phase detection & inference param management ─────────────────────────
 
+    # Stop Token & Truncation Recovery — re-append closing tags consumed as
+    # stop tokens or truncated by the LLM.  See _repair_stop_tokens().
+    _STOP_TAG_PAIRS = [
+        ("<WRITE_FILE", "</WRITE_FILE>"),
+        ("<TOOL", "</TOOL>"),
+        ("<CODE>", "</CODE>"),
+        ("<FINAL_ANSWER>", "</FINAL_ANSWER>"),
+        ("<action>", "</action>"),
+        ("<tool_call>", "</tool_call>"),
+    ]
+
     # Signals checked against lowercased (user_input + last_response).
     # Priority on match: troubleshoot > plan > code > chat.
     _PLAN_SIGNALS = (
@@ -447,12 +429,26 @@ class StreamingChatSession:
         Infer the current agent phase from user input and the last model response.
         Returns one of: "plan" | "code" | "troubleshoot" | "chat".
         """
+        if getattr(self, "mode", None) == "goal":
+            import os
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            if not os.path.exists(plan_file):
+                return "plan"
+
+        if self._phase_lock:
+            if self._phase_lock_turns > 0:
+                self._phase_lock_turns -= 1
+                return self._phase_lock
+            self._phase_lock = None
+
         combined = (user_input + " " + last_response).lower()
         if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
             return "troubleshoot"
         if any(s in combined for s in self._PLAN_SIGNALS):
             return "plan"
         if any(s in combined for s in self._CODE_SIGNALS):
+            return "code"
+        if getattr(self, "mode", None) == "goal":
             return "code"
         return "chat"
 
@@ -672,6 +668,62 @@ class StreamingChatSession:
             except Exception as verifier_err:
                 pass
         return proposal
+
+    def _harness_step_fn(self, task: str, depth: int = 0) -> bool:
+        """
+        Step function for AutonomousHarness - executes a single task iteration.
+        Returns True if task completed (final answer), False if needs more steps.
+        """
+        # This is a synchronous wrapper - we need to run async code
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Can't run async in running loop, create a task instead
+                # For now, return False to indicate not complete
+                return False
+            else:
+                return loop.run_until_complete(self._harness_step_async(task, depth))
+        except RuntimeError:
+            # No event loop, create one
+            return asyncio.run(self._harness_step_async(task, depth))
+
+    async def _harness_step_async(self, task: str, depth: int = 0) -> bool:
+        """Async implementation of harness step function."""
+        # Generate response for the task
+        self.memory.add_user_message(task)
+        self._recent_tool_hashes.clear()
+
+        # Detect phase
+        self._update_params(task)
+
+        if self.memory.should_compress():
+            await self._compress_context()
+
+        response = await self._generate_streaming_response(task)
+        response = await self._verify_and_refine_if_needed(
+            response, user_task=task, phase_name=self._current_phase
+        )
+        self.memory.add_assistant_message(response)
+
+        # Check for final answer
+        if "<FINAL_ANSWER>" in response:
+            return True
+
+        # Process tool calls
+        parsed_skills = self.skills.parse_skills(response)
+        for name, params in parsed_skills:
+            await self._execute_tool_with_approval(name, params, None)
+
+        # Check again after tools
+        self._update_params(task, response)
+        response2 = await self._generate_streaming_response("")
+        response2 = await self._verify_and_refine_if_needed(
+            response2, user_task=task, phase_name=self._current_phase
+        )
+        self.memory.add_assistant_message(response2)
+
+        return "<FINAL_ANSWER>" in response2
 
     # ── Main chat loop ────────────────────────────────────────────────────────
 
@@ -909,7 +961,27 @@ class StreamingChatSession:
     async def _generate_response(self, user_query: str = "") -> str:
         messages = self._build_messages(user_query)
         res = await self.client.chat(messages, params=self._params)
-        return self._repair_stop_tokens(res)
+        response = self._repair_stop_tokens(res)
+
+        # Verification gate: check for pending tasks in Goal Mode before allowing FINAL_ANSWER
+        if self.mode == "goal" and "<FINAL_ANSWER>" in response:
+            from core.tools.task_helpers import get_workspace_pending_tasks
+            pending_tasks = get_workspace_pending_tasks(str(self.project_path))
+            if pending_tasks and self._current_phase in ("code", "troubleshoot"):
+                task_descs = [f"- {t}" for t in pending_tasks[:3]]
+                rejection = (
+                    "❌ [VERIFICATION GATE REJECTION]\n"
+                    "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
+                    + "\n".join(task_descs)
+                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                )
+                # Add rejection as user message and regenerate
+                self.memory.add_user_message(rejection)
+                messages = self._build_messages("")  # Rebuild with rejection
+                res = await self.client.chat(messages, params=self._params)
+                response = self._repair_stop_tokens(res)
+
+        return response
 
     async def _generate_streaming_response(self, user_query: str = "") -> str:
         messages = self._build_messages(user_query)
@@ -932,7 +1004,42 @@ class StreamingChatSession:
                 live.update(stats)
 
         full_text = "".join(buffer)
-        return self._repair_stop_tokens(full_text)
+        response = self._repair_stop_tokens(full_text)
+
+        # Verification gate: check for pending tasks in Goal Mode before allowing FINAL_ANSWER
+        if self.mode == "goal" and "<FINAL_ANSWER>" in response:
+            from core.tools.task_helpers import get_workspace_pending_tasks
+            pending_tasks = get_workspace_pending_tasks(str(self.project_path))
+            if pending_tasks and self._current_phase in ("code", "troubleshoot"):
+                task_descs = [f"- {t}" for t in pending_tasks[:3]]
+                rejection = (
+                    "❌ [VERIFICATION GATE REJECTION]\n"
+                    "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
+                    + "\n".join(task_descs)
+                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                )
+                # Add rejection as user message and regenerate
+                self.memory.add_user_message(rejection)
+                messages = self._build_messages("")  # Rebuild with rejection
+                buffer = []
+                self._response_tokens = 0
+                self._start_time = time.time()
+                stats = self._create_stats_panel()
+                with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
+                    async for chunk in self.client.chat_stream(messages, params=self._params):
+                        buffer.append(chunk)
+                        self._response_tokens += max(1, len(chunk) // 3)
+                        elapsed = time.time() - self._start_time
+                        tps = self._response_tokens / elapsed if elapsed > 0 else 0
+                        stats = self._create_stats_panel(
+                            response_preview="".join(buffer[-50:]),
+                            tokens_per_sec=tps,
+                        )
+                        live.update(stats)
+                full_text = "".join(buffer)
+                response = self._repair_stop_tokens(full_text)
+
+        return response
 
     def _create_stats_panel(
         self,
@@ -1031,23 +1138,48 @@ class StreamingChatSession:
             self._flash_preview(query)
         elif command == "/mode":
             mode_arg = arg.strip().lower()
-            if mode_arg in ("chat", "goal"):
+            if mode_arg in ("chat", "goal", "unified"):
                 self.mode = mode_arg
                 if hasattr(self.memory.state, "execution_mode"):
                     from core.memory.models import ExecutionMode
 
-                    self.memory.state.execution_mode = (
-                        ExecutionMode.GOAL if mode_arg == "goal" else ExecutionMode.CHAT
-                    )
-                if mode_arg == "goal" and AutonomousHarness:
-                    harness = getattr(self, "harness", None) or AutonomousHarness(
-                        project_root=self.project_path, memory=self.memory
-                    )
-                    self.harness = harness
-                    harness.ensure_goal_spec_initialized()
-                    dashboard.print_success(
-                        "Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)"
-                    )
+                    if mode_arg == "goal":
+                        new_mode = ExecutionMode.GOAL
+                    elif mode_arg == "unified":
+                        new_mode = ExecutionMode.UNIFIED
+                    else:
+                        new_mode = ExecutionMode.CHAT
+                    self.memory.state.execution_mode = new_mode
+
+                if mode_arg == "goal":
+                    # Goal mode is a coding workflow — align with the TUI engine
+                    # (goal → code phase) so the full tool whitelist stays available.
+                    # Explicit /params locks are left untouched.
+                    if not self._params_locked:
+                        self._current_phase = "code"
+                        self._params = PRESETS["code"]
+                        self._phase_lock = "code"
+                        self._phase_lock_turns = 2
+                    if AutonomousHarness:
+                        harness = getattr(self, "harness", None) or AutonomousHarness(
+                            project_root=self.project_path,
+                            memory=self.memory,
+                            llm_engine_step_fn=self._harness_step_fn,
+                        )
+                        self.harness = harness
+                        success = harness.ensure_goal_spec_initialized()
+                        if success:
+                            dashboard.print_success(
+                                "Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)"
+                            )
+                        else:
+                            dashboard.print_warning(
+                                "Switched to Goal Mode but task graph initialization failed"
+                            )
+                    else:
+                        dashboard.print_success("Switched to Goal Mode (harness unavailable)")
+                elif mode_arg == "unified":
+                    dashboard.print_success("Switched to Unified Mode (Dynamic Phase Auto-Detection)")
                 else:
                     dashboard.print_success(
                         "Switched to Chat Mode (Lightweight Q&A & ad-hoc code edits)"

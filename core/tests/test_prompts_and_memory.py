@@ -35,6 +35,16 @@ def test_verification_gate_parity_in_system_prompt():
     assert "REVERT your broken edits" in SYSTEM_PROMPT
 
 
+def test_goal_mode_pre_planning_context_check_directives():
+    assert "In Goal Mode, FIRST check available files" in SYSTEM_PROMPT
+    plan_prompt = get_phase_system_prompt("plan")
+    assert "FIRST check available workspace files" in plan_prompt
+
+    from rlm_optimized.prompts import build_system_prompt
+    opt_prompt = build_system_prompt(".")
+    assert "FIRST check available workspace files" in opt_prompt
+
+
 def test_l0_scratchpad_formatting():
     config = MemoryConfig(max_tokens=4000)
     memory = TieredMemory(config=config)
@@ -102,3 +112,23 @@ def test_persistent_memory_loading_and_prompt_inclusion():
         pm2 = ProjectMemory(Path(tmpdir))
         memory2 = TieredMemory(config=MemoryConfig(max_tokens=4000), project_memory=pm2)
         assert "Decision: Adopt async workers" in memory2.state.decisions
+
+
+def test_tiered_memory_update_system_prompt():
+    config = MemoryConfig(max_tokens=4000)
+    memory = TieredMemory(config=config)
+    memory.add_system_message("Initial System Prompt")
+    memory.add_user_message("Hello")
+
+    # Verify initial system prompt
+    ctx1 = memory.get_context_for_llm()
+    assert ctx1[0]["role"] == "system"
+    assert ctx1[0]["content"] == "Initial System Prompt"
+
+    # Update system prompt dynamically (e.g. on phase change)
+    memory.update_system_prompt("Updated Phase System Prompt")
+
+    # Verify system prompt was updated in memory and context
+    ctx2 = memory.get_context_for_llm()
+    assert ctx2[0]["role"] == "system"
+    assert ctx2[0]["content"] == "Updated Phase System Prompt"
