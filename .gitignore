@@ -28,6 +28,9 @@ models/
 *.bin
 *.safetensors
 
+# Prebuilt TurboQuant fork binaries (re-downloadable, not source)
+llama-cpp-turboquant/
+
 # Torchlight logs and runtime state
 .torchlight/
 .torchlight_history.log
