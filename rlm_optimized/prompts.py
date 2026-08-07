@@ -124,8 +124,7 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
   - `<SUB_QUERY>specific sub-question</SUB_QUERY>` — to delegate a sub-problem
   - `<FINAL_ANSWER>your complete answer</FINAL_ANSWER>` — when done
 
-- Keep reasoning EXTREMELY CONCISE (under 50 words / 2-3 short sentences) BEFORE choosing an action. Never output long 500+ token monologues! Put detailed plans into `implementation_plan.md` using tools, NOT in your reasoning thoughts. Provide exactly one action tag per turn. **NEVER leak your reasoning or thoughts inside the JSON arguments of a `<TOOL>` tag!**
-- **NO RAW CODE DUMPING ON SCREEN**: NEVER print raw source code blocks in your text output, reasoning, or `<FINAL_ANSWER>`. Always write/edit code using `<TOOL>` calls (`WRITE_FILE` or `EDIT_FILE`). Simply state: "Writing code to file: <filename> (<line_count> lines, <description>)".
+- **NO RAW CODE DUMPING ON SCREEN**: NEVER print raw source code blocks, tool arguments ("Params: ..."), or raw tool execution outputs ("Result: ...") in your text output, reasoning, or `<FINAL_ANSWER>`. Always write/edit code using tool calls (`WRITE_FILE` or `EDIT_FILE`). Keep text output to a concise 1-sentence summary.
 
 - **Workflow for coding tasks**:
   1. In Goal Mode, FIRST check available workspace files (`LIST_DIR`, `SEARCH_AST`, `GREP`) to understand existing project context (whether new or existing codebase) BEFORE writing `implementation_plan.md` or executing edits.

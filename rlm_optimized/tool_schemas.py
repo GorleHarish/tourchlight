@@ -20,8 +20,9 @@ except ImportError:
 
 from typing import Any, Optional, Tuple, Dict
 
-# OpenAI-compatible JSON Schemas for each tool
-TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
+if not _USE_CORE:
+    # OpenAI-compatible JSON Schemas for each tool
+    TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "READ_FILE": {
         "type": "object",
         "properties": {
@@ -303,66 +304,85 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
             "top_k": ["limit", "k", "count"],
         },
     },
+    "SET_PHASE": {
+        "type": "object",
+        "properties": {
+            "phase": {
+                "type": "string",
+                "description": "Target phase to switch to: 'code', 'plan', 'troubleshoot', or 'chat'",
+            },
+            "reason": {
+                "type": "string",
+                "description": "Short explanation for changing phase",
+            },
+        },
+        "required": ["phase"],
+        "aliases": {
+            "phase": ["mode", "target_phase", "p"],
+            "reason": ["why", "explanation"],
+        },
+    },
 }
 
 
-def get_openai_tools_schema() -> list[dict]:
-    """Generate OpenAI-style tools list for function calling / structured schema enforcement."""
-    tools = []
-    for tool_name, schema in TOOL_SCHEMAS.items():
-        tools.append(
-            {
-                "type": "function",
-                "function": {
-                    "name": tool_name,
-                    "description": f"Tool call: {tool_name}",
-                    "parameters": {
-                        "type": schema["type"],
-                        "properties": schema["properties"],
-                        "required": schema["required"],
+if not _USE_CORE:
+    def get_openai_tools_schema() -> list[dict]:
+        """Generate OpenAI-style tools list for function calling / structured schema enforcement."""
+        tools = []
+        for tool_name, schema in TOOL_SCHEMAS.items():
+            tools.append(
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool_name,
+                        "description": f"Tool call: {tool_name}",
+                        "parameters": {
+                            "type": schema["type"],
+                            "properties": schema["properties"],
+                            "required": schema["required"],
+                        },
                     },
-                },
-            }
-        )
-    return tools
+                }
+            )
+        return tools
 
+    def validate_and_normalize_tool_call(
+        tool_name: str, args: dict
+    ) -> Tuple[bool, str, dict]:
+        """Validate tool call against schema and normalize parameter aliases.
 
-def validate_and_normalize_tool_call(
-    tool_name: str, args: dict
-) -> Tuple[bool, str, dict]:
-    """Validate tool call against schema and normalize parameter aliases.
+        Returns:
+            (is_valid, error_or_success_msg, normalized_args)
+        """
+        tool_upper = (tool_name or "").strip().upper()
+        if tool_upper not in TOOL_SCHEMAS:
+            allowed = list(TOOL_SCHEMAS.keys())
+            return False, f"Unknown tool '{tool_name}'. Allowed tools are: {allowed}", args
 
-    Returns:
-        (is_valid, error_or_success_msg, normalized_args)
-    """
-    tool_upper = (tool_name or "").strip().upper()
-    if tool_upper not in TOOL_SCHEMAS:
-        allowed = list(TOOL_SCHEMAS.keys())
-        return False, f"Unknown tool '{tool_name}'. Allowed tools are: {allowed}", args
+        schema = TOOL_SCHEMAS[tool_upper]
+        normalized = dict(args) if isinstance(args, dict) else {}
 
-    schema = TOOL_SCHEMAS[tool_upper]
-    normalized = dict(args) if isinstance(args, dict) else {}
+        # Map parameter aliases to canonical schema keys
+        aliases = schema.get("aliases", {})
+        for target_key, alias_list in aliases.items():
+            if target_key not in normalized or not normalized[target_key]:
+                for alias in alias_list:
+                    if alias in normalized and normalized[alias]:
+                        normalized[target_key] = normalized[alias]
+                        break
 
-    # Map parameter aliases to canonical schema keys
-    aliases = schema.get("aliases", {})
-    for target_key, alias_list in aliases.items():
-        if target_key not in normalized or not normalized[target_key]:
-            for alias in alias_list:
-                if alias in normalized and normalized[alias]:
-                    normalized[target_key] = normalized[alias]
-                    break
+        # Check required fields
+        required = schema.get("required", [])
+        missing = [
+            req for req in required if req not in normalized or normalized[req] is None
+        ]
 
-    # Check required fields
-    required = schema.get("required", [])
-    missing = [
-        req for req in required if req not in normalized or normalized[req] is None
-    ]
+        if missing:
+            err_msg = (
+                f"Schema Validation Error for '{tool_upper}': Missing required parameter(s): {missing}. "
+                f"Expected schema required keys: {required}."
+            )
+            return False, err_msg, normalized
 
-    if missing:
-        err_msg = (
-            f"Schema Validation Error for '{tool_upper}': Missing required parameter(s): {missing}. "
-            f"Expected schema required keys: {required}."
-        )
-        return False, err_msg, normalized
+        return True, "Valid", normalized
 
-    return True, "Valid", normalized

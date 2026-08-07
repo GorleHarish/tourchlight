@@ -61,6 +61,69 @@ def _scratchpad_clean(entry, limit: int = _SCRATCHPAD_ENTRY_LIMIT) -> str:
     return flat
 
 
+_NON_FILE_EXTENSIONS = {
+    "name", "role", "state", "get", "set", "items", "keys", "values", "count",
+    "data", "id", "type", "val", "arg", "args", "kwarg", "kwargs", "attr", "func",
+    "self", "this", "parent", "child", "len", "split", "join", "strip", "lower",
+    "upper", "append", "extend", "pop", "update", "clear", "group", "search",
+    "match", "findall", "finditer", "sub", "replace", "start", "end", "stdout",
+    "stderr", "stdin", "path", "result", "error", "status", "code", "message",
+    "content", "text", "length", "format", "read", "write", "close", "open",
+    "flush", "is_dir", "is_file", "exists", "copy", "move", "remove", "delete",
+    "add", "sub", "mul", "div", "mod", "eq", "ne", "lt", "gt", "le", "ge",
+    "target", "source", "output", "input", "params", "options", "config", "spec",
+    "value", "key", "node", "element", "component", "class", "module", "object",
+    "enabled", "active", "default", "factory", "args", "kwargs", "parent"
+}
+
+_VALID_FILE_EXTENSIONS = {
+    "py", "js", "ts", "jsx", "tsx", "json", "md", "txt", "html", "css", "tcss",
+    "rs", "go", "sh", "c", "cpp", "h", "hpp", "yml", "yaml", "toml", "xml",
+    "ini", "cfg", "sql", "java", "rb", "php", "kt", "swift", "bat", "ps1",
+    "log", "csv", "tsv", "diff", "patch", "lock", "rst", "env"
+}
+
+_VALID_EXACT_FILENAMES = {
+    "makefile", "dockerfile", ".gitignore", ".env", "license", "docker-compose.yml"
+}
+
+
+def is_valid_file_path(path: str) -> bool:
+    """Validate if a string is a genuine file path rather than code attribute access (e.g. context.name)."""
+    if not path or not isinstance(path, str):
+        return False
+    path = path.strip().strip("'\"`()[],:;")
+    if not path or len(path) < 3:
+        return False
+    if path.startswith(("http://", "https://", "ftp://")):
+        return False
+    if " " in path or "\n" in path or "\t" in path:
+        return False
+
+    base = path.split("/")[-1].split("\\")[-1]
+    if not base:
+        return False
+
+    if base.lower() in _VALID_EXACT_FILENAMES:
+        return True
+
+    if "." not in base:
+        return False
+
+    parts = base.rsplit(".", 1)
+    prefix = parts[0].lower()
+    ext = parts[1].lower()
+
+    if ext in _NON_FILE_EXTENSIONS:
+        return False
+
+    if prefix in {"self", "this", "msg", "context", "obj", "object", "item", "data", "res", "req", "response", "request", "node", "element", "e"}:
+        return False
+
+    return ext in _VALID_FILE_EXTENSIONS
+
+
+
 @dataclass
 class MemoryConfig:
     max_tokens: int = 8000
@@ -828,15 +891,68 @@ class TieredMemory:
         self._cached_msg_tokens = 0
         self.state = SessionState()
 
+    def record_file_modified(self, path: str) -> None:
+        """Explicitly record a modified file in session state if it is a valid file path."""
+        if is_valid_file_path(path):
+            clean_p = path.strip().strip("'\"`()[],:;")
+            if clean_p not in self.state.files_modified:
+                self.state.files_modified.append(clean_p)
+            self.state.active_file = clean_p
+            self.persist_to_project_memory()
+
+    def record_file_read(self, path: str) -> None:
+        """Explicitly record a read file in session state if it is a valid file path."""
+        if is_valid_file_path(path):
+            clean_p = path.strip().strip("'\"`()[],:;")
+            if clean_p not in self.state.files_read:
+                self.state.files_read.append(clean_p)
+            self.state.active_file = clean_p
+            self.persist_to_project_memory()
+
     def _update_state_from_message(self, msg: Message) -> None:
         content = msg.content
-        # Extract file paths
-        paths = re.findall(r"[\w/\.\-]+\.\w{1,10}", content)
-        for p in paths[:3]:
-            if p not in self.state.files_read and msg.role == MessageRole.USER:
-                self.state.files_read.append(p)
-            if p not in self.state.files_modified and msg.role == MessageRole.ASSISTANT:
-                self.state.files_modified.append(p)
+        role_str = msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role).lower()
+
+        # User messages: extract explicit valid file paths requested/read
+        if role_str == "user":
+            candidates = re.findall(r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content)
+            for p in candidates:
+                if is_valid_file_path(p) and p not in self.state.files_read:
+                    self.state.files_read.append(p)
+
+        # Assistant messages: scan ONLY for explicit tool calls (JSON or XML or tool syntax) writing/editing files
+        elif role_str == "assistant":
+            # 1. JSON tool calls: <tool_call>{"name": "WRITE_FILE", "arguments": {"path": "..."}}</tool_call>
+            for match in re.finditer(r"<tool_call>\s*({[\s\S]*?})\s*</tool_call>", content):
+                try:
+                    import json
+                    data = json.loads(match.group(1))
+                    name = (data.get("name") or "").upper()
+                    if name in ("WRITE_FILE", "EDIT_FILE", "WRITE_FILE_IMPL", "EDIT_FILE_IMPL"):
+                        args = data.get("arguments") or data.get("params") or {}
+                        fpath = args.get("path") or args.get("file")
+                        if fpath and is_valid_file_path(fpath):
+                            self.record_file_modified(fpath)
+                except Exception:
+                    pass
+
+            # 2. XML tool calls: <WRITE_FILE path="..."> or <EDIT_FILE path="...">
+            for xml_call in re.finditer(r'<(?:WRITE_FILE|EDIT_FILE)\s+path=["\']([^"\'\n]+)["\']', content, re.IGNORECASE):
+                if is_valid_file_path(xml_call.group(1)):
+                    self.record_file_modified(xml_call.group(1))
+
+        # Tool result messages: check for tool execution results of WRITE_FILE / EDIT_FILE / READ_FILE
+        elif role_str in ("tool", "tool_result"):
+            tool_name = (msg.metadata.get("tool_name") or "").upper()
+            if tool_name in ("WRITE_FILE", "EDIT_FILE", "WRITE_FILE_IMPL", "EDIT_FILE_IMPL"):
+                for p in re.findall(r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content):
+                    if is_valid_file_path(p):
+                        self.record_file_modified(p)
+            elif tool_name in ("READ_FILE", "READ_FILE_IMPL"):
+                for p in re.findall(r"(?:[a-zA-Z0-9_\-/\\]+\.)+[a-zA-Z0-9_\-]+", content):
+                    if is_valid_file_path(p):
+                        self.record_file_read(p)
+
         # Extract errors
         error_matches = re.findall(
             r"(?:Error|Exception|FAILED)[:\s]+([^\n]{10,100})", content

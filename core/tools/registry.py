@@ -314,6 +314,7 @@ def _create_default_registry() -> ToolRegistry:
         tool_git_impl,
         tool_search_ast_impl,
         tool_inspect_web_impl,
+        tool_set_phase_impl,
     )
 
     registry = ToolRegistry()
@@ -411,5 +412,10 @@ def _create_default_registry() -> ToolRegistry:
          "Actions: add_subtask, skip_task, update_status. Args: action (required), task_id, description, target_files, depends_on.",
          AUTO, tool_update_task_graph_impl, cat="core")
 
+    _reg("SET_PHASE", "🔄",
+         "Switch active agent phase ('code', 'plan', 'troubleshoot', 'chat'). Args: phase (required), reason.",
+         AUTO, tool_set_phase_impl, cat="core")
+
     return registry
+
 

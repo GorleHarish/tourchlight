@@ -92,7 +92,7 @@ def classify_tool(tool_name: str, args: dict = None) -> str:
     Classify a tool call into AUTO, CONFIRM, or REVIEW risk tier.
     """
     tool_upper = tool_name.upper() if tool_name else ""
-    if tool_upper in ("READ_FILE", "GREP", "READ_SYMBOLS", "SEARCH_AST", "LIST_DIR", "INSPECT_WEB", "SAVE_MEMORY", "UPDATE_TASK_GRAPH"):
+    if tool_upper in ("READ_FILE", "GREP", "READ_SYMBOLS", "SEARCH_AST", "LIST_DIR", "INSPECT_WEB", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "SET_PHASE"):
         return AUTO
     if tool_upper in ("WRITE_FILE", "EDIT_FILE"):
         return CONFIRM

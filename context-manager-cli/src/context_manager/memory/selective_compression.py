@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional, TYPE_CHECKING
 from enum import Enum
 
+from core.memory.manager import is_valid_file_path
+
 if TYPE_CHECKING:
     from .token_counter import TokenCounter
 
@@ -249,7 +251,8 @@ class SelectiveCompressor:
             hints.append(f"tests: {passed}✓ {failed}✗")
 
         # File paths
-        paths = re.findall(r"[\w\-/]+\.[a-zA-Z]{2,6}(?::\d+)?", content)
+        raw_paths = re.findall(r"[\w\-/]+\.[a-zA-Z]{2,6}(?::\d+)?", content)
+        paths = [p for p in raw_paths if is_valid_file_path(p.split(":")[0])]
         if paths:
             hints.append(f"files: {', '.join(paths[:2])}")
 

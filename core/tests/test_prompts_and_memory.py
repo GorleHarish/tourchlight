@@ -132,3 +132,78 @@ def test_tiered_memory_update_system_prompt():
     ctx2 = memory.get_context_for_llm()
     assert ctx2[0]["role"] == "system"
     assert ctx2[0]["content"] == "Updated Phase System Prompt"
+
+
+def test_sanitize_assistant_text():
+    from core.prompts.system import sanitize_assistant_text
+
+    raw = """Writing code to file: index.html (14 lines, Basic HTML structure for Snake game)
+Params: path: index.html
+Result: Written 12 lines to /Users/harishgorle/Desktop/agent test/index.html
+Updating index.html with Snake game structure."""
+
+    cleaned = sanitize_assistant_text(raw)
+    assert "Params:" not in cleaned
+    assert "Result:" not in cleaned
+    assert "Writing code to file:" not in cleaned
+    assert "Updating index.html with Snake game structure." in cleaned
+
+
+def test_non_verbose_directives_in_prompt():
+    from core.prompts.system import get_phase_system_prompt, SYSTEM_PROMPT
+
+    assert "NON-VERBOSE CODE DISCIPLINE" in SYSTEM_PROMPT
+    assert 'Params: ...' in SYSTEM_PROMPT or 'Params:' in SYSTEM_PROMPT
+    code_prompt = get_phase_system_prompt("code")
+    assert "Params:" in code_prompt or "Result:" in code_prompt
+
+
+def test_is_valid_file_path():
+    from core.memory.manager import is_valid_file_path
+
+    # Code attribute lookups / non-file strings must be rejected
+    assert not is_valid_file_path("context.name")
+    assert not is_valid_file_path("self.state")
+    assert not is_valid_file_path("msg.role")
+    assert not is_valid_file_path("item.id")
+    assert not is_valid_file_path("response.data")
+    assert not is_valid_file_path("e.message")
+    assert not is_valid_file_path("http://example.com/test.py")
+    assert not is_valid_file_path("invalid path with spaces.py")
+
+    # Real file paths must be accepted
+    assert is_valid_file_path("core/memory/manager.py")
+    assert is_valid_file_path("rlm_optimized/prompts.py")
+    assert is_valid_file_path("implementation_plan.md")
+    assert is_valid_file_path("test_schemas.py")
+    assert is_valid_file_path("tui_app.tcss")
+    assert is_valid_file_path("Makefile")
+    assert is_valid_file_path(".gitignore")
+
+
+def test_modified_files_not_picking_context_name():
+    from core.memory.manager import TieredMemory, MemoryConfig
+
+    memory = TieredMemory(config=MemoryConfig(max_tokens=4000))
+
+    # Assistant message referencing code attributes like context.name
+    memory.add_assistant_message(
+        "I analyzed context.name and self.state inside core/memory/manager.py."
+    )
+
+    # context.name and self.state must NOT be added to files_modified
+    assert "context.name" not in memory.state.files_modified
+    assert "self.state" not in memory.state.files_modified
+    assert "msg.role" not in memory.state.files_modified
+
+    # Explicit record_file_modified must work
+    memory.record_file_modified("core/memory/manager.py")
+    assert "core/memory/manager.py" in memory.state.files_modified
+
+    # Explicit tool call JSON must record modified file
+    memory.add_assistant_message(
+        '<tool_call>{"name": "WRITE_FILE", "arguments": {"path": "src/new_feature.py", "content": "print(1)"}}</tool_call>'
+    )
+    assert "src/new_feature.py" in memory.state.files_modified
+
+

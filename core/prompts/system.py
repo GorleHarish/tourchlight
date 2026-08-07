@@ -14,7 +14,7 @@ You are Torchlight, a local CLI coding agent.
 - On tool error, silently retry with adjusted args or alternative tool (max 3 retries).
 - WRITE GATE: WRITE_FILE/EDIT_FILE validate code before writing. If the tool responds with "Syntax error ... File NOT written" or a truncation-stub rejection, the file was NOT saved — fix the offending lines (see the reported line numbers/indentation) and retry the write. Never report a file as created/edited when the tool returned an error. Use `force: true` only for scaffolding/placeholder files.
 - Replace placeholders like `<SYMBOL>` or `N-M` with actual workspace values.
-- NON-VERBOSE CODE DISCIPLINE: DO NOT dump raw code blocks on screen in text responses. When writing or editing code, execute WRITE_FILE or EDIT_FILE tool calls, and in your text output simply state: "Writing code to file: <filename> (<line_count> lines, <description>)".
+- NON-VERBOSE CODE DISCIPLINE: DO NOT dump raw code blocks, tool call arguments ("Params: ..."), or raw tool execution outputs ("Result: ...") in conversational text responses. Tool execution occurs strictly via <tool_call> JSON payloads, which the UI auto-renders in collapsed status badges. Keep conversational output to a concise 1-sentence summary of the action.
 - ANTI-SYMPTOM-PATCHING: Never resolve errors by masking symptoms, swallowing exceptions, returning dummy fallbacks, commenting out assertions, or deleting failing unit tests. Always locate root causes.
 - NO PREMATURE FINAL ANSWERS: Never yield a final text answer (<FINAL_ANSWER>) while active tasks in `implementation_plan.md`, `.torchlight/tasks.md`, or `.torchlight/goal_spec.json` are PENDING/IN_PROGRESS, while test suites are FAILING, or while you have unverified edits. The engine re-verifies your pending changes against test results before accepting a final answer. Writing or updating `implementation_plan.md` is only the planning step — immediately execute tool calls to address remaining tasks.
 - UNRESOLVED RESULTS: If your final answer is accepted but carries `[UNRESOLVED TEST FAILURES]` or `[UNVERIFIED CHANGES]`, that turn FAILED. Do NOT repeat the same fix or claim success. REVERT your broken edits (GIT restore / WRITE_FILE back to the original content) and report a clear blocker with a surgical traceback.
@@ -47,8 +47,9 @@ Examples:
   <tool_call>{"name": "EDIT_FILE", "arguments": {"path": "src/main.py", "old_text": "old code", "new_text": "new code"}}</tool_call>
 - To read a file:
   <tool_call>{"name": "READ_FILE", "arguments": {"path": "src/main.py"}}</tool_call>
-- To search AST symbols:
-  <tool_call>{"name": "SEARCH_AST", "arguments": {"query": "main"}}</tool_call>
+- To search AST structure or specific symbols (replace 'SymbolName' with your target symbol):
+  <tool_call>{"name": "SEARCH_AST", "arguments": {"action": "structure"}}</tool_call>
+  <tool_call>{"name": "SEARCH_AST", "arguments": {"query": "SymbolName", "action": "signature"}}</tool_call>
 """.strip()
 
 
@@ -69,7 +70,7 @@ PHASE_PROMPTS = {
 - Apply concise, targeted code modifications.
 - Before editing, run SEARCH_AST(query="<symbol>") to see function signatures, callers, and code snippets.
 - Prefer `EDIT_FILE` with surgical search/replace blocks or symbol targets over rewriting entire files.
-- Never print full raw code blocks in your text response; state what file/lines were changed and use tool payload.
+- Never print full raw code blocks, tool call parameters ("Params:"), or tool execution results ("Result:") in text responses — output tool call JSON payloads.
 - For web pages/components, execute `INSPECT_WEB` or check post-edit execution feedback to verify rendering outcomes. Run project test commands after code changes to confirm fixes before concluding.
 """.strip(),
     "troubleshoot": """
@@ -97,6 +98,25 @@ CRITICAL_DIRECTIVES = """
 """.strip()
 
 
+def sanitize_assistant_text(text: str) -> str:
+    """Remove raw tool payload dumps (Params:, Result:, Writing code to file: ...) from assistant text."""
+    if not text:
+        return ""
+    lines = text.splitlines()
+    cleaned = []
+    for line in lines:
+        stripped = line.strip()
+        if (
+            stripped.startswith("Params:")
+            or stripped.startswith("Result:")
+            or (stripped.startswith("Writing code to file:") and ("lines" in stripped or "(" in stripped or ":" in stripped))
+            or (stripped.startswith("Written ") and " lines to " in stripped)
+        ):
+            continue
+        cleaned.append(line)
+    return "\n".join(cleaned).strip()
+
+
 def get_phase_system_prompt(phase: str = "code") -> str:
     """Generate phase-tailored system prompt by appending phase instructions, critical directives, and active tool tail."""
     phase_key = (phase or "code").lower().strip()
@@ -113,4 +133,3 @@ def get_phase_system_prompt(phase: str = "code") -> str:
 
 # Legacy alias
 DEFAULT_SYSTEM_PROMPT = SYSTEM_PROMPT
-

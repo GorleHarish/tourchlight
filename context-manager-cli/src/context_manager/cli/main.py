@@ -24,7 +24,7 @@ try:
     from core.execution.feedback_loop import ExecutionFeedbackLoop
     from core.tools.classification import AUTO, CONFIRM, REVIEW, classify_command
     from core.tools.implementations import set_ctx_window as _set_ctx_window
-    from core.prompts.system import DEFAULT_SYSTEM_PROMPT, get_phase_system_prompt
+    from core.prompts.system import DEFAULT_SYSTEM_PROMPT, get_phase_system_prompt, sanitize_assistant_text
     from core.debate.verifier import DebateVerifier
     from core.execution.autonomous_harness import AutonomousHarness
 except ImportError:
@@ -514,12 +514,17 @@ class StreamingChatSession:
                 # Pin file content after READ_FILE so it survives compression
                 if ok and name.upper() == "READ_FILE":
                     fpath = params.get("path", "")
-                    if fpath and result.output:
-                        self.memory.pin_file(fpath, result.output)
+                    if fpath:
+                        if hasattr(self.memory, "record_file_read"):
+                            self.memory.record_file_read(fpath)
+                        if result.output:
+                            self.memory.pin_file(fpath, result.output)
                 elif ok and name.upper() in ("EDIT_FILE", "WRITE_FILE"):
                     self._event_lock_phase("file_edit", name)
                     fpath = params.get("path") or params.get("file")
                     if fpath:
+                        if hasattr(self.memory, "record_file_modified"):
+                            self.memory.record_file_modified(fpath)
                         self.memory.refresh_pin(fpath, self.project_root)
 
                 # Execution feedback: auto-run tests or web inspector after code changes
@@ -791,7 +796,7 @@ class StreamingChatSession:
                         )
                         self.memory.add_assistant_message(response)
 
-                    dashboard.print_response(response)
+                    dashboard.print_response(sanitize_assistant_text(response))
                     dashboard.show_snapshot(self.memory.get_snapshot())
 
                     # Re-detect after seeing the model's response
@@ -833,7 +838,7 @@ class StreamingChatSession:
                             )
                             self.memory.add_assistant_message(response)
 
-                        dashboard.print_response(response)
+                        dashboard.print_response(sanitize_assistant_text(response))
 
                     if chain_depth >= MAX_CHAIN:
                         dashboard.print_warning(

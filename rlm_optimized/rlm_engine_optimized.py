@@ -1434,12 +1434,18 @@ class RLMEngineOptimized:
                         tname_upper = tool_name.upper()
                         if "READ_FILE" in tname_upper:
                             fpath = tool_args.get("path", "")
-                            if fpath and tool_result.output:
-                                memory.pin_file(fpath, tool_result.output)
+                            if fpath:
+                                if hasattr(memory, "record_file_read"):
+                                    memory.record_file_read(fpath)
+                                if tool_result.output:
+                                    memory.pin_file(fpath, tool_result.output)
                         elif "EDIT_FILE" in tname_upper or "WRITE_FILE" in tname_upper:
                             fpath = tool_args.get("path") or tool_args.get("file", "")
-                            if fpath and hasattr(memory, "refresh_pin"):
-                                memory.refresh_pin(fpath, self.project_root)
+                            if fpath:
+                                if hasattr(memory, "record_file_modified"):
+                                    memory.record_file_modified(fpath)
+                                if hasattr(memory, "refresh_pin"):
+                                    memory.refresh_pin(fpath, self.project_root)
 
                     msg_type = "tool_result" if tool_result.success else "tool_error"
                     feedback = build_step_message(msg_type, tool_result.output)

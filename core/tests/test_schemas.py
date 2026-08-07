@@ -19,9 +19,23 @@ def test_tool_schemas_exist():
         "FORMAT_CODE",
         "VERIFY",
         "ASK_USER",
+        "SET_PHASE",
     ]
     for name in expected:
         assert name in TOOL_SCHEMAS
+
+
+def test_validate_tool_call_set_phase():
+    is_valid, msg, args = validate_tool_call("SET_PHASE", {"phase": "code", "reason": "switching to implementation"})
+    assert is_valid is True
+    assert args["phase"] == "code"
+    assert args["reason"] == "switching to implementation"
+
+    # Alias check
+    is_valid_alias, _, args_alias = validate_tool_call("SET_PHASE", {"mode": "troubleshoot"})
+    assert is_valid_alias is True
+    assert args_alias["phase"] == "troubleshoot"
+
 
 
 def test_validate_tool_call_valid():

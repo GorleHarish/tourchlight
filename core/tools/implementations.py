@@ -2570,6 +2570,15 @@ def tool_ask_user_impl(args: dict, project_root: str) -> str:
     return f"[AWAITING USER INPUT] {question}"
 
 
+def tool_set_phase_impl(args: dict, project_root: str) -> str:
+    """SET_PHASE — switch active agent phase."""
+    phase = str(args.get("phase", "code")).lower().strip()
+    reason = args.get("reason", "")
+    reason_str = f" Reason: {reason}" if reason else ""
+    return f"Agent phase switched to '{phase}' successfully.{reason_str}"
+
+
+
 # ── GIT tool ────────────────────────────────────────────────────────────────
 
 _GIT_SAFE_SUBCOMMANDS = {
@@ -2766,12 +2775,17 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
             return graph.get_structure()
         res = graph.query(query, top_k=top_k)
         if "No AST graph nodes found" in res:
+            if query.lower() in ("main", "app", "index", "root"):
+                return graph.get_structure()
             try:
                 from rlm_optimized.repl_sandbox import semantic_search
 
-                return semantic_search(query, top_k=top_k, project_root=project_root)
+                sem_res = semantic_search(query, top_k=top_k, project_root=project_root)
+                if sem_res and "No semantic matches" not in sem_res:
+                    return sem_res
             except ImportError:
                 pass
+            return graph.get_structure()
         return res
     elif action in ("path", "find_path"):
         target = str(args.get("target", args.get("to", ""))).strip()

@@ -67,6 +67,7 @@ from rlm_optimized.config import (
 )
 from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized, Step
 from core.tools.classification import CONFIRM, REVIEW
+from core.prompts.system import sanitize_assistant_text
 from rlm_optimized.memory_monitor import format_memory_status, is_memory_safe
 from rlm_optimized.tui_widgets.format import (
     build_plan_overview_text,
@@ -3114,6 +3115,7 @@ class TorchlightApp(App):
                 except Exception:
                     pass
 
+            display_text = sanitize_assistant_text(display_text)
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
 
@@ -3147,6 +3149,7 @@ class TorchlightApp(App):
         if "<tool_call>" in display_text.lower():
             parts = re.split(r"<tool_call>", display_text, flags=re.IGNORECASE)
             display_text = parts[0].strip()
+        display_text = sanitize_assistant_text(display_text)
         if len(display_text) > 4000:
             display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
         self._streaming_view.update_markup(escape(display_text))
@@ -3394,7 +3397,7 @@ class TorchlightApp(App):
 
                 # Final answer
                 elif step.action == "final_answer":
-                    display_content = step.content
+                    display_content = sanitize_assistant_text(step.content)
                     if len(display_content) > 15000:
                         display_content = (
                             display_content[:15000]
