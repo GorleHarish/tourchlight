@@ -207,3 +207,49 @@ def test_modified_files_not_picking_context_name():
     assert "src/new_feature.py" in memory.state.files_modified
 
 
+def test_calculate_in_memory_diff():
+    from core.memory.manager import calculate_in_memory_diff
+
+    old_code = "def foo():\n    return 1\n"
+    new_code = "def foo():\n    print('hello')\n    return 2\n"
+
+    added, deleted = calculate_in_memory_diff(old_code, new_code)
+    assert added == 2
+    assert deleted == 1
+
+    # Identical text
+    assert calculate_in_memory_diff(old_code, old_code) == (0, 0)
+
+    # Empty old text (new file creation)
+    assert calculate_in_memory_diff("", "line1\nline2\n") == (2, 0)
+
+
+def test_extract_modified_symbols():
+    from core.memory.manager import extract_modified_symbols
+
+    old_code = "def existing_func():\n    pass\n"
+    new_code = "def existing_func():\n    pass\n\ndef new_func():\n    return 42\n"
+
+    syms = extract_modified_symbols(old_code, new_code)
+    assert "new_func" in syms
+
+
+def test_multi_edit_net_baseline_scratchpad():
+    from core.memory.manager import TieredMemory, MemoryConfig
+
+    memory = TieredMemory(config=MemoryConfig(max_tokens=4000))
+
+    # Turn 1 edit
+    code_v1 = "def login():\n    return True\n"
+    memory.record_file_modified("src/auth.py", old_content="", new_content=code_v1)
+
+    # Turn 2 edit (adding logout)
+    code_v2 = "def login():\n    return True\n\ndef logout():\n    return False\n"
+    memory.record_file_modified("src/auth.py", old_content=code_v1, new_content=code_v2)
+
+    scratchpad = memory.format_l0_scratchpad()
+    assert "- Modified Files:" in scratchpad
+    assert "src/auth.py (+5, -0) [login, logout]" in scratchpad
+
+
+

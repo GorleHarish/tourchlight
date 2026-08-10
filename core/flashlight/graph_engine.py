@@ -21,9 +21,16 @@ IGNORE_DIRS = {
 
 SUPPORTED_EXTENSIONS = {
     ".py", ".js", ".ts", ".jsx", ".tsx",
+    ".html", ".htm", ".css",
     ".go", ".rs", ".java", ".cpp", ".c", ".h",
     ".rb", ".cs", ".kt",
 }
+
+try:
+    import tree_sitter
+    HAS_TREE_SITTER = True
+except ImportError:
+    HAS_TREE_SITTER = False
 
 
 class PyASTVisitor(ast.NodeVisitor):
@@ -130,9 +137,15 @@ class ProjectGraph:
         self.edges: List[Dict[str, Any]] = []
 
     def build(self) -> Dict[str, Any]:
-        """Scan project files and construct the AST graph."""
-        self.nodes.clear()
-        self.edges.clear()
+        """Scan project files incrementally using st_mtime and construct/update the AST graph."""
+        if not self.nodes:
+            self.load()
+
+        old_nodes = self.nodes.copy()
+        old_edges = list(self.edges)
+
+        new_nodes: Dict[str, Dict[str, Any]] = {}
+        new_edges: List[Dict[str, Any]] = []
 
         for root, dirs, files in os.walk(self.project_dir, followlinks=False):
             dirs[:] = [
@@ -148,23 +161,48 @@ class ProjectGraph:
                     continue
                 try:
                     rel_path = path.relative_to(self.project_dir).as_posix()
-                    self._index_file(path, rel_path)
+                    mtime = path.stat().st_mtime
+
+                    # Incremental check: if file is in old_nodes and mtime is unchanged, reuse nodes/edges
+                    if rel_path in old_nodes and old_nodes[rel_path].get("mtime") == mtime:
+                        new_nodes[rel_path] = old_nodes[rel_path]
+                        for nid, node in old_nodes.items():
+                            if node.get("file") == rel_path or nid.startswith(f"{rel_path}::"):
+                                new_nodes[nid] = node
+                        for edge in old_edges:
+                            ef, et = edge.get("from", ""), edge.get("to", "")
+                            if ef == rel_path or ef.startswith(f"{rel_path}::") or et == rel_path or et.startswith(f"{rel_path}::"):
+                                if edge not in new_edges:
+                                    new_edges.append(edge)
+                        continue
+
+                    self.nodes = new_nodes
+                    self.edges = new_edges
+                    self._index_file(path, rel_path, mtime=mtime)
                 except Exception:
                     continue
 
+        self.nodes = new_nodes
+        self.edges = new_edges
         self.save()
         return self.to_dict()
 
-    def _index_file(self, abs_path: Path, rel_path: str):
+    def _index_file(self, abs_path: Path, rel_path: str, mtime: float = 0.0):
         file_node_id = rel_path
         text = abs_path.read_text(errors="ignore")
+        mtime_val = mtime or (abs_path.stat().st_mtime if abs_path.exists() else 0.0)
 
         self.nodes[file_node_id] = {
             "id": file_node_id,
             "type": "file",
             "name": rel_path,
             "lines": len(text.splitlines()),
+            "mtime": mtime_val,
         }
+
+        if HAS_TREE_SITTER:
+            if self._tree_sitter_index_file(abs_path, rel_path, text):
+                return
 
         if abs_path.suffix == ".py":
             try:
@@ -196,16 +234,112 @@ class ProjectGraph:
                 self._regex_fallback(text, rel_path)
         else:
             self._regex_fallback(text, rel_path)
+    def _tree_sitter_index_file(self, abs_path: Path, rel_path: str, text: str) -> bool:
+        """Parse file via Tree-Sitter when tree_sitter library is installed."""
+        if not HAS_TREE_SITTER:
+            return False
+        try:
+            ext = abs_path.suffix.lower()
+            lang_name = {
+                ".py": "python",
+                ".js": "javascript",
+                ".ts": "typescript",
+                ".jsx": "javascript",
+                ".tsx": "typescript",
+                ".html": "html",
+                ".go": "go",
+                ".rs": "rust",
+                ".cpp": "cpp",
+                ".c": "c",
+                ".java": "java",
+            }.get(ext)
+            if not lang_name:
+                return False
+
+            import tree_sitter
+            try:
+                import tree_sitter_languages
+                lang = tree_sitter_languages.get_language(lang_name)
+            except Exception:
+                return False
+
+            parser = tree_sitter.Parser()
+            parser.set_language(lang)
+            tree = parser.parse(bytes(text, "utf-8"))
+
+            file_node_id = rel_path
+
+            def _traverse(node):
+                if node.type in ("function_declaration", "method_definition", "function_definition"):
+                    name_node = node.child_by_field_name("name")
+                    if name_node:
+                        func_name = text[name_node.start_byte:name_node.end_byte]
+                        func_id = f"{rel_path}::{func_name}"
+                        self.nodes[func_id] = {
+                            "id": func_id,
+                            "type": "function",
+                            "name": func_name,
+                            "file": rel_path,
+                            "line_start": node.start_point[0] + 1,
+                            "line_end": node.end_point[0] + 1,
+                        }
+                        self.edges.append({"from": file_node_id, "to": func_id, "type": "contains"})
+                elif node.type in ("class_declaration", "class_definition", "struct_item"):
+                    name_node = node.child_by_field_name("name")
+                    if name_node:
+                        class_name = text[name_node.start_byte:name_node.end_byte]
+                        class_id = f"{rel_path}::{class_name}"
+                        self.nodes[class_id] = {
+                            "id": class_id,
+                            "type": "class",
+                            "name": class_name,
+                            "file": rel_path,
+                            "line_start": node.start_point[0] + 1,
+                            "line_end": node.end_point[0] + 1,
+                        }
+                        self.edges.append({"from": file_node_id, "to": class_id, "type": "contains"})
+
+                for child in node.children:
+                    _traverse(child)
+
+            _traverse(tree.root_node)
+            return True
+        except Exception:
+            return False
 
     def _regex_fallback(self, text: str, rel_path: str):
         file_node_id = rel_path
-        func_re = re.compile(r'^(?:export\s+)?(?:async\s+)?(?:function|fn|def|func)\s+(\w+)', re.MULTILINE)
-        class_re = re.compile(r'^(?:export\s+)?(?:class|struct|type)\s+(\w+)', re.MULTILINE)
 
-        for m in func_re.finditer(text):
+        # For HTML/HTM, parse text within <script> tags if present
+        if rel_path.endswith((".html", ".htm")):
+            script_blocks = re.findall(r'<script[^>]*>(.*?)</script>', text, re.DOTALL | re.IGNORECASE)
+            parse_text = "\n".join(script_blocks) if script_blocks else text
+        else:
+            parse_text = text
+
+        func_re = re.compile(
+            r'^\s*(?:export\s+)?(?:async\s+)?(?:function|fn|def|func)\s+([a-zA-Z_]\w*)',
+            re.MULTILINE
+        )
+        arrow_re = re.compile(
+            r'^\s*(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_]\w*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[a-zA-Z_]\w*|\(\))\s*=>',
+            re.MULTILINE
+        )
+        fn_expr_re = re.compile(
+            r'^\s*(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_]\w*)\s*=\s*(?:async\s*)?function',
+            re.MULTILINE
+        )
+        class_re = re.compile(
+            r'^\s*(?:export\s+)?(?:class|struct|type)\s+([a-zA-Z_]\w*)',
+            re.MULTILINE
+        )
+
+        found_funcs = set()
+        for m in func_re.finditer(parse_text):
             func_name = m.group(1)
+            found_funcs.add(func_name)
             func_id = f"{rel_path}::{func_name}"
-            lineno = text[:m.start()].count("\n") + 1
+            lineno = text[:m.start()].count("\n") + 1 if parse_text is text else 1
             self.nodes[func_id] = {
                 "id": func_id,
                 "type": "function",
@@ -215,10 +349,42 @@ class ProjectGraph:
             }
             self.edges.append({"from": file_node_id, "to": func_id, "type": "contains"})
 
-        for m in class_re.finditer(text):
+        for m in arrow_re.finditer(parse_text):
+            func_name = m.group(1)
+            if func_name in found_funcs:
+                continue
+            found_funcs.add(func_name)
+            func_id = f"{rel_path}::{func_name}"
+            lineno = text[:m.start()].count("\n") + 1 if parse_text is text else 1
+            self.nodes[func_id] = {
+                "id": func_id,
+                "type": "function",
+                "name": func_name,
+                "file": rel_path,
+                "line_start": lineno,
+            }
+            self.edges.append({"from": file_node_id, "to": func_id, "type": "contains"})
+
+        for m in fn_expr_re.finditer(parse_text):
+            func_name = m.group(1)
+            if func_name in found_funcs:
+                continue
+            found_funcs.add(func_name)
+            func_id = f"{rel_path}::{func_name}"
+            lineno = text[:m.start()].count("\n") + 1 if parse_text is text else 1
+            self.nodes[func_id] = {
+                "id": func_id,
+                "type": "function",
+                "name": func_name,
+                "file": rel_path,
+                "line_start": lineno,
+            }
+            self.edges.append({"from": file_node_id, "to": func_id, "type": "contains"})
+
+        for m in class_re.finditer(parse_text):
             class_name = m.group(1)
             class_id = f"{rel_path}::{class_name}"
-            lineno = text[:m.start()].count("\n") + 1
+            lineno = text[:m.start()].count("\n") + 1 if parse_text is text else 1
             self.nodes[class_id] = {
                 "id": class_id,
                 "type": "class",
@@ -524,7 +690,7 @@ class ProjectGraph:
     def get_structure(self) -> str:
         """Return structured summary of files, classes, and function signatures."""
         if not self.nodes:
-            if not self.load():
+            if not self.load() or not self.nodes:
                 self.build()
 
         files = [n for n in self.nodes.values() if n["type"] == "file"]
@@ -559,7 +725,7 @@ def get_project_graph(project_root: str = ".") -> ProjectGraph:
     key = str(root_path)
     if key not in _graphs:
         graph = ProjectGraph(root_path)
-        if not graph.load():
+        if not graph.load() or len(graph.nodes) == 0:
             graph.build()
         _graphs[key] = graph
     return _graphs[key]

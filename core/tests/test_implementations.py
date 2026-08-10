@@ -14,6 +14,19 @@ def test_read_file_impl(tmp_path):
     assert "def" in result
 
 
+def test_read_file_impl_with_line_range_args(tmp_path):
+    test_file = tmp_path / "sample.py"
+    test_file.write_text("line1\nline2\nline3\nline4\nline5\n")
+    result = tool_read_file_impl(
+        {"path": "sample.py", "start_line": 2, "end_line": 3},
+        str(tmp_path),
+    )
+    assert "line2" in result
+    assert "line3" in result
+    assert "line1" not in result
+    assert "line4" not in result
+
+
 def test_read_file_impl_not_found(tmp_path):
     result = tool_read_file_impl({"path": "nonexistent.py"}, str(tmp_path))
     assert "not found" in result.lower() or "error" in result.lower()

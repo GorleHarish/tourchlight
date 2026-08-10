@@ -7,6 +7,7 @@ from pathlib import Path
 
 SUPPORTED_EXTENSIONS = {
     ".py", ".js", ".ts", ".jsx", ".tsx",
+    ".html", ".htm",
     ".go", ".rs", ".java", ".cpp", ".c", ".h",
     ".rb", ".cs", ".swift", ".kt",
     ".md", ".toml", ".yaml", ".yml", ".json",
@@ -22,16 +23,22 @@ IGNORE_DIRS = {
 
 import os
 
-_PY_FUNC_RE = re.compile(r'^(?:async )?def\s+(\w+)\s*\(')
-_PY_CLASS_RE = re.compile(r'^class\s+(\w+)')
-_JS_FUNC_RE = re.compile(r'^(?:export\s+)?(?:async\s+)?function\s+(\w+)')
-_JS_CLASS_RE = re.compile(r'^(?:export\s+)?class\s+(\w+)')
-_JS_ARROW_RE = re.compile(r'^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^\s=]+)\s*=>')
-_TS_INTF_RE = re.compile(r'^(?:export\s+)?interface\s+(\w+)')
+try:
+    import tree_sitter
+    HAS_TREE_SITTER = True
+except ImportError:
+    HAS_TREE_SITTER = False
+
+_PY_FUNC_RE = re.compile(r'^\s*(?:async )?def\s+(\w+)\s*\(')
+_PY_CLASS_RE = re.compile(r'^\s*class\s+(\w+)')
+_JS_FUNC_RE = re.compile(r'^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)')
+_JS_CLASS_RE = re.compile(r'^\s*(?:export\s+)?class\s+(\w+)')
+_JS_ARROW_RE = re.compile(r'^\s*(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^\s=]+)\s*=>')
+_TS_INTF_RE = re.compile(r'^\s*(?:export\s+)?interface\s+(\w+)')
 _RS_FUNC_RE = re.compile(r'^\s*(?:pub\s+)?fn\s+(\w+)')
 _RS_STRUCT_RE = re.compile(r'^\s*(?:pub\s+)?(?:struct|enum)\s+(\w+)')
-_GO_FUNC_RE = re.compile(r'^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(')
-_GO_STRUCT_RE = re.compile(r'^type\s+(\w+)\s+struct')
+_GO_FUNC_RE = re.compile(r'^\s*func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(')
+_GO_STRUCT_RE = re.compile(r'^\s*type\s+(\w+)\s+struct')
 
 class FileEntry:
     __slots__ = ("rel_path", "lines", "symbols", "imports", "size", "mtime")

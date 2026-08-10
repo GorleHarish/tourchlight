@@ -172,4 +172,4 @@ exec "$LLAMA_SERVER_BIN" \
     --repeat-penalty "$REPEAT_PENALTY" \
     --cache-type-k "$KV_CACHE_TYPE_K" \
     --cache-type-v "$KV_CACHE_TYPE_V" \
-    "${EXTRA_ARGS[@]}"
+    ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}

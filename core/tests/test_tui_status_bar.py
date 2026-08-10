@@ -57,6 +57,7 @@ def test_build_status_segments_defaults():
         "sb-state",
         "sb-model",
         "sb-gauge",
+        "sb-task",
         "sb-tps",
         "sb-tokens",
         "sb-errors",

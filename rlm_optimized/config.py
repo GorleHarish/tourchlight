@@ -110,9 +110,11 @@ else:
 # ── Generation Parameters ──────────────────────────────────────
 TEMPERATURE = 0.7
 TOP_P = 0.9
-NUM_PREDICT = int(
-    os.environ.get("RLM_NUM_PREDICT", "-1")
-)  # -1 = unlimited (generate until stop token)
+# Finite default safety bound: if the GBNF grammar is ever dropped (e.g. a
+# future server switch that rejects it again), unlimited generation (-1) lets
+# the model ramble until the client timeout and kills the loop. 2048 tokens is
+# generous for a single tool call / step; override with RLM_NUM_PREDICT.
+NUM_PREDICT = int(os.environ.get("RLM_NUM_PREDICT", "2048"))
 
 
 def estimate_metadata_overhead(
@@ -173,7 +175,11 @@ def normalize_model_name(name: str, provider: str = "") -> str:
         return name_str
 
     name_lower = (
-        name_str.lower().replace(" ", "").replace("-", "").replace("_", "").replace(":", "")
+        name_str.lower()
+        .replace(" ", "")
+        .replace("-", "")
+        .replace("_", "")
+        .replace(":", "")
     )
     if provider_clean == "mlx" or "mlx" in name_lower:
         if "qwen" in name_lower or name_lower == "qwen2.5coder":

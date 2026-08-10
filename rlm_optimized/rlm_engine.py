@@ -54,10 +54,14 @@ class RLMEngine:
                 from rlm_optimized.llamacpp_client import LlamaCppClient
 
                 client = LlamaCppClient()
-            else:
+            elif PROVIDER == "ollama":
                 from rlm_optimized.ollama_client import OllamaClient
 
                 client = OllamaClient()
+            else:
+                from rlm_optimized.cloud_client import CloudClient
+
+                client = CloudClient(provider=PROVIDER)
         self.client = client
         self.on_step = on_step
         self.max_depth = max_depth
@@ -107,7 +111,7 @@ class RLMEngine:
                         _summarizer.simple_summarize if _summarizer else None
                     )
                     memory.compress_recent(
-                        summarizer_fn=summarizer_fn, preserve_first=2
+                        summarizer_fn=summarizer_fn, preserve_first=2, force=True
                     )
                 context = memory.get_context_for_llm()
             else:

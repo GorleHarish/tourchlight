@@ -1,93 +1,93 @@
-# Graph Report - tourchlight v1_i6  (2026-08-08)
+# Graph Report - tourchlight v1_i6  (2026-08-10)
 
 ## Corpus Check
-- 221 files · ~156,556 words
+- 232 files · ~174,691 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3236 nodes · 5914 edges · 205 communities (170 shown, 35 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 271 edges (avg confidence: 0.58)
+- 3530 nodes · 7248 edges · 195 communities (175 shown, 20 thin omitted)
+- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 659 edges (avg confidence: 0.55)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `aa10e7ed`
+- Built from commit: `7f136666`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- implementations.py
-- datetime
+- test_tui_command_palette.py
+- context_manager/memory/models.py
 - ProjectSnapshot
 - SymbolIndex
 - ToolRegistry
 - BaseSkill
 - LMStudioClient
-- SelectiveCompressor
+- TokenCounter
 - repl_sandbox.py
-- ActionTracker
+- LlamaCppClient
 - test_resizer.py
-- test_enhanced_web_tools.py
+- StructurePreservingHTMLParser
 - RecoveryEngine
 - test_implementations.py
-- test_web_inspector.py
-- registry.py
+- HtmlGamePlayer
+- ActionTracker
 - TrajectoryLogger
 - InferenceParams
-- core/memory/persistence.py
-- LlamaCppClient
+- ensure_project_initialized
+- REPLSandbox
 - android_ref_build.md
-- RLMEngine
-- test_tui_tool_cards.py
+- test_tools_core.py
+- test_tui_plan_panel.py
 - PlanningSkill
 - ContextDashboard
 - DebateVerifier
 - verify_m1_setup.py
 - StreamingChatSession
-- tui_app.py
+- cli/main.py
 - LLMClient
 - Changelog
 - RLMEngineOptimized
 - PyASTVisitor
 - context_manager/compression/summarizer.py
-- schemas.py
+- TorchlightApp
 - android_ref_runtime.md
 - VerbatimCompactor
 - ContextBudget
-- on
-- core/memory/models.py
+- context_manager/memory/persistence.py
+- TaskDAG
 - PaneResizer
 - main_optimized.py
 - TDDSkill
 - Issues Found
 - android_ref_emulator.md
-- PromptTextArea
-- test_tui_transcript_widgets.py
-- test_tui_file_tree.py
+- AutonomousHarness
+- MessageCard
+- context-manager-cli/tests/test_models.py
 - VerbatimCompactor
-- SelectiveCompressor
-- context_manager/memory/models.py
+- rlm_engine_optimized.py
+- ProjectMemory
 - test_tui_status_bar.py
 - SkillResult
-- CloudClient
-- .format_l0_scratchpad
-- ._handle_slash_command
+- test_surgical_task_verification.py
+- task_helpers.py
+- ConversationSummarizer
 - Torchlight Architecture
 - tool_edit_file_impl
 - ProjectGraph
-- test_enhanced_memory_retrieval.py
+- MemoryObject
 - test_tui_accessibility.py
-- file_tree.py
-- CommandPalette
+- test_tui_file_tree.py
+- ToolCallCard
 - TDDSkill
 - android_ref_adb.md
-- .update_sidebar_meta
-- UnifiedSkillRegistry
-- .open_file_tab
+- SelectiveCompressor
+- TokenCounter
+- unified.py
 - Architecture
-- Static
+- OllamaClient
 - test_code_quality_harness.py
 - prompts_minimal.py
-- get_tool_registry
+- test_phase_detection.py
 - android_ref_signing.md
 - Prompt Templates for 7B Coder Models
 - Torchlight Excellence Roadmap
@@ -96,37 +96,37 @@
 - ProjectMemory
 - Execution Feedback Loop
 - start_optimized_local.sh
-- TorchlightApp
-- setup_optimized.sh
 - CenterEmptyState
+- setup_optimized.sh
+- tui_app.py
 - run.sh
-- ToolResult
+- prompts/__init__.py
 - tui.sh
 - context_manager/__init__.py
 - core/__init__.py
-- test_inline_interception.py
+- ApprovalModal
 - context-manager-cli
 - torchlight-core
-- ConnectionPill
-- WebOutcomeInspector
+- test_grammar_parse.py
+- Console
 - Context Manager CLI
 - Torchlight — Terminal AI Coding Agent
-- ToolCallCard
+- test_tui_tool_cards.py
 - .agents/AGENTS.md
 - .build
 - Data Flow
 - Core Classes
-- test_tui_trajectory_rail.py
+- Static
 - SymbolIndex
-- command_palette.py
+- ConnectionPill
 - test_tui_theme.py
 - Resource-Adaptive Features
-- IndexVisitor
+- mark_task_status
 - test_tool_parser.py
 - rules/graphify.md
 - workflows/graphify.md
 - web_server.py
-- Pressed
+- on
 - TieredMemory
 - Target Quality Tiers
 - P1: Important Follow-On Work
@@ -134,14 +134,14 @@
 - Future Improvements
 - Improvement Recommendations by Resource Tier
 - Torchlight Documentation
-- test_dedup.py
-- test_tui_plan_panel.py
-- Console
+- TrajectoryLock
+- test_plan_execution_loop.py
+- TestResult
 - Android Troubleshoot — Routing Layer
 - Memory Tiers
 - Persistence
-- TokenCounter
-- classify_command
+- .load
+- CloudClient
 - Retrieval System
 - ~350 tokens. Do NOT load other reference files in the same turn.
 - Profile: Run -> Profile app -> Memory tab
@@ -150,96 +150,86 @@
 - Context null in Fragment -> requireContext() (throws if detached, which is correct)
 - implementation 'androidx.multidex:multidex:2.0.1'
 - Never use StrictMode.allowThreadDiskReads() — it masks the bug
-- rlm_engine_optimized.py
-- AutonomousHarness
-- context_manager/memory/persistence.py
-- ActionEntry
+- test_prompts_and_memory.py
+- TaskSpec
+- autonomous_harness.py
+- _load_goal_spec
 - context_manager/prompts.py
 - Plan: Non-Security Improvements
 - context_manager/memory/embeddings.py
-- test_tools_core.py
-- Schema Reference
-- test_tui_command_palette.py
-- OllamaClient
+- ActionEntry
+- classify_command
+- IndexVisitor
+- .complete
 - DirectiveTracker
-- test_autonomous_harness.py
+- normalize_model_name
 - Flashlight
-- core/tests/test_models.py
+- PromptTextArea
 - Plan: UI Improvements — Torchlight Codex IDE
 - opencode.json
-- test_model_normalization.py
+- .__init__
 - graphify.js
-- MyCustomSkill
+- get_tool_registry
 - HTMLGameSkill
 - ExecutionFeedbackLoop
-- .load
-- prompts/__init__.py
-- ._detect_phase
+- MyCustomSkill
+- test_tui_trajectory_rail.py
+- .has_failing_tests
 - core/api/lmstudio.py
 - discovery.py
-- ApprovalModal
-- cli/main.py
+- tool_card.py
+- sync_workspace_tasks
 - test_tui_diff_view.py
-- test_context_budget_overflow.py
+- implementations.py
 - TestApp
-- .action_tracker
-- ProjectMemory
-- ._update_state_from_message
-- ._stream_llm
-- .compact_context
-- Panel
-- TestApp
-- Enum
-- Pattern
-- Message
-- MessageRole
-- TestApp
-- HTMLParser
+- dashboard.py
+- test_goal_mode_process.py
+- ._append_message
+- _clean_and_parse_json
+- .solve_async
+- test_execution_mode_normalization_and_sync
+- .set_execution_mode_callback
+- Schema Reference
+- ._stream_llm_with_retry
+- asyncio
 - tui_widgets/__init__.py
-- App
-- ComposeResult
-- on
-- Pressed
-- Selected
-- Step
-- Submitted
 
 ## God Nodes (most connected - your core abstractions)
-1. `TorchlightApp` - 140 edges
-2. `TieredMemory` - 119 edges
-3. `RLMEngineOptimized` - 62 edges
-4. `MemoryConfig` - 61 edges
-5. `AutonomousHarness` - 45 edges
-6. `ExecutionFeedbackLoop` - 44 edges
-7. `SkillResult` - 33 edges
-8. `tool_edit_file_impl()` - 32 edges
-9. `StreamingChatSession` - 31 edges
-10. `ProjectSnapshot` - 31 edges
+1. `TorchlightApp` - 168 edges
+2. `TieredMemory` - 146 edges
+3. `RLMEngineOptimized` - 91 edges
+4. `MemoryConfig` - 83 edges
+5. `AutonomousHarness` - 63 edges
+6. `ExecutionFeedbackLoop` - 53 edges
+7. `LlamaCppClient` - 45 edges
+8. `StreamingChatSession` - 41 edges
+9. `CloudClient` - 39 edges
+10. `Step` - 38 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `test_classify_destructive_command()` --calls--> `classify_command()`  [INFERRED]
+- `test_classify_safe_command()` --calls--> `classify_command()`  [INFERRED]
   context-manager-cli/tests/test_tools_core.py → core/tools/classification.py
-- `test_classify_empty_command()` --calls--> `classify_command()`  [INFERRED]
+- `test_classify_destructive_command()` --calls--> `classify_command()`  [INFERRED]
   context-manager-cli/tests/test_tools_core.py → core/tools/classification.py
 - `test_classify_install_command()` --calls--> `classify_command()`  [INFERRED]
   context-manager-cli/tests/test_tools_core.py → core/tools/classification.py
-- `test_classify_safe_command()` --calls--> `classify_command()`  [INFERRED]
+- `test_classify_empty_command()` --calls--> `classify_command()`  [INFERRED]
   context-manager-cli/tests/test_tools_core.py → core/tools/classification.py
-- `test_classify_unknown_command()` --calls--> `classify_command()`  [INFERRED]
-  context-manager-cli/tests/test_tools_core.py → core/tools/classification.py
+- `test_action_entry_markup_safety()` --calls--> `ActionEntry`  [EXTRACTED]
+  core/tests/test_markup_escaping.py → context-manager-cli/src/context_manager/cli/dashboard.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (205 total, 35 thin omitted)
+## Communities (195 total, 20 thin omitted)
 
-### Community 0 - "implementations.py"
-Cohesion: 0.09
-Nodes (34): Core Tools — built-in, always available, called via TOOL_NAME("arg") syntax.  Th, test_list_dir_impl(), test_read_file_impl(), test_read_file_impl_not_found(), _auto_repair(), _ddg_search(), _detect_doc_source(), _extract_identifiers() (+26 more)
+### Community 0 - "test_tui_command_palette.py"
+Cohesion: 0.06
+Nodes (34): Binding, Changed, anyio, Tests for Phase-4 command palette + prompt autocomplete., test_build_palette_items_kinds_and_visibility(), test_command_palette_composes_filters_and_selects(), test_command_palette_enter_runs_highlighted_item(), test_fuzzy_filter_empty_query_and_no_match() (+26 more)
 
-### Community 1 - "datetime"
-Cohesion: 0.15
-Nodes (16): ContentChunk, ContextSnapshot, MemoryObject, SessionState, WorkingSetSnapshot, test_content_chunk_custom(), test_content_chunk_defaults(), test_context_snapshot_fields() (+8 more)
+### Community 1 - "context_manager/memory/models.py"
+Cohesion: 0.12
+Nodes (16): _build_excerpt(), LLMStateExtractor, _merge_into_state(), _parse_json_response(), LLM-powered SessionState extractor.  Replaces the regex-based _merge_summary_int, Robustly extract a JSON object from the model's response.      Local models some, Merge the extracted JSON fields into the existing SessionState.      Strategy: L, Uses the local LLM to extract structured SessionState fields from a     conversa (+8 more)
 
 ### Community 2 - "ProjectSnapshot"
 Cohesion: 0.10
@@ -250,88 +240,88 @@ Cohesion: 0.08
 Nodes (21): _beam_config_for_context(), BeamResult, Flashlight, FileEntry, SymbolIndex, Flashlight Beam — query-to-code relevance scorer.  Scoring strategy (additive):, Scale beam size to the model's context window.         Call once when the model, Return (max_files, max_lines_per_file, anchor_pre_lines) scaled to     the model (+13 more)
 
 ### Community 4 - "ToolRegistry"
-Cohesion: 0.13
-Nodes (16): test_tool_registry_execute(), test_tool_registry_execute_unknown(), test_tool_registry_get(), test_tool_registry_register(), test_tool_registry_risk_level(), test_tool_registry_risk_level_run_command(), Generate tool descriptions for injection into the system prompt.          Scales, Definition of a registered tool. (+8 more)
+Cohesion: 0.08
+Nodes (26): test_tool_registry_execute(), test_tool_registry_execute_unknown(), test_tool_registry_get(), test_tool_registry_register(), test_tool_registry_risk_level(), test_tool_registry_risk_level_run_command(), test_tool_result_failure(), test_tool_result_success() (+18 more)
 
 ### Community 5 - "BaseSkill"
 Cohesion: 0.09
-Nodes (22): ABC, BaseSkill, CalculatorSkill, create_default_registry(), _extract_markdown_skill_metadata(), GitSkill, _LazySkill, MarkdownDocumentSkill (+14 more)
+Nodes (19): ABC, BaseSkill, CalculatorSkill, create_default_registry(), _extract_markdown_skill_metadata(), GitSkill, _LazySkill, MarkdownDocumentSkill (+11 more)
 
 ### Community 6 - "LMStudioClient"
 Cohesion: 0.14
 Nodes (8): _friendly_timeout_msg(), LMStudioClient, Synchronous streaming generator — yields tokens one-by-one.          Uses DEFAUL, Async streaming generator. Uses per-chunk read timeout (DEFAULT_TIMEOUT)., Simple synchronous query interface (LLMClient protocol compatibility)., Return a human-readable message explaining which part of the request timed out., Timeout, TimeoutException
 
-### Community 7 - "SelectiveCompressor"
-Cohesion: 0.06
-Nodes (34): compress_file(), Compress a file using verbatim compaction., CompressionConfig, CompressionLevel, create_progressive_compressor(), Selective Memory Compression - Progressive context reduction for local LLMs.  FI, FIX 1 & 3: use injected tokenizer; only fall back to heuristic if absent., FIX 2: token-aware truncation instead of character slicing. (+26 more)
+### Community 7 - "TokenCounter"
+Cohesion: 0.12
+Nodes (22): CompressionConfig, CompressionLevel, create_progressive_compressor(), Enum, Selective Memory Compression - Progressive context reduction for local LLMs.  FI, Configuration for selective memory compression., Create a compressor tuned for the given context window.      Always pass the sha, Summary of a conversation turn. (+14 more)
 
 ### Community 8 - "repl_sandbox.py"
-Cohesion: 0.15
-Nodes (18): _ast_db_missing_message(), get_class_signature(), _get_encoder(), get_function_ast(), get_function_source(), get_kuzu_connection(), get_local_subgraph(), get_project_structure() (+10 more)
+Cohesion: 0.09
+Nodes (30): _ast_db_missing_message(), get_class_signature(), _get_encoder(), get_function_ast(), get_function_source(), get_kuzu_connection(), get_local_subgraph(), get_project_structure() (+22 more)
 
-### Community 9 - "ActionTracker"
-Cohesion: 0.16
-Nodes (8): _ActionContext, ActionTracker, Shows a live panel of what the agent is doing — actions only, no content.      M, Register a new running action and refresh the display., Mark an action done and move it to history., Single-shot: print a completed action line without needing a Live         contex, Per-action context manager:              with tracker.action("read_file", "src/f, Context manager returned by ActionTracker.action().
+### Community 9 - "LlamaCppClient"
+Cohesion: 0.05
+Nodes (32): A successful WRITE_FILE step mounts a DiffView card with real content., test_app_write_step_renders_diff_card(), DirectoryTree, NamedTuple, LlamaCppClient, Async implementation of chat protocol method required by LLMClient / DebateVerif, Async streaming implementation required by LLMClient protocol.          Runs the, Step (+24 more)
 
 ### Community 10 - "test_resizer.py"
 Cohesion: 0.26
 Nodes (14): _build_app(), _click_resizer(), _drag_resizer(), Regression tests for the PaneResizer drag/click resizing in tui_app.py.  The Pan, No-op client so the engine never touches LM Studio / Ollama / cloud., Simulate a real drag: mouse_down -> captured MouseMove -> mouse_up., _resize_to(), _start_app() (+6 more)
 
-### Community 11 - "test_enhanced_web_tools.py"
+### Community 11 - "StructurePreservingHTMLParser"
 Cohesion: 0.11
 Nodes (19): Tests for enhanced web tools and anti-blocking capabilities in core/tools/implem, test_augment_query_pep621_pyproject(), test_augment_query_with_project_deps_package_json(), test_augment_query_with_project_deps_pyproject(), test_get_browser_headers(), test_none_query_augment_handling(), test_structure_preserving_html_parser(), test_tool_web_fetch_no_url_or_none() (+11 more)
 
 ### Community 12 - "RecoveryEngine"
 Cohesion: 0.06
-Nodes (55): get_recovery_hint(), inject_recovery_into_memory(), Any, Recovery engine for Torchlight errors.  Provides structured recovery strategies, Push recovery hint into memory state's tried_and_failed scratchpad list     to e, Tracks retry state for a specific error pattern., Manages recovery strategies across the agentic loop.      Tracks per-error-type, Generate a dedup key for this error type. (+47 more)
+Nodes (59): get_recovery_hint(), inject_recovery_into_memory(), Any, Recovery engine for Torchlight errors.  Provides structured recovery strategies, Push recovery hint into memory state's tried_and_failed scratchpad list     to e, Tracks retry state for a specific error pattern., Manages recovery strategies across the agentic loop.      Tracks per-error-type, Generate a dedup key for this error type. (+51 more)
 
 ### Community 13 - "test_implementations.py"
-Cohesion: 0.13
-Nodes (21): test_verify_compile_param(), test_edit_file_impl(), test_edit_file_impl_not_found(), test_grep_hyphen_pattern(), test_grep_impl(), test_grep_impl_file_path(), test_grep_impl_no_match(), test_run_command_impl() (+13 more)
+Cohesion: 0.08
+Nodes (36): Tests for SEARCH_AST tool implementation and Kuzu connection handling., test_read_symbols_indented_methods_and_duplicate_names(), test_run_command_intercept_ast_functions(), test_search_ast_action_aliases(), test_search_ast_impl_fallback(), test_verify_compile_param(), test_edit_file_impl(), test_edit_file_impl_not_found() (+28 more)
 
-### Community 14 - "test_web_inspector.py"
-Cohesion: 0.12
-Nodes (12): EphemeralHTTPServer, HTMLParser, QuietHTTPRequestHandler, Web Outcome Inspector for Torchlight.  Provides low-memory, ephemeral runtime an, Spins up a lightweight local HTTP server for static file inspection., Tier 1: Static HTML syntax and asset path validator., HTTP Request Handler that suppresses console logging noise., StaticHTMLValidator (+4 more)
+### Community 14 - "HtmlGamePlayer"
+Cohesion: 0.05
+Nodes (50): GameInputEvent, GameOutcomeResult, get_process_memory_mb(), HtmlGamePlayer, Path, HTML Game Inspector & Player Harness for Torchlight.  Provides autonomous playin, Autonomous HTML Game Harness & Dynamic Verifier.      Launches an ephemeral brow, Plays the HTML game for duration_ms while simulating inputs and checking frame d (+42 more)
 
-### Community 15 - "registry.py"
-Cohesion: 0.09
-Nodes (31): Tests for SEARCH_AST tool implementation and Kuzu connection handling., test_read_symbols_indented_methods_and_duplicate_names(), test_run_command_intercept_ast_functions(), test_search_ast_action_aliases(), test_search_ast_impl_fallback(), test_read_symbols_impl(), _git_run(), READ_SYMBOLS — show file structure without loading content. (+23 more)
+### Community 15 - "ActionTracker"
+Cohesion: 0.22
+Nodes (5): ActionTracker, Shows a live panel of what the agent is doing — actions only, no content.      M, Register a new running action and refresh the display., Mark an action done and move it to history., Single-shot: print a completed action line without needing a Live         contex
 
 ### Community 16 - "TrajectoryLogger"
 Cohesion: 0.25
 Nodes (7): Any, Session Trajectory Logger & Audit Exporter for Torchlight.  Records full agent e, Session trajectory recorder writing structured JSONL steps to disk., TrajectoryLogger, TrajectoryStep, Tests for TrajectoryLogger., test_trajectory_logger_record_step()
 
 ### Community 17 - "InferenceParams"
+Cohesion: 0.08
+Nodes (23): detect_model_traits(), InferenceParams, Abstract LLM client interface and shared inference parameters.  All LLM backends, Writing code files. Near-deterministic — exact syntax matters., Reasoning through plans. Moderate creativity. All tools remain available., Detect architecture traits (size, reasoning status) from model name.      Return, Diagnosing errors. Slightly more exploration., General conversation. (+15 more)
+
+### Community 18 - "ensure_project_initialized"
 Cohesion: 0.09
-Nodes (18): InferenceParams, General conversation., Sampling parameters forwarded to the LLM /chat/completions endpoint.     Only no, Send messages and return the full response., Send messages and yield response chunks., One-line description of current params., Convert to API payload dict, excluding None and default values., Writing code files. Near-deterministic — exact syntax matters. (+10 more)
+Nodes (26): Ensure target project has local git repository and persistent memory initialized, ensure_git_repository(), ensure_project_initialized(), init_new_project(), Path, Ensure target project directory exists and has a local Git repository initialize, Write a marker proving the harness itself initialized this git repo.      Only w, Ensure target project directory exists and has `.context-memory.json` persistent (+18 more)
 
-### Community 18 - "core/memory/persistence.py"
-Cohesion: 0.13
-Nodes (22): ensure_git_repository(), ensure_project_initialized(), init_new_project(), Path, Session and project memory persistence for Torchlight., Ensure target project directory exists and has a local Git repository initialize, Write a marker proving the harness itself initialized this git repo.      Only w, Ensure target project directory exists and has `.context-memory.json` persistent (+14 more)
-
-### Community 19 - "LlamaCppClient"
-Cohesion: 0.16
-Nodes (8): test_llamacpp_client_context_size_error(), _context_limit_message(), LlamaCppClient, Ensure strict role alternation (user, assistant...) and merge consecutive same-r, Async implementation of chat protocol method required by LLMClient / DebateVerif, Async streaming implementation required by LLMClient protocol.          Runs the, Friendly remediation for llama-server 'context exceeded' errors., _sanitize_messages()
+### Community 19 - "REPLSandbox"
+Cohesion: 0.14
+Nodes (15): ConversationSummarizer, Summarizer with LLM-powered and rule-based fallback paths.      When an llm_clie, create_client(), display_step(), get_depth_style(), main(), print_banner(), print_help() (+7 more)
 
 ### Community 20 - "android_ref_build.md"
 Cohesion: 0.04
 Nodes (44): ~350 tokens. Do NOT load other reference files in the same turn., <activity android:name="com.lib.X" tools:node="remove"/>, AGP 7.0-7.3 -> Gradle 7.0+, Java 11, AGP 7.4 -> Gradle 7.5+, Java 11, AGP 8.x -> Gradle 8.0+, Java 17, AGP <-> Gradle wrapper compatibility (must match):, Android Build Reference — Gradle, AGP, Dependencies, ProGuard, Manifest, android { buildFeatures { buildConfig = true } } (+36 more)
 
-### Community 21 - "RLMEngine"
-Cohesion: 0.23
-Nodes (11): test_rlm_engine_solve_method(), create_client(), display_step(), get_depth_style(), main(), print_banner(), print_help(), Step (+3 more)
+### Community 21 - "test_tools_core.py"
+Cohesion: 0.13
+Nodes (16): CoreToolRegistry, get_core_registry(), Any, Compatibility subclass of ToolRegistry providing CLI-specific execute/dangerous_, test_classify_destructive_command(), test_classify_empty_command(), test_classify_install_command(), test_classify_safe_command() (+8 more)
 
-### Community 22 - "test_tui_tool_cards.py"
-Cohesion: 0.15
-Nodes (19): anyio, Tests for Phase-2 tool call cards (risk badge, status, timing, sections)., The streamed <tool_call> mounts a pending card completed by the step., test_app_pending_card_wiring(), test_risk_for_tool(), test_summarize_args(), test_tool_card_complete_denied(), test_tool_card_complete_error_expands() (+11 more)
+### Community 22 - "test_tui_plan_panel.py"
+Cohesion: 0.16
+Nodes (18): _build_plan_text(), _make_app(), anyio, Delegate to the real TUI plan-builder helper., Verify build_plan_text handles bulleted plan lists without explicit checkboxes., Repeated checklist entries (summary + detailed sections) must not duplicate., test_build_plan_text_all_done(), test_build_plan_text_dedupes_duplicate_checkbox_lines() (+10 more)
 
 ### Community 23 - "PlanningSkill"
 Cohesion: 0.13
 Nodes (14): ExecutionPlan, PlanningSkill, PlanStep, Any, Planning Skill for Torchlight.  Breaks down complex tasks into executable steps, Detect if a task likely needs planning., Create a structured plan for the task., Plan for creation/build/implementation tasks. (+6 more)
 
 ### Community 24 - "ContextDashboard"
-Cohesion: 0.11
-Nodes (6): ContextDashboard, Panel, Print sub-agent task progress to the console., Render a Rich Panel displaying sub-agent goal progress and task status breakdown, Layout, Progress
+Cohesion: 0.10
+Nodes (7): ContextDashboard, Panel, Print sub-agent task progress to the console., Return a new ActionTracker bound to this dashboard's console., Render a Rich Panel displaying sub-agent goal progress and task status breakdown, Layout, Progress
 
 ### Community 25 - "DebateVerifier"
 Cohesion: 0.09
@@ -342,63 +332,63 @@ Cohesion: 0.18
 Nodes (24): format_memory_status(), get_memory_pressure(), is_memory_safe(), Memory pressure monitor for macOS Apple Silicon.  Provides real-time memory pres, Return a human-readable one-line memory status string., Get current macOS memory pressure level and stats.      Returns:         dict wi, Quick check: is it safe to run inference without swap thrashing?      Args:, check_hardware() (+16 more)
 
 ### Community 27 - "StreamingChatSession"
-Cohesion: 0.05
-Nodes (37): ActionTracker, command, chat(), count_tokens(), get_phase_system_prompt(), goal(), /params                    — show current params         /params auto, Start an interactive chat session with context management and flashlight. (+29 more)
+Cohesion: 0.11
+Nodes (15): chat(), get_phase_system_prompt(), goal(), Panel, /params                    — show current params         /params auto, Start an interactive chat session with context management and flashlight., Start an autonomous goal execution session driven by .torchlight task tracking., Re-append closing tags and unclosed JSON braces that were consumed as stop token (+7 more)
 
-### Community 28 - "tui_app.py"
-Cohesion: 0.14
-Nodes (12): AgentMemoryWidget, create_client(), load_last_state(), main(), Torchlight Agent — Codex / Tiny-Brain 2 Style IDE TUI (Textual) Full-featured ID, Modal dialog displaying keyboard shortcuts and slash commands., Displays the live L0 Agent Brain Scratchpad., # NOTE: The model badge button click is handled by on_model_badge_clicked (+4 more)
+### Community 28 - "cli/main.py"
+Cohesion: 0.11
+Nodes (12): command, compress_file(), count_tokens(), Compress a file using verbatim compaction., Count tokens in text., Manage saved sessions., Lock phase based on concrete execution events., _risk_tier() (+4 more)
 
 ### Community 29 - "LLMClient"
-Cohesion: 0.09
-Nodes (20): LLMClient, Protocol, Abstract LLM client interface and shared inference parameters.  All LLM backends, Protocol that all LLM backends must implement.      Both sync and async methods, Check if the backend is reachable., List available models., Simple query interface (for backward compatibility)., create_client() (+12 more)
+Cohesion: 0.08
+Nodes (21): LLMClient, Protocol, Protocol that all LLM backends must implement.      Both sync and async methods, Send messages and return the full response., Send messages and yield response chunks., Check if the backend is reachable., List available models., Simple query interface (for backward compatibility). (+13 more)
 
 ### Community 30 - "Changelog"
-Cohesion: 0.07
-Nodes (26): Added, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved (+18 more)
+Cohesion: 0.06
+Nodes (30): Added, Added, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved, Added & Improved (+22 more)
 
 ### Community 31 - "RLMEngineOptimized"
-Cohesion: 0.08
-Nodes (30): Verify Goal mode detects missing implementation_plan.md and forces 'plan' phase., Verify bare JSON tool calls without <tool_call> tags are correctly parsed as too, test_detect_phase_goal_mode_missing_plan_forces_plan(), test_parse_response_bare_json_tool_call(), test_action_tag_braces_inside_string_values(), test_action_tag_no_json_args(), test_action_tag_unclosed_with_trailing_prose(), test_clean_and_parse_json_tolerant_multiline_content() (+22 more)
+Cohesion: 0.14
+Nodes (21): anyio, test_verification_gate_allows_final_answer_when_all_done(), test_verification_gate_rejects_premature_final_answer(), test_action_tag_braces_inside_string_values(), test_action_tag_no_json_args(), test_action_tag_unclosed_with_trailing_prose(), test_inline_interception_requires_explicit_file_or_header(), test_inline_interception_skips_plan_phase() (+13 more)
 
 ### Community 32 - "PyASTVisitor"
 Cohesion: 0.14
 Nodes (8): AsyncFunctionDef, Call, ClassDef, PyASTVisitor, AST visitor to extract classes, functions, calls, and imports from Python code., FunctionDef, Import, ImportFrom
 
 ### Community 33 - "context_manager/compression/summarizer.py"
-Cohesion: 0.16
-Nodes (16): ConversationSummarizer, DevSessionSummarizer, _extract_code_signatures(), _extract_errors(), _extract_failing_tests(), _extract_file_paths(), _format_messages_for_summary(), IncrementalSummarizer (+8 more)
-
-### Community 34 - "schemas.py"
 Cohesion: 0.19
-Nodes (11): test_search_ast_schema_validation(), test_validate_tool_call_with_unwrapping_and_coercion(), _coerce_param(), get_openai_tools_schema(), get_schemas_for_phase(), Tool schemas and validation for Torchlight.  Defines OpenAI-compatible JSON sche, Coerce LLM-provided values to expected schema types., Validate a tool call against its schema and resolve parameter aliases.      Retu (+3 more)
+Nodes (14): DevSessionSummarizer, _extract_code_signatures(), _extract_errors(), _extract_failing_tests(), _extract_file_paths(), _format_messages_for_summary(), IncrementalSummarizer, Message (+6 more)
+
+### Community 34 - "TorchlightApp"
+Cohesion: 0.04
+Nodes (43): anyio, Tests for Phase-5 tabbed editor split pane (open_file_tab, dirty marker, keyboar, test_close_file_tab_removes_from_open_tabs(), test_close_file_tab_switches_active_tab(), test_dirty_marker_not_set_for_non_tab_file(), test_dirty_marker_set_on_write_step(), test_editor_split_pane_composes(), test_get_tab_hash() (+35 more)
 
 ### Community 35 - "android_ref_runtime.md"
 Cohesion: 0.06
 Nodes (33): After enabling minification -> add -keep rule in proguard-rules.pro, All network calls must be off the main thread., Android Runtime Reference — Crashes, ANR, OOM, Lifecycle, at com.example.MyClass.foo(X.kt:42) <- YOUR code — go here, Avoid storing Activity/Context in long-lived objects — use applicationContext, class MyView @JvmOverloads constructor(, Common causes and fixes:, ctx: Context, attrs: AttributeSet? = null, defStyle: Int = 0 (+25 more)
 
 ### Community 36 - "VerbatimCompactor"
-Cohesion: 0.12
-Nodes (14): CompressionConfig, VerbatimCompactor — compress text while preserving code structure., Compress text while preserving the content that matters most for dev sessions., VerbatimCompactor, ConversationSummarizer, Message, Summarize conversation turns for compression., Create a simple summary of messages. (+6 more)
+Cohesion: 0.18
+Nodes (8): CompressionConfig, VerbatimCompactor — compress text while preserving code structure., Compress text while preserving the content that matters most for dev sessions., VerbatimCompactor, test_compactor_compression(), test_compactor_empty_lines(), test_compactor_no_compress_short(), test_compactor_preserves_code()
 
 ### Community 37 - "ContextBudget"
-Cohesion: 0.11
-Nodes (11): _clamp(), ContextBudget, Token reserve kept for the recent-message window., Current fraction of the target window in use., Effective budget allocations for the current turn.      `used_tokens` is the liv, Token allowance for the L0 working memory scratchpad this turn., Max characters per scratchpad entry (longer when headroom is ample)., Max entries shown per state section (3 tight ... 8 rich). (+3 more)
-
-### Community 38 - "on"
 Cohesion: 0.07
-Nodes (13): DirectorySelected, on, FileActionModal, FolderPickerModal, Extract text from the TextArea, clear it, and dispatch., Programmatic send — called by ctrl+enter binding., Modal dialog for interactive visual folder selection across the entire computer., Modal dialog for selecting session execution mode (Chat vs Goal). (+5 more)
+Nodes (17): _clamp(), ContextBudget, Token reserve kept for the recent-message window., Current fraction of the target window in use., Effective budget allocations for the current turn.      `used_tokens` is the liv, Token allowance for the L0 working memory scratchpad this turn., Max characters per scratchpad entry (longer when headroom is ample)., Max entries shown per state section (3 tight ... 8 rich). (+9 more)
 
-### Community 39 - "core/memory/models.py"
-Cohesion: 0.15
-Nodes (17): Re-export TieredMemory and MemoryConfig from shared core library core.memory.man, Conversation Summarizer for Torchlight.  Extracts key information from conversat, ContentChunk, ContentType, ContextSnapshot, ExecutionMode, Message, MessageRole (+9 more)
+### Community 38 - "context_manager/memory/persistence.py"
+Cohesion: 0.22
+Nodes (8): SessionState, ensure_git_repository(), ensure_project_initialized(), init_new_project(), Path, SessionPersistence, test_session_state_defaults(), test_session_state_populated()
+
+### Community 39 - "TaskDAG"
+Cohesion: 0.07
+Nodes (38): Any, Enum, str, Robust Task Lifecycle and Directed Acyclic Graph (DAG) Engine for Torchlight.  P, Directed Acyclic Graph (DAG) for Task Lifecycle Management., Add a task node to the DAG after verifying cycle safety., Remove a node and strip references to it from dependencies and subtasks., Detect cycles using Kahn's topological sort algorithm. (+30 more)
 
 ### Community 40 - "PaneResizer"
 Cohesion: 0.16
 Nodes (6): Click, MouseDown, MouseMove, MouseUp, PaneResizer, Interactive splitter bar to resize the left/right side panes.      Drag the bar
 
 ### Community 41 - "main_optimized.py"
-Cohesion: 0.24
+Cohesion: 0.27
 Nodes (12): amain(), approval_prompt(), create_client(), display_step(), get_depth_style(), main(), print_banner(), Step (+4 more)
 
 ### Community 42 - "TDDSkill"
@@ -413,77 +403,77 @@ Nodes (16): 1. **ExecutionMode Enum Mismatch**, 2. **Phase Detection Not Integra
 Cohesion: 0.07
 Nodes (26): 1. AVD Manager -> Edit -> Graphics -> Hardware GLES 2.0  (not Software), ~200 tokens. Do NOT load other reference files in the same turn., 2. On Intel/AMD: use x86_64 system images (10-30x faster than ARM), 3. Allocate >=2 GB RAM in AVD settings, 4. Enable snapshots — saves ~25s off each boot, 5. Disable unused hardware (camera, sensors) in AVD Advanced settings, Android Emulator Reference — Setup, Acceleration, Performance, -> Android Studio -> SDK Manager -> System Images -> ARM 64 v8a (+18 more)
 
-### Community 45 - "PromptTextArea"
-Cohesion: 0.15
-Nodes (8): ContextFileAttached, PromptTextArea, Message, TextArea whose Enter submits instead of inserting a newline.      Hooks ``update, Posted when the user presses Enter with no active suggestion., Posted when the user accepts an @file suggestion., SubmitRequested, TextArea
+### Community 45 - "AutonomousHarness"
+Cohesion: 0.29
+Nodes (17): AutonomousHarness, HarnessConfig, Autonomous Harness Engine driving long-running continuous execution., main(), CLI entry point to launch the Torchlight 24-Hour Autonomous Harness., create_mock_feedback_loop(), Path, Unit tests for AutonomousHarness module. (+9 more)
 
-### Community 46 - "test_tui_transcript_widgets.py"
+### Community 46 - "MessageCard"
 Cohesion: 0.06
 Nodes (33): anyio, Tests for Phase-1 transcript widgets (message cards, streaming, thinking)., Smoke test: the real app mounts MessageCards and drives the streaming view., test_app_transcript_wiring(), test_card_meta_for(), test_estimate_token_count(), test_message_card_composes(), test_streaming_view_updates() (+25 more)
 
-### Community 47 - "test_tui_file_tree.py"
-Cohesion: 0.13
-Nodes (14): _FakeProc, anyio, Tests for Phase-4 git-aware file tree (porcelain parsing + label decoration)., test_git_tree_decorates_file_labels(), test_normalize_status_code(), test_parse_git_status_porcelain_basic(), test_parse_git_status_porcelain_quoted_path(), test_parse_git_status_porcelain_rename_takes_destination() (+6 more)
+### Community 47 - "context-manager-cli/tests/test_models.py"
+Cohesion: 0.15
+Nodes (15): ContentChunk, ContextSnapshot, MemoryNeedle, MemoryObject, WorkingSetSnapshot, test_content_chunk_custom(), test_content_chunk_defaults(), test_context_snapshot_fields() (+7 more)
 
 ### Community 48 - "VerbatimCompactor"
-Cohesion: 0.14
-Nodes (6): CompressionConfig, Compress text while preserving the content that matters most for dev sessions., Keep the MOST RECENT errors, not the first ones.          For dev sessions, the, Compress text to fit a specific token budget while preserving Head/Tail., Compress a fenced code block intelligently.          Strategy (dev-aware):, VerbatimCompactor
+Cohesion: 0.22
+Nodes (5): Compress text while preserving the content that matters most for dev sessions., Keep the MOST RECENT errors, not the first ones.          For dev sessions, the, Compress text to fit a specific token budget while preserving Head/Tail., Compress a fenced code block intelligently.          Strategy (dev-aware):, VerbatimCompactor
 
-### Community 49 - "SelectiveCompressor"
-Cohesion: 0.16
-Nodes (11): CompressionConfig, CompressionLevel, Enum, Pattern, Selective Memory Compression — Progressive context reduction for local LLMs.  4-, Progressive compression that preserves semantic meaning.      Strategy:     - Re, Compress a list of messages using progressive levels., SelectiveCompressor (+3 more)
+### Community 49 - "rlm_engine_optimized.py"
+Cohesion: 0.09
+Nodes (42): Re-export TieredMemory and MemoryConfig from shared core library core.memory.man, Conversation Summarizer for Torchlight.  Extracts key information from conversat, Adaptive, headroom-driven context budget coordinator for Torchlight.  Static res, Tiered Memory Manager for Torchlight.  L0-L3 memory hierarchy with progressive c, Flatten whitespace/newlines and truncate a scratchpad entry to a bounded length., _scratchpad_clean(), ContentChunk, ContentType (+34 more)
 
-### Community 50 - "context_manager/memory/models.py"
-Cohesion: 0.13
-Nodes (15): _build_excerpt(), LLMStateExtractor, _merge_into_state(), _parse_json_response(), LLM-powered SessionState extractor.  Replaces the regex-based _merge_summary_int, Robustly extract a JSON object from the model's response.      Local models some, Merge the extracted JSON fields into the existing SessionState.      Strategy: L, Uses the local LLM to extract structured SessionState fields from a     conversa (+7 more)
+### Community 50 - "ProjectMemory"
+Cohesion: 0.26
+Nodes (3): ProjectMemory, Add a fact (and optional embedding) to project memory.          Signature accept, Merge current session's key findings into long-term project memory.
 
 ### Community 51 - "test_tui_status_bar.py"
-Cohesion: 0.11
-Nodes (22): anyio, Tests for Phase-4 consolidated status bar (gauge + segments widget)., test_build_status_segments_defaults(), test_build_status_segments_populated(), test_build_status_segments_running_no_tps_yet(), test_build_status_segments_server_offline_and_branch_escape(), test_gauge_markup_clamps_out_of_range(), test_gauge_markup_color_escalation() (+14 more)
+Cohesion: 0.16
+Nodes (17): anyio, Tests for Phase-4 consolidated status bar (gauge + segments widget)., test_build_status_segments_defaults(), test_build_status_segments_populated(), test_build_status_segments_running_no_tps_yet(), test_build_status_segments_server_offline_and_branch_escape(), test_gauge_markup_clamps_out_of_range(), test_gauge_markup_color_escalation() (+9 more)
 
 ### Community 52 - "SkillResult"
 Cohesion: 0.20
 Nodes (7): Any, ReproSkill, Any, Synchronous wrapper for use from non-async contexts., Trigger real load on first call, then delegate., SkillResult, expr
 
-### Community 53 - "CloudClient"
-Cohesion: 0.17
-Nodes (7): CloudClient, Sanitize message roles. Convert system role to user role for models (e.g. Gemma, Async implementation of chat protocol method required by LLMClient and DebateVer, Async streaming implementation required by LLMClient protocol., Return the ids of models the provider currently reports as available.         Us, Resolve requested self.model against live models to prevent 404 mismatches., _sanitize_messages_for_cloud()
-
-### Community 54 - ".format_l0_scratchpad"
-Cohesion: 0.13
-Nodes (10): ContextBudget, Return headroom-aware budget allocations for the current turn., Pin a recently-read file slice so it survives compression without bloating conte, Flatten whitespace/newlines and truncate a scratchpad entry to a bounded length., Remove a file from pinned memory if deleted or stale., Re-read an edited file from disk and update its pin in memory., Build the message list for the LLM.          Pinned files and dynamic L0 Scratch, Format current SessionState into a dynamic L0 working memory scratchpad. (+2 more)
-
-### Community 55 - "._handle_slash_command"
+### Community 53 - "test_surgical_task_verification.py"
 Cohesion: 0.20
-Nodes (4): copy_to_clipboard(), CopySelectionModal, Copy text to system clipboard across macOS, Linux, and Windows., Modal dialog to select and copy specific messages, code blocks, or text turns.
+Nodes (13): Unit tests for Surgical Targeted Task Verification in Torchlight., test_verify_task_preflight_invalid_json(), test_verify_task_preflight_syntax_error(), test_verify_task_preflight_valid_python(), test_verify_task_targeted_command(), _extract_referenced_files(), _find_file_in_project(), Extract distinct code/markup filenames referenced in task description. (+5 more)
+
+### Community 54 - "task_helpers.py"
+Cohesion: 0.16
+Nodes (19): test_insert_task_into_plan_section(), Tests for robust task and status tracking in LLM context and TUI., test_compact_task_matrix_adaptive_rendering(), test_status_badges_and_boxes(), test_validate_task_transition(), _file_looks_complete(), get_compact_task_matrix(), insert_task_into_plan() (+11 more)
+
+### Community 55 - "ConversationSummarizer"
+Cohesion: 0.29
+Nodes (7): ConversationSummarizer, Message, Summarize conversation turns for compression using high-density structured templ, Generate a high-density structured compaction template preserving key context in, Create a compact structured summary of messages., Extract key information from text., _role_label()
 
 ### Community 56 - "Torchlight Architecture"
 Cohesion: 0.08
 Nodes (24): CLI (primary), Common Debugging Map, Current Status, Design Principles, End-To-End Turn Flow, Execution Feedback Loop, Execution Policy, How To Run (+16 more)
 
 ### Community 57 - "tool_edit_file_impl"
-Cohesion: 0.14
-Nodes (24): Tests for Aider-style Search/Replace block editing (Approach B) and dynamic JIT, test_edit_file_auto_fallback_to_write(), test_edit_file_diagnostic_nudge(), test_edit_file_diff_block_in_old_text(), test_edit_file_line_bounded(), test_edit_file_line_bounded_without_old_text(), test_edit_file_line_range_no_old_text_full_range_replace(), test_edit_file_line_range_old_text_found_replaces_within_range() (+16 more)
+Cohesion: 0.12
+Nodes (26): test_edit_file_blocks_broken_syntax(), test_tool_edit_file_integration(), Tests for Aider-style Search/Replace block editing (Approach B) and dynamic JIT, test_edit_file_auto_fallback_to_write(), test_edit_file_diagnostic_nudge(), test_edit_file_diff_block_in_old_text(), test_edit_file_line_bounded(), test_edit_file_line_bounded_without_old_text() (+18 more)
 
 ### Community 58 - "ProjectGraph"
-Cohesion: 0.17
-Nodes (16): get_project_graph(), ProjectGraph, Torchlight Native Graph Engine — AST-based Knowledge Graph & Dependency Mapping., Stores nodes (files, classes, functions) and edges (contains, calls, imports)., Get or create the ProjectGraph instance for a given root directory., Incrementally update the AST graph for a single modified file., update_project_graph_file(), Unit tests for incremental O(1) AST graph delta updates. (+8 more)
+Cohesion: 0.18
+Nodes (20): get_project_graph(), ProjectGraph, Torchlight Native Graph Engine — AST-based Knowledge Graph & Dependency Mapping., Stores nodes (files, classes, functions) and edges (contains, calls, imports)., Get or create the ProjectGraph instance for a given root directory., Incrementally update the AST graph for a single modified file., update_project_graph_file(), Unit tests for incremental O(1) AST graph delta updates. (+12 more)
 
-### Community 59 - "test_enhanced_memory_retrieval.py"
-Cohesion: 0.11
-Nodes (30): build_embedder(), compute_tf_idf_score(), cosine_similarity(), Embedder, HybridEmbedder, HybridMemoryRetriever, _is_low_memory(), KeywordEmbedder (+22 more)
+### Community 59 - "MemoryObject"
+Cohesion: 0.10
+Nodes (32): build_embedder(), compute_tf_idf_score(), cosine_similarity(), Embedder, HybridEmbedder, HybridMemoryRetriever, _is_low_memory(), KeywordEmbedder (+24 more)
 
 ### Community 60 - "test_tui_accessibility.py"
 Cohesion: 0.10
 Nodes (28): _make_app(), anyio, Tests for Phase-6 accessibility and keyboard navigation.  Covers: - Tab bar keyb, Arrow navigation wraps around at the ends., Arrow keys don't do anything when no tabs are open., Verify :focus rules exist for tab items in the .tcss file., Verify responsive @media-equivalent class rules exist., Verify no #hex color values appear in the .tcss file. (+20 more)
 
-### Community 61 - "file_tree.py"
-Cohesion: 0.14
-Nodes (15): DirectoryTree, DirEntry, git_status_for_tree(), GitFileTree, Path, Git-aware file tree for the Torchlight TUI.  Phase 4: the explorer's ``Directory, Check if a directory name should be skipped from exploration., Filter out OS noise, cache directories, and internal state files. (+7 more)
+### Community 61 - "test_tui_file_tree.py"
+Cohesion: 0.07
+Nodes (26): _FakeProc, anyio, Tests for Phase-4 git-aware file tree (porcelain parsing + label decoration)., test_git_tree_decorates_file_labels(), test_normalize_status_code(), test_parse_git_status_porcelain_basic(), test_parse_git_status_porcelain_quoted_path(), test_parse_git_status_porcelain_rename_takes_destination() (+18 more)
 
-### Community 62 - "CommandPalette"
-Cohesion: 0.11
-Nodes (9): Changed, Highlighted, AttachContextModal, CommandPalette, on, Selected, Submitted, Ctrl+P modal: fuzzy-search actions, slash commands, and files. (+1 more)
+### Community 62 - "ToolCallCard"
+Cohesion: 0.29
+Nodes (4): ComposeResult, Container, A status-aware tool call card.      Header shows the risk-tier icon, tool name,, ToolCallCard
 
 ### Community 63 - "TDDSkill"
 Cohesion: 0.18
@@ -493,37 +483,37 @@ Nodes (6): Any, Test-Driven Development (TDD) Skill for Torchlight.  Implements 
 Cohesion: 0.11
 Nodes (18): ~200 tokens. Do NOT load other reference files in the same turn., Android ADB Reference — Device, Logcat, APK Install, APK install failures, Developer Options -> USB Debugging must be ON, Device not found / offline, Essential logcat commands, If "offline"      -> unplug/replug, different USB cable (data, not charge-only), If "unauthorized" -> revoke USB debugging on device -> replug -> re-authorize (+10 more)
 
-### Community 65 - ".update_sidebar_meta"
-Cohesion: 0.12
-Nodes (6): _provider_runtime_info(), Return (port, externally_managed) for a given provider key.      externally_mana, Show elapsed time + live state in the input spinner so long runs         read as, Sync all connection-dependent UI elements.          Called on server status chan, Consolidated Phase-4 status bar (state · model · context gauge · tps · tokens ·, Manually trigger memory context compaction.
+### Community 65 - "SelectiveCompressor"
+Cohesion: 0.15
+Nodes (10): Pattern, FIX 1 & 3: use injected tokenizer; only fall back to heuristic if absent., FIX 2: token-aware truncation instead of character slicing., Legacy heuristic — only used when no tokenizer is injected., Determine compression level based on turn position from the end., FIX 2: Remove whitespace/noise then TOKEN-TRUNCATE to compact_budget.          T, Compress a list of message dicts with progressive levels.          Args:, Build a compressed context string within token budget.          Uses the real to (+2 more)
 
-### Community 66 - "UnifiedSkillRegistry"
-Cohesion: 0.19
-Nodes (9): create_unified_registry(), Any, Robustly parses tool calls from text.         Supports:           1. JSON format, A single registry for ALL tools and skills.     Bridges the gap between core too, Synchronous wrapper for execute_skill., Unified execution bridge.         Routes to core tools or external skills as app, Factory to create and bootstrap the unified registry.      Reuses create_default, Condensed tool documentation injected into the system prompt.                  U (+1 more)
+### Community 66 - "TokenCounter"
+Cohesion: 0.08
+Nodes (23): _is_valid_decision(), Filter out empty, generic, or noisy session summary strings., Load persistent project memory (.context-memory.json) into L0 working state., CompressionConfig, CompressionLevel, Enum, Pattern, Selective Memory Compression — Progressive context reduction for local LLMs.  4- (+15 more)
 
-### Community 67 - ".open_file_tab"
-Cohesion: 0.14
-Nodes (4): FileSelected, NodeSelected, Show or hide the center empty state (hide when a file is open)., Global key bindings that aren't caught by specific widgets.          Key contrac
+### Community 67 - "unified.py"
+Cohesion: 0.17
+Nodes (12): Run an async coroutine safely regardless of whether an event loop is already run, _run_async(), create_unified_registry(), Any, Robustly parses tool calls from text.         Supports:           1. JSON format, A single registry for ALL tools and skills.     Bridges the gap between core too, Synchronous wrapper for execute_skill., Unified execution bridge.         Routes to core tools or external skills as app (+4 more)
 
 ### Community 68 - "Architecture"
 Cohesion: 0.15
 Nodes (12): 1. 12k Context (TurboQuant Base — 12,288 Tokens), 2. 4k Model Fallback (4,096 Tokens), Agentic Loop, Architecture, Codebase Exploration & Token Optimization Rules, Commands, Context Budget Breakdown, Development (+4 more)
 
-### Community 69 - "Static"
-Cohesion: 0.09
-Nodes (10): ComposeResult, Append a line to the Output tab's RichLog.          severity: 'info' | 'tool' |, Mount a widget defensively and scroll safely after layout pass., Mount a running ToolCallCard for a streamed ``<tool_call>`` marker.          Kep, Build the AST knowledge graph silently in background thread., Repoint the file tree at the engine root and refresh git status., Static, Step (+2 more)
+### Community 69 - "OllamaClient"
+Cohesion: 0.22
+Nodes (3): OllamaClient, Async implementation of chat protocol method required by LLMClient / DebateVerif, Async streaming implementation required by LLMClient protocol.
 
 ### Community 70 - "test_code_quality_harness.py"
 Cohesion: 0.07
-Nodes (47): Unit tests for Torchlight Zero-Context Code Quality Harness., test_check_syntax_js_bracket_balance(), test_check_syntax_js_string_literal_brackets(), test_check_syntax_json(), test_check_syntax_python(), test_compile_gate_rejects_return_outside_function(), test_detect_stubs(), test_detect_symptom_patching() (+39 more)
+Nodes (46): Unit tests for Torchlight Zero-Context Code Quality Harness., test_check_syntax_js_bracket_balance(), test_check_syntax_js_string_literal_brackets(), test_check_syntax_json(), test_check_syntax_python(), test_compile_gate_rejects_return_outside_function(), test_detect_stubs(), test_detect_symptom_patching() (+38 more)
 
 ### Community 71 - "prompts_minimal.py"
 Cohesion: 0.29
 Nodes (7): build_efficient_prompt(), get_compact_tool_list(), get_system_prompt(), Minimal Prompt Strategy for Torchlight.  Instead of loading all skills into cont, Build the most token-efficient prompt for the given context., Select appropriate prompt based on context window size., Get the most compact tool list possible.
 
-### Community 72 - "get_tool_registry"
-Cohesion: 0.11
-Nodes (10): test_get_tool_registry(), test_tool_registry_preview_dry_run(), test_get_openai_tools_schema(), test_registry_get_description_block_phase(), test_save_memory_tool(), test_inspect_web_tool_registration(), get_tool_registry(), Get or create the global tool registry. (+2 more)
+### Community 72 - "test_phase_detection.py"
+Cohesion: 0.21
+Nodes (13): _make_session(), Create a StreamingChatSession with mocked heavy dependencies., Troubleshoot wins over code when both signals are present., Code phase should yield lower temperature than chat phase., Chat phase should have higher temperature than code phase., test_detect_chat_phase(), test_detect_code_phase(), test_detect_phase_empty_input() (+5 more)
 
 ### Community 73 - "android_ref_signing.md"
 Cohesion: 0.12
@@ -546,8 +536,8 @@ Cohesion: 0.15
 Nodes (12): Allocation for 4k Context, Architecture Overview, Auto-tuned Budgets by Context Size, Auto-tuning, CLI Integration, Configuration Commands, Configuration Commands, File Locations (+4 more)
 
 ### Community 78 - "ProjectMemory"
-Cohesion: 0.24
-Nodes (4): ProjectMemory, SessionState, Add a fact (and optional embedding) to project memory.          Signature accept, Merge current session's key findings into long-term project memory.
+Cohesion: 0.27
+Nodes (4): ProjectMemory, MemoryObject, SessionState, SessionPersistence
 
 ### Community 79 - "Execution Feedback Loop"
 Cohesion: 0.15
@@ -557,41 +547,41 @@ Nodes (13): Architecture, CLI Integration, Configuration, Context Injection, Cor
 Cohesion: 0.53
 Nodes (4): log_error(), log_info(), log_warn(), start_optimized_local.sh script
 
-### Community 82 - "TorchlightApp"
-Cohesion: 0.06
-Nodes (25): App, ContextFileAttached, anyio, Tests for Phase-5 tabbed editor split pane (open_file_tab, dirty marker, keyboar, test_close_file_tab_removes_from_open_tabs(), test_close_file_tab_switches_active_tab(), test_dirty_marker_not_set_for_non_tab_file(), test_dirty_marker_set_on_write_step() (+17 more)
+### Community 82 - "CenterEmptyState"
+Cohesion: 0.12
+Nodes (8): Global key bindings that aren't caught by specific widgets.          Key contrac, CenterEmptyState, Container, Pressed, CenterEmptyState — the welcome / idle screen shown in the editor pane.  Replaces, Switch displayed content based on connection state., Route chip buttons to app-level actions., Full-pane empty state widget for the editor / center area.      Mount this insid
 
 ### Community 83 - "setup_optimized.sh"
 Cohesion: 0.60
 Nodes (3): info(), ok(), setup_optimized.sh script
 
-### Community 84 - "CenterEmptyState"
-Cohesion: 0.12
-Nodes (10): CenterEmptyState, ComposeResult, Container, Pressed, CenterEmptyState — the welcome / idle screen shown in the editor pane.  Replaces, Switch displayed content based on connection state., Route chip buttons to app-level actions., Full-pane empty state widget for the editor / center area.      Mount this insid (+2 more)
+### Community 84 - "tui_app.py"
+Cohesion: 0.08
+Nodes (26): Unified system prompts for Torchlight.  Single source of truth for all frontends, Remove raw tool payload dumps (Params:, Result:, Writing code to file: ...) from, sanitize_assistant_text(), fetch_provider_models(), Query an OpenAI-compatible /models endpoint (LM Studio, Ollama, llama.cpp)     a, create_client(), load_last_state(), main() (+18 more)
 
 ### Community 85 - "run.sh"
 Cohesion: 0.40
 Nodes (4): COLORTERM, PYTHONPATH, run.sh script, TERM
 
-### Community 86 - "ToolResult"
-Cohesion: 0.15
-Nodes (10): test_tool_result_failure(), test_tool_result_success(), Execute a tool by name with given arguments.          Validates args, executes,, Generate a dry-run preview string for a tool call without executing mutations., Execute multiple tool calls in parallel when safe (AUTO risk level).         Fal, Structured result from tool execution., Get a tool definition by name., Validate a tool call against its schema.          Returns (is_valid, error_msg, (+2 more)
+### Community 86 - "prompts/__init__.py"
+Cohesion: 0.43
+Nodes (5): build_tool_syntax_prompt(), get_tool_syntax_for_context_size(), Tool syntax instructions for Torchlight.  Generates the appropriate tool calling, Build the complete tool syntax prompt for the system message.      Args:, Return the tool calling syntax instructions appropriate for the model's context
 
 ### Community 87 - "tui.sh"
 Cohesion: 0.40
 Nodes (5): cleanup(), COLORTERM, PYTHONPATH, tui.sh script, TERM
 
-### Community 94 - "test_inline_interception.py"
-Cohesion: 0.15
-Nodes (16): _looks_like_full_file(), _looks_like_prose_or_outline(), Helper to check if content looks like a complete standalone file rather than a s, Trim prose a model appended after the file body when </WRITE_FILE> was     consu, Parse the LLM response for action tags.         Returns: (action, thinking, cont, Heuristic gate for inline code interception (step 6b of _parse_response).      R, _trim_trailing_prose(), MockEngine (+8 more)
+### Community 94 - "ApprovalModal"
+Cohesion: 0.10
+Nodes (8): ApprovalModal, Production-grade modal dialog for tool & file modification approval., Snapshot file contents *before* a diffable write executes.          ``_handle_st, DiffView, ComposeResult, Container, Inline diff rendering for the Torchlight TUI.  Phase 3 of the UI-improvements pl, A unified diff card: header (path + +N −M) + colored body.      Rendered client-
 
-### Community 104 - "ConnectionPill"
-Cohesion: 0.18
-Nodes (7): ConnectionPill, ComposeResult, Horizontal, Pressed, ConnectionPill — compact header widget showing live model/server status.  Replac, Compact connection status pill for the top HUD header.      Usage in compose()::, Update the pill's connected state and model name.
+### Community 104 - "test_grammar_parse.py"
+Cohesion: 0.11
+Nodes (29): _code_lines(), _grammar_text(), _grammar_tool_names(), _parse_rules(), Regression guard for the TurboQuant GBNF grammar-parser incompatibility.  The Tu, Return ``body`` up to (but not including) a top-level '#' comment,     ignoring, Map rule name -> raw (comment-stripped) rule body., TurboQuant parser rejects rule continuations that START with '|'. (+21 more)
 
-### Community 105 - "WebOutcomeInspector"
-Cohesion: 0.23
-Nodes (8): Any, Path, Main Inspector Subsystem driving zero-memory, ephemeral web verification., Tier 3: Run Node JSDOM script if node is available., Tier 1: Static HTML analysis using Python standard library., Formats the result into compact Markdown suitable for LLM context., WebInspectionResult, WebOutcomeInspector
+### Community 105 - "Console"
+Cohesion: 0.24
+Nodes (7): Console, test_render_task_progress_empty(), test_render_task_progress_with_tasks(), test_action_entry_markup_safety(), test_action_tracker_print_action_safety(), test_escape_raw_brackets_and_json(), test_tui_markup_escaping_safety()
 
 ### Community 106 - "Context Manager CLI"
 Cohesion: 0.20
@@ -601,13 +591,13 @@ Nodes (9): Architecture, CLI Options, Commands (in CLI), Context Manager CLI, Fe
 Cohesion: 0.18
 Nodes (11): Architecture, CLI Commands, Core Flow, Development, Error Handling, Key Features, Memory Files, Module Structure (+3 more)
 
-### Community 108 - "ToolCallCard"
-Cohesion: 0.19
-Nodes (6): ComposeResult, Container, A status-aware tool call card.      Header shows the risk-tier icon, tool name,, Refresh the elapsed counter while the tool is still running., Flip the card from running to done and fill params + output.          Re-derives, ToolCallCard
+### Community 108 - "test_tui_tool_cards.py"
+Cohesion: 0.23
+Nodes (12): anyio, Tests for Phase-2 tool call cards (risk badge, status, timing, sections)., The streamed <tool_call> mounts a pending card completed by the step., test_app_pending_card_wiring(), test_tool_card_complete_denied(), test_tool_card_complete_error_expands(), test_tool_card_complete_ok(), test_tool_card_composes_with_header() (+4 more)
 
 ### Community 110 - ".build"
-Cohesion: 0.26
-Nodes (6): Any, Path, Scan project files and construct the AST graph., Perform an incremental O(1) AST update for a single modified file., Remove all nodes and edges referencing a deleted file., Save graph data to JSON and markdown report.
+Cohesion: 0.18
+Nodes (7): Any, Path, Scan project files incrementally using st_mtime and construct/update the AST gra, Parse file via Tree-Sitter when tree_sitter library is installed., Perform an incremental O(1) AST update for a single modified file., Remove all nodes and edges referencing a deleted file., Save graph data to JSON and markdown report.
 
 ### Community 111 - "Data Flow"
 Cohesion: 0.25
@@ -617,17 +607,17 @@ Nodes (8): 1. Message Ingestion, 2. Context Assembly for LLM, 3. Tool Result Pro
 Cohesion: 0.25
 Nodes (8): Core Classes, Key Methods, MemoryConfig (`manager.py`), MemoryNeedle (`models.py`), MemoryObject (`models.py`), Message (`models.py`), SessionState (`models.py`), TieredMemory (`manager.py`)
 
-### Community 113 - "test_tui_trajectory_rail.py"
-Cohesion: 0.10
-Nodes (15): anyio, Tests for Phase-2 trajectory rail (pending → ok/error/denied dots)., The streamed <tool_call> adds a dot; the completing step flips it., test_app_pending_step_updates_rail(), test_rail_add_pending_and_complete_ok(), test_rail_clear_removes_dots(), test_rail_complete_error_and_denied(), test_rail_complete_without_pending_is_noop() (+7 more)
+### Community 113 - "Static"
+Cohesion: 0.11
+Nodes (12): ComposeResult, ComposeResult, ComposeResult, ComposeResult, ComposeResult, Flip the most recent pending dot to a terminal status., Remove all dots (called on transcript clear/reset)., Vertical spine of tool-outcome dots next to the transcript.      ``add_pending`` (+4 more)
 
 ### Community 114 - "SymbolIndex"
-Cohesion: 0.13
-Nodes (12): Flashlight Beam — query-to-code relevance scorer.  Scoring strategy (additive):, FileEntry, Path, Flashlight Indexer — scans the project and builds a searchable symbol index., SymbolIndex, test_file_entry(), test_symbol_index_build(), test_symbol_index_summary() (+4 more)
+Cohesion: 0.15
+Nodes (9): BeamResult, Flashlight Beam — query-to-code relevance scorer.  Scoring strategy (additive):, FileEntry, Path, Flashlight Indexer — scans the project and builds a searchable symbol index., SymbolIndex, test_file_entry(), test_symbol_index_build() (+1 more)
 
-### Community 115 - "command_palette.py"
+### Community 115 - "ConnectionPill"
 Cohesion: 0.18
-Nodes (9): test_fuzzy_filter_empty_query_and_no_match(), test_fuzzy_filter_prefix_beats_substring(), NamedTuple, fuzzy_filter(), _fuzzy_score(), PaletteResult, Command palette + slash-command autocomplete for the Torchlight TUI.  Phase 4: *, Rank ``query`` against ``label``; 0 means no match.      Prefix matches beat sub (+1 more)
+Nodes (7): ConnectionPill, ComposeResult, Horizontal, Pressed, ConnectionPill — compact header widget showing live model/server status.  Replac, Compact connection status pill for the top HUD header.      Usage in compose()::, Update the pill's connected state and model name.
 
 ### Community 116 - "test_tui_theme.py"
 Cohesion: 0.18
@@ -637,25 +627,25 @@ Nodes (15): _make_app(), anyio, Tests for Phase-6 theme consistency and responsi
 Cohesion: 0.29
 Nodes (7): Compression Cooldown, Embedding Cache, LLM State Extraction, Resource-Adaptive Configuration, Resource-Adaptive Features, Resource Tiers, Tool Result Budget
 
-### Community 118 - "IndexVisitor"
-Cohesion: 0.27
-Nodes (4): index_directory(), IndexVisitor, init_db(), Initialize the Kuzu graph database with the AST schema and vector embeddings.
+### Community 118 - "mark_task_status"
+Cohesion: 0.15
+Nodes (12): test_mark_task_status_preserves_markdown(), _commit_edit_and_format_result(), get_active_task_description(), _is_task_match(), mark_task_in_progress(), mark_task_status(), _patch_plan_checkbox(), Retrieve the title/description of the current active (in_progress) task, or firs (+4 more)
 
 ### Community 119 - "test_tool_parser.py"
-Cohesion: 0.13
-Nodes (26): Unit tests for core/tools/parser.py tolerant tool parser & fuzzy repair engine., test_extract_balanced_json_object(), test_parse_tool_call_payload(), test_repair_unclosed_action_tags(), test_repair_unclosed_tool_call_tag(), test_single_quoted_dict_parsing(), test_strip_interleaved_prose(), test_strip_thinking_tags() (+18 more)
+Cohesion: 0.07
+Nodes (43): Unit tests for core/tools/parser.py tolerant tool parser & fuzzy repair engine., test_extract_balanced_json_object(), test_parse_tool_call_payload(), test_repair_unclosed_action_tags(), test_repair_unclosed_tool_call_tag(), test_single_quoted_dict_parsing(), test_strip_interleaved_prose(), test_strip_thinking_tags() (+35 more)
 
 ### Community 123 - "web_server.py"
 Cohesion: 0.32
 Nodes (5): DashboardHTTPHandler, get_dashboard_data(), Path, Torchlight Web GUI Dashboard Server  Lightweight zero-dependency Python HTTP ser, run_dashboard_server()
 
-### Community 124 - "Pressed"
-Cohesion: 0.22
-Nodes (3): Pressed, ModelPickerModal, Modal dialog to visually pick models and engine providers.
+### Community 124 - "on"
+Cohesion: 0.06
+Nodes (14): DirectorySelected, FileSelected, NodeSelected, FileActionModal, FolderPickerModal, on, Pressed, Selected (+6 more)
 
 ### Community 125 - "TieredMemory"
-Cohesion: 0.08
-Nodes (33): MemoryConfig, Tiered memory system with L0-L3 hierarchy:     - L0: Active prompt (current cont, Load persistent project memory (.context-memory.json) into L0 working state., Return list of (path, content) for pinned files., Calculate remaining token budget headroom before reaching max_tokens threshold., Predict likely next tools based on current state., TieredMemory, Unit tests for the adaptive, headroom-driven context budget coordinator.  Budget (+25 more)
+Cohesion: 0.07
+Nodes (44): ContextSnapshot, MemoryConfig, Calculate remaining token budget headroom before reaching max_tokens threshold., Predict likely next tools based on current state., Tiered memory system with L0-L3 hierarchy:     - L0: Active prompt (current cont, Return list of (path, content) for pinned files., TieredMemory, Unit tests for Tree-of-Thoughts / Branching Evaluator in AutonomousHarness. (+36 more)
 
 ### Community 126 - "Target Quality Tiers"
 Cohesion: 0.50
@@ -681,17 +671,17 @@ Nodes (5): Generous (16-32GB RAM, 8k-16k context), Heavy (32GB+ RAM, 16k+ contex
 Cohesion: 0.40
 Nodes (5): Coverage, How To Use These Docs, Recent Runtime Progress, Recommended Reading Order For A New Contributor, Torchlight Documentation
 
-### Community 132 - "test_dedup.py"
-Cohesion: 0.16
-Nodes (15): Unit tests for core/tools/dedup.py argument normalization & TrajectoryLock., test_compute_payload_hash(), test_normalize_tool_args(), test_trajectory_lock(), compute_payload_hash(), normalize_tool_args(), Any, Anti-Looping Trajectory Lock and Tool Payload Signature Deduplication.  Provides (+7 more)
+### Community 132 - "TrajectoryLock"
+Cohesion: 0.14
+Nodes (17): Unit tests for core/tools/dedup.py argument normalization & TrajectoryLock., test_compute_payload_hash(), test_normalize_tool_args(), test_trajectory_lock(), test_trajectory_lock_error_feedback(), compute_payload_hash(), normalize_tool_args(), Any (+9 more)
 
-### Community 133 - "test_tui_plan_panel.py"
-Cohesion: 0.08
-Nodes (36): anyio, test_get_workspace_pending_tasks_goal_spec(), test_get_workspace_pending_tasks_md(), test_sync_workspace_tasks_populates_tasks_md(), test_verification_gate_allows_final_answer_when_all_done(), test_verification_gate_rejects_premature_final_answer(), _build_plan_text(), _make_app() (+28 more)
+### Community 133 - "test_plan_execution_loop.py"
+Cohesion: 0.17
+Nodes (21): test_auto_mark_does_not_complete_stub_or_missing_file(), test_auto_mark_does_not_overmark_unrelated_tasks(), test_auto_mark_matches_target_files_exact_basename(), test_auto_mark_multi_file_task_in_progress(), test_auto_mark_no_false_positive_substring(), test_auto_mark_pending_task_becomes_in_progress_without_verification(), test_auto_mark_task_completed_by_file(), test_get_workspace_pending_tasks_goal_spec() (+13 more)
 
-### Community 134 - "Console"
+### Community 134 - "TestResult"
 Cohesion: 0.24
-Nodes (7): Console, test_render_task_progress_empty(), test_render_task_progress_with_tasks(), test_action_entry_markup_safety(), test_action_tracker_print_action_safety(), test_escape_raw_brackets_and_json(), test_tui_markup_escaping_safety()
+Nodes (6): Path, Run fast pre-flight auto-fixer/linter on modified files before test execution., Detect and run the project's test suite or web inspector., TestResult, Quiet runners (e.g. `pytest -q`) produce no per-test markers; exit code     must, test_all_passed_uses_exit_code()
 
 ### Community 135 - "Android Troubleshoot — Routing Layer"
 Cohesion: 0.50
@@ -705,29 +695,33 @@ Nodes (4): Disk Tiers (ProjectMemory), In-Memory Tiers (TieredMemory.messages), 
 Cohesion: 0.50
 Nodes (4): Loading Session State, Persistence, Project Memory Persistence, Session Persistence
 
-### Community 138 - "TokenCounter"
-Cohesion: 0.24
-Nodes (9): get_token_counter(), Token counting for Torchlight.  Uses tiktoken when available, falls back to a wo, TokenCounter, test_get_token_counter_caching(), test_get_token_counter_different_models(), test_token_counter_basic(), test_token_counter_empty(), test_token_counter_truncate_long() (+1 more)
+### Community 138 - ".load"
+Cohesion: 0.18
+Nodes (6): Load graph from JSON file if available., Search nodes matching search_term. Returns code snippets alongside names., Read a short code snippet from disk for a matched node., Find relationship path between source and target symbols., Extract connected subgraph centered at symbol or file path., Return structured summary of files, classes, and function signatures.
 
-### Community 139 - "classify_command"
-Cohesion: 0.26
-Nodes (11): test_classify_confirm_commands(), test_classify_destructive_commands(), test_classify_empty_command(), test_classify_safe_commands(), test_classify_unknown_defaults_to_confirm(), test_classify_whitespace_handling(), classify_command(), classify_tool() (+3 more)
+### Community 139 - "CloudClient"
+Cohesion: 0.21
+Nodes (6): CloudClient, Sanitize message roles. Convert system role to user role for models (e.g. Gemma, Async streaming implementation required by LLMClient protocol., Return the ids of models the provider currently reports as available.         Us, Resolve requested self.model against live models to prevent 404 mismatches., _sanitize_messages_for_cloud()
 
 ### Community 140 - "Retrieval System"
 Cohesion: 0.67
 Nodes (3): Embedding Cache, Hybrid Search, Retrieval System
 
-### Community 148 - "rlm_engine_optimized.py"
-Cohesion: 0.05
-Nodes (41): Adaptive, headroom-driven context budget coordinator for Torchlight.  Static res, _is_valid_decision(), Tiered Memory Manager for Torchlight.  L0-L3 memory hierarchy with progressive c, Filter out empty, generic, or noisy session summary strings., get_phase_system_prompt(), Unified system prompts for Torchlight.  Single source of truth for all frontends, Remove raw tool payload dumps (Params:, Result:, Writing code to file: ...) from, Generate phase-tailored system prompt by appending phase instructions, critical (+33 more)
+### Community 148 - "test_prompts_and_memory.py"
+Cohesion: 0.08
+Nodes (28): calculate_in_memory_diff(), extract_modified_symbols(), is_valid_file_path(), Explicitly record a modified file, Net Delta line stats, and touched symbols in, Explicitly record a read file in session state if it is a valid file path., Validate if a string is a genuine file path rather than code attribute access (e, Calculate exact lines added and deleted between two string buffers in RAM., Extract function/class AST symbol names modified or added between old and new te (+20 more)
 
-### Community 149 - "AutonomousHarness"
-Cohesion: 0.10
-Nodes (18): AutonomousHarness, Path, Ensure target project has local git repository and persistent memory initialized, Ensure a goal spec exists on disk in .torchlight, initializing a default workspa, Return pending tasks whose dependencies are all VERIFIED., Return list of target files that collide with active or failed tasks., Construct inter-task memory prompt summarizing prior verified tasks and dependen, Run a single micro-epoch for a target task. (+10 more)
+### Community 149 - "TaskSpec"
+Cohesion: 0.11
+Nodes (11): GoalSpec, Path, Ensure a goal spec exists on disk in .torchlight, initializing a default workspa, Return pending tasks whose dependencies are all VERIFIED., Return list of target files that collide with active or failed tasks., Construct inter-task memory prompt summarizing prior verified tasks and dependen, Run a single micro-epoch for a target task., Tree-of-Thoughts / Branching Evaluator: evaluate candidate implementation option (+3 more)
 
-### Community 150 - "context_manager/memory/persistence.py"
-Cohesion: 0.22
-Nodes (8): MemoryNeedle, ensure_git_repository(), ensure_project_initialized(), init_new_project(), Path, SessionPersistence, test_memory_needle_custom(), test_memory_needle_defaults()
+### Community 150 - "autonomous_harness.py"
+Cohesion: 0.13
+Nodes (17): Re-export ExecutionFeedbackLoop and TestRunResult from shared core library core., Execution feedback loop for Torchlight., Enum, str, Autonomous Harness Driver for Torchlight.  Enables continuous, multi-epoch execu, TaskStatus, Enum, Execution Feedback Loop for Torchlight.  Closes the loop between code changes an (+9 more)
+
+### Community 151 - "_load_goal_spec"
+Cohesion: 0.24
+Nodes (8): test_auto_mark_task_completed_triggers_verification(), _clean_task_text(), _load_goal_spec(), Load goal_spec.json; returns None if missing or invalid., Normalize task text by stripping list bullets, numbers, markdown formatting, and, build_task_tree_markup(), TaskTreeWidget: High-performance, non-blocking task tree widget for Torchlight T, Build Rich-markup formatted text representation of workspace tasks.
 
 ### Community 152 - "context_manager/prompts.py"
 Cohesion: 0.29
@@ -741,37 +735,33 @@ Nodes (11): Decisions, Out of Scope, Plan: Non-Security Improvements, Task 1: Fr
 Cohesion: 0.21
 Nodes (9): build_embedder(), Embedder, FallbackEmbedder, HashEmbedder, _normalize(), ProviderEmbedder, any, Protocol (+1 more)
 
-### Community 155 - "test_tools_core.py"
-Cohesion: 0.12
-Nodes (18): CoreToolRegistry, get_core_registry(), Any, Compatibility subclass of ToolRegistry providing CLI-specific execute/dangerous_, test_classify_destructive_command(), test_classify_empty_command(), test_classify_install_command(), test_classify_safe_command() (+10 more)
+### Community 156 - "classify_command"
+Cohesion: 0.27
+Nodes (10): test_classify_unknown_command(), test_classify_confirm_commands(), test_classify_destructive_commands(), test_classify_empty_command(), test_classify_safe_commands(), test_classify_unknown_defaults_to_confirm(), test_classify_whitespace_handling(), classify_command() (+2 more)
 
-### Community 156 - "Schema Reference"
-Cohesion: 0.67
-Nodes (3): `.context-memory.json` Schema, Schema Reference, Session File Schema
+### Community 157 - "IndexVisitor"
+Cohesion: 0.27
+Nodes (4): index_directory(), IndexVisitor, init_db(), Initialize the Kuzu graph database with the AST schema and vector embeddings.
 
-### Community 157 - "test_tui_command_palette.py"
-Cohesion: 0.13
-Nodes (23): Binding, anyio, Tests for Phase-4 command palette + prompt autocomplete., test_build_palette_items_kinds_and_visibility(), test_command_palette_composes_filters_and_selects(), test_command_palette_enter_runs_highlighted_item(), test_iter_project_files_caps(), test_iter_project_files_skips_dot_and_vendor_dirs() (+15 more)
-
-### Community 158 - "OllamaClient"
-Cohesion: 0.22
-Nodes (3): OllamaClient, Async implementation of chat protocol method required by LLMClient / DebateVerif, Async streaming implementation required by LLMClient protocol.
+### Community 158 - ".complete"
+Cohesion: 0.20
+Nodes (5): test_summarize_args(), Refresh the elapsed counter while the tool is still running., Flip the card from running to done and fill params + output.          Re-derives, Compact key/value summary of tool args (path, cmd, query, ...)., summarize_args()
 
 ### Community 159 - "DirectiveTracker"
 Cohesion: 0.16
 Nodes (9): DirectiveTracker, Any, Directive tracker and constraint violation reinforcement module for Torchlight., Record a directive violation (e.g. 'cd_command', 'test_assertion_delete'), Reset violation counts., Tracks model constraint violations during execution turns and dynamically     in, Unit tests for CRITICAL_DIRECTIVES system prompt lock and DirectiveTracker., test_critical_directives_in_system_prompt() (+1 more)
 
-### Community 160 - "test_autonomous_harness.py"
-Cohesion: 0.22
-Nodes (17): _beam_budget(), Return (max_beam_files, max_lines_per_file) for the given context size., HarnessConfig, main(), CLI entry point to launch the Torchlight 24-Hour Autonomous Harness., create_mock_feedback_loop(), Path, Unit tests for AutonomousHarness module. (+9 more)
+### Community 160 - "normalize_model_name"
+Cohesion: 0.33
+Nodes (8): test_list_available_models_includes_gemma4e4b(), test_normalize_gemma_4_4e4b_variants(), test_normalize_gemma_4_e2b_variants(), test_normalize_mlx_gemma_4_4e4b(), list_available_models(), normalize_model_name(), Normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 E2B', 'gemma 4, Scan local models directory and returns available GGUF and MLX models.
 
 ### Community 161 - "Flashlight"
-Cohesion: 0.20
-Nodes (5): _beam_config_for_context(), BeamResult, Flashlight, FileEntry, SymbolIndex
+Cohesion: 0.26
+Nodes (4): _beam_config_for_context(), Flashlight, FileEntry, SymbolIndex
 
-### Community 162 - "core/tests/test_models.py"
-Cohesion: 0.17
-Nodes (4): ContextSnapshot, test_context_snapshot(), test_message_defaults(), test_tiered_memory_pinned_files_without_system_message()
+### Community 162 - "PromptTextArea"
+Cohesion: 0.12
+Nodes (8): ContextFileAttached, PromptTextArea, Message, TextArea whose Enter submits instead of inserting a newline.      Hooks ``update, Posted when the user presses Enter with no active suggestion., Posted when the user accepts an @file suggestion., SubmitRequested, TextArea
 
 ### Community 163 - "Plan: UI Improvements — Torchlight Codex IDE"
 Cohesion: 0.18
@@ -781,29 +771,29 @@ Nodes (10): Decisions, Effort & Sequencing, Non-Goals, Plan: UI Improvements —
 Cohesion: 0.50
 Nodes (3): plugin, $schema, .opencode/plugins/graphify.js
 
-### Community 165 - "test_model_normalization.py"
-Cohesion: 0.33
-Nodes (8): test_list_available_models_includes_gemma4e4b(), test_normalize_gemma_4_4e4b_variants(), test_normalize_gemma_4_e2b_variants(), test_normalize_mlx_gemma_4_4e4b(), list_available_models(), normalize_model_name(), Normalize model alias names (e.g. 'gemma-2-2b', 'qwen', 'gemma 4 E2B', 'gemma 4, Scan local models directory and returns available GGUF and MLX models.
+### Community 165 - ".__init__"
+Cohesion: 0.40
+Nodes (3): _beam_budget(), Estimate tokens consumed by system prompt, tools, and flashlight beam., Return (max_beam_files, max_lines_per_file) for the given context size.
 
-### Community 167 - "MyCustomSkill"
-Cohesion: 0.33
-Nodes (3): MyCustomSkill, Any, A template for creating your own custom tools for the agent.     Place your logi
+### Community 167 - "get_tool_registry"
+Cohesion: 0.08
+Nodes (33): test_search_ast_schema_validation(), test_game_tools_registered(), Tests for performance and accuracy optimizations in Torchlight., test_batch_tool_execution(), test_inline_syntax_guardrail(), test_symbol_index_mtime_cache(), test_get_tool_registry(), test_tool_registry_preview_dry_run() (+25 more)
 
 ### Community 168 - "HTMLGameSkill"
 Cohesion: 0.33
 Nodes (4): HTMLGameSkill, Any, HTML Games Generation Skill for Torchlight.  Generates complete, playable HTML g, _render()
 
 ### Community 169 - "ExecutionFeedbackLoop"
-Cohesion: 0.06
-Nodes (37): ExecutionFeedbackLoop, extract_surgical_traceback(), Path, Auto-run tests and web outcome inspection after code changes and inject feedback, Return True if the most recent test run actually ran and has failing or, Called after a tool is executed. Returns test results if tests were run., Freshly verify any modified-but-unverified files and return True if         ever, Run fast pre-flight auto-fixer/linter on modified files before test execution. (+29 more)
+Cohesion: 0.08
+Nodes (30): ExecutionFeedbackLoop, extract_surgical_traceback(), Auto-run tests and web outcome inspection after code changes and inject feedback, Called after a tool is executed. Returns test results if tests were run., Freshly verify any modified-but-unverified files and return True if         ever, Fetch speculative background test result if running, else execute tests synchron, Convert current failing TestRunResult into a structured TestFailureError for Rec, Build feedback context string for the LLM with surgical error injection. (+22 more)
 
-### Community 170 - ".load"
-Cohesion: 0.18
-Nodes (6): Load graph from JSON file if available., Search nodes matching search_term. Returns code snippets alongside names., Read a short code snippet from disk for a matched node., Find relationship path between source and target symbols., Extract connected subgraph centered at symbol or file path., Return structured summary of files, classes, and function signatures.
+### Community 170 - "MyCustomSkill"
+Cohesion: 0.33
+Nodes (3): MyCustomSkill, Any, A template for creating your own custom tools for the agent.     Place your logi
 
-### Community 171 - "prompts/__init__.py"
-Cohesion: 0.43
-Nodes (5): build_tool_syntax_prompt(), get_tool_syntax_for_context_size(), Tool syntax instructions for Torchlight.  Generates the appropriate tool calling, Build the complete tool syntax prompt for the system message.      Args:, Return the tool calling syntax instructions appropriate for the model's context
+### Community 171 - "test_tui_trajectory_rail.py"
+Cohesion: 0.24
+Nodes (9): anyio, Tests for Phase-2 trajectory rail (pending → ok/error/denied dots)., The streamed <tool_call> adds a dot; the completing step flips it., test_app_pending_step_updates_rail(), test_rail_add_pending_and_complete_ok(), test_rail_clear_removes_dots(), test_rail_complete_error_and_denied(), test_rail_complete_without_pending_is_noop() (+1 more)
 
 ### Community 173 - "core/api/lmstudio.py"
 Cohesion: 0.40
@@ -813,57 +803,77 @@ Nodes (4): Re-export LMStudioClient from shared core library core.api.lmstudio.,
 Cohesion: 0.21
 Nodes (12): discover_skills(), execute_skill_by_name(), get_compact_skill_list(), get_skill_executor(), _load_skill_index(), Any, Skill Discovery - On-demand skill retrieval to minimize context.  Instead of inj, Discover available skills based on query or category.          This is called ON (+4 more)
 
-### Community 175 - "ApprovalModal"
-Cohesion: 0.10
-Nodes (4): AgentStatusModal, ApprovalModal, Production-grade modal dialog for tool & file modification approval., Modal dialog for complete visibility into background agent actions & status tele
+### Community 175 - "tool_card.py"
+Cohesion: 0.33
+Nodes (6): test_risk_for_tool(), classify_tool(), Classify a tool call into AUTO, CONFIRM, or REVIEW risk tier., Tool call cards for the Torchlight TUI.  Phase 2 of the UI-improvements plan: ev, Risk tier for a tool call, mirroring the shared classification module., risk_for_tool()
 
-### Community 176 - "cli/main.py"
-Cohesion: 0.11
-Nodes (20): Manage saved sessions., sessions(), Re-export ExecutionFeedbackLoop and TestRunResult from shared core library core., Execution feedback loop for Torchlight., GoalSpec, Enum, str, Autonomous Harness Driver for Torchlight.  Enables continuous, multi-epoch execu (+12 more)
+### Community 176 - "sync_workspace_tasks"
+Cohesion: 0.27
+Nodes (10): test_add_subtask_survives_sync_and_lands_in_plan(), test_sync_preserves_stable_ids_and_fields_across_reorder(), test_sync_workspace_tasks_populates_tasks_md(), test_update_task_graph_syncs_plan(), UPDATE_TASK_GRAPH — dynamically mutate sub-tasks in .torchlight/goal_spec.json., tool_update_task_graph_impl(), Generate a collision-free stable task id (never index-based)., Synchronize the canonical goal_spec.json with the plan/task markdown views. (+2 more)
 
 ### Community 177 - "test_tui_diff_view.py"
-Cohesion: 0.09
-Nodes (35): anyio, Tests for Phase-3 inline diff rendering (render_unified_diff + DiffView)., A pre-write snapshot (from approval) wins over the already-written disk state., The engine's own CODE_FILE_WRITE approval path is diffable too., The approval modal shows a DIFF PREVIEW section when entries exist., A successful WRITE_FILE step mounts a DiffView card with real content., test_app_write_step_renders_diff_card(), test_approval_modal_omits_diff_when_empty() (+27 more)
+Cohesion: 0.12
+Nodes (28): anyio, Tests for Phase-3 inline diff rendering (render_unified_diff + DiffView)., A pre-write snapshot (from approval) wins over the already-written disk state., The engine's own CODE_FILE_WRITE approval path is diffable too., The approval modal shows a DIFF PREVIEW section when entries exist., test_approval_modal_omits_diff_when_empty(), test_approval_modal_renders_diff(), test_build_diff_preview_code_file_write() (+20 more)
 
-### Community 178 - "test_context_budget_overflow.py"
-Cohesion: 0.40
-Nodes (5): Unit tests for context budget overflow detection and fixes in TieredMemory, RLME, test_tiered_memory_total_tokens_includes_pinned_files(), test_tool_context_window_scaling(), Tell the tool layer what context window the current model has., set_ctx_window()
+### Community 178 - "implementations.py"
+Cohesion: 0.06
+Nodes (59): Core Tools — built-in, always available, called via TOOL_NAME("arg") syntax.  Th, test_set_ctx_window(), test_tool_context_window_scaling(), _ddg_search(), _detect_doc_source(), _extract_identifiers(), _extract_symbols(), _git_run() (+51 more)
 
 ### Community 179 - "TestApp"
-Cohesion: 0.22
+Cohesion: 0.28
 Nodes (5): App, ComposeResult, on, Pressed, TestApp
 
-### Community 181 - "ProjectMemory"
-Cohesion: 0.29
-Nodes (6): ProjectMemory, MemoryObject, SessionState, test_corrupt_memory_file_self_heals(), test_manual_deletion_context_memory_self_heals(), test_project_memory_auto_init()
-
-### Community 182 - "._update_state_from_message"
-Cohesion: 0.09
-Nodes (15): is_valid_file_path(), Explicitly record a modified file in session state if it is a valid file path., Explicitly record a read file in session state if it is a valid file path., Validate if a string is a genuine file path rather than code attribute access (e, Persist L0 working state to disk in .context-memory.json (debounced)., Update or set the primary system prompt (first system message in history)., Remove all pinned files., Generic add_message method for role-based message addition. (+7 more)
-
-### Community 191 - "TestApp"
+### Community 180 - "dashboard.py"
 Cohesion: 0.33
-Nodes (3): App, ComposeResult, TestApp
+Nodes (3): _ActionContext, Per-action context manager:              with tracker.action("read_file", "src/f, Context manager returned by ActionTracker.action().
+
+### Community 181 - "test_goal_mode_process.py"
+Cohesion: 0.40
+Nodes (4): Verify Goal mode detects missing implementation_plan.md and forces 'plan' phase., Verify bare JSON tool calls without <tool_call> tags are correctly parsed as too, test_detect_phase_goal_mode_missing_plan_forces_plan(), test_parse_response_bare_json_tool_call()
+
+### Community 182 - "._append_message"
+Cohesion: 0.10
+Nodes (13): Message, MessageRole, Register a callback for memory events (MESSAGE_ADDED, PIN_ADDED, COMPACTION_TRIG, Unregister a memory event callback., Dispatch a memory event to registered listeners safely., Reactive event-driven compaction trigger. Automatically runs when token ratio cr, Update or set the primary system prompt (first system message in history)., Remove all pinned files. (+5 more)
+
+### Community 183 - "_clean_and_parse_json"
+Cohesion: 0.50
+Nodes (3): test_clean_and_parse_json_tolerant_multiline_content(), test_clean_and_parse_json_trailing_unterminated_string(), _clean_and_parse_json()
+
+### Community 184 - ".solve_async"
+Cohesion: 0.12
+Nodes (8): Infer the current agent phase from user input and the last model response., Manually lock or unlock the agent phase ('code', 'plan', 'troubleshoot', 'chat',, Auto-switch inference parameters based on detected phase., Manually compact context memory and return (before, after, freed)., SolveResult, Validate tool call against schema and normalize parameter aliases.          Retu, validate_and_normalize_tool_call(), setter
+
+### Community 187 - "Schema Reference"
+Cohesion: 0.67
+Nodes (3): `.context-memory.json` Schema, Schema Reference, Session File Schema
+
+### Community 188 - "._stream_llm_with_retry"
+Cohesion: 0.17
+Nodes (6): Notify listeners of real-time background status and action telemetry., Notify listeners (dashboard/TUI) that task state changed after a tool call., Re-append closing tags that were consumed as stop tokens by llama-server., Stream LLM response token-by-token cleanly without thread deadlocks., True when an LLM error string looks like a transient server stall that         a, Stream an LLM response, retrying up to ``retries`` times on transient         se
+
+### Community 191 - "asyncio"
+Cohesion: 0.15
+Nodes (6): asyncio, App, ComposeResult, TestApp, App, TestApp
 
 ## Knowledge Gaps
-- **338 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `context-manager-cli`, `run.sh script`, `COLORTERM` (+333 more)
+- **341 isolated node(s):** `$schema`, `.opencode/plugins/graphify.js`, `context-manager-cli`, `run.sh script`, `COLORTERM` (+336 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **35 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **20 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `TieredMemory` connect `TieredMemory` to `test_autonomous_harness.py`, `core/tests/test_models.py`, `test_tui_plan_panel.py`, `core/memory/models.py`, `test_enhanced_memory_retrieval.py`, `cli/main.py`, `SelectiveCompressor`, `test_context_budget_overflow.py`, `TorchlightApp`, `rlm_engine_optimized.py`, `AutonomousHarness`, `._update_state_from_message`, `.format_l0_scratchpad`, `RLMEngine`, `tool_edit_file_impl`, `StreamingChatSession`, `.compact_context`, `RLMEngineOptimized`?**
-  _High betweenness centrality (0.113) - this node is a cross-community bridge._
-- **Why does `TorchlightApp` connect `TorchlightApp` to `.update_sidebar_meta`, `.open_file_tab`, `test_tui_plan_panel.py`, `on`, `Static`, `PaneResizer`, `test_resizer.py`, `tui_app.py`, `test_tui_transcript_widgets.py`, `ApprovalModal`, `Pressed`, `test_tui_diff_view.py`, `test_tui_trajectory_rail.py`, `test_tui_theme.py`, `test_tui_tool_cards.py`, `._handle_slash_command`, `test_tui_accessibility.py`?**
-  _High betweenness centrality (0.078) - this node is a cross-community bridge._
-- **Why does `RLMEngineOptimized` connect `RLMEngineOptimized` to `test_tui_plan_panel.py`, `main_optimized.py`, `test_resizer.py`, `._detect_phase`, `test_tui_transcript_widgets.py`, `test_tui_diff_view.py`, `TorchlightApp`, `test_tui_trajectory_rail.py`, `rlm_engine_optimized.py`, `AutonomousHarness`, `test_tui_tool_cards.py`, `ToolResult`, `.compact_context`, `._stream_llm`, `TieredMemory`, `test_inline_interception.py`?**
-  _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Are the 12 inferred relationships involving `TieredMemory` (e.g. with `StreamingChatSession` and `AutonomousHarness`) actually correct?**
-  _`TieredMemory` has 12 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 5 inferred relationships involving `RLMEngineOptimized` (e.g. with `MemoryConfig` and `TieredMemory`) actually correct?**
-  _`RLMEngineOptimized` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 7 inferred relationships involving `MemoryConfig` (e.g. with `StreamingChatSession` and `RLMEngineOptimized`) actually correct?**
-  _`MemoryConfig` has 7 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `$schema`, `.opencode/plugins/graphify.js`, `context-manager-cli` to the rest of the system?**
-  _338 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `RLMEngineOptimized` connect `RLMEngineOptimized` to `context_manager/memory/models.py`, `TrajectoryLock`, `test_plan_execution_loop.py`, `ToolRegistry`, `repl_sandbox.py`, `LlamaCppClient`, `test_resizer.py`, `ensure_project_initialized`, `REPLSandbox`, `test_tui_plan_panel.py`, `DebateVerifier`, `TorchlightApp`, `PaneResizer`, `main_optimized.py`, `ExecutionFeedbackLoop`, `test_tui_trajectory_rail.py`, `.has_failing_tests`, `MessageCard`, `rlm_engine_optimized.py`, `test_tui_diff_view.py`, `ProjectMemory`, `test_goal_mode_process.py`, `.solve_async`, `test_execution_mode_normalization_and_sync`, `.set_execution_mode_callback`, `._stream_llm_with_retry`, `tui_app.py`, `ApprovalModal`, `test_tui_tool_cards.py`, `test_tool_parser.py`, `on`, `TieredMemory`?**
+  _High betweenness centrality (0.088) - this node is a cross-community bridge._
+- **Why does `TorchlightApp` connect `TorchlightApp` to `LlamaCppClient`, `test_resizer.py`, `CloudClient`, `test_tui_plan_panel.py`, `RLMEngineOptimized`, `PromptTextArea`, `PaneResizer`, `test_tui_trajectory_rail.py`, `AutonomousHarness`, `MessageCard`, `test_tui_diff_view.py`, `test_tui_accessibility.py`, `ToolCallCard`, `OllamaClient`, `CenterEmptyState`, `tui_app.py`, `ApprovalModal`, `test_tui_tool_cards.py`, `Static`, `ConnectionPill`, `test_tui_theme.py`, `on`?**
+  _High betweenness centrality (0.084) - this node is a cross-community bridge._
+- **Why does `TieredMemory` connect `TieredMemory` to `test_plan_execution_loop.py`, `LlamaCppClient`, `REPLSandbox`, `test_prompts_and_memory.py`, `TaskSpec`, `autonomous_harness.py`, `StreamingChatSession`, `cli/main.py`, `RLMEngineOptimized`, `.__init__`, `ContextBudget`, `AutonomousHarness`, `rlm_engine_optimized.py`, `._append_message`, `task_helpers.py`, `.solve_async`, `tool_edit_file_impl`, `MemoryObject`, `TokenCounter`?**
+  _High betweenness centrality (0.082) - this node is a cross-community bridge._
+- **Are the 22 inferred relationships involving `TorchlightApp` (e.g. with `_StubClient` and `AutonomousHarness`) actually correct?**
+  _`TorchlightApp` has 22 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 26 inferred relationships involving `TieredMemory` (e.g. with `StreamingChatSession` and `AutonomousHarness`) actually correct?**
+  _`TieredMemory` has 26 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 27 inferred relationships involving `RLMEngineOptimized` (e.g. with `ConversationSummarizer` and `Message`) actually correct?**
+  _`RLMEngineOptimized` has 27 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 21 inferred relationships involving `MemoryConfig` (e.g. with `StreamingChatSession` and `ContextBudget`) actually correct?**
+  _`MemoryConfig` has 21 INFERRED edges - model-reasoned connections that need verification._

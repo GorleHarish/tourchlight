@@ -1,6 +1,7 @@
 import os
 from rlm_optimized.config import IS_8GB_DEVICE
 
+
 def build_system_prompt(project_root: str, compact: bool = False) -> str:
     """Build the system prompt for the coding agent.
 
@@ -10,6 +11,7 @@ def build_system_prompt(project_root: str, compact: bool = False) -> str:
                  context budget on 8GB devices.
     """
     import json
+
     memory_file = os.path.join(project_root, ".torchlight_memory.md")
     project_memory = ""
     if os.path.exists(memory_file):
@@ -31,13 +33,24 @@ def build_system_prompt(project_root: str, compact: bool = False) -> str:
                 tech_stack = data.get("tech_stack", [])
                 parts = []
                 if facts:
-                    parts.append("Facts:\n" + "\n".join(f"- {fact}" for fact in facts[-10:]))
+                    parts.append(
+                        "Facts:\n" + "\n".join(f"- {fact}" for fact in facts[-10:])
+                    )
                 if decisions:
-                    parts.append("Key Decisions:\n" + "\n".join(f"- {d}" for d in decisions[-10:]))
+                    parts.append(
+                        "Key Decisions:\n"
+                        + "\n".join(f"- {d}" for d in decisions[-10:])
+                    )
                 if tech_stack:
-                    parts.append("Tech Stack:\n" + "\n".join(f"- {t}" for t in tech_stack))
+                    parts.append(
+                        "Tech Stack:\n" + "\n".join(f"- {t}" for t in tech_stack)
+                    )
                 if parts:
-                    project_memory += "\n\n## Persistent Project State (.context-memory.json)\n" + "\n\n".join(parts) + "\n"
+                    project_memory += (
+                        "\n\n## Persistent Project State (.context-memory.json)\n"
+                        + "\n\n".join(parts)
+                        + "\n"
+                    )
         except Exception:
             pass
 
@@ -59,30 +72,32 @@ def build_system_prompt(project_root: str, compact: bool = False) -> str:
                 content = f.read().strip()
                 if content:
                     recent_history = content[-1500:] if len(content) > 1500 else content
-                    project_memory += f"\n\n## Recent Session History\n{recent_history}\n"
+                    project_memory += (
+                        f"\n\n## Recent Session History\n{recent_history}\n"
+                    )
         except Exception:
             pass
 
     if compact:
         return f"""You are a coding agent. Working directory: `{project_root}`
 
-Tools (use <TOOL name="NAME">{{'arg': 'val'}}</TOOL>):
-- READ_FILE: {{'path': 'file.py'}} or {{'path': 'f.py', 'start_line': 1, 'end_line': 30}}
-- WRITE_FILE: {{'path': 'file.py', 'content': 'code'}}
-- EDIT_FILE: {{'path': 'file.py', 'old_text': 'old', 'new_text': 'new'}} or {{'path': 'file.py', 'diff': '<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE'}}
-- LIST_DIR: {{'path': '.'}}
-- GREP: {{'pattern': 'def main', 'path': '.'}}
-- RUN_COMMAND: {{'cmd': 'ls -la'}}
+Tools (use <TOOL name="NAME">{{"arg": "val"}}</TOOL>):
+- READ_FILE: {{"path": "<path>"}} or {{"path": "<path>", "start_line": 1, "end_line": 30}}
+- WRITE_FILE: {{"path": "<path>", "content": "code"}}
+- EDIT_FILE: {{"path": "<path>", "old_text": "old", "new_text": "new"}} or {{"path": "<path>", "diff": "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE"}}
+- LIST_DIR: {{"path": "."}}
+- GREP: {{"pattern": "def main", "path": "."}}
+- RUN_COMMAND: {{"cmd": "ls -la"}}
 
 Code: <CODE>python code</CODE>
 Sub-query: <SUB_QUERY>question</SUB_QUERY>
 Answer: <FINAL_ANSWER>answer</FINAL_ANSWER>{project_memory}
 
-Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 words (2-3 short sentences) — then provide exactly one action tag immediately.
+Rules: One action per response. Output exactly one action tag per turn. Reason step-by-step through logic before executing tools. If you need to plan, save the plan to `implementation_plan.md` and then continue with action tags.
 - Use `GREP` to search for functions, classes, or code patterns across the project instead of running shell grep or reading files blindly.
 - NEVER use WRITE_FILE to modify an existing file. WRITE_FILE is ONLY for creating completely new files.
 - To modify an existing file, you MUST ALWAYS use READ_FILE first to read the current content, and then use EDIT_FILE to make your changes.
-- If you formulate a plan, you MUST physically save it to `implementation_plan.md` using the WRITE_FILE tool BEFORE executing it. Format it as a checklist `- [ ]`. Keep reasoning short; put detailed plans in `implementation_plan.md`!
+- If you formulate a plan, you MUST physically save it to `implementation_plan.md` using the WRITE_FILE tool BEFORE executing it. Format it as a checklist `- [ ]`. Keep reasoning focused on root cause logic; put detailed plans in `implementation_plan.md`!
 - As you complete tasks, you MUST use EDIT_FILE to mark them `- [x]` in `implementation_plan.md`.
 - When asked to fix bugs or continue, always refer to the Current Implementation Plan above.
 - IMPORTANT: Before using FINAL_ANSWER, ALWAYS use EDIT_FILE to append any newly discovered project rules, tech stack details, or paths to `.torchlight_memory.md` so you remember them."""
@@ -104,13 +119,13 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
    - `get_function_source(func_name)`: Returns the exact source code of a function.
 
 2. **Use Tools**: Use `<TOOL>` tags to interact with the filesystem and shell:
-   - `READ_FILE`: Read file contents. Args: {{'path': 'file.py'}} or {{'path': 'file.py', 'start_line': 10, 'end_line': 30}}
-   - `WRITE_FILE`: Create or overwrite a file. Args: {{'path': 'file.py', 'content': 'code here'}}
-   - `EDIT_FILE`: Surgically replace text. Args: {{'path': 'file.py', 'old_text': 'old', 'new_text': 'new'}} or {{'path': 'file.py', 'diff': '<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE'}}
-   - `LIST_DIR`: List directory contents. Args: {{'path': '.'}}
-   - `GREP`: Search for patterns in code. Args: {{'pattern': 'def main', 'path': '.'}}
-   - `RUN_COMMAND`: Execute a terminal shell command (e.g. pytest, git, python script.py). Args: {{'cmd': 'ls -la'}}. NOTE: Never run internal Python functions like get_project_structure() or tool names inside RUN_COMMAND!
-   - `SEARCH_AST`: Search AST Knowledge Graph (action can be 'structure', 'search', 'signature', 'subgraph', 'path'). Args: {{'action': 'structure'}} or {{'query': 'ClassName', 'action': 'signature'}}
+   - `READ_FILE`: Read file contents. Args: {{"path": "<path>"}} or {{"path": "<path>", "start_line": 10, "end_line": 30}}
+   - `WRITE_FILE`: Create or overwrite a file. Args: {{"path": "<path>", "content": "code here"}}
+   - `EDIT_FILE`: Surgically replace text. Args: {{"path": "<path>", "old_text": "old", "new_text": "new"}} or {{"path": "<path>", "diff": "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE"}}
+   - `LIST_DIR`: List directory contents. Args: {{"path": "."}}
+   - `GREP`: Search for patterns in code. Args: {{"pattern": "def main", "path": "."}}
+   - `RUN_COMMAND`: Execute a terminal shell command (e.g. pytest, git, python script.py). Args: {{"cmd": "ls -la"}}. NOTE: Never run internal Python functions like get_project_structure() or tool names inside RUN_COMMAND!
+   - `SEARCH_AST`: Search AST Knowledge Graph (action can be 'structure', 'search', 'signature', 'subgraph', 'path'). Args: {{"action": "structure"}} or {{"query": "ClassName", "action": "signature"}}
 
 3. **Recursive Self-Call**: Wrap a sub-question in `<SUB_QUERY>` tags to spawn a new reasoning instance.
 
@@ -119,7 +134,7 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
 ## Rules
 
 - Use exactly ONE action tag per response. Choose the most appropriate:
-  - `<TOOL name="TOOL_NAME">{{'arg': 'value'}}</TOOL>` — to read/write files, run commands, search code
+  - `<TOOL name="TOOL_NAME">{{"arg": "value"}}</TOOL>` — to read/write files, run commands, search code
   - `<CODE>python code here</CODE>` — to compute, analyze, or process data
   - `<SUB_QUERY>specific sub-question</SUB_QUERY>` — to delegate a sub-problem
   - `<FINAL_ANSWER>your complete answer</FINAL_ANSWER>` — when done
@@ -131,7 +146,7 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
   2. Always refer to the Current Implementation Plan and Persistent Project Memory provided above.
   3. Use LIST_DIR, SEARCH_AST, and GREP to locate files and search for code patterns across the codebase before reading files.
   4. NEVER use WRITE_FILE on an existing file. To modify existing code, ALWAYS use READ_FILE first to see the exact text, then use EDIT_FILE.
-  5. If making or updating a plan, use WRITE_FILE (if it doesn't exist) or EDIT_FILE (if it does) to physically save it to `implementation_plan.md`. Format it as a concise bulleted checklist using `- [ ]` for pending tasks and `- [x]` for completed tasks. Writing or updating `implementation_plan.md` is ONLY the planning step — do NOT deliver a `FINAL_ANSWER` right after creating the plan. Proceed immediately to execute the pending tasks using tools.
+  5. If making or updating a plan, use WRITE_FILE (if it doesn't exist) or EDIT_FILE (if it does) to physically save it to `implementation_plan.md`. Format it as a concise bulleted checklist using `- [ ]` for atomic single-file tasks and `- [x]` for completed tasks. Writing or updating `implementation_plan.md` is ONLY the planning step — do NOT deliver a `FINAL_ANSWER` right after creating the plan. Proceed immediately to execute the pending tasks using tools.
   6. Use EDIT_FILE to mark tasks as `- [x]` in `implementation_plan.md` as you complete them.
   7. BEFORE delivering a FINAL_ANSWER, review your findings and you MUST use EDIT_FILE to append any newly discovered project rules, tech stack details, or architecture patterns to `.torchlight_memory.md`.
   8. Deliver a FINAL_ANSWER summarizing what you did.
@@ -142,6 +157,7 @@ Rules: One action per response. Keep reasoning EXTREMELY CONCISE — under 50 wo
 - Be concise. Focus ONLY on solving the user's current task.
 """
 
+
 from rlm_optimized.config import IS_8GB_DEVICE, CTX_SIZE
 
 # Auto-select compact prompt ONLY if context budget is tight (< 8192 tokens e.g., LM Studio 4k).
@@ -150,18 +166,21 @@ from rlm_optimized.config import IS_8GB_DEVICE, CTX_SIZE
 IS_TIGHT_CONTEXT = CTX_SIZE < 8192
 SYSTEM_PROMPT = build_system_prompt(os.getcwd(), compact=IS_TIGHT_CONTEXT)
 
+
 def build_step_message(step_type: str, content: str) -> str:
     if step_type == "code_result":
-        return f"Code execution result:\n```\n{content}\n```\nBriefly state your next step in under 20 words and provide your action tag."
+        return f"Code execution result:\n```\n{content}\n```\nProvide your action tag."
     elif step_type == "code_error":
         hint = ""
         if "'return' outside function" in content:
-            hint = ("\nHint: <CODE> runs as a flat script, not inside a function. "
-                    "Remove the `def ...():` wrapper and the `return` line — use plain "
-                    "top-level statements and `print()` to show the result instead.")
+            hint = (
+                "\nHint: <CODE> runs as a flat script, not inside a function. "
+                "Remove the `def ...():` wrapper and the `return` line — use plain "
+                "top-level statements and `print()` to show the result instead."
+            )
         return f"Code execution failed:\n```\n{content}\n```\nFix the error and try again.{hint}"
     elif step_type == "tool_result":
-        return f"Tool result:\n```\n{content}\n```\nBriefly state your next step in under 20 words and provide your action tag."
+        return f"Tool result:\n```\n{content}\n```\nProvide your action tag."
     elif step_type == "tool_error":
         return f"Tool execution failed:\n```\n{content}\n```\nTry a different approach."
     elif step_type == "tool_denied":

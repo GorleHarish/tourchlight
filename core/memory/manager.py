@@ -4,6 +4,7 @@ Tiered Memory Manager for Torchlight.
 L0-L3 memory hierarchy with progressive compression.
 """
 
+import difflib
 import re
 from collections import deque
 from dataclasses import dataclass, field
@@ -18,6 +19,8 @@ from .models import (
     MemoryNeedle,
     MemoryObject,
     WorkingSetSnapshot,
+    MemoryEvent,
+    MemoryEventType,
 )
 from .token_counter import TokenCounter, get_token_counter
 from .budget import ContextBudget
@@ -270,6 +273,55 @@ def is_valid_file_path(path: str) -> bool:
     return ext in _VALID_FILE_EXTENSIONS
 
 
+def calculate_in_memory_diff(old_content: str, new_content: str) -> tuple[int, int]:
+    """Calculate exact lines added and deleted between two string buffers in RAM."""
+    if old_content == new_content:
+        return 0, 0
+
+    old_lines = (old_content or "").splitlines()
+    new_lines = (new_content or "").splitlines()
+
+    added = 0
+    deleted = 0
+
+    for line in difflib.unified_diff(old_lines, new_lines, lineterm=""):
+        if line.startswith("+") and not line.startswith("+++"):
+            added += 1
+        elif line.startswith("-") and not line.startswith("---"):
+            deleted += 1
+
+    return added, deleted
+
+
+def extract_modified_symbols(old_content: str, new_content: str) -> list[str]:
+    """Extract function/class AST symbol names modified or added between old and new text."""
+    def _find_symbols(text: str) -> dict[str, str]:
+        if not text:
+            return {}
+        symbols = {}
+        # Python def/class declarations
+        for m in re.finditer(r"^(?:async\s+)?(?:def|class)\s+([a-zA-Z_]\w*)", text, re.MULTILINE):
+            name = m.group(1)
+            start = m.start()
+            symbols[name] = text[start:start + 500]
+        # JS/TS function/class/const function declarations
+        for m in re.finditer(r"^(?:export\s+)?(?:function|class|const|let|var)\s+([a-zA-Z_]\w*)", text, re.MULTILINE):
+            name = m.group(1)
+            start = m.start()
+            if name not in symbols:
+                symbols[name] = text[start:start + 500]
+        return symbols
+
+    old_syms = _find_symbols(old_content or "")
+    new_syms = _find_symbols(new_content or "")
+
+    modified = []
+    for name, snippet in new_syms.items():
+        if name not in old_syms or old_syms[name] != snippet:
+            modified.append(name)
+    return modified[:5]
+
+
 @dataclass
 class MemoryConfig:
     max_tokens: int = 8000
@@ -285,6 +337,7 @@ class MemoryConfig:
     execution_policy: str = "auto"
     embedding_backend: str = "hybrid"
     use_selective_compression: bool = True
+    enable_auto_compaction: bool = True
     max_messages: int = 50
 
     @classmethod
@@ -398,6 +451,51 @@ class TieredMemory:
         self._pinned_token_budget: int = config.pinned_token_budget
         self._cached_msg_tokens: int = 0
         self._last_persist_ts: float = 0.0
+        self._event_listeners: list[Callable[[MemoryEvent], None]] = []
+        self._is_compacting: bool = False
+        self.enable_auto_compaction: bool = getattr(config, "enable_auto_compaction", True)
+
+    def add_event_listener(self, listener: Callable[[MemoryEvent], None]) -> None:
+        """Register a callback for memory events (MESSAGE_ADDED, PIN_ADDED, COMPACTION_TRIGGERED, etc.)."""
+        if listener not in self._event_listeners:
+            self._event_listeners.append(listener)
+
+    def remove_event_listener(self, listener: Callable[[MemoryEvent], None]) -> None:
+        """Unregister a memory event callback."""
+        if listener in self._event_listeners:
+            self._event_listeners.remove(listener)
+
+    def _dispatch_event(self, event: MemoryEvent) -> None:
+        """Dispatch a memory event to registered listeners safely."""
+        for listener in list(getattr(self, "_event_listeners", [])):
+            try:
+                listener(event)
+            except Exception:
+                pass
+
+    def _check_event_compaction(self, cause_message: Optional[Message] = None) -> bool:
+        """Reactive event-driven compaction trigger. Automatically runs when token ratio crosses threshold."""
+        if not getattr(self, "enable_auto_compaction", True) or getattr(self, "_is_compacting", False):
+            return False
+
+        tot = max(self.total_tokens, getattr(self, "_total_tokens", 0))
+        ratio = tot / self.config.max_tokens if self.config.max_tokens > 0 else 0
+        if ratio > self.config.compression_threshold and len(self.messages) > 1:
+            self._is_compacting = True
+            try:
+                self._dispatch_event(
+                    MemoryEvent(
+                        event_type=MemoryEventType.COMPACTION_TRIGGERED,
+                        message=cause_message,
+                        total_tokens=tot,
+                        token_ratio=ratio,
+                    )
+                )
+                self.compress_recent(force=True)
+                return True
+            finally:
+                self._is_compacting = False
+        return False
 
     def load_project_memory(self) -> None:
         """Load persistent project memory (.context-memory.json) into L0 working state."""
@@ -448,7 +546,13 @@ class TieredMemory:
     @property
     def total_tokens(self) -> int:
         pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
-        return self._cached_msg_tokens + pinned_tokens
+        # Include estimated tokens of dynamic L0 scratchpad so context budget is net of scratchpad overhead
+        try:
+            l0_scratchpad = self.format_l0_scratchpad()
+            l0_tokens = self.tokenizer.count(l0_scratchpad) if l0_scratchpad else 0
+        except Exception:
+            l0_tokens = 0
+        return self._cached_msg_tokens + pinned_tokens + l0_tokens
 
     def _append_message(self, msg: Message) -> None:
         if len(self.messages) == self.messages.maxlen and self.messages:
@@ -456,6 +560,19 @@ class TieredMemory:
             self._cached_msg_tokens = max(0, self._cached_msg_tokens - old.token_count)
         self.messages.append(msg)
         self._cached_msg_tokens += msg.token_count
+
+        if not getattr(self, "_is_compacting", False):
+            tot = max(self.total_tokens, getattr(self, "_total_tokens", 0))
+            ratio = tot / self.config.max_tokens if self.config.max_tokens > 0 else 0
+            self._dispatch_event(
+                MemoryEvent(
+                    event_type=MemoryEventType.MESSAGE_ADDED,
+                    message=msg,
+                    total_tokens=tot,
+                    token_ratio=ratio,
+                )
+            )
+            self._check_event_compaction(cause_message=msg)
 
     def add_system_message(self, content: str) -> None:
         msg = Message(
@@ -544,9 +661,25 @@ class TieredMemory:
         for i, (p, _) in enumerate(self._pinned_files):
             if p == path:
                 self._pinned_files[i] = (path, content)
+                self._notify_pin_event(path)
                 return
         # New pin — FIFO eviction when deque is full
         self._pinned_files.append((path, content))
+        self._notify_pin_event(path)
+
+    def _notify_pin_event(self, path: str) -> None:
+        if not getattr(self, "_is_compacting", False):
+            tot = max(self.total_tokens, getattr(self, "_total_tokens", 0))
+            ratio = tot / self.config.max_tokens if self.config.max_tokens > 0 else 0
+            self._dispatch_event(
+                MemoryEvent(
+                    event_type=MemoryEventType.PIN_ADDED,
+                    total_tokens=tot,
+                    token_ratio=ratio,
+                    metadata={"path": path},
+                )
+            )
+            self._check_event_compaction()
 
     def unpin_file(self, path: str) -> None:
         """Remove a file from pinned memory if deleted or stale."""
@@ -594,15 +727,13 @@ class TieredMemory:
         self._update_state_from_message(msg)
 
     def should_compress(self) -> bool:
-        override = getattr(self, "_total_tokens", None)
-        tot = override if override is not None else self.total_tokens
+        override = getattr(self, "_total_tokens", 0)
+        tot = max(self.total_tokens, override)
         ratio = tot / self.config.max_tokens if self.config.max_tokens > 0 else 0
         # Emergency ratio override at >= 0.85 (85%) token usage even if message count is small
         if ratio >= 0.85:
             return True
-        if len(self.messages) <= 1:
-            return False
-        if len(self.messages) < self.config.recent_window + 2:
+        if len(self.messages) <= 1 and override == 0:
             return False
         return ratio > self.config.compression_threshold
 
@@ -612,29 +743,34 @@ class TieredMemory:
         preserve_first: int = 0,
         force: bool = False,
     ) -> str:
-        """Compress older messages, preserving the first N messages."""
-        min_messages = 1 if force else (self.config.recent_window + preserve_first)
-        if len(self.messages) <= min_messages:
-            return ""
+        """Compress older messages, preserving the first N messages. Truncates oversized messages if needed."""
+        # Auto-upgrade force to True if overall context ratio is high
+        current_ratio = self.total_tokens / self.config.max_tokens if self.config.max_tokens > 0 else 0
+        if current_ratio >= 0.75:
+            force = True
 
+        min_messages = 1 if force else (self.config.recent_window + preserve_first)
         window_size = 1 if force else self.config.recent_window
         recent = list(self.messages)[-window_size:] if window_size > 0 else []
         preserved = list(self.messages)[:preserve_first]
         older = (
             list(self.messages)[preserve_first:-window_size]
-            if window_size > 0
+            if window_size > 0 and len(self.messages) > (preserve_first + window_size)
             else list(self.messages)[preserve_first:]
         )
 
         summary = ""
-        if older:
+        if older and len(self.messages) > min_messages:
             self.messages.clear()
             self._cached_msg_tokens = 0
             for msg in preserved:
                 self._append_message(msg)
 
             if summarizer_fn:
-                raw_sum = summarizer_fn(older)
+                try:
+                    raw_sum = summarizer_fn(older, state=self.state)
+                except TypeError:
+                    raw_sum = summarizer_fn(older)
                 summary = str(raw_sum) if raw_sum is not None else ""
                 sys_msg = Message(
                     role=MessageRole.SYSTEM,
@@ -655,6 +791,31 @@ class TieredMemory:
 
             for msg in recent:
                 self._append_message(msg)
+
+        # Fallback payload compaction: if older turns could not be summarized or context ratio remains high,
+        # compact oversized individual messages in history (e.g. giant tool results or output dumps)
+        post_ratio = self.total_tokens / self.config.max_tokens if self.config.max_tokens > 0 else 0
+        if (not summary or post_ratio >= 0.70) and len(self.messages) > 1:
+            max_msg_budget = max(400, int(self.config.max_tokens * 0.20))
+            modified_any = False
+            for i in range(1, len(self.messages)):
+                msg = self.messages[i]
+                if msg.token_count > max_msg_budget:
+                    lines = msg.content.splitlines()
+                    if len(lines) > 20:
+                        head = lines[:10]
+                        tail = lines[-10:]
+                        omitted_count = len(lines) - 20
+                        new_content = "\n".join(head) + f"\n... [{omitted_count} lines / tool output payload truncated to fit context budget] ...\n" + "\n".join(tail)
+                    else:
+                        new_content = self.tokenizer.truncate(msg.content, max_msg_budget)
+                    new_tokens = self.tokenizer.count(new_content)
+                    self._cached_msg_tokens = max(0, self._cached_msg_tokens - msg.token_count + new_tokens)
+                    msg.content = new_content
+                    msg.token_count = new_tokens
+                    modified_any = True
+            if modified_any and not summary:
+                summary = "[Oversized tool results and output payloads compacted to fit context budget]"
 
         return summary
 
@@ -813,14 +974,55 @@ class TieredMemory:
                 )
                 sections.append((2, f"- Failing Tests: {shown}"))
 
-        # Priority 3: Active goal / current task & active file
-        if self.state.current_task:
+        # Priority 3: Active task, status, next task, & active file
+        if project_root:
+            from core.tools.task_helpers import (
+                get_compact_task_matrix,
+                get_workspace_task_status_summary,
+            )
+
+            matrix_lines = get_compact_task_matrix(project_root, budget=budget)
+            if matrix_lines:
+                for idx, line in enumerate(matrix_lines):
+                    sections.append((3.0 + idx * 0.1, line))
+            else:
+                tsummary = get_workspace_task_status_summary(project_root)
+                cur_task = tsummary.get("current_task")
+                next_task = tsummary.get("next_task")
+                total = tsummary.get("total_count", 0)
+                completed = tsummary.get("completed_count", 0)
+                remaining = tsummary.get("remaining_tasks", [])
+
+                if cur_task:
+                    c_desc = _scratchpad_clean(cur_task["description"], entry_limit)
+                    c_stat = cur_task["status"].upper()
+                    sections.append((3.0, f"- Current Task [{c_stat}]: {c_desc}"))
+                elif self.state.current_task:
+                    sections.append(
+                        (
+                            3.0,
+                            f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
+                        )
+                    )
+
+                if next_task:
+                    n_desc = _scratchpad_clean(next_task["description"], entry_limit)
+                    sections.append((3.2, f"- Next Task [PENDING]: {n_desc}"))
+
+                if total > 0:
+                    sections.append((3.3, f"- Task Progress: ({completed}/{total} completed)"))
+
+                if remaining:
+                    shown = ", ".join(_scratchpad_clean(t, entry_limit) for t in remaining[:3])
+                    sections.append((3.5, f"- Remaining Tasks: {shown}"))
+        elif self.state.current_task:
             sections.append(
                 (
                     3.0,
                     f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
                 )
             )
+
         if self.state.active_file:
             sections.append(
                 (
@@ -828,16 +1030,6 @@ class TieredMemory:
                     f"- Active File: {_scratchpad_clean(self.state.active_file, entry_limit)}",
                 )
             )
-
-        if project_root:
-            from core.tools.task_helpers import get_workspace_pending_tasks
-
-            pending = get_workspace_pending_tasks(project_root)
-            if pending:
-                shown = ", ".join(
-                    _scratchpad_clean(t, entry_limit) for t in pending[:3]
-                )
-                sections.append((3.5, f"- Pending Tasks: {shown}"))
 
         # Priority 4: Architecture decisions (most recent, up to section cap)
         decs_source = self.state.arch_decisions or self.state.decisions
@@ -851,7 +1043,17 @@ class TieredMemory:
         # Priority 5: Files modified in last 3 turns
         if self.state.files_modified:
             recent_mod = self.state.files_modified[-3:]
-            shown = ", ".join(_scratchpad_clean(f, entry_limit) for f in recent_mod)
+            mod_items = []
+            for f in recent_mod:
+                clean_f = _scratchpad_clean(f, entry_limit)
+                stats = self.state.files_modified_stats.get(f)
+                if stats and len(stats) == 2:
+                    clean_f += f" (+{stats[0]}, -{stats[1]})"
+                syms = self.state.files_modified_symbols.get(f)
+                if syms:
+                    clean_f += f" [{', '.join(syms[:3])}]"
+                mod_items.append(clean_f)
+            shown = ", ".join(mod_items)
             sections.append((5, f"- Modified Files: {shown}"))
 
         # Priority 6: Tech stack (only if non-empty)
@@ -1021,12 +1223,46 @@ class TieredMemory:
         self._cached_msg_tokens = 0
         self.state = SessionState()
 
-    def record_file_modified(self, path: str) -> None:
-        """Explicitly record a modified file in session state if it is a valid file path."""
+    def record_file_modified(
+        self,
+        path: str,
+        added: int = 0,
+        deleted: int = 0,
+        old_content: Optional[str] = None,
+        new_content: Optional[str] = None,
+    ) -> None:
+        """Explicitly record a modified file, Net Delta line stats, and touched symbols in session state."""
         if is_valid_file_path(path):
             clean_p = path.strip().strip("'\"`()[],:;")
             if clean_p not in self.state.files_modified:
                 self.state.files_modified.append(clean_p)
+
+            # 1. Baseline tracking & Net Delta computation
+            if old_content is not None and clean_p not in self.state.files_baseline_content:
+                self.state.files_baseline_content[clean_p] = old_content
+
+            if clean_p in self.state.files_baseline_content and new_content is not None:
+                net_added, net_deleted = calculate_in_memory_diff(
+                    self.state.files_baseline_content[clean_p], new_content
+                )
+                self.state.files_modified_stats[clean_p] = [net_added, net_deleted]
+            else:
+                if clean_p not in self.state.files_modified_stats:
+                    self.state.files_modified_stats[clean_p] = [added, deleted]
+                else:
+                    prev = self.state.files_modified_stats[clean_p]
+                    self.state.files_modified_stats[clean_p] = [prev[0] + added, prev[1] + deleted]
+
+            # 2. Modified symbol tracking
+            if old_content is not None and new_content is not None:
+                syms = extract_modified_symbols(old_content, new_content)
+                if syms:
+                    if clean_p not in self.state.files_modified_symbols:
+                        self.state.files_modified_symbols[clean_p] = []
+                    for s in syms:
+                        if s not in self.state.files_modified_symbols[clean_p]:
+                            self.state.files_modified_symbols[clean_p].append(s)
+
             self.state.active_file = clean_p
             self.persist_to_project_memory()
 

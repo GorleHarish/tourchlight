@@ -32,8 +32,14 @@ cloud = [
 ollama = [
     "ollama>=0.1",
 ]
+treesitter = [
+    "tree-sitter>=0.21.0",
+]
+web = [
+    "playwright>=1.60.0",
+]
 all = [
-    "torchlight-core[llm,memory,cloud,ollama]",
+    "torchlight-core[llm,memory,cloud,ollama,treesitter,web]",
 ]
 
 [tool.pytest.ini_options]

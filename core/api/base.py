@@ -4,8 +4,50 @@ Abstract LLM client interface and shared inference parameters.
 All LLM backends (LM Studio, llama.cpp, Ollama, cloud) implement this protocol.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import AsyncIterator, Optional, Protocol, runtime_checkable
+
+
+def detect_model_traits(model_name: Optional[str]) -> dict:
+    """
+    Detect architecture traits (size, reasoning status) from model name.
+
+    Returns dict:
+      {
+         "is_reasoning": bool,
+         "param_size_b": Optional[float], # e.g. 1.5, 2.0, 3.0, 7.0, 8.0, 70.0
+         "is_small_model": bool,          # True if parameter size < 4.0B
+      }
+    """
+    if not model_name or not isinstance(model_name, str):
+        return {"is_reasoning": False, "param_size_b": None, "is_small_model": False}
+
+    name_lower = model_name.lower()
+
+    # 1. Reasoning model detection
+    is_reasoning = any(
+        k in name_lower
+        for k in ["deepseek-r1", "-r1", "qwq", "reasoner", "o1-", "o3-"]
+    )
+
+    # 2. Parameter size detection via regex (matches 1.5b, 2b, 3b, 7b, 8b, 14b, 32b, 70b in paths/ggufs)
+    match = re.search(r"(?:^|[^0-9a-zA-Z])(\d+(?:\.\d+)?)[bB](?![a-zA-Z0-9])", model_name)
+    param_size_b = float(match.group(1)) if match else None
+
+    if param_size_b is None:
+        if "4e4b" in name_lower or "e4b" in name_lower:
+            param_size_b = 4.0
+        elif "e2b" in name_lower:
+            param_size_b = 2.0
+
+    is_small_model = param_size_b is not None and param_size_b < 4.0
+
+    return {
+        "is_reasoning": is_reasoning,
+        "param_size_b": param_size_b,
+        "is_small_model": is_small_model,
+    }
 
 
 # ── Inference parameters ──────────────────────────────────────────────────
@@ -29,6 +71,8 @@ class InferenceParams:
     top_p: float = 0.95
     min_p: float = 0.05
     repeat_penalty: float = 1.05
+    presence_penalty: float = 0.0
+    frequency_penalty: float = 0.0
     seed: int = -1  # -1 = random
     stop: list[str] = field(default_factory=list)
     use_grammar: Optional[bool] = None
@@ -51,6 +95,10 @@ class InferenceParams:
             payload["min_p"] = self.min_p
         if self.repeat_penalty != 1.0:
             payload["repeat_penalty"] = self.repeat_penalty
+        if self.presence_penalty != 0.0:
+            payload["presence_penalty"] = self.presence_penalty
+        if self.frequency_penalty != 0.0:
+            payload["frequency_penalty"] = self.frequency_penalty
         if self.seed != -1:
             payload["seed"] = self.seed
         if self.stop:
@@ -67,7 +115,7 @@ class InferenceParams:
             top_k=20,
             top_p=0.90,
             min_p=0.05,
-            repeat_penalty=1.10,
+            repeat_penalty=1.02,
             seed=-1,
         )
 
@@ -79,7 +127,7 @@ class InferenceParams:
             top_k=40,
             top_p=0.92,
             min_p=0.05,
-            repeat_penalty=1.05,
+            repeat_penalty=1.02,
             seed=-1,
         )
 
@@ -91,7 +139,7 @@ class InferenceParams:
             top_k=35,
             top_p=0.92,
             min_p=0.05,
-            repeat_penalty=1.05,
+            repeat_penalty=1.02,
             seed=-1,
         )
 
@@ -103,7 +151,7 @@ class InferenceParams:
             top_k=50,
             top_p=0.95,
             min_p=0.05,
-            repeat_penalty=1.05,
+            repeat_penalty=1.02,
             seed=-1,
         )
 
@@ -132,6 +180,52 @@ class InferenceParams:
             seed=-1,
             use_grammar=False,
         )
+
+    @classmethod
+    def for_model_and_phase(
+        cls, model_name: Optional[str], phase: str = "code"
+    ) -> "InferenceParams":
+        """
+        Dynamically return an InferenceParams preset calibrated for both
+        the target model architecture (size & reasoning trait) and phase.
+        """
+        base_params = PRESETS.get(phase, cls.for_coding())
+        traits = detect_model_traits(model_name)
+
+        params = cls(
+            temperature=base_params.temperature,
+            top_k=base_params.top_k,
+            top_p=base_params.top_p,
+            min_p=base_params.min_p,
+            repeat_penalty=base_params.repeat_penalty,
+            presence_penalty=base_params.presence_penalty,
+            frequency_penalty=base_params.frequency_penalty,
+            seed=base_params.seed,
+            stop=list(base_params.stop),
+            use_grammar=base_params.use_grammar,
+            allowed_tools=base_params.allowed_tools,
+        )
+
+        if traits["is_reasoning"]:
+            # Reasoning / CoT models (DeepSeek-R1, QwQ, etc.) need 1.00 repeat penalty
+            # and ~0.60 temperature to prevent infinite thought loops.
+            params.repeat_penalty = 1.00
+            params.presence_penalty = 0.00
+            params.frequency_penalty = 0.00
+            params.temperature = (
+                0.60 if phase in ["plan", "chat"] else min(params.temperature, 0.60)
+            )
+        elif traits["is_small_model"]:
+            # Small models (<4B) need mild repeat penalty (1.05) to avoid stuck loops
+            params.repeat_penalty = max(params.repeat_penalty, 1.05)
+            params.presence_penalty = 0.00
+        else:
+            # Medium/Large 7B+ standard models (e.g. Qwen 2.5 Coder 7B, Llama 3 8B)
+            # need a mild repeat penalty (1.03 - 1.05) to avoid phrase repetitions
+            params.repeat_penalty = 1.03 if phase in ["code", "plan"] else 1.05
+            params.presence_penalty = 0.00
+
+        return params
 
 
 # ── Phase presets ──────────────────────────────────────────────────────────

@@ -352,6 +352,47 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
             "interact": ["actions", "steps", "sequence"],
         },
     },
+    "PLAY_AND_VERIFY_GAME": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Target HTML game file relative path or HTTP URL",
+            },
+            "duration_ms": {
+                "type": "integer",
+                "description": "Duration in ms to play and verify the game (default: 3000)",
+            },
+        },
+        "required": ["path"],
+        "aliases": {
+            "path": ["file", "filename", "filepath", "game_file", "target", "url", "p"],
+            "duration_ms": ["duration", "wait_ms", "time"],
+        },
+    },
+    "SELF_IMPROVE_GAME": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Target HTML game file relative path",
+            },
+            "max_iterations": {
+                "type": "integer",
+                "description": "Maximum autonomous repair iterations (default: 3)",
+            },
+            "duration_ms": {
+                "type": "integer",
+                "description": "Game playing test duration per iteration in ms (default: 2500)",
+            },
+        },
+        "required": ["path"],
+        "aliases": {
+            "path": ["file", "filename", "filepath", "game_file", "target", "p"],
+            "max_iterations": ["iterations", "epochs", "max_epochs", "retries"],
+            "duration_ms": ["duration", "wait_ms"],
+        },
+    },
     "SAVE_MEMORY": {
         "type": "object",
         "properties": {
@@ -563,6 +604,8 @@ _PHASE_TOOL_VISIBILITY = {
         "VERIFY",
         "GIT",
         "INSPECT_WEB",
+        "PLAY_AND_VERIFY_GAME",
+        "SELF_IMPROVE_GAME",
         "FORMAT_CODE",
         "SAVE_MEMORY",
         "UPDATE_TASK_GRAPH",
@@ -599,6 +642,8 @@ _PHASE_TOOL_VISIBILITY = {
         "VERIFY",
         "GIT",
         "INSPECT_WEB",
+        "PLAY_AND_VERIFY_GAME",
+        "SELF_IMPROVE_GAME",
         "FORMAT_CODE",
         "SAVE_MEMORY",
         "UPDATE_TASK_GRAPH",
@@ -615,6 +660,8 @@ _PHASE_TOOL_VISIBILITY = {
         "LIST_DIR",
         "RUN_COMMAND",
         "INSPECT_WEB",
+        "PLAY_AND_VERIFY_GAME",
+        "SELF_IMPROVE_GAME",
         "GIT",
         "VERIFY",
         "SAVE_MEMORY",

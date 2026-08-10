@@ -258,6 +258,8 @@ class ToolCallCard(Container):
     Collapsible.tool-card-section > CollapsibleContents > Static.tool-card-body,
     Static.tool-card-body {
         width: 1fr;
+        max-height: 20;
+        overflow-y: auto;
         color: $foreground;
         padding: 1 2;
         margin: 0;
@@ -293,7 +295,21 @@ class ToolCallCard(Container):
     def _target_from_args(args: dict | None) -> str:
         if not args:
             return ""
-        for key in ("path", "file_path", "command", "cmd", "query", "url", "pattern"):
+        path = args.get("path") or args.get("file_path") or args.get("file")
+        if path:
+            target = str(path)
+            start_line = args.get("start_line")
+            end_line = args.get("end_line")
+            symbol = args.get("symbol")
+            if ":" not in target:
+                if start_line is not None and end_line is not None:
+                    target += f":L{start_line}-L{end_line}"
+                elif start_line is not None:
+                    target += f":L{start_line}"
+                elif symbol:
+                    target += f":{symbol}"
+            return target
+        for key in ("command", "cmd", "query", "url", "pattern"):
             if key in args and args[key] not in (None, ""):
                 return str(args[key])
         return ""

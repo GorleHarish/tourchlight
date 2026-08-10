@@ -13,7 +13,7 @@ import ast
 import difflib
 import hashlib
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from html.parser import HTMLParser
 
 import httpx
@@ -176,7 +176,9 @@ def _resolve_path(path: str, project_root: str) -> str:
     return str(resolved)
 
 
-def _truncate(text: str, limit: Optional[int] = None, tool_name: Optional[str] = None) -> str:
+def _truncate(
+    text: str, limit: Optional[int] = None, tool_name: Optional[str] = None
+) -> str:
     if limit is None:
         if tool_name:
             tool_upper = tool_name.upper().strip()
@@ -194,7 +196,10 @@ def _truncate(text: str, limit: Optional[int] = None, tool_name: Optional[str] =
     if len(text) > limit:
         truncated_chars = len(text) - limit
         truncated_lines = text[limit:].count("\n")
-        return text[:limit] + f"\n... [Truncated {truncated_chars} chars / {truncated_lines} lines. Use line ranges or specific queries to narrow search.]"
+        return (
+            text[:limit]
+            + f"\n... [Truncated {truncated_chars} chars / {truncated_lines} lines. Use line ranges or specific queries to narrow search.]"
+        )
     return text
 
 
@@ -572,6 +577,12 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
             range_end = range_start
         elif m_sym:
             path, symbol_name = m_sym.group(1).strip(), m_sym.group(2)
+        else:
+            if args.get("start_line") is not None or args.get("end_line") is not None:
+                range_start = int(args["start_line"]) if args.get("start_line") is not None else 1
+                range_end = int(args["end_line"]) if args.get("end_line") is not None else None
+            elif args.get("symbol"):
+                symbol_name = str(args["symbol"]).strip()
 
         # Path resolution
         p = os.path.abspath(os.path.join(project_root, path))
@@ -679,20 +690,34 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
                 )
             else:
                 trunc_note = ""
-            display = "\n".join(sl)[:MAX_CHARS]
+            start_num = r0 + 1
+            max_num = r0 + len(sl)
+            width = max(len(str(max_num)), 3)
+            formatted = [
+                f"{r0 + i + 1:>{width}} | {line}" for i, line in enumerate(sl)
+            ]
+            display = "\n".join(formatted)[:MAX_CHARS]
             return (
-                f"{fname} lines {r0 + 1}–{r0 + len(sl)} (of {nlines} total)\n"
+                f"{fname} lines {start_num}–{max_num} (of {nlines} total)\n"
                 f"```{ext}\n{display}{trunc_note}\n```"
             )
 
         # Default: symbol map + top-N lines
         sym_hdr = _symbol_map(content, fname)
-        display = "\n".join(lines[:MAX_LINES])[:MAX_CHARS]
+        sl = lines[:MAX_LINES]
+        max_num = len(sl)
+        width = max(len(str(max_num)), 3)
+        formatted = [
+            f"{i + 1:>{width}} | {line}" for i, line in enumerate(sl)
+        ]
+        display = "\n".join(formatted)[:MAX_CHARS]
         truncated = nlines > MAX_LINES or len(content) > MAX_CHARS
+        next_start = MAX_LINES + 1
+        next_end = min(nlines, MAX_LINES * 2)
         suffix = (
             (
                 f"\n... ({nlines - MAX_LINES} more lines)"
-                f' — use READ_FILE("{path}:N-M") for a range,'
+                f' — use READ_FILE("{path}:{next_start}-{next_end}") for lines {next_start}-{next_end},'
                 f' or READ_FILE("{path}:<SYMBOL>") to jump to a function.'
             )
             if truncated
@@ -706,8 +731,19 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
 
 
 _TAB_PRESERVE_EXTS = {
-    ".go", ".tsv", ".tab", ".mk", ".c", ".h", ".cpp", ".hpp",
-    ".asm", ".s", ".zig", ".lua", ".just"
+    ".go",
+    ".tsv",
+    ".tab",
+    ".mk",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".asm",
+    ".s",
+    ".zig",
+    ".lua",
+    ".just",
 }
 _TAB_PRESERVE_BASENAMES = {"makefile", "gnumakefile", "justfile", "kbuild"}
 
@@ -1149,9 +1185,18 @@ def _detect_symptom_patching(content: str, filename: str) -> Optional[str]:
 
     # Check exception swallowing patterns
     swallow_patterns = [
-        (r'except\s*:\s*pass\b', "Blank 'except: pass' block swallowing all exceptions"),
-        (r'except\s+Exception\s*:\s*pass\b', "Generic 'except Exception: pass' block swallowing exceptions"),
-        (r'except\s+Exception\s*:\s*return\s+(?:None|0|""|\{\}|\[\])\b', "Generic 'except Exception: return <dummy>' swallowing exceptions"),
+        (
+            r"except\s*:\s*pass\b",
+            "Blank 'except: pass' block swallowing all exceptions",
+        ),
+        (
+            r"except\s+Exception\s*:\s*pass\b",
+            "Generic 'except Exception: pass' block swallowing exceptions",
+        ),
+        (
+            r'except\s+Exception\s*:\s*return\s+(?:None|0|""|\{\}|\[\])\b',
+            "Generic 'except Exception: return <dummy>' swallowing exceptions",
+        ),
     ]
 
     for pat, desc in swallow_patterns:
@@ -1163,7 +1208,9 @@ def _detect_symptom_patching(content: str, filename: str) -> Optional[str]:
         lines = content.splitlines()
         for idx, line in enumerate(lines, 1):
             stripped = line.strip()
-            if stripped.startswith("#") and ("assert " in stripped or "self.assert" in stripped):
+            if stripped.startswith("#") and (
+                "assert " in stripped or "self.assert" in stripped
+            ):
                 return f"Commented-out test assertion on line {idx}: '{stripped[:60]}'"
 
     return None
@@ -1171,7 +1218,10 @@ def _detect_symptom_patching(content: str, filename: str) -> Optional[str]:
 
 def _is_test_file(filepath: str) -> bool:
     """Check if filepath matches known test file patterns."""
-    return any(pat in filepath.lower() for pat in ["test_", "_test.py", "tests/", "spec/", ".test.", ".spec."])
+    return any(
+        pat in filepath.lower()
+        for pat in ["test_", "_test.py", "tests/", "spec/", ".test.", ".spec."]
+    )
 
 
 def tool_write_file_impl(args: dict, project_root: str) -> str:
@@ -1213,7 +1263,10 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         return "Error: Missing required 'path' parameter for WRITE_FILE."
 
     path_str = str(path_raw).strip()
-    protect_tests = args.get("protect_tests", False) or os.environ.get("TORCHLIGHT_PROTECT_TESTS") == "1"
+    protect_tests = (
+        args.get("protect_tests", False)
+        or os.environ.get("TORCHLIGHT_PROTECT_TESTS") == "1"
+    )
     if protect_tests and _is_test_file(path_str):
         return "Error: Test files are protected during automated recovery. Fix the source code instead."
 
@@ -1240,12 +1293,19 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
             return payload
         content = payload
 
+        existing_content = ""
         if os.path.exists(p) and os.path.isfile(p):
             try:
                 with open(p, "r", encoding="utf-8") as existing_f:
                     existing_content = existing_f.read()
-                if hashlib.sha256(existing_content.encode("utf-8")).hexdigest() == hashlib.sha256(content.encode("utf-8")).hexdigest():
-                    return f"No change: file content of {path_str} is already identical."
+                if (
+                    hashlib.sha256(existing_content.encode("utf-8")).hexdigest()
+                    == hashlib.sha256(content.encode("utf-8")).hexdigest()
+                ):
+                    return (
+                        f"No change: file content of {path_str} is already identical. "
+                        f"Hint: Use READ_FILE to verify current contents, or WRITE_FILE if you need to overwrite."
+                    )
             except Exception:
                 pass
 
@@ -1254,8 +1314,11 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         line_count = content.count("\n") + (
             1 if content and not content.endswith("\n") else 0
         )
+        from core.memory.manager import calculate_in_memory_diff
+
+        added, deleted = calculate_in_memory_diff(existing_content, content)
         stub_note = _detect_stubs(content) or ""
-        return f"Written {line_count} lines to {p}{stub_note}"
+        return f"Written {line_count} lines to {p} (+{added}, -{deleted}){stub_note}"
     except Exception as e:
         return f"Error writing {p}: {e}"
 
@@ -1347,7 +1410,9 @@ def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
     lines = text.strip().splitlines()
     if len(lines) >= 4:
         mid = len(lines) // 2
-        return _clean_segment("\n".join(lines[:mid])), _clean_segment("\n".join(lines[mid:]))
+        return _clean_segment("\n".join(lines[:mid])), _clean_segment(
+            "\n".join(lines[mid:])
+        )
 
     return None, None
 
@@ -1380,18 +1445,60 @@ def _commit_edit_file(
     project_root: str,
     force: bool,
     reject_on_stub: bool,
-) -> tuple[bool, str]:
-    if hashlib.sha256(original_content.encode("utf-8")).hexdigest() == hashlib.sha256(new_content.encode("utf-8")).hexdigest():
-        return False, "No change: file content is already identical."
+) -> tuple[bool, str, int, int]:
+    if (
+        hashlib.sha256(original_content.encode("utf-8")).hexdigest()
+        == hashlib.sha256(new_content.encode("utf-8")).hexdigest()
+    ):
+        return False, "No change: file content is already identical.", 0, 0
     status, payload = _validate_and_repair(
         new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
     )
     if status != "ok":
-        return False, payload
+        return False, payload, 0, 0
     new_content = payload
     with open(p, "w", encoding="utf-8") as f:
         f.write(new_content)
-    return True, new_content
+    from core.memory.manager import calculate_in_memory_diff
+
+    added, deleted = calculate_in_memory_diff(original_content, new_content)
+    return True, new_content, added, deleted
+
+
+def _commit_edit_and_format_result(
+    p: str,
+    new_content: str,
+    original_content: str,
+    project_root: str,
+    force: bool,
+    reject_on_stub: bool,
+    prefix_msg: str,
+) -> str:
+    from core.memory.manager import calculate_in_memory_diff
+    from core.tools.task_helpers import get_active_task_description
+
+    if (
+        hashlib.sha256(original_content.encode("utf-8")).hexdigest()
+        == hashlib.sha256(new_content.encode("utf-8")).hexdigest()
+    ):
+        return "No change: file content is already identical."
+
+    status, payload = _validate_and_repair(
+        new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+    )
+    if status != "ok":
+        return payload
+    new_content = payload
+
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    added, deleted = calculate_in_memory_diff(original_content, new_content)
+    stub_note = _detect_stubs(new_content) or ""
+    active_task = get_active_task_description(project_root)
+    task_suffix = f" • 🎯 Task: {active_task}" if active_task else ""
+
+    return f"{prefix_msg} (+{added}, -{deleted}){task_suffix}.{stub_note}"
 
 
 def tool_edit_file_impl(args: dict, project_root: str) -> str:
@@ -1464,7 +1571,10 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         if not path:
             return "EDIT_FILE requires a file path."
 
-        protect_tests = args.get("protect_tests", False) or os.environ.get("TORCHLIGHT_PROTECT_TESTS") == "1"
+        protect_tests = (
+            args.get("protect_tests", False)
+            or os.environ.get("TORCHLIGHT_PROTECT_TESTS") == "1"
+        )
         if protect_tests and _is_test_file(path):
             return "Error: Test files are protected during automated recovery. Fix the source code instead."
 
@@ -1542,20 +1652,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     if new_text and not new_text.endswith("\n") and e_idx < len(lines):
                         new_content += "\n"
                     new_content += "".join(lines[e_idx:])
-                status, payload = _validate_and_repair(
-                    new_content,
+                return _commit_edit_and_format_result(
                     p,
+                    new_content,
+                    content,
                     project_root,
-                    force=force,
-                    reject_on_stub=reject_on_stub,
+                    force,
+                    reject_on_stub,
+                    f"Surgically edited {path} within line range {s_l}-{e_l}",
                 )
-                if status != "ok":
-                    return payload
-                new_content = payload
-                with open(p, "w", encoding="utf-8") as f:
-                    f.write(new_content)
-                stub_note = _detect_stubs(new_content) or ""
-                return f"Surgically edited {path} within line range {s_l}-{e_l}.{stub_note}"
             except ValueError:
                 pass
 
@@ -1569,11 +1674,13 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     "=======\n"
                     "<new replacement text>\n"
                     ">>>>>>> REPLACE\n\n"
-                    'Or use exact JSON arguments: {"path": "file.py", "old_text": "...", "new_text": "..."}'
+                    f'Or use exact JSON arguments: {{"path": "{path}", "old_text": "...", "new_text": "..."}}'
                 )
             return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find, or line range (start_line/end_line). To overwrite full file, use WRITE_FILE."
         if new_text == old_text:
             return "No change: old_text and new_text are identical."
+        if content.strip() and old_text.strip() == content.strip() and not new_text.strip():
+            return f"Edit failed: Attempted to replace entire content of '{path}' with empty text via EDIT_FILE. Use WRITE_FILE if you explicitly intend to overwrite or clear a file."
 
         # Handle unescaped literal \\n and \\t from raw JSON outputs
         if "\\n" in old_text and "\n" not in old_text:
@@ -1588,17 +1695,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 return f"Edit failed: 'old_text' matches {count} locations. Provide line numbers (start_line/end_line) or more context to make it unique."
 
             new_content = content.replace(old_text, new_text)
-            status, payload = _validate_and_repair(
-                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            return _commit_edit_and_format_result(
+                p,
+                new_content,
+                content,
+                project_root,
+                force,
+                reject_on_stub,
+                f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars)",
             )
-            if status != "ok":
-                return payload
-            new_content = payload
-            with open(p, "w", encoding="utf-8") as f:
-                f.write(new_content)
-
-            stub_note = _detect_stubs(new_content) or ""
-            return f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars).{stub_note}"
 
         # Helper: Normalize lines for line-based matching
         def normalize_line(l):
@@ -1648,16 +1753,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += "".join(content_lines[best_end:])
 
-            status, payload = _validate_and_repair(
-                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            return _commit_edit_and_format_result(
+                p,
+                new_content,
+                content,
+                project_root,
+                force,
+                reject_on_stub,
+                f"Surgically edited {path} (fuzzy replaced {len(old_norm)} lines ignoring whitespace)",
             )
-            if status != "ok":
-                return payload
-            new_content = payload
-            with open(p, "w", encoding="utf-8") as f:
-                f.write(new_content)
-            stub_note = _detect_stubs(new_content) or ""
-            return f"Surgically edited {path} (fuzzy replaced {len(old_norm)} lines ignoring whitespace).{stub_note}"
 
         # Tier 3: Ellipsis / Wildcard matching (e.g. header \n ... \n footer)
         old_raw_lines = [l.strip() for l in old_text.splitlines()]
@@ -1715,19 +1819,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                             new_content += "\n"
                         new_content += "".join(content_lines[tail_match_idx:])
 
-                        status, payload = _validate_and_repair(
-                            new_content,
+                        return _commit_edit_and_format_result(
                             p,
+                            new_content,
+                            content,
                             project_root,
-                            force=force,
-                            reject_on_stub=reject_on_stub,
+                            force,
+                            reject_on_stub,
+                            f"Surgically edited {path} (wildcard replaced block from line {head_match_idx + 1} to {tail_match_idx})",
                         )
-                        if status != "ok":
-                            return payload
-                        new_content = payload
-                        with open(p, "w", encoding="utf-8") as f:
-                            f.write(new_content)
-                        return f"Surgically edited {path} (wildcard replaced block from line {head_match_idx + 1} to {tail_match_idx})."
 
         # Tier 4: Anchor Matching (First line & Last line match uniquely)
         if len(old_norm) >= 3:
@@ -1754,19 +1854,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         new_content += "\n"
                     new_content += "".join(content_lines[l_idx + 1 :])
 
-                    status, payload = _validate_and_repair(
-                        new_content,
+                    return _commit_edit_and_format_result(
                         p,
+                        new_content,
+                        content,
                         project_root,
-                        force=force,
-                        reject_on_stub=reject_on_stub,
+                        force,
+                        reject_on_stub,
+                        f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})",
                     )
-                    if status != "ok":
-                        return payload
-                    new_content = payload
-                    with open(p, "w", encoding="utf-8") as f:
-                        f.write(new_content)
-                    return f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})."
 
         # Tier 5: Difflib similarity ratio matching (>= 60% similarity for small models)
         best_ratio = 0.0
@@ -1793,15 +1889,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += "".join(content_lines[best_diff_end:])
 
-            status, payload = _validate_and_repair(
-                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            return _commit_edit_and_format_result(
+                p,
+                new_content,
+                content,
+                project_root,
+                force,
+                reject_on_stub,
+                f"Surgically edited {path} (similarity replaced block with {int(best_ratio * 100)}% match at lines {best_diff_start + 1}-{best_diff_end})",
             )
-            if status != "ok":
-                return payload
-            new_content = payload
-            with open(p, "w", encoding="utf-8") as f:
-                f.write(new_content)
-            return f"Surgically edited {path} (similarity replaced block with {int(best_ratio * 100)}% match at lines {best_diff_start + 1}-{best_diff_end})."
 
         # Tier 6: Character-level subsequence matching for typo-ridden input
         best_subseq_len = 0
@@ -1838,15 +1934,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content += "\n"
             new_content += content[line_end:]
 
-            status, payload = _validate_and_repair(
-                new_content, p, project_root, force=force, reject_on_stub=reject_on_stub
+            return _commit_edit_and_format_result(
+                p,
+                new_content,
+                content,
+                project_root,
+                force,
+                reject_on_stub,
+                f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})",
             )
-            if status != "ok":
-                return payload
-            new_content = payload
-            with open(p, "w", encoding="utf-8") as f:
-                f.write(new_content)
-            return f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})."
 
         # All tiers failed — provide closest match as diagnostic
         closest_block = ""
@@ -1861,7 +1957,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 closest_line = i + 1
 
         hint = ""
-        if closest_ratio > 0.25:
+        if closest_ratio > 0.25 and closest_block:
             snippet = closest_block.strip()[:250]
             hint = (
                 f"\n⚠️ Closest match found ({int(closest_ratio * 100)}% similar, around line {closest_line}):\n"
@@ -1871,7 +1967,8 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         return (
             f"Edit failed: Could not find a matching block for 'old_text' in {path}.\n"
-            f"HINT: Always call READ_FILE first to view current line numbers and exact indentation.{hint}"
+            f"CRITICAL ANTI-LOOP MANDATE: DO NOT retry EDIT_FILE with memory-reconstructed 'old_text'. "
+            f"You MUST execute READ_FILE('{path}') first to inspect the exact lines, OR execute WRITE_FILE('{path}', content=...) to update the file directly.{hint}"
         )
     except Exception as e:
         return f"Error editing file: {e}"
@@ -2454,8 +2551,11 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
 
         tasks = data.get("tasks", [])
         if action in ("add_subtask", "add_task"):
+            existing_ids = [str(t.get("id") or "") for t in tasks]
             if not task_id:
-                task_id = f"task_{len(tasks) + 1}"
+                from core.tools.task_helpers import _stable_task_id
+
+                task_id = _stable_task_id(existing_ids)
             new_task = {
                 "id": task_id,
                 "description": description or f"Sub-task {task_id}",
@@ -2476,35 +2576,59 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
             data["tasks"] = tasks
             with open(g_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+
+            # Mirror into implementation_plan.md + tasks.md so the added subtask
+            # survives any subsequent sync (canonical store merge never drops it).
+            from core.tools.task_helpers import (
+                insert_task_into_plan,
+                sync_workspace_tasks,
+            )
+
+            insert_task_into_plan(
+                project_root, new_task["description"], status="pending"
+            )
+            sync_workspace_tasks(project_root)
             return f"Successfully added sub-task '{task_id}' to goal spec."
 
         elif action in ("skip_task", "skip"):
             if not task_id:
                 return "UPDATE_TASK_GRAPH action 'skip_task' requires 'task_id'."
             found = False
+            task_desc = ""
             for t in tasks:
-                if t.get("id") == task_id:
+                if t.get("id") == task_id or t.get("description") == task_id:
                     t["status"] = "skipped"
+                    task_desc = t.get("description") or t.get("id")
                     found = True
                     break
             if not found:
                 return f"Task '{task_id}' not found in goal spec."
             with open(g_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+
+            from core.tools.task_helpers import mark_task_status
+
+            mark_task_status(project_root, task_desc or task_id, status="skipped")
             return f"Task '{task_id}' marked as SKIPPED."
 
         elif action in ("update_status", "status"):
             status_val = args.get("status", "pending")
             found = False
+            task_desc = ""
             for t in tasks:
-                if t.get("id") == task_id:
+                if t.get("id") == task_id or t.get("description") == task_id:
                     t["status"] = status_val
+                    task_desc = t.get("description") or t.get("id")
                     found = True
                     break
             if not found:
                 return f"Task '{task_id}' not found in goal spec."
             with open(g_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+
+            from core.tools.task_helpers import mark_task_status
+
+            mark_task_status(project_root, task_desc or task_id, status=status_val)
             return f"Task '{task_id}' status updated to '{status_val}'."
 
         else:
@@ -2576,7 +2700,6 @@ def tool_set_phase_impl(args: dict, project_root: str) -> str:
     reason = args.get("reason", "")
     reason_str = f" Reason: {reason}" if reason else ""
     return f"Agent phase switched to '{phase}' successfully.{reason_str}"
-
 
 
 # ── GIT tool ────────────────────────────────────────────────────────────────
@@ -2834,3 +2957,89 @@ def tool_inspect_web_impl(args: dict, project_root: str) -> str:
         return res.to_markdown()
     except Exception as e:
         return f"Error during web outcome inspection: {e}"
+
+
+def tool_play_and_verify_game_impl(args: dict, project_root: str) -> str:
+    """Plays an HTML game autonomously, analyzing frame buffers and runtime events."""
+    path = str(args.get("path", "")).strip()
+    duration_ms = int(args.get("duration_ms", args.get("wait_ms", 3000)))
+    return play_and_verify_game(
+        path=path, duration_ms=duration_ms, project_root=project_root
+    )
+
+
+def tool_self_improve_game_impl(args: dict, project_root: str) -> str:
+    """Executes closed-loop autonomous repair and verification on an HTML game."""
+    path = str(args.get("path", "")).strip()
+    max_iterations = int(args.get("max_iterations", 3))
+    duration_ms = int(args.get("duration_ms", 2500))
+    return self_improve_game(
+        path=path,
+        max_iterations=max_iterations,
+        duration_ms=duration_ms,
+        project_root=project_root,
+    )
+
+
+def play_and_verify_game(
+    path: str = "",
+    duration_ms: int = 3000,
+    project_root: str = ".",
+    **kwargs: Any,
+) -> str:
+    """Plays an HTML game autonomously, analyzing frame buffers and runtime events."""
+    if not path:
+        return "PLAY_AND_VERIFY_GAME requires 'path' parameter."
+
+    from pathlib import Path
+
+    full_path = (
+        Path(project_root) / path if not Path(path).is_absolute() else Path(path)
+    )
+
+    try:
+        from core.execution.game_inspector import HtmlGamePlayer
+
+        player = HtmlGamePlayer(
+            output_dir=Path(project_root) / ".torchlight" / "screenshots"
+        )
+        res = player.play_and_verify(
+            file_path=str(full_path)
+            if not path.startswith(("http://", "https://"))
+            else path,
+            duration_ms=duration_ms,
+        )
+        return res.to_markdown()
+    except Exception as e:
+        return f"Error playing and verifying HTML game: {e}"
+
+
+def self_improve_game(
+    path: str = "",
+    max_iterations: int = 3,
+    duration_ms: int = 2500,
+    project_root: str = ".",
+    **kwargs: Any,
+) -> str:
+    """Executes closed-loop autonomous repair and verification on an HTML game."""
+    if not path:
+        return "SELF_IMPROVE_GAME requires 'path' parameter."
+
+    from pathlib import Path
+
+    full_path = (
+        Path(project_root) / path if not Path(path).is_absolute() else Path(path)
+    )
+
+    try:
+        from core.execution.game_self_improver import GameSelfImprover
+
+        improver = GameSelfImprover(project_root=Path(project_root))
+        report = improver.run_self_improvement_cycle(
+            file_path=str(full_path),
+            max_iterations=max_iterations,
+            duration_ms=duration_ms,
+        )
+        return report.to_markdown()
+    except Exception as e:
+        return f"Error executing HTML game self-improvement cycle: {e}"

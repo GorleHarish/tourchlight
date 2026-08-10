@@ -234,7 +234,7 @@ class TranscriptView(VerticalScroll):
     working.
     """
 
-    MAX_CHILDREN = 120
+    MAX_CHILDREN = 35
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

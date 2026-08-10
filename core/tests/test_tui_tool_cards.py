@@ -31,6 +31,15 @@ def test_summarize_args():
     assert "argument(s)" in no_key
 
 
+def test_target_from_args_line_ranges():
+    from rlm_optimized.tui_widgets.tool_card import ToolCallCard
+
+    assert ToolCallCard._target_from_args({"path": "src/main.py", "start_line": 10, "end_line": 25}) == "src/main.py:L10-L25"
+    assert ToolCallCard._target_from_args({"path": "src/main.py", "start_line": 10}) == "src/main.py:L10"
+    assert ToolCallCard._target_from_args({"path": "src/main.py", "symbol": "foo_func"}) == "src/main.py:foo_func"
+    assert ToolCallCard._target_from_args({"path": "src/main.py:10-25"}) == "src/main.py:10-25"
+
+
 def test_truncate_output():
     from rlm_optimized.tui_widgets.tool_card import truncate_output
 

@@ -2,6 +2,25 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v2.8.0] - 2026-08-10
+
+### Fixed
+- **Production-Ready GBNF Grammar v2.2 (`rlm_optimized/grammar.gbnf`)**: Fixed the post-v2.1 parser regression where the agent rambled prose instead of emitting tool calls, stalling the solve loop until the token budget was exhausted.
+  - **Reasoning Rule Removed**: `reasoning ::= [^<\x00]+` accepted any prose, masking EOS tokens (`<|im_end>`, `</s>` contain `<`), so prose answers never reached `finish_reason: stop` and burned the full 2048-token budget. Reasoning now lives in `implementation_plan.md` (already mandated by the system prompt).
+  - **Single-Action Root**: `root ::= step+` forced a second action after every valid tool call, so generation continued past a complete call and rambled. Now `root ::= action ws` — one action per response, chains driven by the engine loop.
+  - **Tool Whitelist Parity**: Added `SET_PHASE`, `PLAY_AND_VERIFY_GAME`, `SELF_IMPROVE_GAME` to both `tool-name-val` and `tool-name-str`, matching the 22-tool registry (previously advertised but token-blocked).
+  - All multi-line rule alternatives flattened to single-line (TurboQuant GBNF parser compatibility), unbounded wildcards replaced with bounded char classes, and `<ERROR>` retry tag retained.
+- **Stop-Token Handling**: Added `</tool_call>`, `</WRITE_FILE>`, `</ERROR>` to the llama-server stop list in `rlm_optimized/llamacpp_client.py` and to `_STOP_TAG_PAIRS` in `rlm_optimized/rlm_engine_optimized.py`, so `_repair_stop_tokens` re-appends stripped closing tags for the parser.
+- **RFC 8259 JSON Examples (`rlm_optimized/prompts.py`)**: Converted all single-quoted `<tool_call>` JSON examples to double quotes (with correct f-string escaping), fixing invalid JSON in the injected system prompt.
+
+### Added
+- **Regression Tests (`rlm_optimized/test_grammar_parse.py`)**: Whitelist↔registry parity test (against `core/tools/schemas.py` `TOOL_SCHEMAS`), no-reasoning-rule guard, single-action-root guard, and live probe asserting a well-formed `<tool_call>` with `finish_reason == "stop"`.
+- **Chat Phase Prompt Directive (`core/prompts/system.py`)**: `PHASE_PROMPTS["chat"]` now instructs the model to wrap conversational answers in `<FINAL_ANSWER>...</FINAL_ANSWER>` to satisfy the single-action grammar.
+
+### Notes
+- Session summarization intentionally bypasses grammar (`use_grammar=False`).
+- Added `web` extra (`playwright>=1.60.0`) to `core/pyproject.toml`; installed into system Python 3.9 matching the already-cached Chromium 1223 revision. This resolves the previously environmental-only failures in `core/tests/test_game_self_improver.py` (all 459 core tests now pass).
+
 ## [v2.7.0] - 2026-08-04
 
 ### Added & Improved

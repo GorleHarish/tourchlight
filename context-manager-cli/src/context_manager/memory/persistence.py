@@ -259,7 +259,12 @@ class SessionPersistence:
                 memory.messages.append(msg)
 
             # Recalculate token count from loaded messages
-            memory._total_tokens = sum(m.token_count for m in memory.messages)
+            memory._cached_msg_tokens = sum(m.token_count for m in memory.messages)
+            if hasattr(memory, "_total_tokens"):
+                try:
+                    delattr(memory, "_total_tokens")
+                except AttributeError:
+                    pass
             return True
 
         except (json.JSONDecodeError, KeyError):

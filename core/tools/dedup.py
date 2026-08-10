@@ -51,6 +51,49 @@ def compute_payload_hash(tool_name: str, args: Any) -> str:
     return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
 
+def get_alternate_trajectory_hint(tool_name: str) -> str:
+    """
+    Generate tool-specific actionable guidance for breaking trajectory lock when duplicate calls occur.
+    """
+    t_upper = (tool_name or "").strip().upper()
+
+    if t_upper in ("EDIT_FILE", "EDIT"):
+        return (
+            "💡 Alternate trajectory guidance for EDIT_FILE:\n"
+            "1. Use READ_FILE to inspect exact line numbers, indentation/whitespace, and surrounding context.\n"
+            "2. Switch to WRITE_FILE to overwrite full file contents cleanly if surgical replacement/diff matching fails or returns 'No change'.\n"
+            "3. If using EDIT_FILE, specify exact line ranges ('start_line'/'end_line') or target 'symbol_name'."
+        )
+
+    if t_upper in ("WRITE_FILE", "WRITE"):
+        return (
+            "💡 Alternate trajectory guidance for WRITE_FILE:\n"
+            "1. Use READ_FILE to inspect current file content and verify whether your intended changes were already written.\n"
+            "2. Switch to EDIT_FILE with targeted 'old_text'/'new_text' or 'start_line'/'end_line' ranges for surgical edits."
+        )
+
+    if t_upper in ("RUN_COMMAND", "EXECUTE", "EXECUTE_SHELL", "SHELL", "COMMAND", "RUN"):
+        return (
+            "💡 Alternate trajectory guidance for command execution:\n"
+            "1. Do NOT re-run the exact same command payload without modifications.\n"
+            "2. Use READ_FILE or GREP to inspect relevant source code, test tracebacks, or config files first.\n"
+            "3. Modify command arguments/flags, fix underlying code errors, or run a targeted diagnostic command."
+        )
+
+    if t_upper in ("SEARCH_AST", "GREP"):
+        return (
+            f"💡 Alternate trajectory guidance for {t_upper}:\n"
+            "1. Modify your search query, use regex patterns, or broaden search scope/directories.\n"
+            "2. Use READ_FILE directly on target files if search results are unclear."
+        )
+
+    return (
+        f"💡 Alternate trajectory guidance for {t_upper}:\n"
+        "1. Try an alternative tool (e.g., READ_FILE, WRITE_FILE, SEARCH_AST, GREP).\n"
+        "2. Modify parameter values or line ranges, or present findings with <FINAL_ANSWER>."
+    )
+
+
 class TrajectoryLock:
     """
     Rolling-window deduplication lock for non-read-only tool calls.
@@ -63,6 +106,7 @@ class TrajectoryLock:
         # History entries: (payload_hash, tool_name, normalized_args)
         self.history: List[Tuple[str, str, Any]] = []
         self.consecutive_counts: dict[str, int] = {}
+        self.payload_outputs: dict[str, str] = {}
 
     def is_duplicate(self, tool_name: str, args: Any) -> Tuple[bool, int, str]:
         """
@@ -80,11 +124,24 @@ class TrajectoryLock:
         if in_history:
             dup_count = count + 1
             tool_upper = (tool_name or "").strip().upper()
+
+            prior_error_ctx = ""
+            last_out = self.payload_outputs.get(payload_hash, "")
+            if last_out:
+                out_snippet = last_out.strip()
+                if len(out_snippet) > 350:
+                    out_snippet = out_snippet[:350] + "..."
+                prior_error_ctx = (
+                    f"\n\nPrior execution output for this exact payload:\n"
+                    f"```\n{out_snippet}\n```"
+                )
+
+            alt_guidance = get_alternate_trajectory_hint(tool_name)
             hint = (
                 f"⚠️ Trajectory Lock: You previously called '{tool_upper}' with identical or "
-                f"semantically-equivalent arguments {dup_count} time(s). "
-                f"Do NOT repeat the exact same parameters. Try an alternative tool or approach, "
-                f"or present your findings with <FINAL_ANSWER>."
+                f"semantically-equivalent arguments {dup_count} time(s).{prior_error_ctx}\n\n"
+                f"{alt_guidance}\n\n"
+                f"Do NOT repeat the exact same parameters. Address any errors above by taking one of the alternate paths, or present your findings with <FINAL_ANSWER>."
             )
             return True, dup_count, hint
 
@@ -92,7 +149,7 @@ class TrajectoryLock:
 
     def register(self, tool_name: str, args: Any) -> str:
         """
-        Record a executed tool call payload into the rolling history window.
+        Record an executed tool call payload into the rolling history window.
         """
         payload_hash = compute_payload_hash(tool_name, args)
         norm_args = normalize_tool_args(args)
@@ -101,14 +158,25 @@ class TrajectoryLock:
         self.history.append((payload_hash, tool_upper, norm_args))
         if len(self.history) > self.window_size:
             evicted = self.history.pop(0)
-            # Reset count if no longer in window
+            # Reset count and output if no longer in window
             if not any(h[0] == evicted[0] for h in self.history):
                 self.consecutive_counts.pop(evicted[0], None)
+                self.payload_outputs.pop(evicted[0], None)
 
         self.consecutive_counts[payload_hash] = self.consecutive_counts.get(payload_hash, 0) + 1
         return payload_hash
+
+    def record_output(self, tool_name: str, args: Any, output: str) -> None:
+        """
+        Record execution output associated with a tool payload hash for error diagnostic feedback.
+        """
+        payload_hash = compute_payload_hash(tool_name, args)
+        if output:
+            self.payload_outputs[payload_hash] = str(output).strip()[:600]
 
     def reset(self) -> None:
         """Clear rolling trajectory history."""
         self.history.clear()
         self.consecutive_counts.clear()
+        self.payload_outputs.clear()
+

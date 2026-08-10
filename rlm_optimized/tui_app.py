@@ -231,7 +231,8 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
         background: rgba(0, 0, 0, 0.7);
     }
     #approval-dialog {
-        width: 84;
+        width: 90%;
+        max-width: 84;
         max-height: 85%;
         border: round $primary;
         background: $surface;
@@ -397,7 +398,8 @@ class FolderPickerModal(ModalScreen[Optional[str]]):
         align: center middle;
     }
     #picker-dialog {
-        width: 86;
+        width: 92%;
+        max-width: 86;
         height: 90%;
     }
     #picker-jumps {
@@ -534,7 +536,8 @@ class ModelPickerModal(ModalScreen[Optional[dict]]):
         align: center middle;
     }
     #model-dialog {
-        width: 76;
+        width: 90%;
+        max-width: 76;
         height: 80%;
     }
     """
@@ -624,7 +627,8 @@ class CopySelectionModal(ModalScreen[Optional[str]]):
         align: center middle;
     }
     #copy-dialog {
-        width: 84;
+        width: 90%;
+        max-width: 84;
         height: 80%;
     }
     """
@@ -689,7 +693,8 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
         align: center middle;
     }
     #mode-dialog {
-        width: 74;
+        width: 90%;
+        max-width: 74;
         height: auto;
         max-height: 85%;
         background: $surface;
@@ -790,7 +795,8 @@ class FileActionModal(ModalScreen[str]):
         background: rgba(0, 0, 0, 0.7);
     }
     #file-action-dialog {
-        width: 62;
+        width: 90%;
+        max-width: 62;
         height: auto;
         padding: 1 2;
         background: $panel;
@@ -874,7 +880,8 @@ class AgentStatusModal(ModalScreen[None]):
         align: center middle;
     }
     #status-dialog {
-        width: 88;
+        width: 92%;
+        max-width: 88;
         height: 85%;
     }
     #status-metrics-row {
@@ -1002,6 +1009,78 @@ class AgentStatusModal(ModalScreen[None]):
         self.dismiss(None)
 
 
+class TaskManagerModal(ModalScreen[None]):
+    """Modal dialog for interactive workspace task management & inspection."""
+
+    BINDINGS = [
+        ("escape", "dismiss_modal", "Close"),
+        ("c", "mark_completed", "Complete Task"),
+        ("s", "mark_skipped", "Skip Task"),
+        ("r", "refresh_view", "Refresh"),
+    ]
+
+    DEFAULT_CSS = """
+    TaskManagerModal {
+        align: center middle;
+    }
+    #task-manager-dialog {
+        width: 90%;
+        max-width: 80;
+        height: 70%;
+        background: $surface;
+        border: solid $accent;
+        padding: 1 2;
+    }
+    """
+
+    def __init__(self, project_root: str):
+        super().__init__()
+        self.project_root = project_root
+
+    def compose(self) -> ComposeResult:
+        from rlm_optimized.tui_widgets.task_tree import TaskTreeWidget
+
+        with VerticalScroll(id="task-manager-dialog"):
+            yield Static(
+                "[bold cyan]📋 Workspace Task Manager[/] [dim](Press [C] Complete, [S] Skip, [Esc] Close)[/]\n"
+            )
+            yield TaskTreeWidget(self.project_root, id="modal-task-tree")
+
+    def action_dismiss_modal(self) -> None:
+        self.dismiss(None)
+
+    def action_mark_completed(self) -> None:
+        from core.tools.task_helpers import (
+            get_active_task_description,
+            mark_task_status,
+        )
+
+        active_desc = get_active_task_description(self.project_root)
+        if active_desc:
+            mark_task_status(self.project_root, active_desc, status="completed")
+            self.action_refresh_view()
+
+    def action_mark_skipped(self) -> None:
+        from core.tools.task_helpers import (
+            get_active_task_description,
+            mark_task_status,
+        )
+
+        active_desc = get_active_task_description(self.project_root)
+        if active_desc:
+            mark_task_status(self.project_root, active_desc, status="skipped")
+            self.action_refresh_view()
+
+    def action_refresh_view(self) -> None:
+        try:
+            from rlm_optimized.tui_widgets.task_tree import TaskTreeWidget
+
+            tree = self.query_one("#modal-task-tree", TaskTreeWidget)
+            tree.update_tasks(self.project_root)
+        except Exception:  # noqa: BLE001, S110
+            pass
+
+
 # ── Main Codex IDE App ──────────────────────────────────────────────────
 
 # ── Shortcuts & Help Modal ──────────────────────────────────────────────────
@@ -1019,7 +1098,8 @@ class ShortcutsHelpModal(ModalScreen[None]):
         align: center middle;
     }
     #help-dialog {
-        width: 76;
+        width: 90%;
+        max-width: 76;
         height: auto;
         max-height: 85%;
         background: $surface;
@@ -1275,6 +1355,7 @@ class TorchlightApp(App):
         Binding("ctrl+n", "compact_context", "Compact Context", show=False),
         Binding("ctrl+o", "open_folder", "Open Folder", show=False),
         Binding("ctrl+u", "attach_context", "Attach Context", show=True),
+        Binding("ctrl+k", "task_manager", "Tasks", show=True),
         Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=False),
         Binding("ctrl+x", "copy_selection", "Copy Selection", show=False),
         Binding("ctrl+y", "copy_chat", "Copy Chat", show=False),
@@ -1332,6 +1413,13 @@ class TorchlightApp(App):
         self._connection_pill: Optional[ConnectionPill] = None
         self._center_empty_state: Optional[CenterEmptyState] = None
         self._model_connected: bool = False  # tracks live connection state
+
+    @property
+    def project_root(self) -> str:
+        """Return the current project root path from engine or working directory."""
+        if hasattr(self, "engine") and getattr(self.engine, "project_root", None):
+            return self.engine.project_root
+        return os.getcwd()
 
     @property
     def _is_test_env(self) -> bool:
@@ -1407,6 +1495,25 @@ class TorchlightApp(App):
         try:
             memory_widget = self.query_one("#agent-memory-panel", AgentMemoryWidget)
             self.call_after_refresh(memory_widget.update_memory)
+        except Exception:
+            pass
+
+    def _handle_tasks_changed(self, snapshot: dict) -> None:
+        """Realtime task-state updates surfaced to the Output log."""
+        try:
+            import datetime as _dt
+
+            ts = _dt.datetime.now().strftime("%H:%M:%S")
+            pending = snapshot.get("pending", [])
+            done = snapshot.get("completed", 0)
+            running = snapshot.get("in_progress", 0)
+            label = (
+                f"[{ts}] 📋 Tasks: {done} done, {running} running, "
+                f"{len(pending)} pending"
+            )
+            self.append_output_log(label, severity="info")
+            for p in pending[:3]:
+                self.append_output_log(f"[{ts}]   ⏳ {p}", severity="info")
         except Exception:
             pass
 
@@ -1903,8 +2010,6 @@ class TorchlightApp(App):
             import psutil
 
             cpu_val = psutil.cpu_percent(interval=None)
-            if cpu_val == 0.0:
-                cpu_val = psutil.cpu_percent(interval=0.03)
             cpu_pct = min(100, max(0, int(round(cpu_val))))
 
             vm = psutil.virtual_memory()
@@ -1921,29 +2026,36 @@ class TorchlightApp(App):
                 cpu_pct = 0
 
             try:
-                import subprocess
+                import time as _t
+                now_sys = _t.time()
+                if now_sys - getattr(self, "_vm_stat_ts", 0.0) < 5.0 and hasattr(self, "_vm_stat_ram_pct"):
+                    ram_pct = self._vm_stat_ram_pct
+                else:
+                    import subprocess
 
-                p = subprocess.run(
-                    ["vm_stat"], capture_output=True, text=True, timeout=2
-                )
-                lines = p.stdout.splitlines()
-                pages = {}
-                for line in lines[1:]:
-                    parts = line.split(":")
-                    if len(parts) == 2:
-                        key = parts[0].strip()
-                        val = int(parts[1].strip().rstrip("."))
-                        pages[key] = val
-                page_size = 4096
-                free = (
-                    pages.get("Pages free", 0) + pages.get("Pages speculative", 0)
-                ) * page_size
-                active = pages.get("Pages active", 0) * page_size
-                wired = pages.get("Pages wired down", 0) * page_size
-                compressed = pages.get("Pages occupied by compressor", 0) * page_size
-                used = active + wired + compressed
-                total = used + free + (pages.get("Pages inactive", 0) * page_size)
-                ram_pct = int((used / total) * 100) if total > 0 else 0
+                    p = subprocess.run(
+                        ["vm_stat"], capture_output=True, text=True, timeout=2
+                    )
+                    lines = p.stdout.splitlines()
+                    pages = {}
+                    for line in lines[1:]:
+                        parts = line.split(":")
+                        if len(parts) == 2:
+                            key = parts[0].strip()
+                            val = int(parts[1].strip().rstrip("."))
+                            pages[key] = val
+                    page_size = 4096
+                    free = (
+                        pages.get("Pages free", 0) + pages.get("Pages speculative", 0)
+                    ) * page_size
+                    active = pages.get("Pages active", 0) * page_size
+                    wired = pages.get("Pages wired down", 0) * page_size
+                    compressed = pages.get("Pages occupied by compressor", 0) * page_size
+                    used = active + wired + compressed
+                    total = used + free + (pages.get("Pages inactive", 0) * page_size)
+                    ram_pct = int((used / total) * 100) if total > 0 else 0
+                    self._vm_stat_ts = now_sys
+                    self._vm_stat_ram_pct = ram_pct
             except Exception:
                 ram_pct = 0
 
@@ -2004,16 +2116,37 @@ class TorchlightApp(App):
         return str(mode).lower() == "goal"
 
     def _build_plan_overview_text(self) -> str:
+        import time as _t
+        now = _t.time()
+        if now - getattr(self, "_plan_overview_ts", 0.0) < 2.0 and hasattr(self, "_plan_overview_cache"):
+            return self._plan_overview_cache
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        return build_plan_overview_text(project_root, self._is_goal_mode())
+        res = build_plan_overview_text(project_root, self._is_goal_mode())
+        self._plan_overview_ts = now
+        self._plan_overview_cache = res
+        return res
 
     def _build_task_checklist_text(self) -> str:
+        import time as _t
+        now = _t.time()
+        if now - getattr(self, "_task_checklist_ts", 0.0) < 2.0 and hasattr(self, "_task_checklist_cache"):
+            return self._task_checklist_cache
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        return build_task_checklist_text(project_root, self._is_goal_mode())
+        res = build_task_checklist_text(project_root, self._is_goal_mode())
+        self._task_checklist_ts = now
+        self._task_checklist_cache = res
+        return res
 
     def _build_plan_text(self) -> str:
+        import time as _t
+        now = _t.time()
+        if now - getattr(self, "_plan_text_ts", 0.0) < 2.0 and hasattr(self, "_plan_text_cache"):
+            return self._plan_text_cache
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        return build_plan_text(project_root, self._is_goal_mode())
+        res = build_plan_text(project_root, self._is_goal_mode())
+        self._plan_text_ts = now
+        self._plan_text_cache = res
+        return res
 
     def _build_context_progress_text(self) -> str:
         tokens_est = self._live_context_tokens()
@@ -2379,6 +2512,10 @@ class TorchlightApp(App):
             return
         await self._submit_user_input()
 
+    def action_task_manager(self) -> None:
+        """Open the interactive Task Manager modal screen."""
+        self.push_screen(TaskManagerModal(self.project_root))
+
     def stop_current_agent(self) -> None:
         if not self._is_running:
             return
@@ -2437,7 +2574,6 @@ class TorchlightApp(App):
     def _auto_refresh_engine_status(self) -> None:
         try:
             self.update_status_bar()
-            self.update_sidebar_meta()
             self._update_running_indicator()
 
             if getattr(self, "_server_starting", False):
@@ -2539,7 +2675,7 @@ class TorchlightApp(App):
 
         try:
             if not self._is_test_env:
-                self.set_interval(1.0, self.update_sidebar_meta)
+                self.set_interval(2.0, self.update_sidebar_meta)
         except Exception:
             pass
 
@@ -2580,7 +2716,7 @@ class TorchlightApp(App):
 
         try:
             if not self._is_test_env:
-                self.set_interval(1.0, self._auto_refresh_engine_status)
+                self.set_interval(2.0, self._auto_refresh_engine_status)
         except Exception:
             pass
 
@@ -2625,16 +2761,13 @@ class TorchlightApp(App):
                 "info": "dim",
             }.get(severity, "dim")
             from rich.markup import escape as _esc
+            import collections
 
-            existing = (
-                str(log_widget.renderable) if hasattr(log_widget, "renderable") else ""
-            )
-            # Keep last ~200 lines to avoid memory blowup
-            lines = existing.split("\n") if existing else []
-            lines.append(f"[{color}]{_esc(text)}[/]")
-            if len(lines) > 200:
-                lines = lines[-200:]
-            log_widget.update("\n".join(lines))
+            if not hasattr(self, "_output_log_deque"):
+                self._output_log_deque = collections.deque(maxlen=200)
+
+            self._output_log_deque.append(f"[{color}]{_esc(text)}[/]")
+            log_widget.update("\n".join(self._output_log_deque))
         except Exception:
             pass
 
@@ -2950,14 +3083,16 @@ class TorchlightApp(App):
             if not container.is_attached:
                 container = self.query_one("#chat-container")
             if container.is_attached:
-                container.mount(widget)
-                # Keep maximum 120 elements in chat container to prevent scroll overflow & DOM memory bloat
-                if len(container.children) > 120:
-                    try:
-                        container.children[0].remove()
-                    except Exception:
-                        pass
-                self.call_after_refresh(self._scroll_chat_to_end)
+                if hasattr(container, "append_card"):
+                    container.append_card(widget, scroll=True)
+                else:
+                    container.mount(widget)
+                    if len(container.children) > 35:
+                        try:
+                            container.children[0].remove()
+                        except Exception:
+                            pass
+                    self.call_after_refresh(self._scroll_chat_to_end)
         except Exception:
             pass
 
@@ -2984,6 +3119,7 @@ class TorchlightApp(App):
         self.engine.approval_fn = self._handle_approval
         self.engine.on_token = self._append_token
         self.engine.on_status_change = self._handle_status_change
+        self.engine.on_tasks_changed = self._handle_tasks_changed
 
         # Sync execution_mode from memory state into the engine
         # so solve_async selects the correct system prompt.
@@ -3297,7 +3433,18 @@ class TorchlightApp(App):
 
                 # Complete the pending card created while streaming, or mount a
                 # fresh completed card (engines that don't stream markers).
-                card = self._pending_tool_card
+                card = None
+                if (
+                    self._pending_tool_card is not None
+                    and getattr(self, "_pending_tool_name", None) == label
+                ):
+                    card = self._pending_tool_card
+                elif self._pending_tool_card is not None:
+                    try:
+                        self._pending_tool_card.remove()
+                    except Exception:
+                        pass
+
                 self._pending_tool_card = None
                 self._pending_tool_name = None
                 if card is None:
@@ -3770,7 +3917,7 @@ class TorchlightApp(App):
             FolderPickerModal(initial_path=self.engine.project_root), _on_folder_picked
         )
 
-    @work(thread=True)
+    @work(exclusive=True, group="ast_indexer", thread=True)
     def _start_ast_indexing(self) -> None:
         """Build the AST knowledge graph silently in background thread."""
         target = self.engine.project_root
@@ -4097,6 +4244,24 @@ class TorchlightApp(App):
             if ev.get("state") == "TOOL_DENIED"
             or "ERROR" in str(ev.get("state", "")).upper()
         )
+        task_prog = ""
+        try:
+            from core.tools.task_helpers import get_workspace_task_status_summary
+
+            tsummary = get_workspace_task_status_summary(self.project_root)
+            tot = tsummary.get("total_count", 0)
+            comp = tsummary.get("completed_count", 0)
+            cur = tsummary.get("current_task")
+            if tot > 0:
+                c_desc = (
+                    cur["description"][:25] + "..."
+                    if cur and len(cur["description"]) > 25
+                    else (cur["description"] if cur else "")
+                )
+                task_prog = f"{comp}/{tot} {c_desc}".strip()
+        except Exception:  # noqa: BLE001, S110
+            pass
+
         bar.update_status(
             state=getattr(self, "_agent_state", "IDLE"),
             model=self.model_name,
@@ -4109,6 +4274,7 @@ class TorchlightApp(App):
             port=self.engine_port,
             server_online=server_online,
             is_running=getattr(self, "_is_running", False),
+            task_progress=task_prog,
         )
 
         # Keep Agent tab context bar in sync
@@ -4139,18 +4305,37 @@ class TorchlightApp(App):
 
     def _git_branch(self) -> str:
         try:
+            head_file = os.path.join(self.engine.project_root, ".git", "HEAD")
+            if os.path.exists(head_file):
+                with open(head_file, "r", encoding="utf-8") as f:
+                    ref = f.read().strip()
+                if ref.startswith("ref: refs/heads/"):
+                    return ref[16:]
+                if len(ref) >= 7:
+                    return ref[:7]
+        except Exception:
+            pass
+
+        import time as _t
+        now = _t.time()
+        if now - getattr(self, "_git_branch_ts", 0.0) < 5.0 and hasattr(self, "_git_branch_cache"):
+            return self._git_branch_cache
+        try:
             proc = subprocess.run(
                 ["git", "branch", "--show-current"],
                 cwd=self.engine.project_root,
                 capture_output=True,
                 text=True,
-                timeout=5,
+                timeout=2,
                 check=False,
             )
             name = proc.stdout.strip()
-            return name if proc.returncode == 0 and name else ""
+            res = name if proc.returncode == 0 and name else ""
         except Exception:
-            return ""
+            res = ""
+        self._git_branch_ts = now
+        self._git_branch_cache = res
+        return res
 
     def _refresh_git_tree(self) -> None:
         """Repoint the file tree at the engine root and refresh git status."""

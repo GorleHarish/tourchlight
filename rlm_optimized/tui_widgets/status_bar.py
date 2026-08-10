@@ -64,6 +64,7 @@ def build_status_segments(
     port: int = 0,
     server_online: bool = False,
     is_running: bool = False,
+    task_progress: str = "",
 ) -> dict[str, str]:
     """Build the per-segment Rich markup for the status bar.
 
@@ -71,6 +72,7 @@ def build_status_segments(
       ``sb-state``  — phase badge + server status indicator
       ``sb-model``  — model name (muted; hidden when offline)
       ``sb-gauge``  — proportional block bar + % (hidden when offline)
+      ``sb-task``   — live task progress pill
       ``sb-tps``    — token speed (hidden when not generating)
       ``sb-tokens`` — token count (hidden when offline)
       ``sb-errors`` — error counter (always shown when > 0)
@@ -109,10 +111,13 @@ def build_status_segments(
         else ""
     )
 
+    task_str = f"[bold yellow]🎯 {escape(task_progress)}[/]" if task_progress else ""
+
     return {
         "sb-state": f"{badge} [dim]│[/] {srv}",
         "sb-model": model_str,
         "sb-gauge": gauge_str,
+        "sb-task": task_str,
         "sb-tps": tps_str,
         "sb-tokens": ctx,
         "sb-errors": err_str,
@@ -160,6 +165,7 @@ class StatusBar(Horizontal):
         yield Static("", id="sb-state", classes="sb-segment")
         yield Static("", id="sb-model", classes="sb-segment sb-model")
         yield Static("", id="sb-gauge", classes="sb-segment")
+        yield Static("", id="sb-task", classes="sb-segment")
         yield Static("", id="sb-tps", classes="sb-segment")
         yield Static("", id="sb-tokens", classes="sb-segment")
         yield Static("", id="sb-errors", classes="sb-segment")

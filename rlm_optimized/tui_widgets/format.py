@@ -141,9 +141,9 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
     if in_progress_tasks:
         sections.append("[bold yellow]► IN PROGRESS[/bold yellow]\n" + "\n".join(in_progress_tasks))
     if active_tasks:
-        sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks[:8]))
+        sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks))
     if completed_tasks:
-        sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks[:8]))
+        sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks))
 
     task_list_markup = "\n\n".join(sections)
     return f"{prog_str}\n\n{task_list_markup}"
@@ -259,9 +259,9 @@ def build_plan_text(project_root: str, is_goal: bool = False) -> str:
         if in_progress_tasks:
             sections.append("[bold yellow]► IN PROGRESS[/bold yellow]\n" + "\n".join(in_progress_tasks))
         if active_tasks:
-            sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks[:8]))
+            sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks))
         if completed_tasks:
-            sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks[:8]))
+            sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks))
 
         task_list_markup = "\n\n".join(sections)
 

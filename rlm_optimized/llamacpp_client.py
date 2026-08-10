@@ -15,6 +15,15 @@ from rlm_optimized.config import (
     TOP_P,
     USE_GRAMMAR_CONSTRAINT,
 )
+from core.api.base import InferenceParams, detect_model_traits
+
+# Local models at ~8-12 tok/s can legitimately take minutes on a large
+# (multi-thousand-token) context. The previous 60s timeout caused the client
+# to drop the connection mid-generation, which made llama-server cancel the
+# task ("srv stop: cancel task") and killed the whole solve loop. 300s is a
+# safe bound for streaming reads; the engine's per-chunk stall guard still
+# detects genuine hangs much sooner.
+REQUEST_TIMEOUT = int(os.environ.get("RLM_REQUEST_TIMEOUT", "300"))
 
 
 def _sanitize_messages(messages: list) -> list:
@@ -63,9 +72,18 @@ class LlamaCppClient:
     def __init__(self, base_url: str = LOCAL_API_BASE_URL, model: str = MODEL_NAME):
         self.base_url = base_url.rstrip("/")
         self.model = model
-        self.temperature = TEMPERATURE
+        self.traits = detect_model_traits(self.model)
+        calibrated = InferenceParams.for_model_and_phase(self.model, "code")
+        self.temperature = calibrated.temperature
+        self.repeat_penalty = calibrated.repeat_penalty
+        self.presence_penalty = calibrated.presence_penalty
+        self.frequency_penalty = calibrated.frequency_penalty
+        self.min_p = calibrated.min_p
         self._grammar_content = self._load_grammar()
-        print(f"[LlamaCppClient] connecting to {self.base_url} (model={self.model})")
+        print(
+            f"[LlamaCppClient] connecting to {self.base_url} (model={self.model}, "
+            f"rep_pen={self.repeat_penalty}, temp={self.temperature})"
+        )
 
     def _load_grammar(self) -> Optional[str]:
         if not USE_GRAMMAR_CONSTRAINT:
@@ -120,14 +138,18 @@ class LlamaCppClient:
                 "messages": cleaned_messages,
                 "temperature": self.temperature,
                 "top_p": TOP_P,
+                "min_p": getattr(self, "min_p", 0.05),
                 "max_tokens": NUM_PREDICT,
-                "presence_penalty": 0.1,
-                "frequency_penalty": 0.0,
+                "presence_penalty": getattr(self, "presence_penalty", 0.0),
+                "frequency_penalty": getattr(self, "frequency_penalty", 0.0),
                 "stop": [
+                    "</tool_call>",
+                    "</WRITE_FILE>",
                     "</TOOL>",
                     "</CODE>",
                     "</FINAL_ANSWER>",
                     "</SUB_QUERY>",
+                    "</ERROR>",
                     "</action>",
                     "\nAction:",
                     "Action:",
@@ -139,7 +161,8 @@ class LlamaCppClient:
                 ],
             }
             if include_extra:
-                p["repeat_penalty"] = 1.1
+                if getattr(self, "repeat_penalty", 1.0) != 1.0:
+                    p["repeat_penalty"] = getattr(self, "repeat_penalty", 1.0)
                 if use_grammar and self._grammar_content:
                     p["grammar"] = self._grammar_content
             return p
@@ -165,7 +188,7 @@ class LlamaCppClient:
                 req = urllib.request.Request(
                     request_url, data=data, headers=headers, method="POST"
                 )
-                with urllib.request.urlopen(req, timeout=60) as response:
+                with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as response:
                     res_body = json.loads(response.read().decode("utf-8"))
                     return _extract_content(res_body)
             except urllib.error.HTTPError as e:
@@ -194,7 +217,7 @@ class LlamaCppClient:
                                 method="POST",
                             )
                             with urllib.request.urlopen(
-                                req_std, timeout=60
+                                req_std, timeout=REQUEST_TIMEOUT
                             ) as response:
                                 res_body = json.loads(response.read().decode("utf-8"))
                                 return _extract_content(res_body)
@@ -235,15 +258,18 @@ class LlamaCppClient:
                 "messages": cleaned_messages,
                 "temperature": self.temperature,
                 "top_p": TOP_P,
+                "min_p": getattr(self, "min_p", 0.05),
                 "max_tokens": NUM_PREDICT,
-                "repeat_penalty": 1.1,
-                "presence_penalty": 0.1,
-                "frequency_penalty": 0.0,
+                "presence_penalty": getattr(self, "presence_penalty", 0.0),
+                "frequency_penalty": getattr(self, "frequency_penalty", 0.0),
                 "stop": [
+                    "</tool_call>",
+                    "</WRITE_FILE>",
                     "</TOOL>",
                     "</CODE>",
                     "</FINAL_ANSWER>",
                     "</SUB_QUERY>",
+                    "</ERROR>",
                     "</action>",
                     "\nAction:",
                     "Action:",
@@ -256,6 +282,8 @@ class LlamaCppClient:
                 "stream": True,
             }
             if include_extra:
+                if getattr(self, "repeat_penalty", 1.0) != 1.0:
+                    p["repeat_penalty"] = getattr(self, "repeat_penalty", 1.0)
                 if use_grammar and self._grammar_content:
                     p["grammar"] = self._grammar_content
             return p
@@ -267,7 +295,7 @@ class LlamaCppClient:
                 headers=headers,
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=60) as response:
+            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as response:
                 for line in response:
                     line_str = line.decode("utf-8").strip()
                     if not line_str.startswith("data: "):

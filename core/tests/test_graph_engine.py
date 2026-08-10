@@ -120,3 +120,84 @@ class Processor:
     subgraph_res = graph.get_subgraph("Processor", max_depth=2)
     assert "Subgraph for `module.py::Processor`" in subgraph_res
 
+
+def test_html_script_indexing(tmp_path: Path):
+    html_file = tmp_path / "index.html"
+    html_file.write_text("""<!DOCTYPE html>
+<html>
+<body>
+  <script>
+    function drawSnake() {
+      console.log("snake");
+    }
+    const updateGame = () => {
+      drawSnake();
+    };
+  </script>
+</body>
+</html>""")
+
+    graph = ProjectGraph(tmp_path)
+    graph.build()
+
+    struct = graph.get_structure()
+    assert "index.html" in struct
+    assert "drawSnake" in struct
+    assert "updateGame" in struct
+
+
+def test_empty_graph_json_rebuild(tmp_path: Path):
+    # Simulate empty graph JSON created previously
+    dot_t = tmp_path / ".torchlight"
+    dot_t.mkdir()
+    (dot_t / "graph.json").write_text('{"nodes": {}, "edges": []}')
+
+    # Create new file in project
+    app_py = tmp_path / "app.py"
+    app_py.write_text("def start_server(): pass")
+
+    graph = get_project_graph(str(tmp_path))
+    struct = graph.get_structure()
+
+    assert "app.py" in struct
+    assert "start_server" in struct
+
+
+def test_tree_sitter_hybrid_fallback(tmp_path: Path):
+    from core.flashlight import graph_engine
+
+    # Test fallback behavior when HAS_TREE_SITTER is False
+    orig_flag = graph_engine.HAS_TREE_SITTER
+    try:
+        graph_engine.HAS_TREE_SITTER = False
+        app_py = tmp_path / "main.py"
+        app_py.write_text("def main_entry(): pass\nclass CoreApp: pass")
+
+        graph = ProjectGraph(tmp_path)
+        graph.build()
+
+        struct = graph.get_structure()
+        assert "main.py" in struct
+        assert "main_entry" in struct
+        assert "CoreApp" in struct
+    finally:
+        graph_engine.HAS_TREE_SITTER = orig_flag
+
+
+def test_mtime_incremental_build(tmp_path: Path):
+    f1 = tmp_path / "foo.py"
+    f1.write_text("def foo_func(): pass")
+
+    graph = ProjectGraph(tmp_path)
+    graph.build()
+
+    assert "foo.py" in graph.nodes
+    assert "foo.py::foo_func" in graph.nodes
+    orig_mtime = graph.nodes["foo.py"].get("mtime")
+    assert orig_mtime > 0
+
+    # Second build without modifying file — should reuse node
+    graph.build()
+    assert graph.nodes["foo.py"].get("mtime") == orig_mtime
+    assert "foo.py::foo_func" in graph.nodes
+

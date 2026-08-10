@@ -13,6 +13,7 @@ from rlm_optimized.config import (
 )
 from rlm_optimized.repl_sandbox import REPLSandbox
 from core.prompts.system import get_phase_system_prompt
+from core.api.base import InferenceParams
 from rlm_optimized.prompts import build_step_message
 from core.tools.registry import get_tool_registry
 from core.tools.classification import CONFIRM, REVIEW
@@ -73,7 +74,7 @@ from core.tools.parser import (
     strip_interleaved_prose,
     unwrap_double_encoded_json,
 )
-from core.tools.dedup import TrajectoryLock
+from core.tools.dedup import TrajectoryLock, get_alternate_trajectory_hint
 
 
 def _looks_like_prose_or_outline(content: str) -> bool:
@@ -146,14 +147,22 @@ def _looks_like_full_file(content: str, path: str = "", project_root: str = "") 
     if not content:
         return False
     lines = [ln for ln in content.strip().splitlines() if ln.strip()]
-    
+
     # If target file exists on disk, compare snippet size with existing file
-    full_p = os.path.join(project_root, path) if project_root and not os.path.isabs(path) else path
+    full_p = (
+        os.path.join(project_root, path)
+        if project_root and not os.path.isabs(path)
+        else path
+    )
     if os.path.exists(full_p) and os.path.isfile(full_p):
         try:
             with open(full_p, "r", encoding="utf-8", errors="ignore") as f:
                 existing_lines = [ln for ln in f.read().splitlines() if ln.strip()]
-            if len(existing_lines) >= 10 and len(lines) < 15 and len(lines) < len(existing_lines) * 0.5:
+            if (
+                len(existing_lines) >= 10
+                and len(lines) < 15
+                and len(lines) < len(existing_lines) * 0.5
+            ):
                 # Snippet is significantly smaller than existing file -> partial snippet!
                 return False
         except Exception:
@@ -162,11 +171,30 @@ def _looks_like_full_file(content: str, path: str = "", project_root: str = "") 
     if len(lines) >= 15:
         return True
     ext = os.path.splitext(path)[1].lower() if path else ""
-    if ext in (".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".java", ".c", ".cpp", ".rb", ".php"):
+    if ext in (
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".c",
+        ".cpp",
+        ".rb",
+        ".php",
+    ):
         # Check for top-level code declarations / imports
-        if re.search(r"^\s*(?:import|from|require|package|use|#include)\b", content, re.MULTILINE):
+        if re.search(
+            r"^\s*(?:import|from|require|package|use|#include)\b", content, re.MULTILINE
+        ):
             return True
-        if re.search(r"^\s*(?:def|class|function|const|let|var|pub\s+fn|func)\b", content, re.MULTILINE):
+        if re.search(
+            r"^\s*(?:def|class|function|const|let|var|pub\s+fn|func)\b",
+            content,
+            re.MULTILINE,
+        ):
             return True
     elif ext in (".html", ".json", ".yaml", ".yml", ".md", ".toml", ".xml"):
         return True
@@ -247,6 +275,7 @@ class RLMEngineOptimized:
         approval_fn: Optional[Callable[[str, str, dict], bool]] = None,
         on_token: Optional[Callable[[str], None]] = None,
         on_status_change: Optional[Callable[[dict], None]] = None,
+        on_tasks_changed: Optional[Callable[[dict], None]] = None,
         enable_debate: bool = False,
         debate_verifier: Optional[object] = None,
         execution_mode: Optional[str] = None,
@@ -261,6 +290,7 @@ class RLMEngineOptimized:
         self.on_status_change = (
             on_status_change  # callback for real-time telemetry state
         )
+        self.on_tasks_changed = on_tasks_changed  # callback for real-time task state
         self.max_depth = max_depth
         self.project_root = project_root or os.getcwd()
         if ensure_project_initialized:
@@ -305,6 +335,7 @@ class RLMEngineOptimized:
         mem = getattr(self, "_memory", None)
         if mem and hasattr(mem, "state"):
             from core.memory.models import ExecutionMode
+
             try:
                 mem.state.execution_mode = ExecutionMode(str_val)
             except ValueError:
@@ -368,17 +399,51 @@ class RLMEngineOptimized:
             except Exception:
                 pass
 
+    def _notify_tasks_changed(self, details: Optional[dict] = None) -> None:
+        """Notify listeners (dashboard/TUI) that task state changed after a tool call."""
+        snapshot = {"pending": [], "in_progress": 0, "completed": 0, "skipped": 0}
+        try:
+            from core.tools.task_helpers import get_workspace_pending_tasks
+
+            snapshot["pending"] = get_workspace_pending_tasks(self.project_root)[:5]
+            goal_path = os.path.join(self.project_root, ".torchlight", "goal_spec.json")
+            if os.path.exists(goal_path):
+                import json as _json
+
+                with open(goal_path, "r", encoding="utf-8") as f:
+                    gdata = _json.load(f)
+                for t in gdata.get("tasks", []):
+                    st = t.get("status", "pending")
+                    if st in ("completed", "verified"):
+                        snapshot["completed"] += 1
+                    elif st in ("in_progress", "active"):
+                        snapshot["in_progress"] += 1
+                    elif st in ("skipped", "skip"):
+                        snapshot["skipped"] += 1
+        except Exception:
+            pass
+        if details:
+            snapshot.update(details)
+        if self.on_tasks_changed:
+            try:
+                self.on_tasks_changed(snapshot)
+            except Exception:
+                pass
+        self._notify_status("TASKS_CHANGED", snapshot)
+
     def _sandbox_llm_query(self, prompt: str) -> str:
         return self.client.query(prompt)
 
     # Stop tokens used by the LLM — the server strips these from output,
     # so we need to re-append them for the parser to match properly.
     _STOP_TAG_PAIRS = [
+        ("<tool_call>", "</tool_call>"),
         ("<WRITE_FILE", "</WRITE_FILE>"),
         ("<TOOL", "</TOOL>"),
         ("<CODE>", "</CODE>"),
         ("<FINAL_ANSWER>", "</FINAL_ANSWER>"),
         ("<SUB_QUERY>", "</SUB_QUERY>"),
+        ("<ERROR>", "</ERROR>"),
         ("<action>", "</action>"),
     ]
 
@@ -397,13 +462,20 @@ class RLMEngineOptimized:
     async def _stream_llm(self, messages: list[dict]) -> str:
         """Stream LLM response token-by-token cleanly without thread deadlocks."""
         loop = asyncio.get_running_loop()
+        use_grammar = getattr(self, "_current_phase", "code") != "chat"
         if hasattr(self.client, "stream_chat_with_history"):
             queue = asyncio.Queue()
             sentinel = object()
 
             def _worker():
                 try:
-                    for chunk in self.client.stream_chat_with_history(messages):
+                    try:
+                        stream = self.client.stream_chat_with_history(
+                            messages, use_grammar=use_grammar
+                        )
+                    except TypeError:
+                        stream = self.client.stream_chat_with_history(messages)
+                    for chunk in stream:
                         loop.call_soon_threadsafe(queue.put_nowait, chunk)
                 except Exception as e:
                     loop.call_soon_threadsafe(queue.put_nowait, e)
@@ -416,9 +488,14 @@ class RLMEngineOptimized:
             while True:
                 try:
                     chunk = await asyncio.wait_for(queue.get(), timeout=60.0)
-                except asyncio.TimeoutError:
-                    # LLM server stopped responding mid-stream — abort
-                    break
+                except asyncio.TimeoutError as exc:
+                    # LLM server stopped responding mid-stream. Raise a
+                    # transient error instead of silently returning a truncated
+                    # (possibly mid-tool-call) response so callers retry rather
+                    # than feeding garbage into _parse_response.
+                    raise asyncio.TimeoutError(
+                        "LLM stream stalled: no tokens for 60s (timed out)"
+                    ) from exc
                 if isinstance(chunk, Exception):
                     raise chunk
                 if chunk is sentinel:
@@ -437,10 +514,75 @@ class RLMEngineOptimized:
             response = "".join(chunks)
             return self._repair_stop_tokens(response)
         else:
-            raw = await loop.run_in_executor(
-                None, self.client.chat_with_history, messages
-            )
+            def _call_chat():
+                try:
+                    return self.client.chat_with_history(
+                        messages, use_grammar=use_grammar
+                    )
+                except TypeError:
+                    return self.client.chat_with_history(messages)
+
+            raw = await loop.run_in_executor(None, _call_chat)
             return self._repair_stop_tokens(raw)
+
+    # Timeout / connection errors are transient — the server may simply be
+    # slow or momentarily stalled (common with local models). These must NOT
+    # terminate the whole solve loop the way genuine fatal errors do.
+    _TRANSIENT_LLM_ERROR_KEYWORDS = (
+        "timed out",
+        "timeout",
+        "connection error",
+        "connection refused",
+        "connection reset",
+        "urlopen",
+        "read timeout",
+        "connect timeout",
+        "pool timeout",
+        "server not responding",
+        "no response",
+        "broken pipe",
+        "connection aborted",
+        "socket",
+    )
+
+    def _is_transient_llm_error(self, err_str: str) -> bool:
+        """True when an LLM error string looks like a transient server stall that
+        a short retry can recover from (as opposed to a fatal programming error)."""
+        if not err_str:
+            return False
+        return any(k in err_str for k in self._TRANSIENT_LLM_ERROR_KEYWORDS)
+
+    async def _stream_llm_with_retry(
+        self,
+        messages: list[dict],
+        retries: int = 2,
+        backoff: float = 2.0,
+    ) -> str:
+        """Stream an LLM response, retrying up to ``retries`` times on transient
+        server stalls (timeout / connection errors). Returns the first successful
+        response; re-raises the last error once retries are exhausted."""
+        last_err: Optional[Exception] = None
+        for attempt in range(retries + 1):
+            try:
+                return await self._stream_llm(messages)
+            except Exception as err:  # noqa: BLE001
+                if not self._is_transient_llm_error(str(err).lower()):
+                    raise
+                last_err = err
+                self._notify_status(
+                    "THINKING",
+                    {
+                        "status": (
+                            f"LLM server stall detected (attempt {attempt + 1}) — "
+                            f"retrying in {backoff}s"
+                        ),
+                        "error": str(err)[:120],
+                    },
+                )
+                await asyncio.sleep(backoff)
+                backoff = backoff * 2
+        assert last_err is not None
+        raise last_err
 
     def compact_context(self, memory=None, force: bool = True) -> tuple[int, int, int]:
         """Manually compact context memory and return (before, after, freed)."""
@@ -643,15 +785,14 @@ class RLMEngineOptimized:
         "abort",
         "kill",
         "oom",
-        "null",
-        "nil",
+        "nullpointer",
         "undefined",
-        "index",
-        "bounds",
+        "index error",
+        "indexerror",
+        "out of bounds",
         "overflow",
         "underflow",
-        "division",
-        "zero",
+        "division by zero",
         "nan",
         "inf",
         "assertion",
@@ -687,27 +828,6 @@ class RLMEngineOptimized:
         "ocsp",
         "crl",
         "dp",
-        "api",
-        "endpoint",
-        "route",
-        "path",
-        "url",
-        "uri",
-        "query",
-        "param",
-        "header",
-        "body",
-        "json",
-        "xml",
-        "yaml",
-        "form",
-        "multipart",
-        "file",
-        "upload",
-        "download",
-        "stream",
-        "buffer",
-        "chunk",
         "pipe",
         "channel",
         "socket",
@@ -915,13 +1035,35 @@ class RLMEngineOptimized:
                 return "plan"
 
         inp_lower = user_input.lower()
-        if any(w in inp_lower for w in ("write", "create file", "add file", "save file", "make file", "edit file", "build file", ".txt", ".py", ".js", ".ts", ".go", ".rs", ".java", ".json", ".html", ".css", ".md")):
-            return "code"
         combined = (user_input + " " + last_response).lower()
         if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
             return "troubleshoot"
         if any(s in combined for s in self._PLAN_SIGNALS):
             return "plan"
+        if any(
+            w in inp_lower
+            for w in (
+                "write",
+                "create file",
+                "add file",
+                "save file",
+                "make file",
+                "edit file",
+                "build file",
+                ".txt",
+                ".py",
+                ".js",
+                ".ts",
+                ".go",
+                ".rs",
+                ".java",
+                ".json",
+                ".html",
+                ".css",
+                ".md",
+            )
+        ):
+            return "code"
         if any(s in combined for s in self._CODE_SIGNALS):
             return "code"
         if current_mode == "goal":
@@ -937,17 +1079,24 @@ class RLMEngineOptimized:
         if phase_key in ("code", "plan", "troubleshoot", "chat"):
             self._current_phase = phase_key
             self._params_locked = True
-            presets = {
-                "plan": {"temperature": 0.7, "top_k": 50},
-                "code": {"temperature": 0.1, "top_k": 20},
-                "troubleshoot": {"temperature": 0.3, "top_k": 30},
-                "chat": {"temperature": 0.7, "top_k": 50},
-            }
-            preset = presets.get(phase_key, presets["code"])
+            model_name = getattr(self.client, "model", None) or getattr(
+                self.client, "model_name", None
+            )
+            calibrated = InferenceParams.for_model_and_phase(model_name, phase_key)
             if hasattr(self.client, "temperature"):
-                self.client.temperature = preset["temperature"]
+                self.client.temperature = calibrated.temperature
             if hasattr(self.client, "top_k"):
-                self.client.top_k = preset["top_k"]
+                self.client.top_k = calibrated.top_k
+            if hasattr(self.client, "top_p"):
+                self.client.top_p = calibrated.top_p
+            if hasattr(self.client, "min_p"):
+                self.client.min_p = calibrated.min_p
+            if hasattr(self.client, "repeat_penalty"):
+                self.client.repeat_penalty = calibrated.repeat_penalty
+            if hasattr(self.client, "presence_penalty"):
+                self.client.presence_penalty = calibrated.presence_penalty
+            if hasattr(self.client, "frequency_penalty"):
+                self.client.frequency_penalty = calibrated.frequency_penalty
             mem = getattr(self, "_memory", None)
             if mem and hasattr(mem, "update_system_prompt"):
                 mem.update_system_prompt(get_phase_system_prompt(phase_key))
@@ -962,18 +1111,24 @@ class RLMEngineOptimized:
         if phase == getattr(self, "_current_phase", "code"):
             return
         self._current_phase = phase
-        # Update client temperature and other params based on phase
-        presets = {
-            "plan": {"temperature": 0.7, "top_k": 50},
-            "code": {"temperature": 0.1, "top_k": 20},
-            "troubleshoot": {"temperature": 0.3, "top_k": 30},
-            "chat": {"temperature": 0.7, "top_k": 50},
-        }
-        preset = presets.get(phase, presets["code"])
+        model_name = getattr(self.client, "model", None) or getattr(
+            self.client, "model_name", None
+        )
+        calibrated = InferenceParams.for_model_and_phase(model_name, phase)
         if hasattr(self.client, "temperature"):
-            self.client.temperature = preset["temperature"]
+            self.client.temperature = calibrated.temperature
         if hasattr(self.client, "top_k"):
-            self.client.top_k = preset["top_k"]
+            self.client.top_k = calibrated.top_k
+        if hasattr(self.client, "top_p"):
+            self.client.top_p = calibrated.top_p
+        if hasattr(self.client, "min_p"):
+            self.client.min_p = calibrated.min_p
+        if hasattr(self.client, "repeat_penalty"):
+            self.client.repeat_penalty = calibrated.repeat_penalty
+        if hasattr(self.client, "presence_penalty"):
+            self.client.presence_penalty = calibrated.presence_penalty
+        if hasattr(self.client, "frequency_penalty"):
+            self.client.frequency_penalty = calibrated.frequency_penalty
         mem = getattr(self, "_memory", None)
         if mem and hasattr(mem, "update_system_prompt"):
             mem.update_system_prompt(get_phase_system_prompt(phase))
@@ -992,7 +1147,9 @@ class RLMEngineOptimized:
             elif self.execution_mode == "goal":
                 phase = "code"  # Goal mode starts in code phase but can auto-detect
             elif self.execution_mode == "unified":
-                phase = "code"  # Unified mode defaults to code but enables auto-detection
+                phase = (
+                    "code"  # Unified mode defaults to code but enables auto-detection
+                )
             else:
                 phase = "code"
 
@@ -1060,7 +1217,7 @@ class RLMEngineOptimized:
                         _summarizer.simple_summarize if _summarizer else None
                     )
                     memory.compress_recent(
-                        summarizer_fn=summarizer_fn, preserve_first=2
+                        summarizer_fn=summarizer_fn, preserve_first=2, force=True
                     )
                 context = memory.get_context_for_llm(project_root=self.project_root)
             else:
@@ -1069,7 +1226,40 @@ class RLMEngineOptimized:
             self._notify_status(
                 "THINKING", {"depth": depth, "iteration": iteration + 1}
             )
-            response = await self._stream_llm(context)
+            try:
+                response = await self._stream_llm(context)
+            except Exception as llm_err:
+                err_str = str(llm_err).lower()
+                is_ctx_err = any(
+                    k in err_str
+                    for k in (
+                        "context",
+                        "prompt",
+                        "too long",
+                        "length",
+                        "token",
+                        "overflow",
+                        "400",
+                        "limit",
+                    )
+                )
+                if is_ctx_err and use_memory:
+                    self._notify_status(
+                        "THINKING",
+                        {
+                            "depth": depth,
+                            "status": "context overflow detected — force compacting context",
+                        },
+                    )
+                    self.compact_context(memory=memory, force=True)
+                    context = memory.get_context_for_llm(project_root=self.project_root)
+                    response = await self._stream_llm_with_retry(context)
+                elif self._is_transient_llm_error(err_str):
+                    # Timeout / connection stall — retry with backoff instead of
+                    # killing the whole solve loop on a transient server blip.
+                    response = await self._stream_llm_with_retry(context)
+                else:
+                    raise llm_err
             action, thinking, content, extra_queries, tool_name, tool_args = (
                 self._parse_response(response)
             )
@@ -1137,7 +1327,7 @@ class RLMEngineOptimized:
                         fb_ctx = self.feedback_loop.build_feedback_context()
                         rejection_reason = f"❌ [VERIFICATION GATE REJECTION]\nPost-edit tests are currently FAILING. You cannot yield a final answer until tests pass.\n\n{fb_ctx}\n\nDo not yield <FINAL_ANSWER>. Use tools (READ_FILE, EDIT_FILE, GREP, SEARCH_AST, RUN_COMMAND, INSPECT_WEB) to debug and resolve the failure."
 
-                    # 2. Check for pending goal sub-tasks in workspace task files (implementation_plan.md, tasks.md, goal_spec.json)
+                    # 2. Check for pending goal sub-tasks or zero tool executions before final answer
                     else:
                         try:
                             from core.tools.task_helpers import (
@@ -1147,14 +1337,58 @@ class RLMEngineOptimized:
                             pending_tasks = get_workspace_pending_tasks(
                                 self.project_root
                             )
-                            # Enforce task verification gate during active coding / troubleshoot phases
-                            if pending_tasks and phase in ("code", "troubleshoot"):
+                            executed_tools = sum(
+                                1
+                                for s in result.steps
+                                if s.tool_name or s.action in ("tool", "code")
+                            )
+
+                            is_info_query = phase == "chat" or any(
+                                q_kw in task.lower()
+                                for q_kw in [
+                                    "explain",
+                                    "why ",
+                                    "what is",
+                                    "what are",
+                                    "how to",
+                                    "how do",
+                                    "how does",
+                                    "describe",
+                                    "tell me",
+                                    "difference between",
+                                    "help me understand",
+                                ]
+                            )
+
+                            if pending_tasks and phase != "chat":
                                 task_descs = [f"- {t}" for t in pending_tasks[:3]]
                                 rejection_reason = (
                                     "❌ [VERIFICATION GATE REJECTION]\n"
                                     "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
                                     + "\n".join(task_descs)
-                                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls (READ_FILE, EDIT_FILE, WRITE_FILE, SEARCH_AST, RUN_COMMAND) to complete remaining tasks before yielding <FINAL_ANSWER>."
+                                )
+                            elif executed_tools == 0 and not is_info_query and any(
+                                kw in task.lower()
+                                for kw in [
+                                    "add",
+                                    "create",
+                                    "fix",
+                                    "write",
+                                    "update",
+                                    "modify",
+                                    "implement",
+                                    "build",
+                                    "run",
+                                    "delete",
+                                    "remove",
+                                    "change",
+                                    "refactor",
+                                ]
+                            ):
+                                rejection_reason = (
+                                    "❌ [VERIFICATION GATE REJECTION]\n"
+                                    "You yielded <FINAL_ANSWER> without executing any tools. You MUST execute tool calls (e.g. SEARCH_AST, READ_FILE, EDIT_FILE, WRITE_FILE, RUN_COMMAND) to inspect the workspace and perform the requested changes before yielding <FINAL_ANSWER>."
                                 )
                         except Exception:
                             pass
@@ -1179,6 +1413,36 @@ class RLMEngineOptimized:
                         getattr(self, "_final_answer_rejections", 0) + 1
                     )
                     if self._final_answer_rejections >= 2:
+                        # Mark remaining pending tasks in_progress so the state reflects
+                        # active-but-unresolved work, and log the blocker for anti-looping.
+                        try:
+                            from core.tools.task_helpers import (
+                                get_workspace_pending_tasks,
+                                mark_task_in_progress,
+                            )
+
+                            for pt in get_workspace_pending_tasks(self.project_root)[
+                                :3
+                            ]:
+                                mark_task_in_progress(self.project_root, pt)
+                            self._notify_tasks_changed({"reason": "gate_escalation"})
+                        except Exception:
+                            pass
+                        if hasattr(self, "memory") and self.memory:
+                            try:
+                                if hasattr(self.memory, "state") and hasattr(
+                                    self.memory.state, "tried_and_failed"
+                                ):
+                                    blocker = "FINAL_ANSWER blocked by verification gate after 2 attempts"
+                                    if (
+                                        blocker
+                                        not in self.memory.state.tried_and_failed
+                                    ):
+                                        self.memory.state.tried_and_failed.append(
+                                            blocker
+                                        )
+                            except Exception:
+                                pass
                         rejection_reason += (
                             "\n\n⚠️ [GATE ESCALATION] This is your FINAL rejection for this prompt. "
                             "If you yield a final answer again it will be accepted but marked UNRESOLVED. "
@@ -1199,7 +1463,10 @@ class RLMEngineOptimized:
 
                 # Gate exhausted or passed: if failures are still unresolved, surface
                 # them so callers/users never see a clean success on broken work.
-                if getattr(self, "_final_answer_rejections", 0) >= 2 and rejection_reason:
+                if (
+                    getattr(self, "_final_answer_rejections", 0) >= 2
+                    and rejection_reason
+                ):
                     if not content.startswith("[UNVERIFIED CHANGES]"):
                         content = f"[UNVERIFIED CHANGES]\n{content}"
                     result.gate_bypasses = getattr(self, "_final_answer_rejections", 0)
@@ -1207,7 +1474,9 @@ class RLMEngineOptimized:
                 if has_failing:
                     content = content + self._build_unresolved_failures_warning()
 
-                quality_score = (0.5 if has_failing else 1.0) * (0.5 if pending_tasks else 1.0)
+                quality_score = (0.5 if has_failing else 1.0) * (
+                    0.5 if pending_tasks else 1.0
+                )
                 result.quality_score = quality_score
 
                 step.result = content
@@ -1319,6 +1588,7 @@ class RLMEngineOptimized:
                     "GREP",
                     "SEARCH_AST",
                     "INSPECT_WEB",
+                    "PLAY_AND_VERIFY_GAME",
                     "UPDATE_TASK_GRAPH",
                     "WEB_SEARCH",
                     "WEB_FETCH",
@@ -1333,9 +1603,12 @@ class RLMEngineOptimized:
                 tool_name_upper = tool_name.upper() if tool_name else ""
 
                 if tool_name_upper not in _READ_ONLY_TOOLS:
-                    is_dup, dup_count, hint = trajectory_lock.is_duplicate(tool_name, tool_args)
+                    is_dup, dup_count, hint = trajectory_lock.is_duplicate(
+                        tool_name, tool_args
+                    )
                     if is_dup:
-                        step.result = f"(duplicate — already executed {tool_name})"
+                        alt_hint = get_alternate_trajectory_hint(tool_name)
+                        step.result = f"(duplicate — already executed {tool_name})\n\n{alt_hint}"
                         result.steps.append(step)
                         if self.on_step:
                             self.on_step(step)
@@ -1348,7 +1621,11 @@ class RLMEngineOptimized:
                             },
                         )
 
-                        if use_memory and hasattr(memory, "state") and memory.state is not None:
+                        if (
+                            use_memory
+                            and hasattr(memory, "state")
+                            and memory.state is not None
+                        ):
                             if hasattr(memory.state, "tried_and_failed"):
                                 entry = f"Duplicate {tool_name_upper} call blocked ({dup_count}x)"
                                 if entry not in memory.state.tried_and_failed:
@@ -1412,15 +1689,23 @@ class RLMEngineOptimized:
                         {"tool_name": tool_name, "args": tool_args, "depth": depth},
                     )
                     if tool_name and tool_name.upper() == "SET_PHASE":
-                        target_phase = str(tool_args.get("phase", "code")).lower().strip()
+                        target_phase = (
+                            str(tool_args.get("phase", "code")).lower().strip()
+                        )
                         self.lock_phase(target_phase)
                         from core.tools.registry import ToolResult
-                        tool_result = ToolResult(success=True, output=f"Agent phase switched to '{target_phase}' successfully.")
+
+                        tool_result = ToolResult(
+                            success=True,
+                            output=f"Agent phase switched to '{target_phase}' successfully.",
+                        )
                     else:
                         tool_result = await asyncio.to_thread(
                             registry.execute, tool_name, tool_args, self.project_root
                         )
                     step.result = tool_result.output
+                    if tool_name_upper not in _READ_ONLY_TOOLS:
+                        trajectory_lock.record_output(tool_name, tool_args, tool_result.output)
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
@@ -1442,8 +1727,34 @@ class RLMEngineOptimized:
                         elif "EDIT_FILE" in tname_upper or "WRITE_FILE" in tname_upper:
                             fpath = tool_args.get("path") or tool_args.get("file", "")
                             if fpath:
+                                added = 0
+                                deleted = 0
+                                diff_m = re.search(
+                                    r"\(\+(\d+),\s*[-–](\d+)\)",
+                                    tool_result.output or "",
+                                )
+                                if diff_m:
+                                    added = int(diff_m.group(1))
+                                    deleted = int(diff_m.group(2))
+                                new_content = None
+                                full_p = (
+                                    os.path.join(self.project_root, fpath)
+                                    if not os.path.isabs(fpath)
+                                    else fpath
+                                )
+                                if os.path.exists(full_p):
+                                    try:
+                                        with open(full_p, "r", encoding="utf-8") as _f:
+                                            new_content = _f.read()
+                                    except Exception:
+                                        pass
                                 if hasattr(memory, "record_file_modified"):
-                                    memory.record_file_modified(fpath)
+                                    memory.record_file_modified(
+                                        fpath,
+                                        added=added,
+                                        deleted=deleted,
+                                        new_content=new_content,
+                                    )
                                 if hasattr(memory, "refresh_pin"):
                                     memory.refresh_pin(fpath, self.project_root)
 
@@ -1470,8 +1781,14 @@ class RLMEngineOptimized:
                             feedback += f"\n\n[AUTOMATIC POST-EDIT EXECUTION FEEDBACK]\n{fb_ctx}"
 
                     if tool_result.success:
-                        fpath = (tool_args.get("path") or tool_args.get("file", "")).lower()
-                        if "implementation_plan" in fpath or "tasks.md" in fpath or "goal_spec" in fpath:
+                        fpath = (
+                            tool_args.get("path") or tool_args.get("file", "")
+                        ).lower()
+                        if (
+                            "implementation_plan" in fpath
+                            or "tasks.md" in fpath
+                            or "goal_spec" in fpath
+                        ):
                             self._current_phase = "code"
                             try:
                                 from core.tools.task_helpers import sync_workspace_tasks
@@ -1479,8 +1796,38 @@ class RLMEngineOptimized:
                                 sync_workspace_tasks(self.project_root)
                             except Exception:
                                 pass
+                            self._notify_tasks_changed(
+                                {"tool_name": tool_name, "path": fpath}
+                            )
                             feedback += "\n\n🚀 Implementation plan created/updated successfully! Switched to SURGICAL CODING phase. Proceed immediately to execute open tasks (- [ ]) using tools (WRITE_FILE, EDIT_FILE, RUN_COMMAND, etc.)."
                         else:
+                            # Auto-sync task completion if written file matches an open task item.
+                            # Completion is gated on verification (no failing tests); otherwise
+                            # the task is marked in_progress so status is realtime, not late.
+                            try:
+                                from core.tools.task_helpers import (
+                                    auto_mark_task_completed_by_file,
+                                )
+
+                                if fpath:
+                                    has_failing = bool(
+                                        self.feedback_loop
+                                        and getattr(
+                                            self.feedback_loop,
+                                            "has_failing_tests",
+                                            False,
+                                        )
+                                    )
+                                    auto_mark_task_completed_by_file(
+                                        self.project_root,
+                                        fpath,
+                                        verified=not has_failing,
+                                    )
+                                self._notify_tasks_changed(
+                                    {"tool_name": tool_name, "path": fpath}
+                                )
+                            except Exception:
+                                pass
                             feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."
                     elif tool_name and "EDIT_FILE" in tool_name.upper():
                         # Inject READ_FILE nudge — small models often skip the read step
@@ -1808,7 +2155,7 @@ class RLMEngineOptimized:
             context = messages
 
         self._total_llm_calls += 1
-        response = await self._stream_llm(context)
+        response = await self._stream_llm_with_retry(context)
         _, _, final_content, _, _, _ = self._parse_response(response)
 
         if not final_content:
@@ -2057,17 +2404,45 @@ class RLMEngineOptimized:
                 pass
 
         # 3c. Check for single bare JSON tool call object (e.g. {"name": "EDIT_FILE", "arguments": ...})
-        if "{" in response and any(k in response for k in ('"name"', '"tool"', '"action"', '"tool_name"')):
+        if "{" in response and any(
+            k in response for k in ('"name"', '"tool"', '"action"', '"tool_name"')
+        ):
             try:
-                codeblock_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", response, re.IGNORECASE)
-                json_str = codeblock_match.group(1) if codeblock_match else _extract_balanced_json_object(response)
+                codeblock_match = re.search(
+                    r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", response, re.IGNORECASE
+                )
+                json_str = (
+                    codeblock_match.group(1)
+                    if codeblock_match
+                    else _extract_balanced_json_object(response)
+                )
                 if json_str:
                     p_name, p_args, _ = parse_tool_call_payload(json_str)
                     if p_name:
                         t_name = str(p_name).upper()
                         from core.tools.schemas import TOOL_SCHEMAS
-                        if t_name in TOOL_SCHEMAS or t_name in ("WRITE_FILE", "EDIT_FILE", "READ_FILE", "SEARCH_AST", "GREP", "RUN_COMMAND", "VERIFY", "INSPECT_WEB", "GIT", "SAVE_MEMORY", "UPDATE_TASK_GRAPH", "ASK_USER"):
-                            start_pos = response.find(json_str) if json_str in response else response.find("{")
+
+                        if t_name in TOOL_SCHEMAS or t_name in (
+                            "WRITE_FILE",
+                            "EDIT_FILE",
+                            "READ_FILE",
+                            "SEARCH_AST",
+                            "GREP",
+                            "RUN_COMMAND",
+                            "VERIFY",
+                            "INSPECT_WEB",
+                            "PLAY_AND_VERIFY_GAME",
+                            "SELF_IMPROVE_GAME",
+                            "GIT",
+                            "SAVE_MEMORY",
+                            "UPDATE_TASK_GRAPH",
+                            "ASK_USER",
+                        ):
+                            start_pos = (
+                                response.find(json_str)
+                                if json_str in response
+                                else response.find("{")
+                            )
                             thinking = _get_thinking(max(0, start_pos))
                             return (
                                 "tool",
@@ -2274,7 +2649,11 @@ class RLMEngineOptimized:
                 file_match_pre = None
                 if not file_match:
                     # 2. Try to extract from text preceding the block
-                    if current_phase not in ("chat", "troubleshoot", "plan") or current_mode in ("unified", "goal"):
+                    if current_phase not in (
+                        "chat",
+                        "troubleshoot",
+                        "plan",
+                    ) or current_mode in ("unified", "goal"):
                         pre_text = response[: block_match.start()].strip()
                         recent_pre = (
                             "\n".join(pre_text.splitlines()[-6:]) if pre_text else ""
@@ -2290,10 +2669,7 @@ class RLMEngineOptimized:
                 if file_match and current_mode != "chat":
                     # Explicit in-block annotation ALWAYS triggers unless session mode is explicitly Chat
                     target_path = (
-                        file_match.group(1)
-                        .replace("*/", "")
-                        .replace("-->", "")
-                        .strip()
+                        file_match.group(1).replace("*/", "").replace("-->", "").strip()
                     )
                     # Remove only the explicit file annotation line
                     content = re.sub(
@@ -2317,7 +2693,9 @@ class RLMEngineOptimized:
                         else target_path
                     )
                     proj_r = getattr(self, "project_root", "") or ""
-                    if os.path.exists(full_p) and not _looks_like_full_file(content, target_path, proj_r):
+                    if os.path.exists(full_p) and not _looks_like_full_file(
+                        content, target_path, proj_r
+                    ):
                         # Skip destructive overwrite of an existing file by a small snippet or prose
                         continue
 
@@ -2365,7 +2743,7 @@ class RLMEngineOptimized:
 
         execution_intent = bool(
             re.search(
-                r"\b(?:I\s+will|let\s*me|I\s+need\s+to|going\s+to|will\s+start\s+by|create|write|inspect)\s+.*?\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|RUN_COMMAND|INSPECT_WEB|WEB_SEARCH|WEB_FETCH)\b",
+                r"\b(?:I\s+will|let\s*me|I\s+need\s+to|going\s+to|will\s+start\s+by|create|write|inspect|play|verify)\s+.*?\b(?:LIST_DIR|READ_FILE|EDIT_FILE|WRITE_FILE|GREP|SEARCH_AST|RUN_COMMAND|INSPECT_WEB|PLAY_AND_VERIFY_GAME|SELF_IMPROVE_GAME|WEB_SEARCH|WEB_FETCH)\b",
                 cleaned_body,
                 re.IGNORECASE,
             )

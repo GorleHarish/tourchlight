@@ -139,6 +139,8 @@ Footer {
     height: 1fr;
     padding: 0 0;
     background: $background;
+    overflow-y: auto;
+    overflow-x: auto;
 }
 
 #active-editor-view {

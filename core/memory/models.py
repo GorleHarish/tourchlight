@@ -7,7 +7,7 @@ Shared data structures for message, session state, and memory objects.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 
 class MessageRole(Enum):
@@ -21,6 +21,22 @@ class ExecutionMode(str, Enum):
     UNIFIED = "unified"
     CHAT = "chat"
     GOAL = "goal"
+
+
+class MemoryEventType(str, Enum):
+    MESSAGE_ADDED = "message_added"
+    PIN_ADDED = "pin_added"
+    COMPACTION_TRIGGERED = "compaction_triggered"
+    TOKEN_OVERFLOW = "token_overflow"
+
+
+@dataclass
+class MemoryEvent:
+    event_type: MemoryEventType
+    message: Optional["Message"] = None
+    total_tokens: int = 0
+    token_ratio: float = 0.0
+    metadata: dict = field(default_factory=dict)
 
 
 
@@ -102,6 +118,9 @@ class SessionState:
 
     # File tracking
     files_modified: list[str] = field(default_factory=list)
+    files_modified_stats: dict[str, list[int]] = field(default_factory=dict)
+    files_baseline_content: dict[str, str] = field(default_factory=dict)
+    files_modified_symbols: dict[str, list[str]] = field(default_factory=dict)
     files_read: list[str] = field(default_factory=list)
 
     # Decision & architecture log
@@ -127,6 +146,9 @@ class SessionState:
 
     # Working set
     working_set: WorkingSetSnapshot = field(default_factory=WorkingSetSnapshot)
+
+    # Task DAG State
+    task_dag: Optional[Any] = None
 
 
 @dataclass

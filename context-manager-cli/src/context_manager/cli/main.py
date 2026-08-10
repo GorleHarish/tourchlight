@@ -523,8 +523,27 @@ class StreamingChatSession:
                     self._event_lock_phase("file_edit", name)
                     fpath = params.get("path") or params.get("file")
                     if fpath:
+                        added = 0
+                        deleted = 0
+                        diff_m = _re.search(r"\(\+(\d+),\s*[-–](\d+)\)", result.output or "")
+                        if diff_m:
+                            added = int(diff_m.group(1))
+                            deleted = int(diff_m.group(2))
+                        new_content = None
+                        full_p = _os.path.join(self.project_root, fpath) if not _os.path.isabs(fpath) else fpath
+                        if _os.path.exists(full_p):
+                            try:
+                                with open(full_p, "r", encoding="utf-8") as _f:
+                                    new_content = _f.read()
+                            except Exception:
+                                pass
                         if hasattr(self.memory, "record_file_modified"):
-                            self.memory.record_file_modified(fpath)
+                            self.memory.record_file_modified(
+                                fpath,
+                                added=added,
+                                deleted=deleted,
+                                new_content=new_content,
+                            )
                         self.memory.refresh_pin(fpath, self.project_root)
 
                 # Execution feedback: auto-run tests or web inspector after code changes

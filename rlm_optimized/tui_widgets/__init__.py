@@ -12,6 +12,7 @@ __all__ = [
     "file_tree",
     "format",
     "status_bar",
+    "task_tree",
     "thinking_block",
     "tool_card",
     "trajectory_rail",

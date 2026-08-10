@@ -1,5 +1,5 @@
 import pytest
-from core.api.base import InferenceParams, PRESETS
+from core.api.base import InferenceParams, PRESETS, detect_model_traits
 
 
 def test_inference_params_defaults():
@@ -82,4 +82,47 @@ def test_llamacpp_client_context_size_error(monkeypatch):
 
     assert "llama-server context limit exceeded" in str(exc_info.value)
     assert "8211 tokens" in str(exc_info.value)
+
+
+def test_detect_model_traits():
+    t_2b = detect_model_traits("gemma-2b-it")
+    assert t_2b["is_small_model"] is True
+    assert t_2b["is_reasoning"] is False
+    assert t_2b["param_size_b"] == 2.0
+
+    t_7b = detect_model_traits("qwen2.5-coder-7b-instruct")
+    assert t_7b["is_small_model"] is False
+    assert t_7b["is_reasoning"] is False
+    assert t_7b["param_size_b"] == 7.0
+
+    t_r1 = detect_model_traits("deepseek-r1-distill-qwen-7b")
+    assert t_r1["is_reasoning"] is True
+    assert t_r1["param_size_b"] == 7.0
+
+    # Edge cases: GGUF files, Ollama docker tags, and relative file paths
+    t_gguf = detect_model_traits("qwen2.5-coder-7b.gguf")
+    assert t_gguf["param_size_b"] == 7.0
+
+    t_ollama = detect_model_traits("ollama/qwen2.5-coder:7b")
+    assert t_ollama["param_size_b"] == 7.0
+
+    t_path = detect_model_traits("models/gemma-2b.bin")
+    assert t_path["param_size_b"] == 2.0
+
+
+def test_for_model_and_phase():
+    # 2B model gets repeat_penalty >= 1.05
+    p_2b = InferenceParams.for_model_and_phase("gemma-2b", "code")
+    assert p_2b.repeat_penalty >= 1.05
+
+    # 7B model gets repeat_penalty == 1.03 for code
+    p_7b = InferenceParams.for_model_and_phase("qwen2.5-coder-7b", "code")
+    assert p_7b.repeat_penalty == 1.03
+
+    # Reasoning model gets repeat_penalty == 1.00 and presence_penalty == 0.0
+    p_r1 = InferenceParams.for_model_and_phase("deepseek-r1-distill-qwen-7b", "plan")
+    assert p_r1.repeat_penalty == 1.00
+    assert p_r1.presence_penalty == 0.0
+    assert p_r1.temperature == 0.60
+
 

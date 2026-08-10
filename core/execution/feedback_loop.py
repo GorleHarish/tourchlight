@@ -311,15 +311,50 @@ class ExecutionFeedbackLoop:
 
             if html_files:
                 try:
-                    from core.execution.web_inspector import WebOutcomeInspector
-
-                    inspector = WebOutcomeInspector(
-                        output_dir=self.project_root / ".torchlight" / "screenshots"
-                    )
                     target_file = (
                         Path(html_files[0])
                         if Path(html_files[0]).is_absolute()
                         else self.project_root / html_files[0]
+                    )
+                    content_preview = ""
+                    if target_file.exists():
+                        content_preview = target_file.read_text(encoding="utf-8", errors="replace").lower()
+
+                    # Check if HTML file is a game / canvas app
+                    if "<canvas" in content_preview or "game" in target_file.name.lower() or "canvas" in target_file.name.lower():
+                        from core.execution.game_inspector import HtmlGamePlayer
+                        game_player = HtmlGamePlayer(
+                            output_dir=self.project_root / ".torchlight" / "screenshots"
+                        )
+                        game_res = game_player.play_and_verify(file_path=str(target_file), duration_ms=2000)
+                        if game_res.is_passed:
+                            self._files_modified_since_test.clear()
+
+                        status = (
+                            TestResultStatus.PASS
+                            if game_res.is_passed
+                            else TestResultStatus.FAIL
+                        )
+                        tr = TestResult(
+                            name=html_files[0],
+                            status=status,
+                            error_message="\n".join(
+                                game_res.console_errors + game_res.failed_requests
+                            ),
+                        )
+                        return TestRunResult(
+                            command=f"PLAY_AND_VERIFY_GAME {html_files[0]}",
+                            return_code=0 if game_res.is_passed else 1,
+                            duration_ms=game_res.duration_ms,
+                            results=[tr],
+                            stdout=game_res.to_markdown(),
+                            ran=True,
+                        )
+
+                    from core.execution.web_inspector import WebOutcomeInspector
+
+                    inspector = WebOutcomeInspector(
+                        output_dir=self.project_root / ".torchlight" / "screenshots"
                     )
                     res = inspector.inspect(file_path=str(target_file), wait_ms=1000)
                     self._last_web_result = res
@@ -347,7 +382,7 @@ class ExecutionFeedbackLoop:
                         ran=True,
                     )
                 except Exception as e:
-                    logger.warning(f"Auto Web Outcome Inspection failed: {e}")
+                    logger.warning(f"Auto Web/Game Outcome Inspection failed: {e}")
 
             # Nothing to verify (no test framework and no web files): record a
             # non-run so the gate does not misreport it as a passing or failing
