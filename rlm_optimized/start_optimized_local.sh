@@ -78,8 +78,8 @@ if [ "${TOTAL_RAM_GB:-0}" -le 8 ]; then
     log_info "🔒 8GB RAM detected (${TOTAL_RAM_GB}GB) — safe mode: CTX=${CTX_SIZE}, threads=${THREADS}"
 else
     CTX_SIZE=${CTX_SIZE:-12288}
-    THREADS=${THREADS:-8}
-    BATCH_SIZE=${BATCH_SIZE:-1024}
+    THREADS=${THREADS:-4}
+    BATCH_SIZE=${BATCH_SIZE:-512}
     log_info "✅ ${TOTAL_RAM_GB}GB RAM detected — TurboQuant base mode: CTX=${CTX_SIZE}, threads=${THREADS}"
 fi
 
@@ -148,6 +148,10 @@ if [[ "$MODEL_PATH" == *"qwen"* ]]; then
     KV_CACHE_TYPE_V="turbo4"
     FLASH_ATTENTION="on"
     REPEAT_PENALTY="1.0"
+elif [[ "$MODEL_PATH" == *"gemma"* ]]; then
+    # Use q4_0 for both K and V cache for Gemma models
+    KV_CACHE_TYPE_K="q4_0"
+    KV_CACHE_TYPE_V="q4_0"
 fi
 
 log_info "Booting llama-server with the following parameters:"

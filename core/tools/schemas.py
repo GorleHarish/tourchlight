@@ -92,7 +92,6 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
                 "old",
                 "find",
                 "search",
-                "target",
                 "original",
                 "search_text",
                 "old_code",

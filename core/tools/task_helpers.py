@@ -453,25 +453,30 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
     filled = int((done_count / max(1, total)) * 10)
     bar = "█" * filled + "░" * (10 - filled)
 
-    # Check budget pressure if budget object passed
+    # Check budget pressure if budget object passed (compress to 1-line when context usage > 45%)
     is_tight = False
     if budget is not None:
-        if hasattr(budget, "headroom_ratio"):
-            is_tight = budget.headroom_ratio < 0.25
+        if hasattr(budget, "context_usage_ratio"):
+            is_tight = budget.context_usage_ratio > 0.45
+        elif hasattr(budget, "headroom_ratio"):
+            is_tight = budget.headroom_ratio < 0.55
         elif hasattr(budget, "scratchpad_section_cap"):
             is_tight = budget.scratchpad_section_cap <= 3
 
     in_prog = [t for t in tasks if t["status"] in ("in_progress", "active", "verifying")]
     pending = [t for t in tasks if t["status"] == "pending"]
 
-    if is_tight:
-        active_str = _clean_task_text(in_prog[0]["description"]) if in_prog else (_clean_task_text(pending[0]["description"]) if pending else "None")
-        next_str = _clean_task_text(pending[0]["description"]) if (in_prog and pending) else (_clean_task_text(pending[1]["description"]) if len(pending) > 1 else "None")
+    if is_tight or total > 5:
+        active_raw = _clean_task_text(in_prog[0]["description"]) if in_prog else (_clean_task_text(pending[0]["description"]) if pending else "None")
+        next_raw = _clean_task_text(pending[0]["description"]) if (in_prog and pending) else (_clean_task_text(pending[1]["description"]) if len(pending) > 1 else "None")
+        active_str = active_raw[:35] + "..." if len(active_raw) > 38 else active_raw
+        next_str = next_raw[:35] + "..." if len(next_raw) > 38 else next_raw
         return [f"- Task Matrix: [{bar}] {done_count}/{total} Done ({percent}%) | Active: {active_str} | Next: {next_str}"]
 
     lines = [f"- Task Matrix: [{bar}] {done_count}/{total} Completed ({percent}%)"]
-    section_cap = budget.scratchpad_section_cap if budget and hasattr(budget, "scratchpad_section_cap") else 5
-    
+    section_cap = budget.scratchpad_section_cap if budget and hasattr(budget, "scratchpad_section_cap") else 3
+    section_cap = min(section_cap, 3)  # Cap at max 3 shown tasks in context to prevent context budget tax
+
     # Priority: active/verifying task -> next pending tasks -> blocked/failed tasks
     shown_tasks = []
     for t in in_prog:
@@ -486,8 +491,8 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
 
     for t in shown_tasks:
         desc = _clean_task_text(t["description"])
-        if len(desc) > 60:
-            desc = desc[:57] + "..."
+        if len(desc) > 38:
+            desc = desc[:35] + "..."
         badge = _status_badge(t["status"])
         lines.append(f"  • [{badge}] {desc}")
 

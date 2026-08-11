@@ -88,7 +88,8 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
                     if _norm(desc_raw) in seen:
                         continue
                     seen.add(_norm(desc_raw))
-                    desc = escape(desc_raw)
+                    desc_clean = desc_raw[:47] + "..." if len(desc_raw) > 50 else desc_raw
+                    desc = escape(desc_clean)
                     if st in ("verified", "completed"):
                         completed_tasks.append(f"[bold green]  [✓] {desc}[/bold green]")
                     elif st in ("in_progress", "active"):
@@ -102,7 +103,8 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
                     if _norm(desc_raw) in seen:
                         continue
                     seen.add(_norm(desc_raw))
-                    task_text = escape(desc_raw)
+                    task_text_clean = desc_raw[:47] + "..." if len(desc_raw) > 50 else desc_raw
+                    task_text = escape(task_text_clean)
                     if t["status"] == "completed":
                         completed_tasks.append(f"[bold green]  [✓] {task_text}[/bold green]")
                     elif t["status"] == "in_progress":
@@ -141,9 +143,21 @@ def build_task_checklist_text(project_root: str, is_goal: bool = False) -> str:
     if in_progress_tasks:
         sections.append("[bold yellow]► IN PROGRESS[/bold yellow]\n" + "\n".join(in_progress_tasks))
     if active_tasks:
-        sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks))
+        if len(active_tasks) > 3:
+            shown_up_next = active_tasks[:3]
+            overflow = len(active_tasks) - 3
+            shown_up_next.append(f"[dim]  + {overflow} more pending tasks (Press Ctrl+K)[/dim]")
+            sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(shown_up_next))
+        else:
+            sections.append("[bold white]UP NEXT[/bold white]\n" + "\n".join(active_tasks))
     if completed_tasks:
-        sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks))
+        if len(completed_tasks) > 2:
+            shown_completed = completed_tasks[:2]
+            overflow = len(completed_tasks) - 2
+            shown_completed.append(f"[dim]  + {overflow} completed tasks collapsed[/dim]")
+            sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(shown_completed))
+        else:
+            sections.append(f"[bold green]✓ COMPLETED ({len(completed_tasks)})[/bold green]\n" + "\n".join(completed_tasks))
 
     task_list_markup = "\n\n".join(sections)
     return f"{prog_str}\n\n{task_list_markup}"

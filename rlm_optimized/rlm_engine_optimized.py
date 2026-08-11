@@ -2,6 +2,8 @@ import re
 import os
 import json
 import asyncio
+import collections
+import hashlib
 from pathlib import Path
 from typing import Optional, Callable
 from dataclasses import dataclass, field
@@ -17,6 +19,8 @@ from core.api.base import InferenceParams
 from rlm_optimized.prompts import build_step_message
 from core.tools.registry import get_tool_registry
 from core.tools.classification import CONFIRM, REVIEW
+from core.tools.implementations import set_ctx_window
+from rlm_optimized.config import CTX_SIZE
 from rlm_optimized.tool_schemas import validate_and_normalize_tool_call
 
 try:
@@ -291,10 +295,10 @@ class RLMEngineOptimized:
             on_status_change  # callback for real-time telemetry state
         )
         self.on_tasks_changed = on_tasks_changed  # callback for real-time task state
-        self.max_depth = max_depth
         self.project_root = project_root or os.getcwd()
         if ensure_project_initialized:
             ensure_project_initialized(self.project_root)
+        set_ctx_window(CTX_SIZE)
         self.sandbox = REPLSandbox(project_root=self.project_root)
         self._total_llm_calls = 0
         self.sandbox.set_llm_query_fn(self._sandbox_llm_query)
@@ -302,6 +306,7 @@ class RLMEngineOptimized:
         self._inline_code_counter = 0
         self._execution_mode = execution_mode or "unified"
         self._execution_mode_callback = None
+        self._prompt_hash_ring = collections.deque(maxlen=5)
 
         if debate_verifier is not None:
             self.debate_verifier = debate_verifier
@@ -561,6 +566,17 @@ class RLMEngineOptimized:
         """Stream an LLM response, retrying up to ``retries`` times on transient
         server stalls (timeout / connection errors). Returns the first successful
         response; re-raises the last error once retries are exhausted."""
+        # Hash prompt payload for ring-buffer duplicate generation skip
+        try:
+            p_bytes = json.dumps(messages, sort_keys=True, default=str).encode("utf-8")
+            p_hash = hashlib.md5(p_bytes).hexdigest()
+            if self._prompt_hash_ring and self._prompt_hash_ring[-1] == p_hash:
+                self._notify_status("SKIP", {"status": "Duplicate prompt hash detected in ring buffer; skipping generation turn."})
+                return "<tool_call>{\"name\": \"ASK_USER\", \"arguments\": {\"question\": \"Duplicate prompt state detected. Please specify next directive.\"}}</tool_call>"
+            self._prompt_hash_ring.append(p_hash)
+        except Exception:
+            pass
+
         last_err: Optional[Exception] = None
         for attempt in range(retries + 1):
             try:
@@ -1139,6 +1155,8 @@ class RLMEngineOptimized:
         result = SolveResult(answer="", depth=depth)
         self._total_llm_calls = 0
         self._final_answer_rejections = 0
+        if hasattr(self, "recovery_engine") and self.recovery_engine:
+            self.recovery_engine.reset()
 
         # Determine effective phase: explicit param > execution_mode > "code" default
         if phase is None:
@@ -1578,9 +1596,9 @@ class RLMEngineOptimized:
                         messages.append({"role": "user", "content": feedback})
                     continue
 
-                # ── Duplicate tool call detection ──────────────────────
-                # Read-only tools are exempt — re-reading a file is always
-                # legitimate (verify edits, context compression, refresh memory).
+                # ── Duplicate tool call & rate limit detection ─────────────────
+                # Mutating tools (WRITE_FILE, EDIT_FILE, SAVE_MEMORY, UPDATE_TASK_GRAPH, RUN_COMMAND)
+                # are strictly deduplicated. Read-only tools (READ_FILE, GREP, etc.) are soft rate-limited.
                 _READ_ONLY_TOOLS = {
                     "READ_FILE",
                     "READ_SYMBOLS",
@@ -1589,78 +1607,76 @@ class RLMEngineOptimized:
                     "SEARCH_AST",
                     "INSPECT_WEB",
                     "PLAY_AND_VERIFY_GAME",
-                    "UPDATE_TASK_GRAPH",
                     "WEB_SEARCH",
                     "WEB_FETCH",
                     "DOC_SEARCH",
                     "WEB_VERIFY",
                     "GIT",
-                    "SAVE_MEMORY",
                     "FORMAT_CODE",
                     "VERIFY",
                     "ASK_USER",
                 }
                 tool_name_upper = tool_name.upper() if tool_name else ""
+                is_read_only = tool_name_upper in _READ_ONLY_TOOLS
 
-                if tool_name_upper not in _READ_ONLY_TOOLS:
-                    is_dup, dup_count, hint = trajectory_lock.is_duplicate(
-                        tool_name, tool_args
+                is_dup, dup_count, hint = trajectory_lock.is_duplicate(
+                    tool_name, tool_args, is_read_only=is_read_only
+                )
+                if is_dup:
+                    alt_hint = get_alternate_trajectory_hint(tool_name)
+                    step.result = f"(duplicate — already executed {tool_name})\n\n{alt_hint}"
+                    result.steps.append(step)
+                    if self.on_step:
+                        self.on_step(step)
+                    self._notify_status(
+                        "TOOL_DONE",
+                        {
+                            "tool_name": tool_name,
+                            "success": True,
+                            "duplicate": True,
+                        },
                     )
-                    if is_dup:
-                        alt_hint = get_alternate_trajectory_hint(tool_name)
-                        step.result = f"(duplicate — already executed {tool_name})\n\n{alt_hint}"
-                        result.steps.append(step)
-                        if self.on_step:
-                            self.on_step(step)
-                        self._notify_status(
-                            "TOOL_DONE",
-                            {
-                                "tool_name": tool_name,
-                                "success": True,
-                                "duplicate": True,
-                            },
+
+                    if (
+                        use_memory
+                        and hasattr(memory, "state")
+                        and memory.state is not None
+                    ):
+                        if hasattr(memory.state, "tried_and_failed"):
+                            entry = f"Duplicate {tool_name_upper} call blocked ({dup_count}x)"
+                            if entry not in memory.state.tried_and_failed:
+                                memory.state.tried_and_failed.append(entry)
+
+                    if dup_count >= MAX_DUPLICATES:
+                        # Force-extract — the model is stuck in a loop
+                        forced = f"Tool {tool_name} was executed {dup_count} times with identical or semantically-equivalent arguments. Present whatever you have using <FINAL_ANSWER>."
+                        step_forced = Step(
+                            step_number=iteration + 2,
+                            depth=depth,
+                            action="final_answer",
+                            thinking=f"(forced after {dup_count} duplicate {tool_name} calls)",
+                            content=forced,
+                            result=forced,
                         )
+                        result.steps.append(step_forced)
+                        if self.on_step:
+                            self.on_step(step_forced)
+                        result.answer = forced
+                        result.total_llm_calls = self._total_llm_calls
+                        if hasattr(self.client, "temperature"):
+                            self.client.temperature = initial_temp
+                        return result
 
-                        if (
-                            use_memory
-                            and hasattr(memory, "state")
-                            and memory.state is not None
-                        ):
-                            if hasattr(memory.state, "tried_and_failed"):
-                                entry = f"Duplicate {tool_name_upper} call blocked ({dup_count}x)"
-                                if entry not in memory.state.tried_and_failed:
-                                    memory.state.tried_and_failed.append(entry)
-
-                        if dup_count >= MAX_DUPLICATES:
-                            # Force-extract — the model is stuck in a loop
-                            forced = f"Tool {tool_name} was executed {dup_count} times with identical or semantically-equivalent arguments. Present whatever you have using <FINAL_ANSWER>."
-                            step_forced = Step(
-                                step_number=iteration + 2,
-                                depth=depth,
-                                action="final_answer",
-                                thinking=f"(forced after {dup_count} duplicate {tool_name} calls)",
-                                content=forced,
-                                result=forced,
-                            )
-                            result.steps.append(step_forced)
-                            if self.on_step:
-                                self.on_step(step_forced)
-                            result.answer = forced
-                            result.total_llm_calls = self._total_llm_calls
-                            if hasattr(self.client, "temperature"):
-                                self.client.temperature = initial_temp
-                            return result
-
-                        feedback = hint
-                        if use_memory:
-                            memory.add_assistant_message(response)
-                            memory.add_user_message(feedback)
-                        else:
-                            messages.append({"role": "assistant", "content": response})
-                            messages.append({"role": "user", "content": feedback})
-                        continue
+                    feedback = hint
+                    if use_memory:
+                        memory.add_assistant_message(response)
+                        memory.add_user_message(feedback)
                     else:
-                        trajectory_lock.register(tool_name, tool_args)
+                        messages.append({"role": "assistant", "content": response})
+                        messages.append({"role": "user", "content": feedback})
+                    continue
+                else:
+                    trajectory_lock.register(tool_name, tool_args)
 
                 # Tiered approval
                 registry = get_tool_registry()
@@ -1704,6 +1720,9 @@ class RLMEngineOptimized:
                             registry.execute, tool_name, tool_args, self.project_root
                         )
                     step.result = tool_result.output
+                    consecutive_thinking = 0
+                    if hasattr(self.client, "temperature"):
+                        self.client.temperature = initial_temp
                     if tool_name_upper not in _READ_ONLY_TOOLS:
                         trajectory_lock.record_output(tool_name, tool_args, tool_result.output)
                     result.steps.append(step)
@@ -1949,8 +1968,10 @@ class RLMEngineOptimized:
                         "stderr": "",
                     }
 
+                consecutive_thinking = 0
                 if exec_result["success"]:
                     consecutive_code_errors = 0
+                    _executed_code_payloads.add(content)
                     _last_tool_key = None
                     if hasattr(self.client, "temperature"):
                         self.client.temperature = initial_temp

@@ -64,6 +64,10 @@ class ContextBudget:
         return min(1.0, self.headroom_tokens / max(1, self.target_tokens))
 
     @property
+    def context_usage_ratio(self) -> float:
+        return max(0.0, 1.0 - self.headroom_ratio)
+
+    @property
     def l0_tokens(self) -> int:
         """Token allowance for the L0 working memory scratchpad this turn."""
         return _clamp(

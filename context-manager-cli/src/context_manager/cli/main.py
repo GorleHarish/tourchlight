@@ -27,6 +27,7 @@ try:
     from core.prompts.system import DEFAULT_SYSTEM_PROMPT, get_phase_system_prompt, sanitize_assistant_text
     from core.debate.verifier import DebateVerifier
     from core.execution.autonomous_harness import AutonomousHarness
+    from core.tools.dedup import TrajectoryLock, get_alternate_trajectory_hint
 except ImportError:
     # Fallback to local modules if core/ is not installed
     from ..api.lmstudio import LMStudioClient, InferenceParams, PRESETS
@@ -476,16 +477,39 @@ class StreamingChatSession:
         label = _tool_label(name, params)
         act = tracker.start(kind, label)
 
-        call_hash = self._hash_tool_call(name, params)
-        if call_hash in self._recent_tool_hashes:
-            self._params.temperature = min(0.9, self._params.temperature + 0.3)
-            out = f"STOP: You just repeated the exact same '{name}' call. Try a DIFFERENT tool or approach."
-            self.memory.add_tool_result(out, tool_name=name)
-            tracker.finish(act, ok=False)
-            return out
-        self._recent_tool_hashes.append(call_hash)
-        if len(self._recent_tool_hashes) > 3:
-            self._recent_tool_hashes.pop(0)
+        # ── TrajectoryLock Deduplication Check ────────────────────────
+        _READ_ONLY_TOOLS = {
+            "READ_FILE", "READ_SYMBOLS", "LIST_DIR", "GREP", "SEARCH_AST",
+            "INSPECT_WEB", "PLAY_AND_VERIFY_GAME", "WEB_SEARCH", "WEB_FETCH",
+            "DOC_SEARCH", "WEB_VERIFY", "GIT", "FORMAT_CODE", "VERIFY", "ASK_USER",
+        }
+        is_read_only = (name or "").upper() in _READ_ONLY_TOOLS
+
+        if getattr(self, "trajectory_lock", None):
+            is_dup, dup_count, hint = self.trajectory_lock.is_duplicate(name, params, is_read_only=is_read_only)
+            if is_dup:
+                self._params.temperature = min(0.9, self._params.temperature + 0.3)
+                out = hint or f"STOP: You just repeated the exact same '{name}' call. Try a DIFFERENT tool or approach."
+                if hasattr(self.memory, "state") and self.memory.state and hasattr(self.memory.state, "tried_and_failed"):
+                    entry = f"Duplicate {name.upper()} call blocked ({dup_count}x)"
+                    if entry not in self.memory.state.tried_and_failed:
+                        self.memory.state.tried_and_failed.append(entry)
+                self.memory.add_tool_result(out, tool_name=name)
+                tracker.finish(act, ok=False)
+                return out
+            else:
+                self.trajectory_lock.register(name, params)
+        else:
+            call_hash = self._hash_tool_call(name, params)
+            if call_hash in self._recent_tool_hashes:
+                self._params.temperature = min(0.9, self._params.temperature + 0.3)
+                out = f"STOP: You just repeated the exact same '{name}' call. Try a DIFFERENT tool or approach."
+                self.memory.add_tool_result(out, tool_name=name)
+                tracker.finish(act, ok=False)
+                return out
+            self._recent_tool_hashes.append(call_hash)
+            if len(self._recent_tool_hashes) > 3:
+                self._recent_tool_hashes.pop(0)
 
         if tier == AUTO:
             try:
@@ -510,6 +534,8 @@ class StreamingChatSession:
                 tracker.finish(act, ok=ok)
                 self._notify_file_touched(name, out)
                 self.memory.add_tool_result(out, tool_name=name)
+                if getattr(self, "trajectory_lock", None):
+                    self.trajectory_lock.record_output(name, params, out)
 
                 # Pin file content after READ_FILE so it survives compression
                 if ok and name.upper() == "READ_FILE":
@@ -786,6 +812,8 @@ class StreamingChatSession:
                     dashboard.print_user_input(user_input)
                     self.memory.add_user_message(user_input)
                     self._recent_tool_hashes.clear()
+                    if getattr(self, "trajectory_lock", None):
+                        self.trajectory_lock.reset()
 
                     # Detect phase from user input before generating
                     self._update_params(user_input)

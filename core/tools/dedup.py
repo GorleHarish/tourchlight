@@ -100,7 +100,7 @@ class TrajectoryLock:
     Prevents infinite execution loops caused by identical or near-identical tool payloads.
     """
 
-    def __init__(self, window_size: int = 5, max_duplicates: int = 3):
+    def __init__(self, window_size: int = 10, max_duplicates: int = 3):
         self.window_size = window_size
         self.max_duplicates = max_duplicates
         # History entries: (payload_hash, tool_name, normalized_args)
@@ -108,9 +108,12 @@ class TrajectoryLock:
         self.consecutive_counts: dict[str, int] = {}
         self.payload_outputs: dict[str, str] = {}
 
-    def is_duplicate(self, tool_name: str, args: Any) -> Tuple[bool, int, str]:
+    def is_duplicate(self, tool_name: str, args: Any, is_read_only: bool = False) -> Tuple[bool, int, str]:
         """
         Check if payload matches any entry in the recent rolling window.
+
+        For read-only tools (is_read_only=True), allows up to 3 repeated reads,
+        but soft-blocks on the 4th consecutive identical call to prevent context thrashing.
 
         Returns:
             (is_duplicate, duplicate_count, anti_loop_hint)
@@ -124,6 +127,10 @@ class TrajectoryLock:
         if in_history:
             dup_count = count + 1
             tool_upper = (tool_name or "").strip().upper()
+
+            # Read-only tools get a higher tolerance threshold (soft block after 3 calls)
+            if is_read_only and dup_count <= 3:
+                return False, 0, ""
 
             prior_error_ctx = ""
             last_out = self.payload_outputs.get(payload_hash, "")

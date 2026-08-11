@@ -66,8 +66,8 @@ def build_task_tree_markup(project_root: Optional[str]) -> str:
     bar = "█" * filled + "░" * (10 - filled)
 
     lines = [
-        f"[bold cyan]🎯 Goal: {escape(goal_title)}[/]",
-        f"[bold yellow]Progress: [{bar}] {completed_count}/{total} ({percent}%)[/]\n",
+        f"[bold cyan]🎯 Goal: {escape(goal_title)}[/bold cyan]",
+        f"[bold yellow]Progress: \\[{bar}\\] {completed_count}/{total} ({percent}%)[/bold yellow]\n",
     ]
 
     status_styles = {
@@ -88,11 +88,11 @@ def build_task_tree_markup(project_root: Optional[str]) -> str:
         icon, _, style = status_styles.get(st, ("⚪", "white", "white"))
         desc = escape(_clean_task_text(t["description"]))
         if st in ("in_progress", "active"):
-            lines.append(f"  [{style}]{icon} [{idx}] {desc} [bold yellow]← Active Focus[/][/]")
+            lines.append(f"  [{style}]{icon} \\[{idx}\\] {desc} [bold yellow]← Active Focus[/bold yellow][/{style}]")
         elif st in ("completed", "verified", "done"):
-            lines.append(f"  [{style}]{icon} [{idx}] [strike]{desc}[/][/]")
+            lines.append(f"  [{style}]{icon} \\[{idx}\\] [strike]{desc}[/strike][/{style}]")
         else:
-            lines.append(f"  [{style}]{icon} [{idx}] {desc}[/]")
+            lines.append(f"  [{style}]{icon} \\[{idx}\\] {desc}[/{style}]")
 
     return "\n".join(lines)
 

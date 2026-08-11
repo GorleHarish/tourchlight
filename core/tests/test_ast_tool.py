@@ -72,3 +72,19 @@ def test_run_command_intercept_ast_functions(tmp_path):
     assert "bar.py" in res or "DemoClass" in res or "Structure" in res or "Project" in res
 
 
+def test_search_ast_after_writing_file(tmp_path):
+    from core.tools.implementations import tool_write_file_impl, tool_search_ast_impl
+
+    # Write a new JS file
+    game_js_content = "function generateFood() {\n    return { x: 5, y: 10 };\n}\n"
+    res_write = tool_write_file_impl({"path": "game.js", "content": game_js_content}, str(tmp_path))
+    assert "Written" in res_write
+
+    # Query AST graph immediately after writing
+    res_ast = tool_search_ast_impl({"query": "generateFood"}, str(tmp_path))
+    assert "generateFood" in res_ast
+    assert "game.js" in res_ast
+    assert "No AST knowledge graph indexed" not in res_ast
+
+
+

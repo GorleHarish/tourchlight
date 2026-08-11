@@ -525,13 +525,13 @@
     "semantic_hash": ""
   },
   "core/tools/implementations.py": {
-    "mtime": 1786389174.324743,
-    "ast_hash": "1fb2fbc8983f88721fb4d9e8067ba159",
+    "mtime": 1786387976.3789463,
+    "ast_hash": "cb7d3c2e31d339f935ff0487a08645f7",
     "semantic_hash": ""
   },
   "core/tools/registry.py": {
-    "mtime": 1786389148.5650308,
-    "ast_hash": "c3ee863a262094fc695cee1602c3713f",
+    "mtime": 1786291178.5303195,
+    "ast_hash": "bcedd4dc7066e31f39aad53f532bc848",
     "semantic_hash": ""
   },
   "core/tools/schemas.py": {
@@ -610,8 +610,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/rlm_engine_optimized.py": {
-    "mtime": 1786390434.2648354,
-    "ast_hash": "948b30c81bfa8967245b817843a08142",
+    "mtime": 1786386107.0607579,
+    "ast_hash": "cd422e2d47aa00e9b03aead7b9fd9d19",
     "semantic_hash": ""
   },
   "rlm_optimized/setup_optimized.sh": {
@@ -855,8 +855,8 @@
     "semantic_hash": ""
   },
   "core/tools/task_helpers.py": {
-    "mtime": 1786390399.1835258,
-    "ast_hash": "d75584994c09254d4e07eb5bc5ee8da4",
+    "mtime": 1786383187.8135962,
+    "ast_hash": "a81ffd33dddb8908775a1080195cda4f",
     "semantic_hash": ""
   },
   ".agents/AGENTS.md": {
@@ -925,8 +925,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/format.py": {
-    "mtime": 1786391196.6470602,
-    "ast_hash": "56cfe0e75ff0afbdad8ff323a0585473",
+    "mtime": 1786291178.5500998,
+    "ast_hash": "f7e4396fd05294adbeb80d863d6963ee",
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/status_bar.py": {
@@ -955,8 +955,8 @@
     "semantic_hash": ""
   },
   "core/memory/budget.py": {
-    "mtime": 1786389206.1833932,
-    "ast_hash": "6320dcaf503b11d8470233d6563046de",
+    "mtime": 1785964790.8295007,
+    "ast_hash": "87a3bef26aea3c6f984607233e778c03",
     "semantic_hash": ""
   },
   "core/tests/test_context_budget.py": {
@@ -1145,8 +1145,8 @@
     "semantic_hash": ""
   },
   "rlm_optimized/tui_widgets/task_tree.py": {
-    "mtime": 1786391133.433187,
-    "ast_hash": "8b087684a22a16c47c4e7fa16aa83b1d",
+    "mtime": 1786384187.4160202,
+    "ast_hash": "86f6d05acf328f381eee102e31e17eeb",
     "semantic_hash": ""
   },
   "core/tests/test_surgical_task_verification.py": {
@@ -1167,11 +1167,6 @@
   "core/tests/test_task_graph.py": {
     "mtime": 1786378088.8534675,
     "ast_hash": "18fddc828ae4f0ce6267e7e83e02e40d",
-    "semantic_hash": ""
-  },
-  "core/tests/test_optimization_fixes.py": {
-    "mtime": 1786389244.6449077,
-    "ast_hash": "617aff2e6935ec709c41fda505cf1292",
     "semantic_hash": ""
   }
 }

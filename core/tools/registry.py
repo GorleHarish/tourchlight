@@ -55,6 +55,7 @@ class ToolRegistry:
 
     def __init__(self):
         self._tools: dict[str, ToolDef] = {}
+        self._call_cache: dict[str, ToolResult] = {}
 
     def register(self, tool: ToolDef) -> None:
         """Register a tool definition."""
@@ -113,7 +114,8 @@ class ToolRegistry:
 
         Validates args, executes, and wraps result in ToolResult.
         """
-        tool = self._tools.get(name.upper())
+        tool_name = name.upper()
+        tool = self._tools.get(tool_name)
         if not tool:
             return ToolResult(
                 success=False,
@@ -131,6 +133,17 @@ class ToolRegistry:
                 error=msg,
                 metadata={"tool_name": name, "validation_error": msg},
             )
+
+        # Pre-flight call cache: Identical old/new text for EDIT_FILE
+        if tool_name == "EDIT_FILE":
+            old_text = normalized_args.get("old_text", "")
+            new_text = normalized_args.get("new_text", "")
+            if old_text and new_text and (old_text == new_text or old_text.strip() == new_text.strip()):
+                return ToolResult(
+                    success=True,
+                    output="No change: old_text and new_text are identical.",
+                    metadata={"tool_name": name, "risk": tool.risk_level, "cached": True},
+                )
 
         try:
             output = tool.fn(normalized_args, project_root)

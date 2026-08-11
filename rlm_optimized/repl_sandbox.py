@@ -26,8 +26,7 @@ def _resolve_ast_db_path(project_root: str) -> str:
 def _ast_db_missing_message() -> str:
     return (
         "⚠️ No AST knowledge graph indexed for this workspace yet. "
-        "Ask the user to run /index in the TUI to build it, or continue "
-        "using LIST_DIR / GREP / READ_FILE instead."
+        "Use SEARCH_AST or LIST_DIR / GREP / READ_FILE to inspect workspace symbols."
     )
 
 

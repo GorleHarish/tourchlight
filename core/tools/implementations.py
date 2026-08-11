@@ -1132,48 +1132,27 @@ def _validate_and_repair(
         syntax_note = _check_syntax(content, filename)
         if syntax_note:
             detail = syntax_note.replace("\n⚠️ Syntax Warning", "").strip()
-            return (
-                "error",
-                (
-                    f"Error: Syntax error in {os.path.basename(filename)}: {detail}. "
-                    f"File NOT written. Fix the code and retry, or pass force=true to write anyway."
-                ),
-            )
+            err_json = json.dumps({"error": "syntax_error", "file": os.path.basename(filename), "detail": detail, "force_hint": "pass force=true to write anyway"}, separators=(',', ':'))
+            return ("error", f"Error: Syntax gate rejected write -> {err_json}")
 
         # 3. Compile gate (catches what ast.parse misses, e.g. 'return' outside function)
         compile_note = _check_compile(content, filename, project_root)
         if compile_note:
-            return (
-                "error",
-                (
-                    f"Error: Syntax error in {os.path.basename(filename)}: {compile_note}. "
-                    f"File NOT written. Fix the code and retry, or pass force=true to write anyway."
-                ),
-            )
+            err_json = json.dumps({"error": "compile_error", "file": os.path.basename(filename), "detail": compile_note, "force_hint": "pass force=true to write anyway"}, separators=(',', ':'))
+            return ("error", f"Error: Compile gate rejected write -> {err_json}")
 
         # 4. Truncation stub gate
         if reject_on_stub:
             trunc_note = _detect_truncation_stubs(content, filename)
             if trunc_note:
-                return (
-                    "error",
-                    (
-                        f"Error: {trunc_note.strip()} File NOT written. "
-                        f"Provide the full implementation, or pass force=true to write anyway."
-                    ),
-                )
+                err_json = json.dumps({"error": "stub_error", "file": os.path.basename(filename), "detail": trunc_note.strip()}, separators=(',', ':'))
+                return ("error", f"Error: Stub gate rejected write -> {err_json}")
 
         # 5. Anti-Symptom Patching Gate
         symptom_note = _detect_symptom_patching(content, filename)
         if symptom_note:
-            return (
-                "error",
-                (
-                    f"Error: Anti-Symptom-Patching Gate rejected write to {os.path.basename(filename)}:\n"
-                    f"{symptom_note}\n"
-                    f"File NOT written. Locate the underlying root cause and fix the contract instead of swallowing errors or disabling assertions."
-                ),
-            )
+            err_json = json.dumps({"error": "symptom_patching_error", "file": os.path.basename(filename), "detail": symptom_note.strip()}, separators=(',', ':'))
+            return ("error", f"Error: Anti-Symptom-Patching gate rejected write -> {err_json}")
 
     return "ok", content
 
@@ -1222,6 +1201,16 @@ def _is_test_file(filepath: str) -> bool:
         pat in filepath.lower()
         for pat in ["test_", "_test.py", "tests/", "spec/", ".test.", ".spec."]
     )
+
+
+def _sync_ast_graph(project_root: str, file_path: str) -> None:
+    """Incrementally update AST graph when a file is created or edited."""
+    try:
+        from core.flashlight.graph_engine import update_project_graph_file
+
+        update_project_graph_file(project_root, file_path)
+    except Exception:
+        pass
 
 
 def tool_write_file_impl(args: dict, project_root: str) -> str:
@@ -1311,6 +1300,7 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
 
         with open(p, "w", encoding="utf-8") as f:
             f.write(content)
+        _sync_ast_graph(project_root, p)
         line_count = content.count("\n") + (
             1 if content and not content.endswith("\n") else 0
         )
@@ -1459,6 +1449,7 @@ def _commit_edit_file(
     new_content = payload
     with open(p, "w", encoding="utf-8") as f:
         f.write(new_content)
+    _sync_ast_graph(project_root, p)
     from core.memory.manager import calculate_in_memory_diff
 
     added, deleted = calculate_in_memory_diff(original_content, new_content)
@@ -1492,6 +1483,7 @@ def _commit_edit_and_format_result(
 
     with open(p, "w", encoding="utf-8") as f:
         f.write(new_content)
+    _sync_ast_graph(project_root, p)
 
     added, deleted = calculate_in_memory_diff(original_content, new_content)
     stub_note = _detect_stubs(new_content) or ""
@@ -1624,6 +1616,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 new_content = payload
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(new_content)
+                _sync_ast_graph(project_root, p)
                 stub_note = _detect_stubs(new_content) or ""
                 return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{stub_note}"
 
@@ -1945,7 +1938,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             )
 
         # All tiers failed — provide closest match as diagnostic
-        closest_block = ""
         closest_ratio = 0.0
         closest_line = 1
         for i in range(max(1, len(content_lines) - 10)):
@@ -1953,22 +1945,13 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
             if ratio > closest_ratio:
                 closest_ratio = ratio
-                closest_block = block
                 closest_line = i + 1
 
-        hint = ""
-        if closest_ratio > 0.25 and closest_block:
-            snippet = closest_block.strip()[:250]
-            hint = (
-                f"\n⚠️ Closest match found ({int(closest_ratio * 100)}% similar, around line {closest_line}):\n"
-                f"```\n{snippet}\n```\n"
-                f"ACTION REQUIRED: Call READ_FILE(path='{path}:{closest_line}-{closest_line + 15}') to copy the exact lines before retrying your edit."
-            )
-
+        match_pct = int(closest_ratio * 100)
         return (
-            f"Edit failed: Could not find a matching block for 'old_text' in {path}.\n"
-            f"CRITICAL ANTI-LOOP MANDATE: DO NOT retry EDIT_FILE with memory-reconstructed 'old_text'. "
-            f"You MUST execute READ_FILE('{path}') first to inspect the exact lines, OR execute WRITE_FILE('{path}', content=...) to update the file directly.{hint}"
+            f"Edit failed: Could not find matching block for 'old_text' in {path}. "
+            f"EDIT_FAIL: '{path}' line ~{closest_line} ({match_pct}% match). "
+            f"NEXT: READ_FILE('{path}:{closest_line}-{closest_line + 15}') or WRITE_FILE."
         )
     except Exception as e:
         return f"Error editing file: {e}"
@@ -2898,32 +2881,55 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
             return graph.get_structure()
         res = graph.query(query, top_k=top_k)
         if "No AST graph nodes found" in res:
+            # Refresh graph to capture any new or edited files on disk
+            graph.build()
+            rebuilt_res = graph.query(query, top_k=top_k)
+            if "No AST graph nodes found" not in rebuilt_res:
+                return rebuilt_res
             if query.lower() in ("main", "app", "index", "root"):
                 return graph.get_structure()
-            try:
-                from rlm_optimized.repl_sandbox import semantic_search
-
-                sem_res = semantic_search(query, top_k=top_k, project_root=project_root)
-                if sem_res and "No semantic matches" not in sem_res:
-                    return sem_res
-            except ImportError:
-                pass
-            return graph.get_structure()
+            # Auto-fallback to READ_SYMBOLS to surface signatures without forcing full READ_FILE
+            possible_file = os.path.join(project_root, query) if not os.path.isabs(query) else query
+            if os.path.exists(possible_file) or "." in query or "/" in query or "\\" in query:
+                sym_res = tool_read_symbols_impl({"path": query}, project_root)
+                if not sym_res.startswith("Error") and "File not found" not in sym_res and "requires a file path" not in sym_res:
+                    return f"AST Node search fallback (READ_SYMBOLS for {query}):\n{sym_res}"
+            return rebuilt_res
         return res
     elif action in ("path", "find_path"):
         target = str(args.get("target", args.get("to", ""))).strip()
         if not target and "," in query:
             parts = query.split(",", 1)
             query, target = parts[0].strip(), parts[1].strip()
-        return graph.find_path(query, target)
+        res = graph.find_path(query, target)
+        if "Path search failed" in res:
+            graph.build()
+            return graph.find_path(query, target)
+        return res
     elif action in ("subgraph", "sub_graph", "deps", "depend", "dependencies", "graph"):
-        return graph.get_subgraph(query)
+        res = graph.get_subgraph(query)
+        if "not found in AST index" in res:
+            graph.build()
+            return graph.get_subgraph(query)
+        return res
     elif action in ("structure", "project", "get_project_structure", "get_structure"):
         return graph.get_structure()
     elif action in ("summary", "info"):
         return f"Project AST Graph: {graph.graph_file}\nNodes: {len(graph.nodes)} | Edges: {len(graph.edges)}"
     else:
-        return graph.query(query, top_k=top_k)
+        res = graph.query(query, top_k=top_k)
+        if "No AST graph nodes found" in res:
+            graph.build()
+            rebuilt_res = graph.query(query, top_k=top_k)
+            if "No AST graph nodes found" not in rebuilt_res:
+                return rebuilt_res
+            possible_file = os.path.join(project_root, query) if not os.path.isabs(query) else query
+            if os.path.exists(possible_file) or "." in query or "/" in query:
+                sym_res = tool_read_symbols_impl({"path": query}, project_root)
+                if not sym_res.startswith("Error") and "File not found" not in sym_res and "requires a file path" not in sym_res:
+                    return f"AST Node search fallback (READ_SYMBOLS for {query}):\n{sym_res}"
+            return rebuilt_res
+        return res
 
 
 def tool_inspect_web_impl(args: dict, project_root: str) -> str:
