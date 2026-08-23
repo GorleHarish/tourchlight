@@ -327,6 +327,7 @@ def _create_default_registry() -> ToolRegistry:
         tool_git_impl,
         tool_search_ast_impl,
         tool_inspect_web_impl,
+        tool_view_image_impl,
         tool_play_and_verify_game_impl,
         tool_self_improve_game_impl,
         tool_set_phase_impl,
@@ -421,6 +422,12 @@ def _create_default_registry() -> ToolRegistry:
          "Inspect runtime outcome of HTML/JS/CSS web pages or HTML5 games (captures console errors, 404s, DOM snapshot, screenshot). "
          "Args: path (required), wait_ms (default: 1500).",
          AUTO, tool_inspect_web_impl, cat="web")
+
+    _reg("VIEW_IMAGE", "[IMG]",
+         "Inspect an image file (PNG, JPG, WEBP, GIF, SVG) visually. "
+         "Attaches the image to context for multimodal vision models (Gemma 3, Qwen VL, Llama Vision, etc.). "
+         "Args: path (required), prompt (optional question/detail).",
+         AUTO, tool_view_image_impl, cat="core")
 
     _reg("PLAY_AND_VERIFY_GAME", "🎮",
          "Play an HTML game autonomously, simulating inputs and verifying frame animation/runtime stability. "

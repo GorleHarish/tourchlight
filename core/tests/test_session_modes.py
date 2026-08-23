@@ -80,3 +80,180 @@ def test_execution_mode_normalization_and_sync():
     engine.execution_mode = "chat"
     assert engine.execution_mode == "chat"
 
+    engine.execution_mode = "unified"
+    assert engine.execution_mode == "unified"
+    assert engine.memory.state.execution_mode == ExecutionMode.UNIFIED
+
+
+def test_chat_mode_phase_detection_resilience():
+    """Verify _detect_phase returns 'chat' in Chat Mode despite trigger keywords."""
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    engine = RLMEngineOptimized()
+    engine.execution_mode = "chat"
+
+    assert engine._detect_phase("Why is this error happening?") == "chat"
+    assert engine._detect_phase("How to write a binary search algorithm in python?") == "chat"
+    assert engine._detect_phase("What is the architecture plan for this project?") == "chat"
+    assert engine._detect_phase("Explain src/main.py and fix the bug") == "chat"
+    assert engine._detect_phase("Resume task and proceed") == "chat"
+
+
+def test_chat_mode_verification_gate_bypassed(tmp_path):
+    """Verify solve_async in Chat Mode delivers <FINAL_ANSWER> directly without verification gate rejection."""
+    import asyncio
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    # Create workspace with pending tasks in implementation_plan.md
+    plan_file = tmp_path / "implementation_plan.md"
+    plan_file.write_text("# Plan\n- [ ] Task 1: Pending work\n")
+
+    class MockClient:
+        def __init__(self):
+            self.model = "mock-model"
+            self.temperature = 0.7
+            self.stream_call_count = 0
+
+        def chat_with_history(self, messages, *args, **kwargs):
+            self.stream_call_count += 1
+            return "<FINAL_ANSWER>Here is a direct answer explaining the logic.</FINAL_ANSWER>"
+
+        async def stream_chat_async(self, messages, *args, **kwargs):
+            self.stream_call_count += 1
+            yield "<FINAL_ANSWER>Here is a direct answer explaining the logic.</FINAL_ANSWER>"
+
+    engine = RLMEngineOptimized(project_root=str(tmp_path), client=MockClient())
+    engine.execution_mode = "chat"
+
+    res = asyncio.run(engine.solve_async("Explain how this function works and how to fix it"))
+    assert res.answer == "Here is a direct answer explaining the logic."
+    assert len(res.steps) == 1
+    assert res.steps[0].action == "final_answer"
+
+
+def test_goal_mode_system_prompt_and_phase_detection():
+    """Verify Goal Mode phase detection and system prompt construction."""
+    from core.prompts.system import get_phase_system_prompt
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    prompt = get_phase_system_prompt("goal")
+    assert "AUTONOMOUS GOAL EXECUTION" in prompt
+    assert "implementation_plan.md" in prompt
+    assert "LIST_DIR" in prompt
+
+    engine = RLMEngineOptimized()
+    engine.execution_mode = "goal"
+    assert engine._detect_phase("Create a snake game") == "goal"
+    assert engine._detect_phase("Fix the login bug") == "goal"
+
+
+def test_goal_mode_schemas_for_phase():
+    """Verify get_schemas_for_phase returns the expected tool suite for goal phase."""
+    from core.tools.schemas import get_schemas_for_phase
+
+    schemas = get_schemas_for_phase("goal")
+    assert "LIST_DIR" in schemas
+    assert "SEARCH_AST" in schemas
+    assert "WRITE_FILE" in schemas
+    assert "EDIT_FILE" in schemas
+    assert "RUN_COMMAND" in schemas
+
+
+def test_goal_mode_verification_gate_rejects_premature_final_answer(tmp_path):
+    """Verify solve_async in Goal Mode rejects premature FINAL_ANSWER when no plan or tools executed."""
+    import asyncio
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    class MockPrematureClient:
+        def __init__(self):
+            self.model = "qwen2.5-coder-7b-instruct"
+            self.temperature = 0.1
+            self.call_count = 0
+
+        def chat_with_history(self, messages, *args, **kwargs):
+            self.call_count += 1
+            if self.call_count == 1:
+                return "<FINAL_ANSWER>I have completed the task successfully!</FINAL_ANSWER>"
+            elif self.call_count == 2:
+                return '<tool_call>{"name": "WRITE_FILE", "arguments": {"path": "implementation_plan.md", "content": "# Plan\\n- [x] Task 1\\n"}}</tool_call>'
+            else:
+                return "<FINAL_ANSWER>Plan created and all tasks completed.</FINAL_ANSWER>"
+
+        async def stream_chat_async(self, messages, *args, **kwargs):
+            self.call_count += 1
+            if self.call_count == 1:
+                # Premature final answer without executing tools or creating plan
+                yield "<FINAL_ANSWER>I have completed the task successfully!</FINAL_ANSWER>"
+            elif self.call_count == 2:
+                # Second turn: properly calls write_file
+                yield '<tool_call>{"name": "WRITE_FILE", "arguments": {"path": "implementation_plan.md", "content": "# Plan\\n- [x] Task 1\\n"}}</tool_call>'
+            else:
+                yield "<FINAL_ANSWER>Plan created and all tasks completed.</FINAL_ANSWER>"
+
+    engine = RLMEngineOptimized(project_root=str(tmp_path), client=MockPrematureClient())
+    engine.execution_mode = "goal"
+
+    res = asyncio.run(engine.solve_async("Build the authentication feature"))
+    assert len(res.steps) >= 2
+    # First step should have been rejected by verification gate
+    assert res.steps[0].action == "rejected_final_answer"
+    assert "MISSING PLAN" in res.steps[0].result
+    # Second step should be the tool call
+    assert res.steps[1].action == "tool"
+    assert res.steps[1].tool_name == "WRITE_FILE"
+
+
+def test_verification_gate_single_path_tool_template_and_anti_echo(tmp_path):
+    """Verify that when tasks exist on disk, verification gate injects single-path tool template and sanitizes echoing text."""
+    import asyncio
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    plan_file = tmp_path / "implementation_plan.md"
+    plan_file.write_text("# Plan\n- [ ] 1.1 Create HTML skeleton with canvas container\n")
+
+    recorded_history = []
+
+    class MockSLMClient:
+        def __init__(self):
+            self.model = "qwen2.5-coder-3b-instruct"
+            self.call_count = 0
+
+        def chat_with_history(self, messages, *args, **kwargs):
+            self.call_count += 1
+            recorded_history.append(list(messages))
+            if self.call_count == 1:
+                return "Given the repeated rejection, it seems that implementation_plan.md is still marked as a pending task.```json"
+            else:
+                return '<tool_call>{"name": "WRITE_FILE", "arguments": {"path": "index.html", "task_id": "1.1", "description": "Create HTML skeleton", "content": "<!DOCTYPE html><html></html>"}}</tool_call>'
+
+        async def stream_chat_async(self, messages, *args, **kwargs):
+            self.call_count += 1
+            recorded_history.append(list(messages))
+            if self.call_count == 1:
+                # Simulated small model conversational answer with trailing unclosed json block
+                yield "Given the repeated rejection, it seems that implementation_plan.md is still marked as a pending task.```json"
+            else:
+                # Receives single-path tool template and outputs valid tool call
+                yield '<tool_call>{"name": "WRITE_FILE", "arguments": {"path": "index.html", "task_id": "1.1", "description": "Create HTML skeleton", "content": "<!DOCTYPE html><html></html>"}}</tool_call>'
+
+    engine = RLMEngineOptimized(project_root=str(tmp_path), client=MockSLMClient())
+    engine.execution_mode = "unified"
+
+    res = asyncio.run(engine.solve_async("create html skeleton"))
+    assert len(res.steps) >= 2
+    # Step 0 triggers thinking loop or rejection with single-path template
+    # In turn 2 messages, verify the single-path tool template was injected
+    assert any('<tool_call>{"name": "WRITE_FILE"' in m["content"] for m in recorded_history[1])
+    assert any('"path": "index.html"' in m["content"] for m in recorded_history[1])
+
+    # In turn 2 messages, verify the conversational text was sanitized to prevent echoing
+    turn_2_messages = recorded_history[1]
+    assistant_msg = next((m for m in turn_2_messages if m["role"] == "assistant"), None)
+    assert assistant_msg is not None
+    assert "Given the repeated rejection" not in assistant_msg["content"]
+    assert "without <tool_call>]" in assistant_msg["content"]
+
+
+
+
+

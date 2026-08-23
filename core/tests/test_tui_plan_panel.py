@@ -34,10 +34,10 @@ def test_build_plan_text_with_tasks():
         assert "PLAN & TASKS" in res
         assert "50%" in res
         assert "(2/4)" in res
-        assert "[✓] Done Task" in res
+        assert "[DONE] Done Task" in res
         assert "[ ] Pending Task" in res
-        assert "[►] In-progress Task █" in res
-        assert "[✓] Checked Task" in res
+        assert "[RUNNING] In-progress Task" in res
+        assert "[DONE] Checked Task" in res
 
 
 def test_build_plan_text_all_done():
@@ -74,8 +74,8 @@ def test_build_plan_text_goal_spec_json():
         res = _build_plan_text(tmpdir, is_goal=True)
         assert "50%" in res
         assert "(1/2)" in res
-        assert "[✓] Design UI" in res
-        assert "[►] Implement feature █" in res
+        assert "[DONE] Design UI" in res
+        assert "[RUNNING] Implement feature" in res
 
 
 def test_build_plan_text_dedupes_duplicate_checkbox_lines():
@@ -98,7 +98,7 @@ def test_build_plan_text_dedupes_duplicate_checkbox_lines():
         assert "(1/3)" in res
         assert "33%" in res
         assert res.count("[ ] Build API") == 1
-        assert res.count("[✓] Setup repo") == 1
+        assert res.count("[DONE] Setup repo") == 1
         assert res.count("[ ] Write docs") == 1
         assert "[ ] BUILD API" not in res  # case-insensitive dup of "Build API"
 
@@ -122,9 +122,10 @@ def test_build_plan_text_goal_spec_json_dedupes():
 
         res = _build_plan_text(tmpdir, is_goal=True)
         assert "(1/2)" in res
-        assert res.count("[✓] Design UI") == 1
+        assert res.count("[DONE] Design UI") == 1
         assert "[ ] Design UI" not in res  # duplicate dropped regardless of status
         assert "[ ] Ship it" in res
+
 
 
 def test_build_plan_text_fallback_bullet_parsing():
@@ -220,12 +221,14 @@ async def test_torchlight_app_headless_run():
             assert status_bar is not None
             assert compact_btn is not None
 
-            # Verify input state toggle preserves clickable Stop button
+            # Verify input state toggle preserves clickable Stop button when agent is running
+            app._is_running = True
             app._set_input_enabled(False)
             btn = app.query_one("#send-btn")
             assert btn.disabled is False
             assert "STOP" in str(btn.label).upper()
 
+            app._is_running = False
             app._set_input_enabled(True)
             assert btn.disabled is False
             assert "SEND" in str(btn.label).upper()

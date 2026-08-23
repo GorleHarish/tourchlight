@@ -16,12 +16,27 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "properties": {
             "path": {
                 "type": "string",
-                "description": "File path (supports :N-M range or :Symbol suffix)",
+                "description": "File path (supports :N-M range or :Symbol suffix, e.g. 'src/main.py:10-40')",
+            },
+            "start_line": {
+                "type": "integer",
+                "description": "Starting line number (1-based, inclusive)",
+            },
+            "end_line": {
+                "type": "integer",
+                "description": "Ending line number (1-based, inclusive)",
+            },
+            "symbol": {
+                "type": "string",
+                "description": "Function, class, or symbol name to inspect directly",
             },
         },
         "required": ["path"],
         "aliases": {
             "path": ["file", "filename", "filepath", "p"],
+            "start_line": ["start", "from_line", "line_start", "line", "offset"],
+            "end_line": ["end", "to_line", "line_end", "limit"],
+            "symbol": ["symbol_name", "func", "function", "class_name"],
         },
     },
     "WRITE_FILE": {
@@ -29,6 +44,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "properties": {
             "path": {"type": "string", "description": "Relative path to target file"},
             "content": {"type": "string", "description": "Full file content to write"},
+            "task_id": {
+                "type": "string",
+                "description": "Optional task ID this write belongs to (e.g. '1.1')",
+            },
+            "description": {
+                "type": "string",
+                "description": "Concise sub-task description or intent of this change (e.g. 'Create HTML skeleton')",
+            },
             "force": {
                 "type": "boolean",
                 "description": "Bypass syntax/compile/stub validation gates (scaffolding escape hatch; default false)",
@@ -42,6 +65,16 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "aliases": {
             "path": ["file", "filename", "filepath", "dest", "target", "p"],
             "content": ["code", "text", "data"],
+            "task_id": ["task", "tid", "step"],
+            "description": [
+                "subtask",
+                "sub_task",
+                "intent",
+                "focus",
+                "summary",
+                "reason",
+                "message",
+            ],
         },
     },
     "EDIT_FILE": {
@@ -56,6 +89,14 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
                 "description": "Exact text to find and replace",
             },
             "new_text": {"type": "string", "description": "Replacement text"},
+            "task_id": {
+                "type": "string",
+                "description": "Optional task ID this edit belongs to (e.g. '1.1')",
+            },
+            "description": {
+                "type": "string",
+                "description": "Concise sub-task description or intent of this change (e.g. 'Fix canvas coordinate scaling')",
+            },
             "diff": {
                 "type": "string",
                 "description": "Aider-style <<<<<<< SEARCH \\n old \\n ======= \\n new \\n >>>>>>> REPLACE block",
@@ -109,6 +150,16 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
                 "code",
                 "text",
                 "after",
+            ],
+            "task_id": ["task", "tid", "step"],
+            "description": [
+                "subtask",
+                "sub_task",
+                "intent",
+                "focus",
+                "summary",
+                "reason",
+                "message",
             ],
             "diff": ["block", "diff_block", "search_replace"],
             "start_line": ["start", "line_start", "from_line", "start_l"],
@@ -257,11 +308,27 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
     "ASK_USER": {
         "type": "object",
         "properties": {
-            "question": {"type": "string", "description": "Question to ask the user"},
+            "question": {"type": "string", "description": "Question to ask the user for review/feedback"},
+            "options": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of options for the user to choose from (place (Recommended) option first)",
+            },
+            "is_multi_select": {
+                "type": "boolean",
+                "description": "True for checkbox/multiple choice, False for radio/single choice",
+            },
+            "allow_custom_input": {
+                "type": "boolean",
+                "description": "Whether to allow custom text input from the user (default True)",
+            },
         },
         "required": ["question"],
         "aliases": {
             "question": ["q", "prompt", "ask"],
+            "options": ["choices", "opts", "items"],
+            "is_multi_select": ["multi_select", "multiple", "multiselect", "is_multiple"],
+            "allow_custom_input": ["custom_input", "allow_custom"],
         },
     },
     "GIT": {
@@ -458,6 +525,38 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
             "reason": ["why", "explanation"],
         },
     },
+    "VIEW_IMAGE": {
+        "type": "object",
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Relative or absolute path to the image file to inspect (.png, .jpg, .jpeg, .webp, .gif, .svg)",
+            },
+            "prompt": {
+                "type": "string",
+                "description": "Optional specific question or detail to inspect in the image",
+            },
+        },
+        "required": ["path"],
+        "aliases": {
+            "path": [
+                "file",
+                "filename",
+                "filepath",
+                "image",
+                "img",
+                "image_path",
+                "img_path",
+                "target",
+                "src",
+                "url",
+                "file_name",
+                "p",
+                "f",
+            ],
+            "prompt": ["query", "question", "ask", "instruction", "text", "description"],
+        },
+    },
 }
 
 
@@ -465,9 +564,24 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
 
 
 def _coerce_param(value, expected_type: str):
-    """Coerce LLM-provided values to expected schema types."""
-    if value is None or (
-        isinstance(value, str) and value.lower() in ("null", "none", "")
+    """Attempt safe type coercion for common LLM parameter formats."""
+    if value is None:
+        return None
+    if expected_type == "string" and isinstance(value, str):
+        return value
+    if expected_type == "string" and isinstance(value, (dict, list)):
+        import json
+
+        try:
+            return json.dumps(value)
+        except Exception:
+            return str(value)
+    if expected_type in ("integer", "number", "boolean") and isinstance(
+        value, (dict, list)
+    ):
+        return None
+    if expected_type in ("array", "object") and not isinstance(
+        value, (list, dict, str)
     ):
         if expected_type != "string":
             return None
@@ -527,7 +641,19 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
     if isinstance(args, str):
         from core.tools.parser import unwrap_double_encoded_json
 
-        normalized = unwrap_double_encoded_json(args)
+        raw_str = args.strip()
+        if raw_str and not raw_str.startswith(("{", "[")):
+            # Direct string argument passed (e.g. "snake_game.png" or "src/main.py")
+            if tool_upper in ("VIEW_IMAGE", "READ_FILE", "READ_SYMBOLS", "LIST_DIR"):
+                normalized = {"path": raw_str}
+            elif tool_upper in ("SEARCH_AST", "DOC_SEARCH", "WEB_SEARCH"):
+                normalized = {"query": raw_str}
+            elif tool_upper == "GREP":
+                normalized = {"pattern": raw_str}
+            else:
+                normalized = {"path": raw_str}
+        else:
+            normalized = unwrap_double_encoded_json(args)
     elif isinstance(args, dict):
         normalized = dict(args)
     else:
@@ -536,11 +662,19 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
     # Map parameter aliases to canonical schema keys
     aliases = schema.get("aliases", {})
     for target_key, alias_list in aliases.items():
-        if target_key not in normalized or not normalized[target_key]:
+        if target_key not in normalized or normalized[target_key] is None or (isinstance(normalized[target_key], str) and not normalized[target_key].strip()):
             for alias in alias_list:
-                if alias in normalized and normalized[alias]:
+                if alias in normalized and normalized[alias] is not None and (not isinstance(normalized[alias], str) or normalized[alias].strip()):
                     normalized[target_key] = normalized[alias]
                     break
+
+    # Auto-heal VIEW_IMAGE missing path from other parameter values
+    if tool_upper == "VIEW_IMAGE" and (not normalized.get("path") or not str(normalized.get("path")).strip()):
+        img_exts = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg")
+        for k, v in list(normalized.items()):
+            if isinstance(v, str) and any(v.lower().endswith(ext) for ext in img_exts):
+                normalized["path"] = v.strip()
+                break
 
     # Coerce parameter types and inject defaults
     properties = schema.get("properties", {})
@@ -555,7 +689,7 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
     # Check required fields
     required = schema.get("required", [])
     missing = [
-        req for req in required if req not in normalized or normalized[req] is None
+        req for req in required if req not in normalized or normalized[req] is None or (isinstance(normalized[req], str) and not normalized[req].strip() and req == "path")
     ]
 
     if missing:
@@ -603,6 +737,7 @@ _PHASE_TOOL_VISIBILITY = {
         "VERIFY",
         "GIT",
         "INSPECT_WEB",
+        "VIEW_IMAGE",
         "PLAY_AND_VERIFY_GAME",
         "SELF_IMPROVE_GAME",
         "FORMAT_CODE",
@@ -621,6 +756,7 @@ _PHASE_TOOL_VISIBILITY = {
         "GREP",
         "SEARCH_AST",
         "LIST_DIR",
+        "VIEW_IMAGE",
         "ASK_USER",
         "SAVE_MEMORY",
         "SET_PHASE",
@@ -641,6 +777,28 @@ _PHASE_TOOL_VISIBILITY = {
         "VERIFY",
         "GIT",
         "INSPECT_WEB",
+        "VIEW_IMAGE",
+        "PLAY_AND_VERIFY_GAME",
+        "SELF_IMPROVE_GAME",
+        "FORMAT_CODE",
+        "SAVE_MEMORY",
+        "UPDATE_TASK_GRAPH",
+        "SET_PHASE",
+        "ASK_USER",
+    },
+    "goal": {
+        "READ_FILE",
+        "WRITE_FILE",
+        "EDIT_FILE",
+        "READ_SYMBOLS",
+        "GREP",
+        "SEARCH_AST",
+        "LIST_DIR",
+        "RUN_COMMAND",
+        "VERIFY",
+        "GIT",
+        "INSPECT_WEB",
+        "VIEW_IMAGE",
         "PLAY_AND_VERIFY_GAME",
         "SELF_IMPROVE_GAME",
         "FORMAT_CODE",
@@ -659,6 +817,7 @@ _PHASE_TOOL_VISIBILITY = {
         "LIST_DIR",
         "RUN_COMMAND",
         "INSPECT_WEB",
+        "VIEW_IMAGE",
         "PLAY_AND_VERIFY_GAME",
         "SELF_IMPROVE_GAME",
         "GIT",

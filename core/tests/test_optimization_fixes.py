@@ -116,3 +116,21 @@ def test_recovery_engine_reset():
     engine.reset()
     assert engine._states == {}
 
+
+def test_edit_file_out_of_bounds_line_range_rejected(tmp_path):
+    f = tmp_path / "index.html"
+    f.write_text("<!DOCTYPE html>\n<html>\n<body>\n</body>\n</html>\n", encoding="utf-8")
+    # File has 5 lines. Calling start_line 106, end_line 115 must be rejected!
+    res = tool_edit_file_impl(
+        {
+            "path": "index.html",
+            "start_line": 106,
+            "end_line": 115,
+            "new_text": "const snake = [{ x: 200, y: 300 }, direction: 'right' };",
+        },
+        str(tmp_path),
+    )
+    assert "Edit failed: start_line 106 is out of bounds" in res
+    assert "READ_FILE" in res
+
+

@@ -61,8 +61,7 @@ def test_inline_syntax_guardrail():
             {"path": "broken.py", "content": "def broken_func(\n"},
             project_root=str(tmp_path),
         )
-        assert "Syntax error" in res_invalid
-        assert "NOT written" in res_invalid
+        assert "syntax_error" in res_invalid.lower() or "syntax gate" in res_invalid.lower()
         assert not os.path.exists(tmp_path / "broken.py")
 
         # force=true escape hatch still writes (scaffolding bypass)

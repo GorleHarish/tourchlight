@@ -21,8 +21,9 @@ def test_ensure_project_initialized_creates_memory(temp_project_dir):
     result_path = ensure_project_initialized(temp_project_dir)
     assert result_path == temp_project_dir.resolve()
 
-    # Memory file created, git not forced by default
+    # Memory file created, skills folder created, git not forced by default
     assert (temp_project_dir / ".context-memory.json").exists()
+    assert (temp_project_dir / ".agents" / "skills").is_dir()
     assert not (temp_project_dir / ".git").exists()
 
 

@@ -1,14 +1,26 @@
 ---
 trigger: always_on
-description: Consult the graphify knowledge graph at graphify-out/ for codebase and architecture questions.
+description: MANDATORY HARD RULE: Always query graphify first for codebase-level search, architecture exploration, dependencies, and component relationships.
 ---
 
-## graphify
+## Graphify Codebase Exploration & Dependency Hard Rules
 
-This project has a graphify knowledge graph at graphify-out/.
+This project maintains a graphify knowledge graph at `graphify-out/`.
 
-Rules:
-- For codebase or architecture questions, when `graphify-out/graph.json` exists, first run `graphify query "<question>"` (CLI) or `query_graph` (MCP). Use `graphify path "<A>" "<B>"` / `shortest_path` for relationships and `graphify explain "<concept>"` / `get_node` for focused concepts. These return a scoped subgraph, usually much smaller than `GRAPH_REPORT.md` or raw grep output.
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+### 1. Mandatory Graphify-First Codebase Search
+- **Primary Search & Discovery Tool**: For ANY codebase-level search, architecture question, symbol discovery, or relationship exploration, you **MUST ALWAYS** start by querying graphify:
+  - **Codebase Search & Concept Query**: Run `graphify query "<question or symbol>"` (CLI) or `query_graph` (MCP).
+  - **Component Dependencies & Interactions**: Run `graphify path "<A>" "<B>"` (CLI) or `shortest_path` (MCP) to trace connections, data flows, and import/call chains.
+  - **Focused Component Inspection**: Run `graphify explain "<concept/symbol>"` (CLI) or `get_node` (MCP) for focused structure and immediate callers/callees.
+  - **Architectural Hubs & Central Nodes**: Run `graphify god-nodes` to identify central dependencies and entry points.
+- **Strict Anti-Pattern Prohibition**: NEVER start codebase exploration with blind whole-directory reads or massive grep scans. Always inspect the scoped subgraph returned by graphify first to minimize token waste and maintain high precision.
+
+### 2. Dependency & Relationship Analysis
+- When asked about how modules, classes, or functions depend on each other, interact, or flow data:
+  - Run `graphify path "<source_component>" "<target_component>"` to retrieve the exact call/import relationship path.
+  - Run `graphify explain "<component>"` to inspect all incoming and outgoing dependencies, callers, and callees.
+- If `graphify-out/wiki/index.md` exists, consult it for high-level module architecture and subsystem boundaries.
+- Consult `graphify-out/GRAPH_REPORT.md` only when broad, global architecture review is required.
+
+### 3. Graph Synchronization
+- **Keep Graph Current**: After creating or modifying code files in a session, execute `graphify update .` (or `graphify extract . --code-only`) to ensure the knowledge graph and dependencies stay synchronized with the active codebase.

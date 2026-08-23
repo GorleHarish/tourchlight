@@ -123,6 +123,32 @@ def test_scoped_test_command_detection(tmp_path):
     assert "pytest core/tests/test_feature.py" in cmd
 
 
+def test_associated_test_command_detection(tmp_path):
+    (tmp_path / "pyproject.toml").touch()
+    test_dir = tmp_path / "core" / "tests"
+    test_dir.mkdir(parents=True)
+    (test_dir / "test_manager.py").touch()
+
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True, auto_run=True)
+    # Modifying a source file (not named test_*)
+    loop._files_modified_since_test.add("core/memory/manager.py")
+    cmd = loop._detect_test_command()
+    assert "pytest core/tests/test_manager.py" in cmd
+
+
+def test_subproject_test_directory_scoping(tmp_path):
+    (tmp_path / "pyproject.toml").touch()
+    test_dir = tmp_path / "core" / "tests"
+    test_dir.mkdir(parents=True)
+    (test_dir / "test_unrelated.py").touch()
+
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True, auto_run=True)
+    # Modifying a source file without a direct matching test_name.py
+    loop._files_modified_since_test.add("core/utils/helper.py")
+    cmd = loop._detect_test_command()
+    assert "pytest core/tests" in cmd
+
+
 def test_all_passed_uses_exit_code():
     """Quiet runners (e.g. `pytest -q`) produce no per-test markers; exit code
     must be authoritative so a clean run is not misreported as failing."""
@@ -295,3 +321,25 @@ def test_passing_run_clears_dirty_set(tmp_path):
         loop._run_tests()
     assert loop._files_modified_since_test == set()
     assert not loop.has_failing_tests
+
+
+def test_feedback_loop_js_syntax_error_detection(tmp_path):
+    loop = ExecutionFeedbackLoop(project_root=tmp_path, enabled=True)
+    js_file = tmp_path / "broken.js"
+    js_file.write_text("function broken() { return }", encoding="utf-8")
+    loop._files_modified_since_test.add(str(js_file))
+
+    mock_run = MagicMock()
+    mock_run.returncode = 1
+    mock_run.stderr = "SyntaxError: Unexpected token"
+    mock_run.stdout = ""
+
+    with (
+        patch.object(loop, "_detect_test_command", return_value=""),
+        patch("subprocess.run", return_value=mock_run),
+    ):
+        res = loop._run_tests()
+        assert res.ran
+        assert not res.all_passed
+        assert "SyntaxError" in res.stderr
+

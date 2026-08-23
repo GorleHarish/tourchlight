@@ -67,14 +67,14 @@ tool-call-tag  ::= "<tool_call>" ws tool-call-json ws "</tool_call>"
 tool-call-json ::= "{" ws ( tool-kv-name-first | tool-kv-args-first ) ws "}"
 tool-kv-name-first ::= "\"name\"" ws ":" ws tool-name-val ws "," ws "\"arguments\"" ws ":" ws tool-args-obj
 tool-kv-args-first ::= "\"arguments\"" ws ":" ws tool-args-obj ws "," ws "\"name\"" ws ":" ws tool-name-val
-tool-name-val ::= "\"WRITE_FILE\"" | "\"EDIT_FILE\"" | "\"READ_FILE\"" | "\"READ_SYMBOLS\"" | "\"SEARCH_AST\"" | "\"LIST_DIR\"" | "\"GREP\"" | "\"RUN_COMMAND\"" | "\"INSPECT_WEB\"" | "\"UPDATE_TASK_GRAPH\"" | "\"SAVE_MEMORY\"" | "\"WEB_SEARCH\"" | "\"WEB_FETCH\"" | "\"DOC_SEARCH\"" | "\"WEB_VERIFY\"" | "\"GIT\"" | "\"FORMAT_CODE\"" | "\"VERIFY\"" | "\"ASK_USER\"" | "\"SET_PHASE\"" | "\"PLAY_AND_VERIFY_GAME\"" | "\"SELF_IMPROVE_GAME\""
+tool-name-val ::= "\"WRITE_FILE\"" | "\"EDIT_FILE\"" | "\"READ_FILE\"" | "\"READ_SYMBOLS\"" | "\"SEARCH_AST\"" | "\"LIST_DIR\"" | "\"GREP\"" | "\"RUN_COMMAND\"" | "\"INSPECT_WEB\"" | "\"UPDATE_TASK_GRAPH\"" | "\"SAVE_MEMORY\"" | "\"WEB_SEARCH\"" | "\"WEB_FETCH\"" | "\"DOC_SEARCH\"" | "\"WEB_VERIFY\"" | "\"GIT\"" | "\"FORMAT_CODE\"" | "\"VERIFY\"" | "\"ASK_USER\"" | "\"SET_PHASE\"" | "\"PLAY_AND_VERIFY_GAME\"" | "\"SELF_IMPROVE_GAME\"" | "\"VIEW_IMAGE\""
 
 
 # -----------------------------------------------
 # 2. <TOOL name="TOOL_NAME"> {...} </TOOL>
 # -----------------------------------------------
 tool-xml-tag  ::= "<TOOL name=\"" tool-name-str "\">" ws tool-args-obj ws "</TOOL>"
-tool-name-str ::= "WRITE_FILE" | "EDIT_FILE" | "READ_FILE" | "READ_SYMBOLS" | "SEARCH_AST" | "LIST_DIR" | "GREP" | "RUN_COMMAND" | "INSPECT_WEB" | "UPDATE_TASK_GRAPH" | "SAVE_MEMORY" | "WEB_SEARCH" | "WEB_FETCH" | "DOC_SEARCH" | "WEB_VERIFY" | "GIT" | "FORMAT_CODE" | "VERIFY" | "ASK_USER" | "SET_PHASE" | "PLAY_AND_VERIFY_GAME" | "SELF_IMPROVE_GAME"
+tool-name-str ::= "WRITE_FILE" | "EDIT_FILE" | "READ_FILE" | "READ_SYMBOLS" | "SEARCH_AST" | "LIST_DIR" | "GREP" | "RUN_COMMAND" | "INSPECT_WEB" | "UPDATE_TASK_GRAPH" | "SAVE_MEMORY" | "WEB_SEARCH" | "WEB_FETCH" | "DOC_SEARCH" | "WEB_VERIFY" | "GIT" | "FORMAT_CODE" | "VERIFY" | "ASK_USER" | "SET_PHASE" | "PLAY_AND_VERIFY_GAME" | "SELF_IMPROVE_GAME" | "VIEW_IMAGE"
 
 
 # -----------------------------------------------

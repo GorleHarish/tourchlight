@@ -21,9 +21,9 @@ def test_search_ast_schema_validation():
     assert norm["action"] == "signature"
 
 
-def test_search_ast_impl_fallback():
+def test_search_ast_impl_fallback(tmp_path):
     # Test call when no graph DB is indexed yet
-    result = tool_search_ast_impl({"query": "non_existent_symbol", "action": "signature"}, project_root=".")
+    result = tool_search_ast_impl({"query": "non_existent_symbol", "action": "signature"}, project_root=str(tmp_path))
     assert isinstance(result, str)
     assert len(result) > 0
 

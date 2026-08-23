@@ -14,12 +14,13 @@ from typing import Any, Dict, Optional, Tuple, Union
 def tolerant_json_repair(raw: str) -> str:
     """
     Repair common LLM JSON corruption inside string values:
-    raw (unescaped) newlines/tabs, and a trailing unterminated string.
+    raw (unescaped) newlines/tabs, unterminated strings, and unclosed JSON braces/brackets.
     Existing escape sequences are preserved.
     """
     out = []
     in_str = False
     esc = False
+    stack = []
     for ch in raw:
         if in_str:
             if esc:
@@ -49,9 +50,23 @@ def tolerant_json_repair(raw: str) -> str:
         else:
             if ch == '"':
                 in_str = True
-            out.append(ch)
+                out.append(ch)
+            elif ch == "{":
+                stack.append("}")
+                out.append(ch)
+            elif ch == "[":
+                stack.append("]")
+                out.append(ch)
+            elif ch in ("}", "]"):
+                if stack and stack[-1] == ch:
+                    stack.pop()
+                out.append(ch)
+            else:
+                out.append(ch)
     if in_str:
         out.append('"')
+    while stack:
+        out.append(stack.pop())
     return "".join(out)
 
 
@@ -163,7 +178,7 @@ def clean_and_parse_json(raw_str: str) -> dict:
     4-tier parse cascade for raw JSON / tool payloads:
     1. Direct JSON parse
     2. Double-encoded unwrapping
-    3. Tolerant repair (unescaped newlines/tabs, unterminated strings)
+    3. Tolerant repair (unescaped newlines/tabs, unterminated strings, unclosed braces)
     4. Balanced JSON object extraction & regex fallback key extraction
     """
     raw = (raw_str or "").strip()
@@ -235,8 +250,29 @@ def clean_and_parse_json(raw_str: str) -> dict:
 
     # 4. Regex fallback extraction for key properties
     result = {}
+
+    name_match = re.search(
+        r'["\']?(?:name|tool|action|tool_name)["\']?\s*:\s*["\']([a-zA-Z0-9_]+)["\']',
+        raw,
+        re.IGNORECASE,
+    )
+    if name_match:
+        result["name"] = name_match.group(1).upper()
+
+    args_match = re.search(
+        r'["\']?(?:arguments|params|args|parameters)["\']?\s*:\s*(\{[\s\S]*\})',
+        raw,
+        re.IGNORECASE,
+    )
+    if args_match:
+        sub_args = clean_and_parse_json(args_match.group(1))
+        if sub_args and isinstance(sub_args, dict):
+            result["arguments"] = sub_args
+
     path_match = re.search(
-        r'["\']?(?:path|file|filepath|filename)["\']?\s*:\s*["\']([^"\']+)["\']', raw
+        r'["\']?(?:path|file|filepath|filename)["\']?\s*:\s*["\']([^"\']+)["\']',
+        raw,
+        re.IGNORECASE,
     )
     if path_match:
         result["path"] = path_match.group(1)
@@ -244,9 +280,24 @@ def clean_and_parse_json(raw_str: str) -> dict:
     content_match = re.search(
         r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*?)["\']\s*(?:,|\}|\])?$',
         raw,
+        re.IGNORECASE,
     )
     if content_match:
         result["content"] = content_match.group(1)
+    else:
+        content_unclosed = re.search(
+            r'["\']?(?:content|code|text)["\']?\s*:\s*["\']([\s\S]*)$',
+            raw,
+            re.IGNORECASE,
+        )
+        if content_unclosed:
+            result["content"] = content_unclosed.group(1).rstrip('"`\'} \t\r\n')
+
+    if "arguments" in result and isinstance(result["arguments"], dict):
+        if "path" in result and "path" not in result["arguments"]:
+            result["arguments"]["path"] = result["path"]
+        if "content" in result and "content" not in result["arguments"]:
+            result["arguments"]["content"] = result["content"]
 
     if not result:
         if isinstance(last_parsed, dict):
@@ -273,6 +324,7 @@ def parse_tool_call_payload(
     - Interleaved prose
     - Double-encoded JSON arguments
     - Standard tool call dicts: {"name": ..., "arguments": ...} or {"tool": ..., "parameters": ...}
+    - Implicit/bare tool parameter dicts (e.g. {"path": ..., "content": ...})
 
     Returns:
         (tool_name, arguments_dict, metadata)
@@ -304,6 +356,23 @@ def parse_tool_call_payload(
         if len(keys) == 1 and isinstance(parsed_dict[keys[0]], dict):
             tool_name = keys[0]
             arguments = parsed_dict[keys[0]]
+        elif "path" in parsed_dict or "old_text" in parsed_dict or "content" in parsed_dict or "cmd" in parsed_dict:
+            # Infer tool name from parameter shapes
+            if "old_text" in parsed_dict or ("start_line" in parsed_dict and "new_text" in parsed_dict):
+                tool_name = "EDIT_FILE"
+                arguments = parsed_dict
+            elif "content" in parsed_dict or "code" in parsed_dict:
+                tool_name = "WRITE_FILE"
+                arguments = parsed_dict
+            elif "cmd" in parsed_dict or "command" in parsed_dict or "command_line" in parsed_dict:
+                tool_name = "RUN_COMMAND"
+                arguments = parsed_dict
+            elif "query" in parsed_dict:
+                tool_name = "SEARCH_AST"
+                arguments = parsed_dict
+            elif "pattern" in parsed_dict:
+                tool_name = "GREP"
+                arguments = parsed_dict
 
     metadata = {
         "raw_text": raw_text,

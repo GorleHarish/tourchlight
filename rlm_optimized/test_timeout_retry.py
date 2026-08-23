@@ -126,3 +126,30 @@ def test_backoff_grows_exponentially(monkeypatch):
         )
     )
     assert sleeps == [1.0, 2.0]
+
+
+def test_repair_stop_tokens_prunes_trailing_garbage():
+    engine = _bare_engine()
+    raw = '<tool_call>{"name": "EDIT_FILE", "arguments": {"path": "index.html"}}</tool_call>\n\nExtra rambling here. <tool'
+    cleaned = engine._repair_stop_tokens(raw)
+    assert cleaned == '<tool_call>{"name": "EDIT_FILE", "arguments": {"path": "index.html"}}</tool_call>'
+    assert "Extra rambling" not in cleaned
+
+
+def test_stream_llm_early_stops_on_closing_tag():
+    engine = _bare_engine()
+    engine.on_token = None
+
+    class _MockClient:
+        def stream_chat_with_history(self, messages, use_grammar=True):
+            yield "<think>Thinking about edit</think>"
+            yield '<tool_call>{"name": "EDIT_FILE", "arguments": {"path": "index.html"}}'
+            yield '</tool_call>'
+            # Trailing tokens that should never be reached/processed
+            yield "\nI will now do another tool call: <tool"
+
+    engine.client = _MockClient()
+    res = asyncio.run(engine._stream_llm([{"role": "user", "content": "edit"}]))
+    assert res == '<think>Thinking about edit</think><tool_call>{"name": "EDIT_FILE", "arguments": {"path": "index.html"}}</tool_call>'
+    assert "I will now do another tool call" not in res
+

@@ -106,6 +106,8 @@ flowchart TD
 ## Key Features
 
 - **Shared Core Library** — `core/` package with tools, API, memory, errors, compression, flashlight, execution, and prompts — reusable across frontends
+- **Modular Mode-Tailored System Prompt Templates** — Dedicated system prompt templates (`CHAT_PROMPT`, `PLAN_PROMPT`, `CODE_PROMPT`, `TROUBLESHOOT_PROMPT`) sharing unified core directives (`SHARED_BASE_DIRECTIVES`), dynamically selected per phase with active tool schemas
+- **Chat Mode Isolation & Clean Q&A** — Pure conversational answers wrapped in `<FINAL_ANSWER>...</FINAL_ANSWER>` with read-only lookup tools (`SEARCH_AST`, `GREP`, `READ_FILE`, `WEB_SEARCH`), disk task matrix suppression from L0 scratchpad, and verification gate bypass
 - **24-Hour Autonomous Goal Harness** — `AutonomousHarness` continuous micro-epoch daemon with disk task tracking (`.torchlight/tasks.md`), conversation context flushing between sub-tasks, test-driven Git save points, and auto-revert gates
 - **Zero-Config Local Git Provisioning** — Auto-checks target project roots and executes `git init` locally if absent
 - **Zero-Context Harness Quality Engine** — Deterministic post-save formatting (`ruff`/`black`, `prettier`, `gofmt`, `rustfmt`), multi-language syntax validation (Python AST, JSON, JS bracket balance), POSIX whitespace normalization, and stub detection operating with 0 LLM context overhead

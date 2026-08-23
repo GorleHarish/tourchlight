@@ -130,3 +130,67 @@ def test_registry_get_description_block_phase():
     code_block = registry.get_description_block(phase="code")
     assert "RUN_COMMAND" in code_block
     assert "WRITE_FILE" in code_block
+
+
+def test_ask_user_schema_and_formatting():
+    from core.tools.implementations import tool_ask_user_impl
+
+    is_valid, msg, args = validate_tool_call(
+        "ASK_USER",
+        {
+            "question": "Which theme?",
+            "choices": ["(Recommended) Dark Mode", "Light Mode"],
+            "multi_select": False,
+        },
+    )
+    assert is_valid is True
+    assert args["question"] == "Which theme?"
+    assert args["options"] == ["(Recommended) Dark Mode", "Light Mode"]
+    assert args["is_multi_select"] is False
+
+    output = tool_ask_user_impl(args, ".")
+    assert "[AWAITING USER INPUT] Which theme?" in output
+    assert "Radio (Single Choice)" in output
+    assert "( ) 1. (Recommended) Dark Mode" in output
+    assert "( ) 2. Light Mode" in output
+    assert "Custom text input" in output
+
+    # Checkbox multi-select
+    out_multi = tool_ask_user_impl(
+        {
+            "question": "Select features:",
+            "options": ["(Recommended) Sound effects", "Particle animations"],
+            "is_multi_select": True,
+        },
+        ".",
+    )
+    assert "Checkbox (Multi-Select)" in out_multi
+    assert "[ ] 1. (Recommended) Sound effects" in out_multi
+
+
+def test_read_file_line_range_flexibility(tmp_path):
+    from core.tools.implementations import tool_read_file_impl
+
+    # Create dummy file with 30 lines
+    test_file = tmp_path / "sample.py"
+    lines = [f"line_{i} = {i}" for i in range(1, 31)]
+    test_file.write_text("\n".join(lines), encoding="utf-8")
+
+    # 1. Path colon suffix: "sample.py:10-20"
+    out1 = tool_read_file_impl({"path": "sample.py:10-20"}, str(tmp_path))
+    assert "lines 10–20 (of 30 total)" in out1
+    assert "10 | line_10 = 10" in out1
+    assert "20 | line_20 = 20" in out1
+
+    # 2. Path L-prefix suffix: "sample.py:L5-L15"
+    out2 = tool_read_file_impl({"path": "sample.py:L5-L15"}, str(tmp_path))
+    assert "lines 5–15 (of 30 total)" in out2
+
+    # 3. Explicit arguments: start_line / end_line
+    out3 = tool_read_file_impl({"path": "sample.py", "start_line": "L8", "end_line": "12"}, str(tmp_path))
+    assert "lines 8–12 (of 30 total)" in out3
+
+    # 4. Range parameter: range: "15-25"
+    out4 = tool_read_file_impl({"path": "sample.py", "range": "15-25"}, str(tmp_path))
+    assert "lines 15–25 (of 30 total)" in out4
+

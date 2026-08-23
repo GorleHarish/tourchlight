@@ -15,6 +15,9 @@ from typing import Optional, Union
 import hashlib
 
 from textual.app import App, ComposeResult
+from textual.widget import Widget
+from textual.message import Message
+from textual import events, on
 from textual.containers import VerticalScroll, Vertical, Horizontal, Container
 from textual.widgets import (
     Header,
@@ -28,9 +31,13 @@ from textual.widgets import (
     TextArea,
     ListItem,
     ListView,
+    Select,
     TabbedContent,
     TabPane,
     Switch,
+    RadioSet,
+    RadioButton,
+    Checkbox,
 )
 
 try:
@@ -70,9 +77,12 @@ from core.tools.classification import CONFIRM, REVIEW
 from core.prompts.system import sanitize_assistant_text
 from rlm_optimized.memory_monitor import format_memory_status, is_memory_safe
 from rlm_optimized.tui_widgets.format import (
+    build_agent_memory_scratchpad_text,
     build_plan_overview_text,
     build_plan_text,
+    build_skills_overview_text,
     build_task_checklist_text,
+    import_skill_file,
 )
 from rlm_optimized.tui_widgets.transcript import (
     MessageCard,
@@ -182,8 +192,52 @@ def _provider_runtime_info(provider_key: str) -> tuple[int, bool]:
     return 0, True  # cloud providers — no local port to track
 
 
-class AgentMemoryWidget(Static):
-    """Displays the live L0 Agent Brain Scratchpad."""
+class AgentMemoryWidget(VerticalScroll):
+    """Displays the live L0 Agent Brain Scratchpad in UI/UX Pro format with scrollbars."""
+
+    DEFAULT_CSS = """
+    AgentMemoryWidget {
+        height: auto;
+        max-height: 28;
+        min-height: 8;
+        overflow-x: auto;
+        overflow-y: auto;
+        scrollbar-size-vertical: 1;
+        scrollbar-size-horizontal: 1;
+        scrollbar-background: transparent;
+        scrollbar-background-hover: transparent;
+        scrollbar-background-active: transparent;
+        scrollbar-color: $panel;
+        scrollbar-color-hover: $primary;
+        scrollbar-color-active: $accent;
+        color: $foreground;
+        background: $background;
+        border: solid $panel;
+        padding: 0 1;
+        margin-top: 1;
+        margin-bottom: 1;
+    }
+    AgentMemoryWidget > #agent-memory-text {
+        width: auto;
+        min-width: 100%;
+        height: auto;
+        color: $foreground;
+    }
+    """
+
+    _last_markup: str = ""
+
+    def compose(self) -> ComposeResult:
+        yield Static("", id="agent-memory-text")
+
+    def update(self, renderable: Any = "") -> None:
+        """Update the inner static widget content."""
+        self._last_markup = str(renderable) if renderable else ""
+        try:
+            text_w = self.query_one("#agent-memory-text", Static)
+            text_w.update(renderable)
+        except Exception:
+            pass
 
     def on_mount(self) -> None:
         self.update_memory()
@@ -193,19 +247,47 @@ class AgentMemoryWidget(Static):
 
     def update_memory(self) -> None:
         try:
-            app = self.app
-            if hasattr(app, "engine") and hasattr(app.engine, "memory"):
-                mem = app.engine.memory
-                if mem and hasattr(mem, "format_l0_scratchpad"):
-                    text = mem.format_l0_scratchpad(
-                        project_root=app.engine.project_root
-                    )
-                    if text and isinstance(text, str):
-                        self.update(text)
-                        return
+            app = getattr(self, "_app", None)
+            if app is None:
+                try:
+                    app = self.app
+                except Exception:
+                    app = None
+            mem = None
+            proj_root = None
+            is_goal = False
+            if app and hasattr(app, "engine"):
+                mem = getattr(app.engine, "memory", None)
+                proj_root = getattr(app.engine, "project_root", None)
+            if app and hasattr(app, "_is_goal_mode"):
+                try:
+                    is_goal = app._is_goal_mode()
+                except Exception:
+                    pass
+
+            markup = build_agent_memory_scratchpad_text(
+                mem=mem,
+                project_root=proj_root,
+                is_goal=is_goal,
+            )
+            if markup != self._last_markup:
+                self._last_markup = markup
+                try:
+                    text_w = self.query_one("#agent-memory-text", Static)
+                    text_w.update(markup)
+                except Exception:
+                    pass
+                return
         except Exception:
             pass
-        self.update("[dim]Agent memory not initialized yet...[/dim]")
+        if not self._last_markup:
+            fallback = build_agent_memory_scratchpad_text(None)
+            self._last_markup = fallback
+            try:
+                text_w = self.query_one("#agent-memory-text", Static)
+                text_w.update(fallback)
+            except Exception:
+                pass
 
 
 # ── Approval Modal ──────────────────────────────────────────────────────
@@ -303,14 +385,13 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
         self.diff_path = diff_path
 
     def compose(self) -> ComposeResult:
-        risk_icon = "🛑" if self.risk == REVIEW else "⚠️ "
         risk_label = (
-            f"RISK_LEVEL: {self.risk.upper()}" if self.risk else "RISK_LEVEL: CONFIRM"
+            f"RISK LEVEL: {self.risk.upper()}" if self.risk else "RISK LEVEL: CONFIRM"
         )
 
         with Vertical(id="approval-dialog"):
             yield Static(
-                f"{risk_icon} {risk_label}\nModification requires manual operational validation.",
+                f"[{risk_label}]\nModification requires manual operational validation.",
                 id="approval-title",
             )
             yield Static(
@@ -339,7 +420,7 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
             yield Static(escape(args_str), id="approval-args")
             if self.diff_entries:
                 yield Static(
-                    f"⬇ DIFF PREVIEW — {escape(self.diff_path or 'file')}",
+                    f"DIFF PREVIEW -- {escape(self.diff_path or 'file')}",
                     id="approval-diff-label",
                 )
                 yield Static(
@@ -350,6 +431,7 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
                 yield Button("APPROVE (Enter / Y)", variant="success", id="allow-btn")
                 yield Button("REJECT (Esc / N)", variant="error", id="deny-btn")
                 yield Button("ALWAYS ALLOW (A)", variant="warning", id="always-btn")
+
             yield Static(
                 "[dim]Press Enter / Y to approve, N or Esc to reject, A for session auto-approve[/dim]",
                 id="approval-hint",
@@ -381,6 +463,161 @@ class ApprovalModal(ModalScreen[Union[bool, str]]):
     @on(Button.Pressed, "#always-btn")
     def on_always(self) -> None:
         self.dismiss("always")
+
+
+# ── Ask User Interactive Review Modal ───────────────────────────────────────────
+
+
+class AskUserModal(ModalScreen[str]):
+    """Interactive modal dialog for structured user review options and custom input."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+        ("ctrl+enter", "submit", "Submit"),
+    ]
+
+    DEFAULT_CSS = """
+    AskUserModal {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.7);
+    }
+    #ask-dialog {
+        width: 90%;
+        max-width: 84;
+        max-height: 85%;
+        border: round $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    #ask-title {
+        text-align: center;
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+    }
+    #ask-question {
+        color: $foreground;
+        margin-bottom: 1;
+    }
+    #ask-options-container {
+        max-height: 12;
+        overflow-y: auto;
+        border: solid $panel;
+        background: $background;
+        padding: 1;
+        margin-bottom: 1;
+    }
+    #ask-custom-label {
+        color: $text-muted;
+        margin-top: 1;
+        margin-bottom: 0;
+    }
+    #ask-custom-input {
+        margin-bottom: 1;
+    }
+    #ask-buttons {
+        height: 3;
+        align: center middle;
+        margin-top: 1;
+    }
+    #ask-buttons Button {
+        margin: 0 1;
+        min-width: 18;
+    }
+    """
+
+    def __init__(
+        self,
+        question: str,
+        options: Optional[list[str]] = None,
+        is_multi_select: bool = False,
+        allow_custom_input: bool = True,
+    ) -> None:
+        super().__init__()
+        self.question_text = question or "Agent requested input:"
+        self.options = options or []
+        self.is_multi_select = is_multi_select
+        self.allow_custom_input = allow_custom_input
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="ask-dialog"):
+            yield Label("❓ Agent Question / Plan Review", id="ask-title")
+            yield Static(self.question_text, id="ask-question")
+
+            if self.options:
+                with Vertical(id="ask-options-container"):
+                    if not self.is_multi_select:
+                        with RadioSet(id="ask-radioset"):
+                            for i, opt in enumerate(self.options):
+                                yield RadioButton(opt, value=(i == 0))
+                    else:
+                        for i, opt in enumerate(self.options):
+                            yield Checkbox(opt, value=(i == 0), id=f"ask-check-{i}")
+
+            if self.allow_custom_input:
+                yield Label("Custom input / additional feedback (optional):", id="ask-custom-label")
+                yield Input(placeholder="Type your response here...", id="ask-custom-input")
+
+            with Horizontal(id="ask-buttons"):
+                yield Button("Submit [Enter]", variant="primary", id="ask-submit-btn")
+                yield Button("Dismiss [Esc]", variant="default", id="ask-cancel-btn")
+
+    def action_cancel(self) -> None:
+        self.dismiss("User dismissed prompt without input.")
+
+    def action_submit(self) -> None:
+        self._perform_submit()
+
+    @on(Button.Pressed, "#ask-cancel-btn")
+    def on_cancel_btn(self) -> None:
+        self.dismiss("User dismissed prompt without input.")
+
+    @on(Button.Pressed, "#ask-submit-btn")
+    def on_submit_btn(self) -> None:
+        self._perform_submit()
+
+    @on(Input.Submitted, "#ask-custom-input")
+    def on_input_submitted(self) -> None:
+        self._perform_submit()
+
+    def _perform_submit(self) -> None:
+        selected_choices: list[str] = []
+        if self.options:
+            if not self.is_multi_select:
+                try:
+                    radio_set = self.query_one("#ask-radioset", RadioSet)
+                    if radio_set.pressed_button:
+                        selected_choices.append(str(radio_set.pressed_button.label))
+                except Exception:
+                    pass
+            else:
+                for i, opt in enumerate(self.options):
+                    try:
+                        cb = self.query_one(f"#ask-check-{i}", Checkbox)
+                        if cb.value:
+                            selected_choices.append(opt)
+                    except Exception:
+                        pass
+
+        custom_text = ""
+        if self.allow_custom_input:
+            try:
+                inp = self.query_one("#ask-custom-input", Input)
+                custom_text = inp.value.strip()
+            except Exception:
+                pass
+
+        results = []
+        if selected_choices:
+            if not self.is_multi_select:
+                results.append(f"Selected: {selected_choices[0]}")
+            else:
+                results.append(f"Selected: {', '.join(selected_choices)}")
+        if custom_text:
+            results.append(f"Custom Input: {custom_text}")
+
+        final_ans = "\n".join(results) if results else "User confirmed."
+        self.dismiss(final_ans)
 
 
 # ── Folder Picker Modal ──────────────────────────────────────────────────
@@ -523,95 +760,280 @@ class FolderPickerModal(ModalScreen[Optional[str]]):
         self.dismiss(None)
 
 
-# ── Model Picker Modal ──────────────────────────────────────────────────
+# ── Skill Upload / Import Modal ──────────────────────────────────────────
 
 
-class ModelPickerModal(ModalScreen[Optional[dict]]):
-    """Modal dialog to visually pick models and engine providers."""
+class SkillUploadModal(ModalScreen[Optional[dict]]):
+    """Modal dialog for importing external skill files/folders into the project workspace."""
 
-    BINDINGS = [("escape", "cancel", "Cancel")]
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+    ]
 
     DEFAULT_CSS = """
-    ModelPickerModal {
+    SkillUploadModal {
         align: center middle;
+        background: #0d1117;
     }
-    #model-dialog {
-        width: 90%;
-        max-width: 76;
-        height: 80%;
+    #skill-dialog {
+        width: 92%;
+        max-width: 90;
+        height: 88%;
+        max-height: 32;
+        border: solid $panel;
+        border-left: solid $accent;
+        background: $surface;
+        padding: 1 2;
+    }
+    #skill-dialog-title {
+        text-style: bold;
+        color: $accent;
+        height: 1;
+        margin-bottom: 1;
+    }
+    #skill-detected-bar {
+        height: 3;
+        align: left middle;
+        margin-bottom: 1;
+    }
+    .skill-detected-label {
+        color: $warning;
+        text-style: bold;
+        padding-top: 1;
+        margin-right: 1;
+    }
+    #skill-detected-bar Button {
+        margin-right: 1;
+        border: none;
+        padding: 0 1;
+        height: 3;
+    }
+    #skill-upload-jumps {
+        height: 3;
+        margin-bottom: 1;
+    }
+    #skill-upload-jumps Button {
+        margin-right: 1;
+        border: none;
+        padding: 0 1;
+        height: 3;
+    }
+    #skill-picker-tree {
+        height: 1fr;
+        min-height: 4;
+        margin-bottom: 1;
+        border: solid $panel;
+        background: $background;
+    }
+    #skill-inputs-row {
+        height: 3;
+        margin-bottom: 1;
+    }
+    #skill-src-input {
+        width: 60%;
+        margin-right: 1;
+    }
+    #skill-custom-name-input {
+        width: 40%;
+    }
+    #skill-dest-preview {
+        color: $success;
+        height: 1;
+        margin-bottom: 1;
+    }
+    #skill-upload-actions {
+        height: 3;
+        align: right middle;
+    }
+    #skill-upload-actions Button {
+        margin-left: 1;
+        border: none;
+        padding: 0 1;
+        height: 3;
     }
     """
 
-    def __init__(self):
+    def __init__(self, workspace_root: Optional[str] = None):
         super().__init__()
-        self.models = list_available_models()
-        self.lmstudio_models = fetch_provider_models(LMSTUDIO_BASE_URL)
-        for model_id in self.lmstudio_models:
-            if not any(m.get("id") == model_id for m in self.models):
-                self.models.append(
-                    {
-                        "name": f"LM Studio: {model_id}",
-                        "id": model_id,
-                        "provider": "lmstudio",
-                    }
-                )
-        # Fetch live models from local server (port 8080) and Ollama (port 11434)
-        local_8080 = fetch_provider_models("http://localhost:8080/v1")
-        for model_id in local_8080:
-            if not any(m.get("id") == model_id for m in self.models):
-                self.models.append(
-                    {
-                        "name": f"Local Server: {model_id}",
-                        "id": model_id,
-                        "provider": "turbo",
-                    }
-                )
-        ollama_models = fetch_provider_models("http://localhost:11434/v1")
-        for model_id in ollama_models:
-            if not any(m.get("id") == model_id for m in self.models):
-                self.models.append(
-                    {
-                        "name": f"Ollama: {model_id}",
-                        "id": model_id,
-                        "provider": "ollama",
-                    }
-                )
+        self.workspace_root = workspace_root or os.getcwd()
+        desktop = os.path.expanduser("~/Desktop")
+        self.current_tree_path = desktop if os.path.exists(desktop) else self.workspace_root
+        self.candidates = self._find_candidates()
+
+    def _find_candidates(self) -> list[tuple[str, str, str]]:
+        candidates = []
+        seen = set()
+        search_dirs = [
+            os.path.expanduser("~/Desktop"),
+            self.workspace_root,
+            os.path.expanduser("~/Downloads"),
+        ]
+        for d in search_dirs:
+            if not os.path.isdir(d):
+                continue
+            try:
+                for item in sorted(os.listdir(d)):
+                    p = os.path.join(d, item)
+                    if p in seen or item.startswith("."):
+                        continue
+                    if os.path.isfile(p) and (p.endswith(".md") or p.endswith(".py")):
+                        try:
+                            with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                                head = f.read(1024)
+                            if "name:" in head or "SKILL" in item.upper() or "skill" in item.lower():
+                                seen.add(p)
+                                icon = "📄"
+                                for line in head.splitlines()[:15]:
+                                    if line.strip().startswith("icon:"):
+                                        icon = line.split(":", 1)[1].strip()
+                                        break
+                                candidates.append((item, p, icon))
+                        except Exception:
+                            pass
+                    elif os.path.isdir(p):
+                        skill_md = os.path.join(p, "SKILL.md")
+                        if not os.path.isfile(skill_md):
+                            skill_md = os.path.join(p, "skill.md")
+                        if os.path.isfile(skill_md):
+                            seen.add(p)
+                            icon = "📁"
+                            try:
+                                with open(skill_md, "r", encoding="utf-8", errors="ignore") as f:
+                                    for line in f.read(1024).splitlines()[:15]:
+                                        if line.strip().startswith("icon:"):
+                                            icon = line.split(":", 1)[1].strip()
+                                            break
+                            except Exception:
+                                pass
+                            candidates.append((item, p, icon))
+            except Exception:
+                pass
+        return candidates[:6]
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="model-dialog"):
-            yield Label("🤖 Select Execution Model & Provider", id="model-title")
-            with VerticalScroll():
-                if self.lmstudio_models:
-                    yield Static(
-                        f"[bold]🟢 LM Studio[/] — [dim]{LMSTUDIO_BASE_URL}[/]\n"
-                        f"[green]{len(self.lmstudio_models)} model(s) currently loaded[/]",
-                        classes="model-card",
-                    )
-                else:
-                    yield Static(
-                        f"[bold]🔴 LM Studio[/] — [dim]{LMSTUDIO_BASE_URL}[/]\n"
-                        "[yellow]No live models found. Open LM Studio, load a model, start its "
-                        "Local Server, then reopen this picker (Ctrl+M) to refresh.[/]",
-                        classes="model-card",
-                    )
-                for idx, m in enumerate(self.models):
-                    btn_id = f"model-select-{idx}"
-                    yield Static(
-                        f"[bold text-white]{escape(m['name'])}[/]\n"
-                        f"[dim]ID:[/] [cyan]{escape(m['id'])}[/]  │  [dim]Provider:[/] [yellow]{escape(m['provider'])}[/]",
-                        classes="model-card",
-                    )
-                    yield Button(f"Use {m['name']}", id=btn_id, variant="primary")
-            yield Button("Cancel", id="cancel-model-btn", variant="error")
+        with Vertical(id="skill-dialog"):
+            yield Static("📥 Import External Skill into Workspace", id="skill-dialog-title")
+
+            if self.candidates:
+                with Horizontal(id="skill-detected-bar"):
+                    yield Static("Detected:", classes="skill-detected-label")
+                    for idx, (label, full_p, icon) in enumerate(self.candidates):
+                        btn = Button(f"{icon} {label}", id=f"cand-{idx}", variant="primary")
+                        btn.tooltip = full_p
+                        yield btn
+
+            with Horizontal(id="skill-upload-jumps"):
+                yield Button("🖥️ Desktop", id="skill-jump-desktop", variant="default")
+                yield Button("🏠 Home", id="skill-jump-home", variant="default")
+                yield Button("📥 Downloads", id="skill-jump-downloads", variant="default")
+                yield Button("📁 Workspace", id="skill-jump-workspace", variant="default")
+                yield Button("💻 Root (/)", id="skill-jump-root", variant="default")
+
+            yield DirectoryTree(self.current_tree_path, id="skill-picker-tree")
+
+            with Horizontal(id="skill-inputs-row"):
+                yield Input(
+                    placeholder="Source path (click file in tree or paste)...",
+                    id="skill-src-input",
+                )
+                yield Input(
+                    placeholder="Custom name (optional)...",
+                    id="skill-custom-name-input",
+                )
+
+            yield Static("Destination: [dim].agents/skills/<skill_name>/SKILL.md[/dim]", id="skill-dest-preview")
+
+            with Horizontal(id="skill-upload-actions"):
+                yield Button("✅ Import & Install Selected Skill", id="skill-confirm-btn", variant="success")
+                yield Button("❌ Cancel", id="skill-cancel-btn", variant="error")
 
     @on(Button.Pressed)
-    def on_button(self, event: Button.Pressed) -> None:
-        if event.button.id == "cancel-model-btn":
-            self.dismiss(None)
+    def on_button_pressed_handler(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id or ""
+        if btn_id.startswith("cand-"):
+            try:
+                idx = int(btn_id.split("-")[1])
+                _, full_path, _ = self.candidates[idx]
+                self._select_path(full_path)
+            except Exception:
+                pass
+
+    @on(DirectoryTree.FileSelected, "#skill-picker-tree")
+    @on(DirectoryTree.DirectorySelected, "#skill-picker-tree")
+    def on_tree_selected(self, event: Union[DirectoryTree.FileSelected, DirectoryTree.DirectorySelected]) -> None:
+        self._select_path(str(event.path))
+
+    def _select_path(self, target_path: str) -> None:
+        self.query_one("#skill-src-input", Input).value = target_path
+        self._update_preview(target_path)
+
+    def _update_preview(self, src: str) -> None:
+        custom = self.query_one("#skill-custom-name-input", Input).value.strip()
+        if custom:
+            slug = re.sub(r"[^a-z0-9_]+", "_", custom.lower()).strip("_")
+        elif src:
+            p = Path(os.path.expanduser(src))
+            slug = re.sub(r"[^a-z0-9_]+", "_", p.stem.lower()).strip("_")
+        else:
+            slug = "<skill_name>"
+
+        preview = self.query_one("#skill-dest-preview", Static)
+        if src.endswith(".py"):
+            preview.update(f"Destination: [bold green].agents/skills/{slug}.py[/bold green]")
+        else:
+            preview.update(f"Destination: [bold green].agents/skills/{slug}/SKILL.md[/bold green]")
+
+    @on(Input.Changed, "#skill-src-input")
+    @on(Input.Changed, "#skill-custom-name-input")
+    def on_inputs_changed(self) -> None:
+        src = self.query_one("#skill-src-input", Input).value.strip()
+        self._update_preview(src)
+
+    def _set_tree_dir(self, target_dir: str) -> None:
+        p = os.path.abspath(os.path.expanduser(target_dir))
+        if os.path.isdir(p):
+            self.current_tree_path = p
+            try:
+                tree = self.query_one("#skill-picker-tree", DirectoryTree)
+                tree.path = p
+            except Exception:
+                pass
+
+    @on(Button.Pressed, "#skill-jump-desktop")
+    def on_jump_desktop(self) -> None:
+        self._set_tree_dir(os.path.expanduser("~/Desktop"))
+
+    @on(Button.Pressed, "#skill-jump-home")
+    def on_jump_home(self) -> None:
+        self._set_tree_dir(os.path.expanduser("~"))
+
+    @on(Button.Pressed, "#skill-jump-downloads")
+    def on_jump_downloads(self) -> None:
+        self._set_tree_dir(os.path.expanduser("~/Downloads"))
+
+    @on(Button.Pressed, "#skill-jump-workspace")
+    def on_jump_workspace(self) -> None:
+        self._set_tree_dir(self.workspace_root)
+
+    @on(Button.Pressed, "#skill-jump-root")
+    def on_jump_root(self) -> None:
+        self._set_tree_dir("/")
+
+    @on(Button.Pressed, "#skill-confirm-btn")
+    def on_confirm(self) -> None:
+        src = self.query_one("#skill-src-input", Input).value.strip()
+        custom = self.query_one("#skill-custom-name-input", Input).value.strip()
+        if not src:
+            self.query_one("#skill-dest-preview", Static).update("[bold red]Please select or enter a valid source path.[/bold red]")
             return
-        if event.button.id and event.button.id.startswith("model-select-"):
-            idx = int(event.button.id.replace("model-select-", ""))
-            self.dismiss(self.models[idx])
+        self.dismiss({"source_path": src, "custom_name": custom})
+
+    @on(Button.Pressed, "#skill-cancel-btn")
+    def on_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
 
 
 # ── Copy Selection Modal ──────────────────────────────────────────────────
@@ -725,43 +1147,65 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         with Vertical(id="mode-dialog"):
-            yield Static("⚙️ Select Torchlight Execution Mode", id="mode-title")
+            yield Static("Select Torchlight Execution Mode", id="mode-title")
             yield Static(
                 "Choose the operation mode for your session:\n\n"
-                "• 💬 Chat Mode: Fast, lightweight Q&A. No disk task tracking files created.\n"
-                "• 🎯 Goal Mode: Continuous autonomous harness with disk-backed task graph (.torchlight/tasks.md).\n"
-                "• ⚡ Unified Mode: Dynamic phase auto-detection with full developer toolset.",
+                "• Code Mode: Direct surgical coding & task execution. Implements pending tasks from implementation_plan.md in source files.\n"
+                "• Plan Mode: Brainstorm architecture, steps, & process. Writes/updates implementation_plan.md.\n"
+                "• Chat Mode: Fast, lightweight Q&A. No disk task tracking files created.\n"
+                "• Goal Mode: Continuous autonomous harness with disk-backed task graph (.torchlight/tasks.md).\n"
+                "• Unified Mode: Dynamic phase auto-detection with full developer toolset.",
                 id="mode-desc",
             )
             yield Static(
-                "💡 Tooltip: Goal Mode initializes .torchlight/goal_spec.json and .torchlight/tasks.md "
-                "to track multi-epoch sub-tasks across context resets and enforce verification gates.",
+                "Tooltip: Plan Mode helps you brainstorm and maintain implementation_plan.md before coding. "
+                "Code Mode executes pending tasks directly in source code files.",
                 id="mode-tooltip",
             )
             with Horizontal():
                 yield Button(
-                    "💬 Chat Mode",
-                    id="select-chat-btn",
+                    "Code Mode",
+                    id="select-code-btn",
                     variant="primary",
                     classes="mode-btn",
                 )
                 yield Button(
-                    "🎯 Goal Mode",
+                    "Plan Mode",
+                    id="select-plan-btn",
+                    variant="primary",
+                    classes="mode-btn",
+                )
+                yield Button(
+                    "Chat Mode",
+                    id="select-chat-btn",
+                    variant="default",
+                    classes="mode-btn",
+                )
+                yield Button(
+                    "Goal Mode",
                     id="select-goal-btn",
                     variant="success",
                     classes="mode-btn",
                 )
                 yield Button(
-                    "⚡ Unified Mode",
+                    "Unified Mode",
                     id="select-unified-btn",
                     variant="warning",
                     classes="mode-btn",
                 )
             yield Button("Cancel", id="cancel-mode-btn", variant="default")
 
+    @on(Button.Pressed, "#select-code-btn")
+    def select_code(self) -> None:
+        self.dismiss("code")
+
     @on(Button.Pressed, "#select-chat-btn")
     def select_chat(self) -> None:
         self.dismiss("chat")
+
+    @on(Button.Pressed, "#select-plan-btn")
+    def select_plan(self) -> None:
+        self.dismiss("plan")
 
     @on(Button.Pressed, "#select-goal-btn")
     def select_goal(self) -> None:
@@ -779,11 +1223,283 @@ class SessionModePickerModal(ModalScreen[Optional[str]]):
         self.dismiss(None)
 
 
+
+
+
+# ── Engine & TurboQuant Selector Modal ───────────────────────────────────
+
+
+class EngineConfigModal(ModalScreen[Optional[dict]]):
+    """Modal dialog for selecting Inference Engine and TurboQuant KV Cache mode."""
+
+    BINDINGS = [
+        ("escape", "cancel", "Cancel"),
+    ]
+
+    DEFAULT_CSS = """
+    EngineConfigModal {
+        align: center middle;
+        background: #0d1117;
+    }
+    #engine-dialog {
+        width: 90%;
+        max-width: 76;
+        height: auto;
+        max-height: 85%;
+        background: $surface;
+        border: solid $accent;
+        padding: 1 2;
+    }
+    #engine-title {
+        text-align: center;
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+    }
+    #engine-desc {
+        margin-bottom: 1;
+    }
+    #engine-info-box {
+        background: $boost;
+        color: $text-muted;
+        padding: 1;
+        margin: 1 0;
+        border: solid $panel;
+    }
+    .engine-field-label {
+        color: $text;
+        text-style: bold;
+        margin-top: 1;
+        margin-bottom: 0;
+    }
+    #engine-backend-select, #engine-kv-select, #engine-model-select {
+        width: 1fr;
+        height: 1;
+        margin-bottom: 1;
+        border: none;
+    }
+    .engine-btn-row {
+        height: 3;
+        margin-top: 1;
+        align: right middle;
+    }
+    .engine-modal-btn {
+        border: none;
+        padding: 0 2;
+        height: 3;
+        margin-left: 1;
+    }
+    """
+
+    def __init__(
+        self,
+        current_engine: str = "llama.cpp",
+        current_kv_mode: str = "turbo3",
+        current_model: str = "",
+    ):
+        super().__init__()
+        self.current_engine = current_engine or "llama.cpp"
+        self.current_kv_mode = current_kv_mode or "turbo3"
+        self.current_model = current_model or ""
+
+    def _get_model_options_for_engine(self, engine: str) -> list[tuple[str, str]]:
+        """Get model choices tailored to the selected inference backend."""
+        from pathlib import Path
+        options = []
+        workspace = Path(__file__).parent.parent.resolve()
+        models_dir = workspace / "models"
+        engine_str = (engine or "llama.cpp").lower()
+
+        if "mlx" in engine_str:
+            from rlm_optimized.config import is_valid_mlx_directory
+            # 1. ./models directory MLX model folders ONLY
+            if models_dir.exists():
+                for item in sorted(models_dir.iterdir()):
+                    if is_valid_mlx_directory(str(item)):
+                        options.append((item.name, str(item.resolve())))
+
+            # 2. ~/.cache/huggingface/hub snapshots (verified complete only)
+            hf_dir = Path.home() / ".cache" / "huggingface" / "hub"
+            if hf_dir.exists():
+                for item in sorted(hf_dir.glob("models--*mlx*")):
+                    snaps_dir = item / "snapshots"
+                    if snaps_dir.exists():
+                        for snap in snaps_dir.iterdir():
+                            if is_valid_mlx_directory(str(snap)):
+                                clean_name = item.name.replace("models--mlx-community--", "").replace("models--", "")
+                                if not any(clean_name in opt[0] or opt[1] == str(snap.resolve()) for opt in options):
+                                    options.append((f"{clean_name} (HuggingFace)", str(snap.resolve())))
+                                break
+
+            # 3. Ensure popular MLX Coder, Gemma, and Reasoning models are available
+            if not any("DeepSeek-R1" in opt[0] for opt in options):
+                options.append(("DeepSeek-R1-Distill-Qwen-7B-4bit (MLX)", "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit"))
+            if not any("Qwen2.5-Coder-3B" in opt[0] for opt in options):
+                options.append(("Qwen2.5-Coder-3B-Instruct-4bit (MLX)", "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit"))
+            if not any("Qwen2.5-Coder-7B" in opt[0] for opt in options):
+                options.append(("Qwen2.5-Coder-7B-Instruct-4bit (MLX)", "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"))
+            if not any("gemma-4-e4b" in opt[1].lower() for opt in options):
+                options.append(("Gemma 4 E4B (MLX)", "mlx-community/gemma-4-E4B-it-4bit"))
+            if not any("gemma-4-e2b" in opt[1].lower() for opt in options):
+                options.append(("Gemma 4 E2B (MLX)", "mlx-community/gemma-4-E2B-it-4bit"))
+            if not any("gemma-2-2b" in opt[1].lower() for opt in options):
+                options.append(("Gemma 2 2B (MLX)", "mlx-community/gemma-2-2b-it-4bit"))
+
+        elif "lmstudio" in engine_str:
+            try:
+                from rlm_optimized.config import fetch_provider_models, LMSTUDIO_BASE_URL
+                lm_models = fetch_provider_models(LMSTUDIO_BASE_URL)
+                for m_id in lm_models:
+                    options.append((f"{m_id} (LM Studio)", m_id))
+            except Exception:
+                pass
+            lmstudio_dir = Path.home() / ".lmstudio" / "models"
+            if lmstudio_dir.exists():
+                for gguf in sorted(lmstudio_dir.rglob("*.gguf")):
+                    sz_mb = gguf.stat().st_size / (1024 * 1024)
+                    options.append((f"{gguf.name} ({sz_mb:.0f}MB LMStudio)", str(gguf.resolve())))
+
+        elif "ollama" in engine_str:
+            try:
+                from rlm_optimized.config import fetch_provider_models
+                ol_models = fetch_provider_models("http://localhost:11434/v1")
+                for m_id in ol_models:
+                    options.append((f"{m_id} (Ollama)", m_id))
+            except Exception:
+                pass
+
+        else:
+            # 1. ./models directory GGUF models
+            if models_dir.exists():
+                for item in sorted(models_dir.iterdir()):
+                    if item.is_file() and item.suffix == ".gguf":
+                        sz_mb = item.stat().st_size / (1024 * 1024)
+                        options.append((f"{item.name} ({sz_mb:.0f}MB)", str(item.resolve())))
+
+            # 2. ~/.lmstudio/models GGUF models
+            lmstudio_dir = Path.home() / ".lmstudio" / "models"
+            if lmstudio_dir.exists():
+                for gguf in sorted(lmstudio_dir.rglob("*.gguf")):
+                    sz_mb = gguf.stat().st_size / (1024 * 1024)
+                    if not any(opt[1] == str(gguf.resolve()) for opt in options):
+                        options.append((f"{gguf.name} ({sz_mb:.0f}MB LMStudio)", str(gguf.resolve())))
+
+        if not options:
+            if "mlx" in engine_str:
+                options = [
+                    ("Gemma 4 E2B (MLX)", "mlx-community/gemma-4-E2B-it-4bit"),
+                    ("Gemma 4 E4B (MLX)", "mlx-community/gemma-4-E4B-it-4bit"),
+                    ("Qwen 2.5 Coder 3B (MLX)", "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit"),
+                ]
+            else:
+                options = [
+                    ("Gemma 4 E2B (Auto-Download)", "gemma-4-E2B-it-Q4_K_M.gguf"),
+                    ("Gemma 4 E4B (Auto-Download)", "gemma-4-E4B-it-Q4_K_M.gguf"),
+                    ("Qwen 2.5 Coder 3B (Auto-Download)", "qwen2.5-coder-3b-instruct-q4_k_m.gguf"),
+                ]
+        return options
+
+    def compose(self) -> ComposeResult:
+        engine_options = [
+            ("llama.cpp (Metal Shading Language + TurboQuant)", "llama.cpp"),
+            ("Apple MLX (Native Metal Array Engine)", "mlx"),
+            ("LM Studio (Local REST API Server)", "lmstudio"),
+            ("Ollama (Local REST API Server)", "ollama"),
+        ]
+
+        kv_options = [
+            ("turbo3 (3-bit TurboQuant — ~75% KV Memory Reduction)", "turbo3"),
+            ("turbo4 (4-bit TurboQuant — Balanced Speed & Precision)", "turbo4"),
+            ("f16 (Standard Baseline — Without TurboQuant)", "f16"),
+        ]
+
+        model_options = self._get_model_options_for_engine(self.current_engine)
+        initial_model_val = self.current_model
+        if not any(o[1] == initial_model_val for o in model_options):
+            initial_model_val = model_options[0][1]
+
+        with Vertical(id="engine-dialog"):
+            yield Static("⚡ Inference Engine & TurboQuant Setup", id="engine-title")
+            yield Static(
+                "Configure your target execution backend and KV cache quantization scheme.\n"
+                "• [bold]llama.cpp[/bold]: Ultra-low memory overhead (~150MB base) with hand-crafted Metal LUT shaders.\n"
+                "• [bold]Apple MLX[/bold]: Python-native array execution with high generation throughput on M-series chips.\n"
+                "• [bold]TurboQuant[/bold]: Compresses KV cache down to 3-bit / 4-bit, enabling 16k–32k context on 8GB/16GB Macs.",
+                id="engine-desc",
+            )
+            yield Static(
+                "💡 Tip: Select 'turbo3' or 'turbo4' for long multi-file coding sessions without swapping, "
+                "or 'f16' for standard unquantized floating point operations.",
+                id="engine-info-box",
+            )
+
+            yield Static("Select Inference Backend Engine:", classes="engine-field-label")
+            yield Select(
+                engine_options,
+                value=self.current_engine if any(o[1] == self.current_engine for o in engine_options) else "llama.cpp",
+                id="engine-backend-select",
+                allow_blank=False,
+            )
+
+            yield Static("Select Model for Coding Agent:", classes="engine-field-label")
+            yield Select(
+                model_options,
+                value=initial_model_val,
+                id="engine-model-select",
+                allow_blank=False,
+            )
+
+            yield Static("Select TurboQuant KV Cache Compression Mode:", classes="engine-field-label")
+            yield Select(
+                kv_options,
+                value=self.current_kv_mode if any(o[1] == self.current_kv_mode for o in kv_options) else "turbo3",
+                id="engine-kv-select",
+                allow_blank=False,
+            )
+
+            with Horizontal(classes="engine-btn-row"):
+                yield Button("Cancel", id="cancel-engine-btn", classes="engine-modal-btn")
+                yield Button(
+                    "Apply Engine Settings",
+                    id="apply-engine-btn",
+                    variant="primary",
+                    classes="engine-modal-btn",
+                )
+
+    @on(Select.Changed, "#engine-backend-select")
+    def on_engine_changed(self, event: Select.Changed) -> None:
+        try:
+            model_dropdown = self.query_one("#engine-model-select", Select)
+            opts = self._get_model_options_for_engine(str(event.value))
+            model_dropdown.set_options(opts)
+            if opts:
+                model_dropdown.value = opts[0][1]
+        except Exception:
+            pass
+
+    @on(Button.Pressed, "#apply-engine-btn")
+    def on_apply(self) -> None:
+        try:
+            eng = self.query_one("#engine-backend-select", Select).value
+            model = self.query_one("#engine-model-select", Select).value
+            kv = self.query_one("#engine-kv-select", Select).value
+            self.dismiss({"engine": eng, "model": model, "kv_mode": kv})
+        except Exception:
+            self.dismiss(None)
+
+    @on(Button.Pressed, "#cancel-engine-btn")
+    def on_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+
 # ── File Action Modal (OS Tool Selector) ────────────────────────────────
 
 
 class FileActionModal(ModalScreen[str]):
-    """Modal dialog presenting OS options when a file is selected in the Explorer tree."""
+    """Clean, minimalist modal dialog presenting file options (right-click context menu)."""
 
     BINDINGS = [
         ("escape", "action_cancel", "Cancel"),
@@ -792,23 +1508,40 @@ class FileActionModal(ModalScreen[str]):
     DEFAULT_CSS = """
     FileActionModal {
         align: center middle;
-        background: rgba(0, 0, 0, 0.7);
+        background: #0d1117;
     }
     #file-action-dialog {
         width: 90%;
-        max-width: 62;
+        max-width: 52;
         height: auto;
         padding: 1 2;
-        background: $panel;
-        border: thick $primary;
+        background: #161b22;
+        border: solid #30363d;
     }
     .file-action-title {
         text-align: center;
         margin-bottom: 1;
+        color: #e6edf3;
     }
     .file-action-btn {
         width: 100%;
+        height: 3;
         margin-top: 1;
+        background: #21262d;
+        color: #c9d1d9;
+        border: none;
+        padding: 0 1;
+        text-align: center;
+    }
+    .file-action-btn:hover {
+        background: #30363d;
+        color: #ffffff;
+        text-style: bold;
+    }
+    .file-action-btn:focus {
+        background: #30363d;
+        color: #ffffff;
+        border: none;
     }
     """
 
@@ -820,30 +1553,30 @@ class FileActionModal(ModalScreen[str]):
     def compose(self) -> ComposeResult:
         with Vertical(id="file-action-dialog"):
             yield Static(
-                f"[bold cyan]📄 {escape(self.filename)}[/bold cyan]\n"
+                f"[bold]{escape(self.filename)}[/bold]\n"
                 f"[dim]{escape(self.file_path)}[/dim]",
                 classes="file-action-title",
             )
             yield Button(
-                "🚀 Open with System Default App",
+                "Open with System Default App",
                 id="act-open-system",
-                variant="primary",
+                variant="default",
                 classes="file-action-btn",
             )
             yield Button(
-                "📝 Open in VS Code / Editor",
+                "Open in VS Code / Editor",
                 id="act-open-code",
-                variant="success",
+                variant="default",
                 classes="file-action-btn",
             )
             yield Button(
-                "📋 Copy Absolute File Path",
+                "Copy Absolute File Path",
                 id="act-copy-path",
                 variant="default",
                 classes="file-action-btn",
             )
             yield Button(
-                "✕ Cancel", id="act-cancel", variant="error", classes="file-action-btn"
+                "Cancel", id="act-cancel", variant="default", classes="file-action-btn"
             )
 
     @on(Button.Pressed, "#act-open-system")
@@ -1128,25 +1861,25 @@ class ShortcutsHelpModal(ModalScreen[None]):
 - **Shift+Enter** — New line in prompt (multi-line input)
 - **Ctrl+P** — Open Command Palette
 - **Ctrl+N** — Compact Context
+- **Ctrl+L** — Wipe Session Context (Start Fresh)
 - **Ctrl+B** — Toggle Sidebar
 - **Ctrl+T** — Cycle Theme
-- **Ctrl+M** — Select Active Model
 - **Ctrl+O** — Change Working Directory (Computer Wide)
 - **Ctrl+H** — Open Shortcuts & Help Modal
 - **Ctrl+A** — Open Telemetry & Status
 - **Ctrl+X** — Copy Selection
 - **Ctrl+Y** — Copy Entire Chat History
 - **Ctrl+E** — Copy Last Response
-- **Ctrl+L** — Clear Chat Screen
 - **Ctrl+C** — Quit Application
 
 ### 🛠️ Slash Commands
+- `/new` / `/wipe` / `/clear` — Completely wipe session context & start fresh
+- `/compact` / `/compress` — Manually compact context memory
 - `/start` / `/restart` / `/stop` — Engine server control
 - `/model <name>` — Switch active model
 - `/cd <path>` — Change directory
 - `/index` — Build AST Knowledge Graph
 - `/status` — Open telemetry modal
-- `/clear` — Clear chat history
 - `/help` — Show shortcuts guide
 """
             yield Static(Markdown(help_md))
@@ -1281,17 +2014,23 @@ class PaneResizer(Static):
         self._drag_moved = False
 
     def _clamp(self, width: int) -> int:
+        if self.target_pane == "editor":
+            return max(20, min(140, width))
         return max(self.MIN_WIDTH, min(self.MAX_WIDTH, width))
 
     def _expand(self) -> None:
         if self.target_pane == "left":
             self.app.action_expand_left_pane()
+        elif self.target_pane == "editor":
+            self.app.action_expand_editor_pane()
         else:
             self.app.action_expand_right_pane()
 
     def _shrink(self) -> None:
         if self.target_pane == "left":
             self.app.action_shrink_left_pane()
+        elif self.target_pane == "editor":
+            self.app.action_shrink_editor_pane()
         else:
             self.app.action_shrink_right_pane()
 
@@ -1307,12 +2046,15 @@ class PaneResizer(Static):
         self._drag_moved = True
         if self.target_pane == "left":
             width = getattr(self.app, "left_pane_width", 24) + event.delta_x
+            width = self._clamp(width)
+            self.app.left_pane_width = width
+        elif self.target_pane == "editor":
+            width = getattr(self.app, "editor_pane_width", 50) + event.delta_x
+            width = self._clamp(width)
+            self.app.editor_pane_width = width
         else:
             width = getattr(self.app, "right_pane_width", 30) - event.delta_x
-        width = self._clamp(width)
-        if self.target_pane == "left":
-            self.app.left_pane_width = width
-        else:
+            width = self._clamp(width)
             self.app.right_pane_width = width
         self.app._apply_pane_widths()
 
@@ -1327,8 +2069,106 @@ class PaneResizer(Static):
             return  # already resized by the preceding drag
         if event.button == 1:
             self._expand()
-        elif event.button == 3:
+        elif event.button in (2, 3):
             self._shrink()
+
+
+class EditorTab(Static):
+    """Clean single-line tab widget displaying file name with close button."""
+
+    DEFAULT_CSS = """
+    EditorTab {
+        height: 1;
+        min-height: 1;
+        max-height: 1;
+        width: auto;
+        min-width: 6;
+        background: $surface;
+        color: $foreground-muted;
+        padding: 0 1;
+        margin: 0 1 0 0;
+        border: none;
+    }
+    EditorTab.-active {
+        background: $background;
+        color: $primary;
+        text-style: bold;
+    }
+    EditorTab:hover {
+        background: $panel;
+        color: $foreground;
+    }
+    """
+
+    class TabSelected(Message):
+        """Emitted when tab is clicked to switch active file."""
+
+        def __init__(self, file_path: str) -> None:
+            self.file_path = file_path
+            super().__init__()
+
+    class TabClosed(Message):
+        """Emitted when tab close button '×' is clicked."""
+
+        def __init__(self, file_path: str) -> None:
+            self.file_path = file_path
+            super().__init__()
+
+    class TabRightClicked(Message):
+        """Emitted when tab is right-clicked."""
+
+        def __init__(self, file_path: str) -> None:
+            self.file_path = file_path
+            super().__init__()
+
+    def __init__(
+        self,
+        file_path: str,
+        filename: str,
+        is_active: bool = False,
+        dirty: bool = False,
+        **kwargs,
+    ) -> None:
+        self.file_path = file_path
+        self.filename = filename
+        self.is_active = is_active
+        self.dirty = dirty
+        classes = "-active" if is_active else ""
+        super().__init__(self._build_label(), classes=classes, **kwargs)
+
+    def _build_label(self) -> str:
+        from core.utils.image_utils import is_image_file
+
+        icon = "🖼 " if is_image_file(self.file_path) else ""
+        dot = "● " if self.dirty else ""
+        return f"{dot}{icon}{self.filename}  ×"
+
+    def update_tab(self, is_active: bool, dirty: bool) -> None:
+        self.is_active = is_active
+        self.dirty = dirty
+        if is_active:
+            self.add_class("-active")
+        else:
+            self.remove_class("-active")
+        self.update(self._build_label())
+
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        if event.button in (2, 3):
+            event.stop()
+            self.post_message(self.TabRightClicked(self.file_path))
+
+    def on_click(self, event: events.Click) -> None:
+        event.stop()
+        if event.button in (2, 3):
+            self.post_message(self.TabRightClicked(self.file_path))
+            return
+
+        label_len = len(self._build_label())
+        # The '×' is located near the right edge of the label
+        if event.x >= label_len - 2:
+            self.post_message(self.TabClosed(self.file_path))
+        else:
+            self.post_message(self.TabSelected(self.file_path))
 
 
 class TorchlightApp(App):
@@ -1341,7 +2181,6 @@ class TorchlightApp(App):
     BINDINGS = [
         Binding("ctrl+p", "command_palette", "Command Palette", show=False),
         Binding("ctrl+h", "show_help", "Help", show=True),
-        Binding("ctrl+m", "select_model", "Model", show=True),
         Binding("ctrl+g", "select_mode", "Mode", show=False),
         Binding("ctrl+b", "toggle_left_sidebar", "Left Sidebar", show=True),
         Binding("ctrl+r", "toggle_right_sidebar", "Right Sidebar", show=True),
@@ -1352,17 +2191,20 @@ class TorchlightApp(App):
             "alt+shift+right", "expand_right_pane", "Expand Right Pane", show=False
         ),
         Binding("ctrl+t", "cycle_theme", "Theme", show=False),
-        Binding("ctrl+n", "compact_context", "Compact Context", show=False),
+        Binding("ctrl+n", "compact_context", "Compact Context", show=True),
         Binding("ctrl+o", "open_folder", "Open Folder", show=False),
         Binding("ctrl+u", "attach_context", "Attach Context", show=True),
+        Binding("ctrl+v", "paste_image", "Paste Image", show=False),
         Binding("ctrl+k", "task_manager", "Tasks", show=True),
         Binding("ctrl+a", "toggle_status_modal", "Agent Telemetry", show=False),
         Binding("ctrl+x", "copy_selection", "Copy Selection", show=False),
         Binding("ctrl+y", "copy_chat", "Copy Chat", show=False),
         Binding("ctrl+e", "copy_last", "Copy Last", show=False),
-        Binding("ctrl+l", "clear", "Clear Chat", show=False),
+        Binding("ctrl+l", "wipe_session", "Wipe Session Context", show=True),
+        Binding("ctrl+w", "wipe_session", "New Session", show=False),
         Binding("ctrl+c", "quit", "Quit", show=True),
         Binding("ctrl+\\", "toggle_editor_split", "Editor Split", show=False),
+        Binding("ctrl+shift+e", "engine_config", "Engine & TurboQuant", show=False),
     ]
 
     def __init__(
@@ -1529,23 +2371,39 @@ class TorchlightApp(App):
                 id="connection-pill",
             )
             yield self._connection_pill
-            yield Button("🤖 Model", id="model-select-btn", variant="default")
-            mode_lbl = "🎯 GOAL" if self._is_goal_mode() else "💬 CHAT"
-            mode_cls = "mode-badge-goal" if "GOAL" in mode_lbl else "mode-badge-chat"
+            mode_lbl = self._get_active_mode_label()
+            mode_cls = (
+                "mode-badge-goal"
+                if "GOAL" in mode_lbl
+                else "mode-badge-plan"
+                if "PLAN" in mode_lbl
+                else "mode-badge-unified"
+                if "UNIFIED" in mode_lbl
+                else "mode-badge-chat"
+            )
             yield Button(
-                mode_lbl,
+                f"MODE: {mode_lbl}",
                 id="mode-toggle-btn",
                 classes=mode_cls,
             )
+
             yield Button(
-                "🗜️ Compact",
-                id="compact-btn",
-                variant="warning",
+                "⚡ Wipe",
+                id="wipe-context-btn",
+                variant="error",
+                tooltip="Completely wipe session context & start fresh (Ctrl+L or /new)",
             )
             yield Button(
-                "⌨️ Help",
+                "Compact",
+                id="compact-btn",
+                variant="warning",
+                tooltip="Manually compact context memory (Ctrl+N or /compact)",
+            )
+            yield Button(
+                "Help",
                 id="help-btn",
                 variant="default",
+                tooltip="Shortcuts & Command Help (Ctrl+H)",
             )
 
         with Horizontal(id="main-ide-container"):
@@ -1554,8 +2412,15 @@ class TorchlightApp(App):
                 yield Static(
                     "EXPLORER / BLUEPRINT WORKSPACE", classes="panel-header-title"
                 )
-                self._file_tree = GitFileTree(self.engine.project_root, id="file-tree")
-                yield self._file_tree
+                if getattr(self, "_test_runner", False):
+                    yield Static("[dim]Workspace tree[/dim]", id="file-tree")
+                else:
+                    try:
+                        p = self.engine.project_root if (hasattr(self, "engine") and getattr(self.engine, "project_root", None) and os.path.exists(self.engine.project_root)) else "."
+                        self._file_tree = GitFileTree(p, id="file-tree")
+                        yield self._file_tree
+                    except Exception:
+                        yield Static("[dim]Workspace tree unavailable[/dim]", id="file-tree")
             yield PaneResizer("left", id="resizer-left")
 
             # 2. Tabbed Editor Split Pane (Hidden by default when no tabs open to maintain a clean 3-panel layout)
@@ -1563,20 +2428,22 @@ class TorchlightApp(App):
             editor_pane.display = bool(self._open_tabs)
             with editor_pane:
                 with Horizontal(id="tab-bar-header"):
-                    yield Static("📄 EDITOR", classes="panel-header-title")
+                    with Horizontal(id="tab-buttons-container"):
+                        pass
                     yield Button(
                         "≡",
                         id="toggle-split-btn",
                         classes="tab-close-btn",
                     )
-                with Horizontal(id="tab-buttons-container"):
-                    pass
                 with Vertical(id="editor-content-area"):
                     self._center_empty_state = CenterEmptyState(
                         state=STATE_DISCONNECTED,
                         id="center-empty-state",
                     )
                     yield self._center_empty_state
+            resizer_editor = PaneResizer("editor", id="resizer-editor")
+            resizer_editor.display = bool(self._open_tabs)
+            yield resizer_editor
 
             # 3. Main Center Area: Agent Terminal, Reasoning Trajectory & Logs
             with Vertical(id="agent-split-pane"):
@@ -1592,12 +2459,7 @@ class TorchlightApp(App):
                 # Bottom Command Input Row
                 with Vertical(id="input-area"):
                     yield Horizontal(id="context-chips-bar")
-                    with Horizontal(id="input-row"):
-                        yield Button(
-                            "+",
-                            id="attach-context-btn",
-                            tooltip="Attach Context (Ctrl+U)",
-                        )
+                    with Vertical(id="user-input-card"):
                         self._user_input = PromptTextArea(
                             id="user-input",
                             language=None,
@@ -1607,15 +2469,61 @@ class TorchlightApp(App):
                             suggestion_callback=self._on_suggestion_matches,
                         )
                         yield self._user_input
-                        # SEND: disabled until a model is connected
-                        yield Button(
-                            "SEND ↗",
-                            id="send-btn",
-                            variant="primary",
-                            disabled=True,
-                            tooltip="Connect a model (Ctrl+M) to send messages.",
-                        )
-                        yield Static("", id="input-spinner")
+                        with Horizontal(id="input-toolbar"):
+                            with Horizontal(id="toolbar-left-controls"):
+                                yield Button(
+                                    "+",
+                                    id="attach-context-btn",
+                                    tooltip="Attach Context (Ctrl+U)",
+                                )
+                                mode_opts = self._get_mode_select_options()
+                                initial_mode = self._get_current_mode_val()
+                                yield Select(
+                                    mode_opts,
+                                    value=initial_mode,
+                                    allow_blank=False,
+                                    id="mode-select-dropdown",
+                                    tooltip="Select Execution Mode (Unified / Goal / Chat)",
+                                )
+                                model_opts = self._get_model_select_options()
+                                matching_val = next(
+                                    (
+                                        m[1]
+                                        for m in model_opts
+                                        if m[1] == self.model_name
+                                        or normalize_model_name(m[1]) == normalize_model_name(self.model_name)
+                                        or m[1] in self.model_name
+                                        or self.model_name in m[1]
+                                    ),
+                                    None,
+                                )
+                                initial_val = (
+                                    matching_val
+                                    if matching_val is not None
+                                    else (model_opts[0][1] if model_opts else self.model_name)
+                                )
+                                yield Select(
+                                    model_opts,
+                                    value=initial_val,
+                                    allow_blank=False,
+                                    id="model-select-dropdown",
+                                    tooltip="Select Model & Engine",
+                                )
+                                yield Button(
+                                    "UNLOAD" if self._is_model_connected() else "LOAD",
+                                    id="model-toggle-btn",
+                                    variant="error" if self._is_model_connected() else "primary",
+                                    tooltip="Load or Unload selected model",
+                                )
+                            with Horizontal(id="toolbar-right-actions"):
+                                yield Static("", id="input-spinner")
+                                yield Button(
+                                    "SEND ↗",
+                                    id="send-btn",
+                                    variant="primary",
+                                    disabled=False,
+                                    tooltip="Send message (Enter or Ctrl+Enter)",
+                                )
                     yield ListView(id="input-suggestions")
 
             yield PaneResizer("right", id="resizer-right")
@@ -1624,42 +2532,149 @@ class TorchlightApp(App):
             with Vertical(id="plan-sidebar"):
                 with TabbedContent():
                     # ── Tab: Agent ─────────────────────────────────────
-                    with TabPane("🤖 Agent", id="tab-agent"):
-                        with VerticalScroll():
+                    with TabPane("Agent", id="tab-agent"):
+                        with VerticalScroll(id="agent-tab-scroll"):
                             yield Static(
-                                "[bold]Connection[/]",
+                                "CONNECTION",
                                 classes="sidebar-section-title",
                             )
                             yield Static("", id="agent-tab-conn-status")
                             yield Static(
-                                "[bold]Model Info[/]",
+                                "MODEL INFO",
                                 classes="sidebar-section-title",
                             )
                             yield Static("", id="agent-tab-model-info")
                             yield Static(
-                                "[bold]Context Usage[/]",
+                                "CONTEXT USAGE",
                                 classes="sidebar-section-title",
                             )
                             yield Static("", id="agent-tab-context-bar")
+                            with Horizontal(id="agent-tab-context-actions"):
+                                yield Button(
+                                    "🧹 Compact",
+                                    id="agent-compact-btn",
+                                    variant="warning",
+                                    tooltip="Manually compact context memory (Ctrl+N)",
+                                )
+                                yield Button(
+                                    "⚡ Wipe",
+                                    id="agent-wipe-btn",
+                                    variant="error",
+                                    tooltip="Completely wipe session context & start fresh (Ctrl+L)",
+                                )
+                                yield Button(
+                                    "▸ Breakdown",
+                                    id="toggle-breakdown-btn",
+                                    classes="sidebar-toggle-btn",
+                                    tooltip="Toggle detailed context breakdown",
+                                )
+                            yield Static("", id="agent-tab-ctx-breakdown")
                             yield Static(
-                                "[bold]Memory[/]",
+                                "WORKING MEMORY",
                                 classes="sidebar-section-title",
                             )
                             yield AgentMemoryWidget(id="agent-memory-panel")
                     # ── Tab: Plan ──────────────────────────────────────
-                    with TabPane("📋 Plan", id="tab-tasks"):
+                    with TabPane("Plan", id="tab-tasks"):
                         with VerticalScroll(id="plan-scroll"):
                             yield Static(
                                 self._build_plan_text(),
                                 id="plan-panel",
                             )
                     # ── Tab: Output ────────────────────────────────────
-                    with TabPane("📤 Output", id="tab-output"):
+                    with TabPane("Output", id="tab-output"):
                         with VerticalScroll(id="output-log-scroll"):
                             yield Static(
                                 "[dim]Tool output and agent traces will appear here.[/dim]",
                                 id="output-log-content",
                             )
+                    # ── Tab: Skills ────────────────────────────────────
+                    with TabPane("Skills", id="tab-skills"):
+                        with VerticalScroll(id="skills-tab-scroll"):
+                            yield Static(
+                                "SKILL ACTIONS",
+                                classes="sidebar-section-title",
+                            )
+                            with Horizontal(id="skills-action-bar"):
+                                yield Button(
+                                    "Import Skill",
+                                    id="upload-skill-btn",
+                                    variant="primary",
+                                    tooltip="Import external SKILL.md or .py into workspace",
+                                )
+                                yield Button(
+                                    "Refresh",
+                                    id="refresh-skills-btn",
+                                    variant="default",
+                                    tooltip="Reload skills from workspace and global directories",
+                                )
+                            yield Static("", id="skills-status-msg")
+                            yield Static(
+                                "AVAILABLE SKILLS",
+                                classes="sidebar-section-title",
+                            )
+                            yield Static(
+                                self._build_skills_text(),
+                                id="skills-list-panel",
+                            )
+                    # ── Tab: Model & Engine ────────────────────────────
+                    with TabPane("Model", id="tab-engine-model"):
+                        with VerticalScroll(id="engine-tab-scroll"):
+                            raw_p = (getattr(self, "provider_name", "llama.cpp") or "llama.cpp").lower()
+                            if "mlx" in raw_p:
+                                engine_init = "mlx"
+                            elif "lmstudio" in raw_p:
+                                engine_init = "lmstudio"
+                            elif "ollama" in raw_p:
+                                engine_init = "ollama"
+                            else:
+                                engine_init = "llama.cpp"
+
+                            raw_kv = (getattr(self, "kv_cache_mode", "turbo3") or "turbo3").lower()
+                            kv_init = raw_kv if raw_kv in ("turbo3", "turbo4", "f16") else "turbo3"
+
+                            raw_ctx = getattr(self, "context_window_size", 12288) or 12288
+                            ctx_init = raw_ctx if raw_ctx in (4096, 8192, 12288, 16384, 32768) else 12288
+
+                            yield Static(
+                                "INFERENCE ENGINE",
+                                classes="sidebar-section-title",
+                            )
+                            yield Select(
+                                [
+                                    ("llama.cpp (Metal + TurboQuant)", "llama.cpp"),
+                                    ("Apple MLX (Native Metal)", "mlx"),
+                                    ("LM Studio (Local REST API)", "lmstudio"),
+                                    ("Ollama (Local REST API)", "ollama"),
+                                ],
+                                value=engine_init,
+                                id="sidebar-engine-select",
+                                allow_blank=False,
+                                tooltip="Select LLM inference execution backend",
+                            )
+                            yield Static(
+                                "KV CACHE (TurboQuant)",
+                                classes="sidebar-section-title",
+                            )
+                            yield Select(
+                                [
+                                    ("turbo3 (3-bit TurboQuant — ~75% Mem)", "turbo3"),
+                                    ("turbo4 (4-bit TurboQuant — Balanced)", "turbo4"),
+                                    ("f16 (Standard / No TurboQuant)", "f16"),
+                                ],
+                                value=kv_init,
+                                id="sidebar-kv-select",
+                                allow_blank=False,
+                                tooltip="Select KV cache quantization mode",
+                            )
+
+                            yield Button(
+                                "Apply & Restart Engine",
+                                id="sidebar-apply-engine-btn",
+                                variant="primary",
+                                tooltip="Apply engine & parameter changes and restart local backend",
+                            )
+                            yield Static("", id="sidebar-engine-status-msg")
 
         # Bottom Telemetry — single clean StatusBar (context-meter-bar removed)
         with Vertical(id="telemetry-bar"):
@@ -1716,6 +2731,24 @@ class TorchlightApp(App):
             # Hide empty state when a file is open
             self._set_center_empty_state_visible(False)
             self._refresh_editor_split_view()
+        except Exception as e:
+            try:
+                self.notify(f"Error opening file: {e}", severity="warning", timeout=2)
+            except Exception:
+                pass
+
+    def show_file_actions(self, file_path: str) -> None:
+        try:
+            abs_path = os.path.abspath(file_path)
+            if not os.path.exists(abs_path) or not os.path.isfile(abs_path):
+                self.notify(
+                    f"File not found: {escape(file_path)}",
+                    severity="warning",
+                    timeout=2,
+                )
+                return
+
+            filename = os.path.basename(abs_path)
 
             def _on_action_choice(choice: Optional[str]) -> None:
                 if not choice or choice == "cancel":
@@ -1808,14 +2841,7 @@ class TorchlightApp(App):
         return hashlib.md5(file_path.encode("utf-8")).hexdigest()[:10]
 
     def _refresh_editor_split_view(self) -> None:
-        if self._editor_split_refresh_pending:
-            return
-        self._editor_split_refresh_pending = True
-        try:
-            self.call_after_refresh(self._do_refresh_editor_split_view)
-        except (RuntimeError, TypeError):
-            self._editor_split_refresh_pending = False
-            self._do_refresh_editor_split_view()
+        self._do_refresh_editor_split_view()
 
     def _do_refresh_editor_split_view(self) -> None:
         self._editor_split_refresh_pending = False
@@ -1827,51 +2853,101 @@ class TorchlightApp(App):
 
         try:
             editor_pane = self.query_one("#editor-split-pane")
-            editor_pane.display = bool(self._open_tabs)
+            is_visible = bool(self._open_tabs)
+            editor_pane.display = is_visible
+            try:
+                resizer_editor = self.query_one("#resizer-editor")
+                resizer_editor.display = is_visible
+            except Exception:
+                pass
         except Exception:
             pass
 
         if not self._open_tabs:
             return
 
-        existing_btn_ids = {c.id for c in tab_container.children if c.id}
+        current_hashes = {self._get_tab_hash(p) for p in self._open_tabs}
+        valid_ids = {f"tab_{h}" for h in current_hashes}
+        for child in list(tab_container.children):
+            if child.id and child.id not in valid_ids:
+                child.remove()
+
+        existing_tab_ids = {c.id for c in tab_container.children if c.id}
 
         for path, meta in self._open_tabs.items():
             filename = meta.get("filename", os.path.basename(path))
             h = self._get_tab_hash(path)
             is_active = path == self._active_tab_path
             dirty = meta.get("dirty", False)
-            label = f"{'● ' if dirty else ''}{filename}"
-            sel_id = f"tsel_{h}"
-            cls_id = f"tcls_{h}"
+            tab_id = f"tab_{h}"
 
-            if sel_id in existing_btn_ids:
+            if tab_id in existing_tab_ids:
                 try:
-                    b = tab_container.query_one(f"#{sel_id}", Button)
-                    b.label = label
-                    b.remove_class("tab-item-active", "tab-item-inactive")
-                    b.add_class("tab-item-active" if is_active else "tab-item-inactive")
+                    tab_w = tab_container.query_one(f"#{tab_id}", EditorTab)
+                    tab_w.update_tab(is_active=is_active, dirty=dirty)
                 except Exception:
                     pass
             else:
-                btn = Button(
-                    label,
-                    id=sel_id,
-                    classes="tab-item-active" if is_active else "tab-item-inactive",
-                    variant="default",
+                tab_w = EditorTab(
+                    file_path=path,
+                    filename=filename,
+                    is_active=is_active,
+                    dirty=dirty,
+                    id=tab_id,
                 )
-                tab_container.mount(btn)
-
-            if sel_id not in existing_btn_ids:
-                close_btn = Button(
-                    "×",
-                    id=cls_id,
-                    classes="tab-close-btn",
-                    variant="default",
-                )
-                tab_container.mount(close_btn)
+                tab_container.mount(tab_w)
 
         if self._active_tab_path and self._active_tab_path in self._open_tabs:
+            from core.utils.image_utils import is_image_file
+            from rlm_optimized.tui_widgets.image_viewer import ImageViewer, BinaryFileViewer
+
+            if is_image_file(self._active_tab_path):
+                existing_iv = None
+                try:
+                    existing_iv = content_area.query_one("#active-image-viewer", ImageViewer)
+                except Exception:
+                    pass
+
+                if existing_iv is not None and getattr(existing_iv, "_image_path", None) == self._active_tab_path:
+                    pass
+                else:
+                    content_area.remove_children()
+                    viewer = ImageViewer(
+                        image_path=self._active_tab_path,
+                        project_root=self.engine.project_root,
+                        id="active-image-viewer",
+                    )
+                    content_area.mount(viewer)
+                return
+
+            # Check if file is a non-image binary file
+            is_binary = False
+            try:
+                with open(self._active_tab_path, "rb") as bf:
+                    chunk = bf.read(1024)
+                    if b"\x00" in chunk:
+                        is_binary = True
+            except OSError:
+                pass
+
+            if is_binary:
+                existing_bv = None
+                try:
+                    existing_bv = content_area.query_one("#active-binary-viewer", BinaryFileViewer)
+                except Exception:
+                    pass
+
+                if existing_bv is not None and getattr(existing_bv, "_file_path", None) == self._active_tab_path:
+                    pass
+                else:
+                    content_area.remove_children()
+                    viewer = BinaryFileViewer(
+                        file_path=self._active_tab_path,
+                        id="active-binary-viewer",
+                    )
+                    content_area.mount(viewer)
+                return
+
             try:
                 with open(
                     self._active_tab_path, "r", encoding="utf-8", errors="replace"
@@ -1912,12 +2988,9 @@ class TorchlightApp(App):
             try:
                 from rich.syntax import Syntax
 
-                syntax = Syntax(content, language, line_numbers=True, theme="monokai")
-                rich_text = syntax.render()
+                txt = Syntax(content, language, line_numbers=True, theme="monokai")
             except Exception:
-                rich_text = None
-
-            txt = rich_text if rich_text is not None else content
+                txt = content
             try:
                 editor_view = content_area.query_one("#active-editor-view", Static)
                 editor_view.update(txt)
@@ -1966,6 +3039,62 @@ class TorchlightApp(App):
                 abs_path = os.path.abspath(str(path))
                 if os.path.isfile(abs_path):
                     self.open_file_tab(abs_path)
+
+    @on(GitFileTree.FileRightClicked)
+    def on_file_right_clicked(self, event: GitFileTree.FileRightClicked) -> None:
+        path = getattr(event, "path", None)
+        if path:
+            abs_path = os.path.abspath(str(path))
+            if os.path.isfile(abs_path):
+                self.show_file_actions(abs_path)
+
+    @on(EditorTab.TabSelected)
+    def on_editor_tab_selected(self, event: EditorTab.TabSelected) -> None:
+        self.open_file_tab(event.file_path)
+
+    @on(EditorTab.TabClosed)
+    def on_editor_tab_closed(self, event: EditorTab.TabClosed) -> None:
+        self.close_file_tab(event.file_path)
+
+    @on(EditorTab.TabRightClicked)
+    def on_editor_tab_right_clicked(self, event: EditorTab.TabRightClicked) -> None:
+        self.show_file_actions(event.file_path)
+
+    @on(events.MouseDown)
+    def on_app_mouse_down(self, event: events.MouseDown) -> None:
+        if event.button in (2, 3):  # Secondary / Right click
+            widget = getattr(event, "widget", None)
+            if widget and hasattr(widget, "id") and widget.id:
+                btn_id = widget.id
+                if btn_id.startswith("tab_") or btn_id.startswith("tsel_") or btn_id.startswith("tcls_"):
+                    h_target = btn_id.split("_", 1)[1]
+                    for path in self._open_tabs.keys():
+                        if self._get_tab_hash(path) == h_target:
+                            event.stop()
+                            self.show_file_actions(path)
+                            return
+                elif btn_id == "active-editor-view" and self._active_tab_path:
+                    event.stop()
+                    self.show_file_actions(self._active_tab_path)
+                    return
+
+    @on(events.Click)
+    def on_app_mouse_click(self, event: events.Click) -> None:
+        if event.button in (2, 3):  # Secondary / Right click
+            widget = getattr(event, "widget", None)
+            if widget and hasattr(widget, "id") and widget.id:
+                btn_id = widget.id
+                if btn_id.startswith("tab_") or btn_id.startswith("tsel_") or btn_id.startswith("tcls_"):
+                    h_target = btn_id.split("_", 1)[1]
+                    for path in self._open_tabs.keys():
+                        if self._get_tab_hash(path) == h_target:
+                            event.stop()
+                            self.show_file_actions(path)
+                            return
+                elif btn_id == "active-editor-view" and self._active_tab_path:
+                    event.stop()
+                    self.show_file_actions(self._active_tab_path)
+                    return
 
     @on(Button.Pressed, "#toggle-split-btn")
     def on_toggle_split_btn(self) -> None:
@@ -2121,7 +3250,7 @@ class TorchlightApp(App):
         if now - getattr(self, "_plan_overview_ts", 0.0) < 2.0 and hasattr(self, "_plan_overview_cache"):
             return self._plan_overview_cache
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        res = build_plan_overview_text(project_root, self._is_goal_mode())
+        res = build_plan_overview_text(project_root, self._is_goal_mode(), mode=self._get_current_mode_val())
         self._plan_overview_ts = now
         self._plan_overview_cache = res
         return res
@@ -2143,9 +3272,20 @@ class TorchlightApp(App):
         if now - getattr(self, "_plan_text_ts", 0.0) < 2.0 and hasattr(self, "_plan_text_cache"):
             return self._plan_text_cache
         project_root = getattr(self.engine, "project_root", os.getcwd())
-        res = build_plan_text(project_root, self._is_goal_mode())
+        res = build_plan_text(project_root, self._is_goal_mode(), mode=self._get_current_mode_val())
         self._plan_text_ts = now
         self._plan_text_cache = res
+        return res
+
+    def _build_skills_text(self, reload: bool = False) -> str:
+        import time as _t
+        now = _t.time()
+        if not reload and now - getattr(self, "_skills_text_ts", 0.0) < 2.0 and hasattr(self, "_skills_text_cache"):
+            return self._skills_text_cache
+        project_root = getattr(self.engine, "project_root", os.getcwd())
+        res = build_skills_overview_text(project_root, reload=reload)
+        self._skills_text_ts = now
+        self._skills_text_cache = res
         return res
 
     def _build_context_progress_text(self) -> str:
@@ -2229,6 +3369,11 @@ class TorchlightApp(App):
         except Exception:
             pass
         try:
+            sp = self.query_one("#skills-list-panel", Static)
+            sp.update(self._build_skills_text())
+        except Exception:
+            pass
+        try:
             mb = self.query_one("#input-model-badge", Button)
             mb.label = f"🤖 {self.model_name} ▾"
         except Exception:
@@ -2252,15 +3397,30 @@ class TorchlightApp(App):
         except Exception:
             pass
         try:
+            label = self._get_active_mode_label()
             mtb = self.query_one("#mode-toggle-btn", Button)
-            is_goal = self._is_goal_mode()
-            mtb.label = "🎯 GOAL_MODE: ACTIVE" if is_goal else "💬 CHAT_MODE: ACTIVE"
-            if is_goal:
-                mtb.remove_class("mode-badge-chat")
+            mtb.label = f"MODE: {label}"
+            mtb.remove_class("mode-badge-chat")
+            mtb.remove_class("mode-badge-goal")
+            mtb.remove_class("mode-badge-plan")
+            mtb.remove_class("mode-badge-unified")
+            if "GOAL" in label:
                 mtb.add_class("mode-badge-goal")
+            elif "PLAN" in label:
+                mtb.add_class("mode-badge-plan")
+            elif "UNIFIED" in label:
+                mtb.add_class("mode-badge-unified")
             else:
-                mtb.remove_class("mode-badge-goal")
                 mtb.add_class("mode-badge-chat")
+
+        except Exception:
+            pass
+
+        try:
+            msd = self.query_one("#mode-select-dropdown", Select)
+            curr_val = self._get_current_mode_val()
+            if msd.value != curr_val:
+                msd.value = curr_val
         except Exception:
             pass
 
@@ -2271,25 +3431,80 @@ class TorchlightApp(App):
     def on_help_pressed(self) -> None:
         self.action_show_help()
 
-    @on(Button.Pressed, "#model-select-btn")
-    def on_model_select_pressed(self) -> None:
-        self.action_select_model()
+    @on(Button.Pressed, "#upload-skill-btn")
+    def on_upload_skill_pressed(self) -> None:
+        project_root = getattr(self.engine, "project_root", os.getcwd())
+
+        def on_modal_result(result: Optional[dict]) -> None:
+            if not result or not result.get("source_path"):
+                return
+            src = result["source_path"]
+            custom = result.get("custom_name")
+            ok, msg = import_skill_file(src, custom_name=custom, workspace_root=project_root)
+            try:
+                status_widget = self.query_one("#skills-status-msg", Static)
+                if ok:
+                    status_widget.update(f"[bold green]✓ {escape(msg)}[/bold green]")
+                    self.notify(msg, title="Skill Imported", severity="information")
+                else:
+                    status_widget.update(f"[bold red]✗ {escape(msg)}[/bold red]")
+                    self.notify(msg, title="Import Failed", severity="error")
+            except Exception:
+                pass
+
+            try:
+                sp = self.query_one("#skills-list-panel", Static)
+                sp.update(self._build_skills_text(reload=True))
+            except Exception:
+                pass
+
+        self.push_screen(SkillUploadModal(workspace_root=project_root), on_modal_result)
+
+    @on(Button.Pressed, "#refresh-skills-btn")
+    def on_refresh_skills_pressed(self) -> None:
+        try:
+            sp = self.query_one("#skills-list-panel", Static)
+            sp.update(self._build_skills_text(reload=True))
+            status_widget = self.query_one("#skills-status-msg", Static)
+            status_widget.update("[bold cyan]✓ Refreshed skill registry[/bold cyan]")
+            self.notify("Skill list refreshed", title="Skills", severity="information")
+        except Exception:
+            pass
 
     @on(Button.Pressed, "#input-model-badge")
     def on_model_badge_clicked(self) -> None:
         self.action_select_model()
 
-    @on(Button.Pressed, "#compact-btn")
+    @on(Button.Pressed, "#wipe-context-btn, #agent-wipe-btn")
+    def on_wipe_context_btn_clicked(self) -> None:
+        self.action_wipe_session()
+
+    @on(Button.Pressed, "#compact-btn, #health-compact-btn, #agent-compact-btn")
     def on_compact_btn_clicked(self) -> None:
         self.action_compact_context()
 
-    @on(Button.Pressed, "#health-compact-btn")
-    def on_health_compact_btn_clicked(self) -> None:
-        self.action_compact_context()
-
-    @on(Button.Pressed, "#mode-toggle-btn")
+    @on(Button.Pressed, "#mode-toggle-btn, #mode-select-btn")
     def on_mode_toggle_pressed(self) -> None:
         self.action_select_mode()
+
+    @on(Button.Pressed, "#toggle-breakdown-btn")
+    def on_toggle_breakdown_btn(self, event: Button.Pressed) -> None:
+        event.stop()
+        self._show_ctx_breakdown = not getattr(self, "_show_ctx_breakdown", False)
+        btn = self.query_one("#toggle-breakdown-btn", Button)
+        try:
+            bd_widget = self.query_one("#agent-tab-ctx-breakdown", Static)
+            if self._show_ctx_breakdown:
+                btn.label = "▾ Breakdown"
+                bd_widget.display = True
+                breakdown_text = self._context_section_breakdown()
+                bd_widget.update(breakdown_text)
+            else:
+                btn.label = "▸ Breakdown"
+                bd_widget.display = False
+                bd_widget.update("")
+        except Exception:
+            pass
 
     @on(Button.Pressed, ".nav-dock-btn")
     def on_dock_btn_pressed(self, event: Button.Pressed) -> None:
@@ -2356,14 +3571,16 @@ class TorchlightApp(App):
             for btn in chips_bar.query(".context-chip"):
                 filepath = getattr(
                     btn, "_filepath", getattr(btn, "tooltip", None)
-                ) or btn.label.plain.replace("✕", "").strip().lstrip("@")
-                context_files.append(f"@{filepath}")
+                ) or btn.label.plain.replace("✕", "").replace("[IMG]", "").strip().lstrip("@")
+                if filepath:
+                    clean_fp = filepath.strip().lstrip("@")
+                    context_files.append(clean_fp)
 
-            # Append context to task if not already inline
+            # Append context to task if not already inline (without @ prefix)
             if context_files:
-                chip_context = " ".join(context_files)
-                if chip_context not in user_text:
-                    user_text = f"{user_text} {chip_context}"
+                for cf in context_files:
+                    if cf not in user_text and f"@{cf}" not in user_text:
+                        user_text = f"{user_text} {cf}".strip()
 
             # Remove chips after submission
             for btn in chips_bar.query(Button):
@@ -2391,7 +3608,11 @@ class TorchlightApp(App):
         try:
             container = self.query_one("#chat-container")
             if hasattr(container, "append_card"):
-                container.append_card(MessageCard(user_text, role="user"))
+                container.append_card(
+                    MessageCard(
+                        user_text, role="user", project_root=self.project_root
+                    )
+                )
             else:
                 self._safe_mount(
                     container,
@@ -2425,7 +3646,14 @@ class TorchlightApp(App):
             or not self.model_name
             or self.model_name == "local-model"
         ):
-            self.action_select_model()
+            selected = self.model_name
+            try:
+                dropdown = self.query_one("#model-select-dropdown", Select)
+                if dropdown.value:
+                    selected = str(dropdown.value)
+            except Exception:
+                pass
+            self._load_selected_model(selected, auto_start=True)
             return
         await self._submit_user_input()
 
@@ -2446,7 +3674,14 @@ class TorchlightApp(App):
             or not self.model_name
             or self.model_name == "local-model"
         ):
-            self.action_select_model()
+            selected = self.model_name
+            try:
+                dropdown = self.query_one("#model-select-dropdown", Select)
+                if dropdown.value:
+                    selected = str(dropdown.value)
+            except Exception:
+                pass
+            self._load_selected_model(selected, auto_start=True)
             return
         await self._submit_user_input()
 
@@ -2455,6 +3690,11 @@ class TorchlightApp(App):
         self, event: PromptTextArea.ContextFileAttached
     ) -> None:
         self._add_context_chip(event.filepath)
+        from core.utils.image_utils import is_image_file
+
+        if is_image_file(event.filepath):
+            filename = os.path.basename(event.filepath)
+            self.notify(f"🖼 Attached image: {filename}", severity="information", timeout=2)
         self.set_focus(event.text_area)
 
     # ── Input Suggestions (slash / @file autocomplete) ────────────────────
@@ -2528,27 +3768,34 @@ class TorchlightApp(App):
         self.notify("Agent execution stopped by user", severity="warning", timeout=2)
 
     def _update_running_indicator(self) -> None:
-        """Show elapsed time + live state in the input spinner so long runs
-        read as progress instead of a stuck symbol."""
+        """Keep input spinner clean and minimal while directing elapsed time
+        and live TPS metrics to the top HUD header."""
         if not getattr(self, "_is_running", False):
-            return
-        try:
-            spinner = self.query_one("#input-spinner")
-        except Exception:
             return
         import time
 
         start = getattr(self, "_stream_start_time", None)
-        if not start:
-            return
-        elapsed = max(0, int(time.time() - start))
-        m, s = divmod(elapsed, 60)
-        state = getattr(self, "_agent_state", "RUNNING")
-        label = f"[bold cyan]● {m:02d}:{s:02d} {state}[/]"
-        if getattr(self, "_live_tps", 0) > 0:
-            label += f" [bold yellow]{self._live_tps:.1f} tps[/]"
+        elapsed_str = ""
+        if start:
+            elapsed = max(0, int(time.time() - start))
+            m, s = divmod(elapsed, 60)
+            elapsed_str = f"{m:02d}:{s:02d}"
+
+        # 1. Keep input spinner clean and minimal (fixed pulsing dot, zero layout shift)
         try:
-            spinner.update(label)
+            spinner = self.query_one("#input-spinner")
+            spinner.update("[bold cyan]●[/]")
+        except Exception:
+            pass
+
+        # 2. Render execution elapsed time and TPS cleanly in top HUD
+        try:
+            tps_val = getattr(self, "_live_tps", 0.0)
+            tps_str = f"{tps_val:.1f} t/s" if tps_val > 0 else "calculating..."
+            hud_text = f"TPS: {tps_str}"
+            if elapsed_str:
+                hud_text += f" ({elapsed_str})"
+            self.query_one("#hud-epoch").update(hud_text)
         except Exception:
             pass
 
@@ -2557,8 +3804,8 @@ class TorchlightApp(App):
             inp = self.query_one("#user-input", TextArea)
             btn = self.query_one("#send-btn", Button)
             spinner = self.query_one("#input-spinner")
-            inp.disabled = not enabled
-            if not enabled:
+            inp.disabled = not enabled if self._is_running else False
+            if self._is_running:
                 btn.label = "⏹ STOP"
                 btn.variant = "error"
                 btn.disabled = False
@@ -2618,13 +3865,20 @@ class TorchlightApp(App):
             except Exception:
                 pass
 
-        # 2. SEND button — keep interactive so clicking when offline opens ModelPickerModal
+        # 2. SEND button & LOAD toggle button
         try:
             send_btn = self.query_one("#send-btn", Button)
             send_btn.disabled = False
             send_btn.tooltip = (
-                None if is_online else "Click to connect a model (Ctrl+M)"
+                None if is_online else "Click to load selected model"
             )
+        except Exception:
+            pass
+
+        try:
+            toggle_btn = self.query_one("#model-toggle-btn", Button)
+            toggle_btn.label = "UNLOAD" if is_online else "LOAD"
+            toggle_btn.variant = "error" if is_online else "primary"
         except Exception:
             pass
 
@@ -2643,25 +3897,36 @@ class TorchlightApp(App):
             conn_status = self.query_one("#agent-tab-conn-status", Static)
             if is_online:
                 conn_status.update(
-                    f"[bold green]● Connected[/]\n"
+                    f"[bold green]Connected[/]\n"
                     f"[dim]{escape(self.provider_name)} · port {self.engine_port}[/]"
                 )
             else:
                 conn_status.update(
-                    f"[dim]○ Offline[/]\n[dim]Press [bold]Ctrl+M[/] to connect[/]"
+                    f"[dim]Offline[/]\n[dim]Select model from toolbar to connect[/]"
                 )
             model_info = self.query_one("#agent-tab-model-info", Static)
             if is_online and self.model_name:
                 model_info.update(
                     f"[bold]{escape(self.model_name)}[/]\n"
                     f"[dim]CTX: {CTX_SIZE:,} tokens[/]"
-                )
+                                    )
             else:
                 model_info.update("[dim]No model loaded[/]")
         except Exception:
             pass
 
     def on_mount(self) -> None:
+        try:
+            # Sync the saved mode into the engine's memory so it takes effect immediately for new sessions
+            if hasattr(self, "engine") and getattr(self.engine, "memory", None):
+                from core.memory.models import ExecutionMode
+                try:
+                    self.engine.memory.state.execution_mode = ExecutionMode(self.engine.execution_mode)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         try:
             self.register_theme(_TORCHLIGHT_THEME)
             self.register_theme(_MATRIX_PHOSPHOR_THEME)
@@ -2689,8 +3954,7 @@ class TorchlightApp(App):
             # Minimal welcome into the chat transcript — not an error banner
             container.mount(
                 Static(
-                    "[dim]⚡ Torchlight Codex ready. Type a message or press "
-                    "[bold]Ctrl+M[/] to connect a model.[/dim]"
+                    "[dim]⚡ Torchlight Codex ready. Type a message or select a model from toolbar.[/dim]"
                 )
             )
         except Exception:
@@ -2772,7 +4036,7 @@ class TorchlightApp(App):
             pass
 
     def update_agent_tab_context(self) -> None:
-        """Update the context usage bar in the Agent tab."""
+        """Update the context usage bar and per-section breakdown in the Agent tab."""
         try:
             tokens_est = self._live_context_tokens()
 
@@ -2780,16 +4044,28 @@ class TorchlightApp(App):
             pct = min(100, int((tokens_est / ctx_max) * 100)) if ctx_max > 0 else 0
             bar_width = 18
             filled = min(bar_width, round((pct / 100.0) * bar_width))
-            bar = "█" * filled + "░" * (bar_width - filled)
+            bar = "#" * filled + "-" * (bar_width - filled)
             color = "green" if pct < 50 else "yellow" if pct < 75 else "red"
 
             ctx_widget = self.query_one("#agent-tab-context-bar", Static)
             ctx_widget.update(
-                f"[bold {color}]{bar}[/] [dim]{pct}%[/]\n"
+                f"[bold {color}][{bar}][/] [dim]{pct}%[/]\n"
                 f"[dim]{tokens_est:,} / {ctx_max:,} tokens[/]"
             )
         except Exception:
             pass
+
+        # Per-section breakdown (only computed and updated when expanded)
+        if getattr(self, "_show_ctx_breakdown", False):
+            try:
+                now = __import__("time").monotonic()
+                if now - getattr(self, "_ctx_breakdown_ts", 0.0) >= 2.0:
+                    self._ctx_breakdown_ts = now
+                    breakdown_text = self._context_section_breakdown()
+                    bd_widget = self.query_one("#agent-tab-ctx-breakdown", Static)
+                    bd_widget.update(breakdown_text)
+            except Exception:
+                pass
 
     def _set_center_empty_state_visible(self, visible: bool) -> None:
         """Show or hide the center empty state (hide when a file is open)."""
@@ -2859,6 +4135,8 @@ class TorchlightApp(App):
 
         if cmd == "/help":
             help_md = """### Commands
+- `/image <path> [prompt]` -- Inspect image with vision LLM (Gemma 3 / Qwen VL)
+- `/paste` -- Paste image from clipboard into chat context
 - `/start` / `/restart` / `/stop` -- Engine server control
 - `/kill` -- Kill session & reset REPL
 - `/cd <path>` -- Change working directory
@@ -2873,6 +4151,74 @@ class TorchlightApp(App):
                 Static(Panel(Markdown(help_md), title="Help", border_style="yellow"))
             )
 
+        elif cmd in ("/paste", "/paste-image", "/pasteimage"):
+            self.action_paste_image()
+
+        elif cmd == "/image":
+            if not arg:
+                self.notify(
+                    "Usage: /image <path/to/image.png> [optional instruction]",
+                    severity="warning",
+                    timeout=4,
+                )
+            else:
+                arg_parts = arg.split(maxsplit=1)
+                img_path = arg_parts[0].strip()
+                prompt_text = (
+                    arg_parts[1].strip()
+                    if len(arg_parts) > 1
+                    else f"Inspect and analyze image: {img_path}"
+                )
+                from core.utils.image_utils import is_image_file, get_image_metadata
+
+                full_p = (
+                    os.path.join(self.project_root, img_path)
+                    if not os.path.isabs(img_path)
+                    else img_path
+                )
+                if not os.path.exists(full_p):
+                    self.notify(
+                        f"Image not found: {img_path}", severity="error", timeout=4
+                    )
+                else:
+                    meta = get_image_metadata(full_p, project_root=self.project_root)
+                    dim_str = (
+                        f"{meta['width']}x{meta['height']}"
+                        if meta.get("width")
+                        else "dynamic"
+                    )
+                    self.notify(
+                        f"[IMG] Attached {img_path} ({dim_str}, {meta.get('size_kb')} KB)",
+                        severity="information",
+                        timeout=3,
+                    )
+                    task_text = f"{prompt_text} @{img_path}"
+                    self._chat_history.append({"role": "user", "content": task_text})
+                    try:
+                        if hasattr(container, "append_card"):
+                            container.append_card(
+                                MessageCard(
+                                    task_text,
+                                    role="user",
+                                    images=[full_p],
+                                    project_root=self.project_root,
+                                )
+                            )
+                        else:
+                            self._safe_mount(
+                                container,
+                                Static(
+                                    Panel(
+                                        escape(task_text),
+                                        title="You",
+                                        border_style="bright_blue",
+                                    )
+                                ),
+                            )
+                    except Exception:
+                        pass
+                    self._run_agent(task_text)
+
         elif cmd in ("/start", "/startengine"):
             self.on_start_engine_btn()
 
@@ -2885,8 +4231,8 @@ class TorchlightApp(App):
         elif cmd in ("/kill", "/killsession", "/kill-session"):
             self.on_kill_session_btn()
 
-        elif cmd in ("/engine", "/provider"):
-            self.action_select_model()
+        elif cmd in ("/engine", "/provider", "/turboquant", "/kv"):
+            self.action_engine_config()
 
         elif cmd in ("/select", "/copyselect", "/copyselection"):
             self.action_copy_selection()
@@ -2898,69 +4244,7 @@ class TorchlightApp(App):
             if not arg:
                 self.action_select_mode()
             else:
-                m_str = arg.lower().strip()
-                if m_str in ("chat", "goal", "unified"):
-                    from core.memory.models import ExecutionMode
-
-                    if m_str == "goal":
-                        new_mode = ExecutionMode.GOAL
-                    elif m_str == "unified":
-                        new_mode = ExecutionMode.UNIFIED
-                    else:
-                        new_mode = ExecutionMode.CHAT
-
-                    if hasattr(self.engine.memory.state, "execution_mode"):
-                        self.engine.memory.state.execution_mode = new_mode
-                    self.engine.execution_mode = m_str
-                    if m_str == "goal":
-                        try:
-                            from core.execution.autonomous_harness import (
-                                AutonomousHarness,
-                            )
-
-                            harness = AutonomousHarness(
-                                project_root=self.engine.project_root,
-                                memory=self.engine.memory,
-                            )
-                            success = harness.ensure_goal_spec_initialized()
-                            if not success:
-                                self.notify(
-                                    "Failed to initialize Goal Mode task graph",
-                                    severity="error",
-                                    timeout=5,
-                                )
-                                return
-                        except Exception as e:
-                            self.notify(
-                                f"Failed to initialize Goal Mode: {e}",
-                                severity="error",
-                                timeout=5,
-                            )
-                            return
-                        self.notify(
-                            "Switched to Goal Mode (Task Graph initialized in .torchlight/tasks.md)",
-                            severity="success",
-                            timeout=3,
-                        )
-                    elif m_str == "unified":
-                        self.notify(
-                            "Switched to Unified Mode (Dynamic Phase Auto-Detection)",
-                            severity="information",
-                            timeout=3,
-                        )
-                    else:
-                        self.notify(
-                            "Switched to Chat Mode (Lightweight Q&A)",
-                            severity="information",
-                            timeout=3,
-                        )
-                    self.update_status_bar()
-                else:
-                    self.notify(
-                        "Usage: /mode chat, /mode goal, or /mode unified",
-                        severity="warning",
-                        timeout=3,
-                    )
+                self.set_mode(arg.lower().strip())
 
         elif cmd in ("/phase", "/params"):
             if not arg or arg == "show":
@@ -3056,11 +4340,8 @@ class TorchlightApp(App):
         elif cmd in ("/compress", "/compact"):
             self.action_compact_context()
 
-        elif cmd in ("/clear", "/cls"):
-            self.action_clear()
-
-        elif cmd == "/reset":
-            self.action_reset_session()
+        elif cmd in ("/clear", "/cls", "/reset", "/new", "/wipe"):
+            self.action_wipe_session()
 
         elif cmd in ("/copy", "/copyall"):
             self.action_copy_chat()
@@ -3117,9 +4398,12 @@ class TorchlightApp(App):
 
         self.engine.on_step = self._handle_step
         self.engine.approval_fn = self._handle_approval
+        self.engine.ask_user_fn = self._handle_ask_user
         self.engine.on_token = self._append_token
         self.engine.on_status_change = self._handle_status_change
         self.engine.on_tasks_changed = self._handle_tasks_changed
+        if getattr(self.engine, "feedback_loop", None):
+            self.engine.feedback_loop.set_event_callback(self._handle_test_event)
 
         # Sync execution_mode from memory state into the engine
         # so solve_async selects the correct system prompt.
@@ -3198,6 +4482,125 @@ class TorchlightApp(App):
                 else:
                     raise first_err
 
+            # If in Goal Mode and tasks remain pending, continuously execute micro-epochs
+            if getattr(self.engine, "execution_mode", "unified") == "goal":
+                from core.tools.task_helpers import get_workspace_pending_tasks
+
+                max_goal_epochs = 25
+                max_attempts_per_task = 3
+                epoch_count = 0
+                task_attempts: dict[str, int] = {}
+
+                while (
+                    not getattr(self, "_is_cancelled", False)
+                    and epoch_count < max_goal_epochs
+                ):
+                    pending_tasks = get_workspace_pending_tasks(
+                        self.engine.project_root
+                    )
+                    if not pending_tasks:
+                        break
+
+                    next_task = pending_tasks[0]
+                    current_attempt = task_attempts.get(next_task, 0) + 1
+                    task_attempts[next_task] = current_attempt
+                    epoch_count += 1
+
+                    self._remove_streaming()
+                    attempt_suffix = (
+                        f" [dim](Attempt {current_attempt}/{max_attempts_per_task})[/]"
+                        if current_attempt > 1
+                        else ""
+                    )
+                    container.mount(
+                        Static(
+                            f"\n  [bold cyan]🎯 Goal Epoch {epoch_count}:[/] [bold white]{escape(next_task)}[/]{attempt_suffix}",
+                            classes="step-status",
+                        )
+                    )
+                    self.call_after_refresh(self._scroll_chat_to_end)
+
+                    # Flush conversation turn memory to avoid context overflow while preserving project state
+                    if hasattr(self.engine, "_memory") and self.engine._memory:
+                        if hasattr(self.engine._memory, "clear"):
+                            self.engine._memory.clear()
+                    if hasattr(self.engine, "_messages"):
+                        self.engine._messages = None
+
+                    self._streaming_text = ""
+                    self._ensure_streaming_widget()
+
+                    # List existing workspace files to prevent hallucinating extra folders like src/
+                    existing_files = []
+                    try:
+                        for f in os.listdir(self.engine.project_root):
+                            if not f.startswith(".") and not f.startswith("__") and f not in ("node_modules", "venv", ".venv", "graphify-out"):
+                                existing_files.append(f)
+                    except Exception:
+                        pass
+                    files_context = (
+                        f"\nExisting workspace files: {', '.join(sorted(existing_files))}\n"
+                        "Target existing files directly at project root before creating new subdirectories."
+                        if existing_files
+                        else ""
+                    )
+
+                    epoch_prompt = (
+                        f"Goal Sub-Task ({epoch_count}): {next_task}\n"
+                        f"Execute the required tool calls (READ_FILE, EDIT_FILE, WRITE_FILE, RUN_COMMAND, INSPECT_WEB) "
+                        f"to complete this task and verify it.{files_context}"
+                    )
+                    sub_result = await self.engine.solve_async(epoch_prompt)
+                    result.total_llm_calls += sub_result.total_llm_calls
+                    result.steps.extend(sub_result.steps)
+
+                    # If the epoch produced successful file modifications and no failing tests, mark subtask completed
+                    has_successful_edits = any(
+                        s.tool_name in ("WRITE_FILE", "EDIT_FILE")
+                        and getattr(s, "result", "")
+                        and not str(s.result).startswith("❌")
+                        and not str(s.result).startswith("⛔")
+                        and not str(s.result).startswith("Edit failed")
+                        for s in sub_result.steps
+                    )
+                    has_failing_tests = bool(
+                        getattr(self.engine.feedback_loop, "has_failing_tests", False)
+                    )
+                    if has_successful_edits and not has_failing_tests:
+                        from core.tools.task_helpers import mark_task_status
+                        mark_task_status(
+                            self.engine.project_root, next_task, status="completed"
+                        )
+                        self._notify_tasks_changed({"reason": "epoch_completion"})
+
+                    new_pending = get_workspace_pending_tasks(
+                        self.engine.project_root
+                    )
+                    # If the task did not advance after max attempts, break to allow manual inspection
+                    if (
+                        len(new_pending) >= len(pending_tasks)
+                        and new_pending[0] == next_task
+                        and task_attempts[next_task] >= max_attempts_per_task
+                    ):
+                        container.mount(
+                            Static(
+                                f"  [yellow]⚠ Sub-task stalled after {max_attempts_per_task} attempts: '{escape(next_task)}'[/]",
+                                classes="step-status",
+                            )
+                        )
+                        break
+
+                remaining_after_loop = get_workspace_pending_tasks(
+                    self.engine.project_root
+                )
+                if remaining_after_loop and epoch_count >= max_goal_epochs:
+                    container.mount(
+                        Static(
+                            f"\n  [bold yellow]── 🎯 Goal Epoch limit reached ({max_goal_epochs} epochs). {len(remaining_after_loop)} pending task(s) remaining. Submit prompt to continue. ──[/]",
+                            classes="step-status",
+                        )
+                    )
+
             self._remove_streaming()
             self.update_sidebar_meta()
 
@@ -3209,6 +4612,42 @@ class TorchlightApp(App):
                 )
             )
             self.call_after_refresh(self._scroll_chat_to_end)
+
+            # If in Plan Mode and the answer or implementation_plan.md contains open review questions, auto-launch AskUserModal
+            current_mode = getattr(self.engine, "execution_mode", "unified")
+            if current_mode == "plan" or getattr(self.engine, "_current_phase", "") == "plan":
+                try:
+                    from core.utils.plan_utils import parse_plan_review_questions
+
+                    plan_text = result.answer or ""
+                    plan_file = os.path.join(self.project_root, "implementation_plan.md")
+                    if not plan_text and os.path.exists(plan_file):
+                        with open(plan_file, "r", encoding="utf-8") as pf:
+                            plan_text = pf.read()
+                    review_questions = parse_plan_review_questions(plan_text)
+                    if review_questions:
+                        q_data = review_questions[0]
+                        user_selection = await self.push_screen_wait(
+                            AskUserModal(
+                                question=q_data["question"],
+                                options=q_data.get("options", []),
+                                is_multi_select=q_data.get("is_multi_select", False),
+                                allow_custom_input=q_data.get("allow_custom_input", True),
+                            )
+                        )
+                        if user_selection and user_selection != "User dismissed prompt without input.":
+                            self.notify(
+                                f"Review choice recorded: {user_selection[:60]}",
+                                severity="information",
+                                timeout=4,
+                            )
+                            try:
+                                user_input = self.query_one("#user-input", TextArea)
+                                user_input.text = f"Confirmed: {user_selection}. Proceed with implementation."
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
 
         except asyncio.CancelledError:
             self._remove_streaming()
@@ -3235,7 +4674,8 @@ class TorchlightApp(App):
 
     def _ensure_streaming_widget(self) -> StreamingView:
         if getattr(self, "_streaming_widget", None) is None:
-            self._streaming_view = StreamingView()
+            active_phase = getattr(self, "mode", None) or getattr(getattr(self, "engine", None), "_current_phase", "chat")
+            self._streaming_view = StreamingView(phase=active_phase)
             if Collapsible is not None:
                 self._streaming_widget = Collapsible(
                     self._streaming_view, title="💭 Thinking...", collapsed=False
@@ -3606,24 +5046,64 @@ class TorchlightApp(App):
                             ),
                         )
 
+                # Rejected Final Answer / Verification Gate Interception
+                elif step.action == "rejected_final_answer":
+                    raw_res = step.result or "Advancing to next task."
+                    first_line = raw_res.splitlines()[0] if raw_res else "Advancing to next task"
+                    clean_label = first_line.replace("❌ [VERIFICATION GATE REJECTION — ", "").replace("❌ [VERIFICATION GATE REJECTION]", "").rstrip("]")
+                    if not clean_label.strip():
+                        clean_label = "Advancing to next task"
+                    self._safe_mount(
+                        container,
+                        Static(
+                            f"  [bold cyan]🔄 Auto-Advancing:[/] [dim]{escape(clean_label)} (Turn {step.step_number})[/]",
+                            classes="step-status",
+                        ),
+                    )
+
                 # Final answer
                 elif step.action == "final_answer":
-                    display_content = sanitize_assistant_text(step.content)
+                    display_content = sanitize_assistant_text(step.content) if step.content else ""
+                    if not display_content.strip():
+                        if step.result and step.result.strip():
+                            display_content = step.result.strip()
+                        else:
+                            try:
+                                from core.tools.task_helpers import get_workspace_pending_tasks
+                                pending = (
+                                    get_workspace_pending_tasks(self.engine.project_root)
+                                    if getattr(self, "engine", None)
+                                    else []
+                                )
+                                if pending:
+                                    display_content = f"Turn completed. Next pending task: **{pending[0]}**."
+                                else:
+                                    display_content = "Turn completed."
+                            except Exception:
+                                display_content = "Turn completed."
+
                     if len(display_content) > 15000:
                         display_content = (
                             display_content[:15000]
                             + "\n\n... [Output Truncated for UI Performance]"
                         )
+                    duration_str = None
+                    if getattr(self, "_stream_start_time", None):
+                        import time
+
+                        elapsed = max(0.0, time.time() - self._stream_start_time)
+                        duration_str = f"{elapsed:.1f}s"
                     self._safe_mount(
                         container,
                         MessageCard(
                             display_content,
                             role="final",
                             meta=card_meta_for(display_content),
+                            duration=duration_str,
                         ),
                     )
                     self._chat_history.append(
-                        {"role": "assistant", "content": step.content}
+                        {"role": "assistant", "content": step.content or display_content}
                     )
 
                 # Sub-queries
@@ -3664,6 +5144,54 @@ class TorchlightApp(App):
         if step.action != "final_answer":
             try:
                 self._ensure_streaming_widget()
+            except Exception:
+                pass
+
+    def _handle_test_event(self, event_type: str, data: dict) -> None:
+        """Thread-safe handler for test lifecycle events from feedback loop."""
+        try:
+            self.call_from_thread(self._process_test_event, event_type, data)
+        except Exception:
+            self._process_test_event(event_type, data)
+
+    def _process_test_event(self, event_type: str, data: dict) -> None:
+        if event_type == "test_started":
+            cmd = data.get("command", "tests")
+            if self._status_bar:
+                self._status_bar.update_status(test_status=f"[bold cyan]🧪 {escape(str(cmd))}...[/]")
+        elif event_type == "test_completed":
+            passed = data.get("passed", 0)
+            failed = data.get("failed", 0)
+            dur = data.get("duration_ms", 0.0)
+            all_passed = bool(data.get("all_passed", False))
+            if self._status_bar:
+                if all_passed:
+                    status_txt = f"[bold green]✓ {passed} tests ({dur:.0f}ms)[/]"
+                else:
+                    status_txt = f"[bold red]❌ {failed} failed[/]"
+                self._status_bar.update_status(test_status=status_txt)
+
+            # Mount TestVerificationCard in chat container if tests actually ran
+            if data.get("command"):
+                try:
+                    container = self.query_one("#chat-container")
+                    from rlm_optimized.tui_widgets.tool_card import TestVerificationCard
+
+                    card = TestVerificationCard(data)
+                    self._safe_mount(container, card)
+                    self.call_after_refresh(self._scroll_chat_to_end)
+                except Exception:
+                    pass
+
+            # Stream into Output Tab
+            try:
+                out_widget = self.query_one("#output-log-content")
+                stdout = (data.get("stdout") or "").strip()
+                stderr = (data.get("stderr") or "").strip()
+                if stdout:
+                    out_widget.update(f"[bold cyan]── Test Verification Output ──[/]\n{escape(stdout)}")
+                elif stderr:
+                    out_widget.update(f"[bold red]── Test Verification Errors ──[/]\n{escape(stderr)}")
             except Exception:
                 pass
 
@@ -3731,177 +5259,678 @@ class TorchlightApp(App):
 
         self.push_screen(CopySelectionModal(self._chat_history), _on_turn_selected)
 
-    def action_select_mode(self) -> None:
-        def _on_mode_selected(selected_mode: Optional[str]):
-            if selected_mode:
-                mem = getattr(self.engine, "memory", None)
-                from core.memory.models import ExecutionMode
+    def set_mode(self, mode_str: str) -> None:
+        m_str = mode_str.lower().strip()
+        if m_str in ("code", "chat", "goal", "plan", "unified"):
+            from core.memory.models import ExecutionMode
 
-                if selected_mode == "goal":
-                    new_mode = ExecutionMode.GOAL
-                elif selected_mode == "unified":
-                    new_mode = ExecutionMode.UNIFIED
-                else:
-                    new_mode = ExecutionMode.CHAT
-                if (
-                    mem
-                    and hasattr(mem, "state")
-                    and hasattr(mem.state, "execution_mode")
-                ):
-                    mem.state.execution_mode = new_mode
+            if m_str == "code":
+                new_mode = ExecutionMode.CODE
+            elif m_str == "goal":
+                new_mode = ExecutionMode.GOAL
+            elif m_str == "plan":
+                new_mode = ExecutionMode.PLAN
+            elif m_str == "unified":
+                new_mode = ExecutionMode.UNIFIED
+            else:
+                new_mode = ExecutionMode.CHAT
 
-                # Wire execution_mode into the engine so solve_async
-                # selects the correct system prompt and behavior.
-                self.engine.execution_mode = (
-                    new_mode.value if hasattr(new_mode, "value") else str(new_mode)
+            mem = getattr(self.engine, "memory", None)
+            if (
+                mem
+                and hasattr(mem, "state")
+                and hasattr(mem.state, "execution_mode")
+            ):
+                mem.state.execution_mode = new_mode
+
+            self.engine.execution_mode = m_str
+            save_last_state({"last_execution_mode": m_str})
+
+            if m_str == "code":
+                self.notify(
+                    "Switched to Code Mode (Surgical coding & task execution)",
+                    severity="success",
+                    timeout=3,
                 )
+            elif m_str == "goal":
+                try:
+                    from core.execution.autonomous_harness import AutonomousHarness
 
-                if selected_mode == "goal":
-                    try:
-                        from core.execution.autonomous_harness import AutonomousHarness
-
-                        harness = AutonomousHarness(
-                            project_root=self.engine.project_root, memory=mem
-                        )
-                        success = harness.ensure_goal_spec_initialized()
-                        if not success:
-                            self.notify(
-                                "Failed to initialize Goal Mode task graph",
-                                severity="error",
-                                timeout=5,
-                            )
-                            return
-                    except Exception as e:
+                    harness = AutonomousHarness(
+                        project_root=self.engine.project_root, memory=mem
+                    )
+                    success = harness.ensure_goal_spec_initialized()
+                    if not success:
                         self.notify(
-                            f"Failed to initialize Goal Mode: {e}",
+                            "Failed to initialize Goal Mode task graph",
                             severity="error",
                             timeout=5,
                         )
                         return
+                except Exception as e:
                     self.notify(
-                        "Switched to Goal Mode (Task Graph in .torchlight/tasks.md)",
-                        severity="success",
-                        timeout=3,
+                        f"Failed to initialize Goal Mode: {e}",
+                        severity="error",
+                        timeout=5,
                     )
-                else:
-                    self.notify(
-                        "Switched to Chat Mode (Lightweight Q&A)",
-                        severity="information",
-                        timeout=3,
-                    )
-                self.update_status_bar()
-
-        mem = getattr(self.engine, "memory", None)
-        current_m = getattr(getattr(mem, "state", None), "execution_mode", "chat")
-        m_str = (
-            current_m.value if hasattr(current_m, "value") else str(current_m or "chat")
-        )
-        self.push_screen(SessionModePickerModal(m_str), _on_mode_selected)
-
-    def action_select_model(self) -> None:
-        def _on_model_picked(selected: Optional[dict]):
-            if selected:
-                new_model = selected["id"]
-                new_provider = selected["provider"]
-
-                save_last_state(
-                    {
-                        "last_model": new_model,
-                        "last_provider": new_provider,
-                        "last_provider_name": selected["name"],
-                    }
-                )
-
+                    return
                 self.notify(
-                    f"Switching to {escape(selected['name'])}...",
+                    "Switched to Goal Mode (Task Graph in .torchlight/tasks.md)",
+                    severity="success",
+                    timeout=3,
+                )
+            elif m_str == "plan":
+                self.notify(
+                    "Switched to Plan Mode (Brainstorm & maintain implementation_plan.md)",
+                    severity="success",
+                    timeout=3,
+                )
+            elif m_str == "unified":
+                self.notify(
+                    "Switched to Unified Mode (Dynamic Phase & Toolset)",
+                    severity="success",
+                    timeout=3,
+                )
+            else:
+                self.notify(
+                    "Switched to Chat Mode (Lightweight Q&A)",
                     severity="information",
                     timeout=3,
                 )
+            self.update_sidebar_meta()
+            self.update_status_bar()
+        else:
+            self.notify(
+                f"Unknown mode: {mode_str}. Options: code, plan, chat, goal, unified.",
+                severity="error",
+                timeout=3,
+            )
 
-                # 1. Kill old server processes
-                try:
-                    subprocess.run(
-                        ["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL
-                    )
-                    subprocess.run(
-                        ["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL
-                    )
-                except Exception:
-                    pass
+    def action_select_mode(self) -> None:
+        def _on_mode_selected(selected_mode: Optional[str]):
+            if selected_mode:
+                self.set_mode(selected_mode)
 
-                # 2. Update model and provider names
-                self.model_name = new_model
-                self.provider_name = selected["name"]
+        m_str = self._get_current_mode_val()
+        self.push_screen(SessionModePickerModal(m_str), _on_mode_selected)
 
-                # 3. Re-instantiate engine client
-                if new_provider in ("llama-cpp", "turbo", "turboquant"):
-                    from rlm_optimized.llamacpp_client import LlamaCppClient
+    def _get_active_mode_label(self) -> str:
+        current_m = getattr(self.engine, "execution_mode", None) if hasattr(self, "engine") else None
+        if not current_m:
+            mem = getattr(self.engine, "memory", None) if hasattr(self, "engine") else None
+            current_m = getattr(getattr(mem, "state", None), "execution_mode", "unified")
+        m_str = (
+            current_m.value if hasattr(current_m, "value") else str(current_m or "unified")
+        )
+        if "code" in m_str.lower():
+            return "CODE"
+        elif "goal" in m_str.lower():
+            return "GOAL"
+        elif "plan" in m_str.lower():
+            return "PLAN"
+        elif "unified" in m_str.lower():
+            return "UNIFIED"
+        return "CHAT"
 
-                    self.engine.client = LlamaCppClient(
-                        base_url="http://localhost:8080/v1", model=new_model
-                    )
-                elif new_provider == "mlx":
-                    from rlm_optimized.cloud_client import CloudClient
+    def _get_current_mode_val(self) -> str:
+        current_m = getattr(self.engine, "execution_mode", None) if hasattr(self, "engine") else None
+        if not current_m:
+            mem = getattr(self.engine, "memory", None) if hasattr(self, "engine") else None
+            current_m = getattr(getattr(mem, "state", None), "execution_mode", "unified")
+        m_str = (
+            current_m.value if hasattr(current_m, "value") else str(current_m or "unified")
+        )
+        m_lower = m_str.lower()
+        if "code" in m_lower:
+            return "code"
+        elif "goal" in m_lower:
+            return "goal"
+        elif "plan" in m_lower:
+            return "plan"
+        elif "unified" in m_lower:
+            return "unified"
+        return "chat"
 
-                    self.engine.client = CloudClient(
-                        provider="mlx",
-                        model=new_model,
-                        base_url="http://localhost:8080/v1",
-                        api_key="not-needed",
-                    )
-                elif new_provider == "ollama":
-                    from rlm_optimized.ollama_client import OllamaClient
+    def _get_mode_select_options(self) -> list[tuple[str, str]]:
+        return [
+            ("Mode: Code", "code"),
+            ("Mode: Plan", "plan"),
+            ("Mode: Chat", "chat"),
+            ("Mode: Goal", "goal"),
+            ("Mode: Unified", "unified"),
+        ]
 
-                    self.engine.client = OllamaClient(model=new_model)
-                elif new_provider == "lmstudio":
-                    from rlm_optimized.cloud_client import CloudClient
 
-                    self.engine.client = CloudClient(
-                        provider=None,
-                        model=new_model,
-                        base_url=LMSTUDIO_BASE_URL,
-                        api_key=LMSTUDIO_API_KEY,
-                    )
-                else:
-                    from rlm_optimized.cloud_client import CloudClient
+    @on(Select.Changed, "#mode-select-dropdown")
+    def _on_mode_select_changed(self, event: Select.Changed) -> None:
+        if event.value:
+            self.set_mode(str(event.value))
 
-                    self.engine.client = CloudClient(
-                        provider=new_provider, model=new_model
-                    )
+    def _get_models_for_engine(self, engine: str = "") -> list[tuple[str, str]]:
+        """Get model choices strictly tailored ONLY to the selected inference backend."""
+        from pathlib import Path
+        options = []
+        workspace = Path(self.engine.project_root if hasattr(self, "engine") and self.engine else os.getcwd()).resolve()
+        models_dir = workspace / "models"
+        engine_str = (engine or getattr(self, "provider_name", "llama.cpp") or "llama.cpp").lower()
 
-                # 4. Update tracked port / management mode for the new provider
-                self.engine_port, self.externally_managed = _provider_runtime_info(
-                    new_provider
+        if "mlx" in engine_str:
+            from rlm_optimized.config import is_valid_mlx_directory
+            # 1. ./models directory MLX model folders ONLY
+            if models_dir.exists():
+                for item in sorted(models_dir.iterdir()):
+                    if is_valid_mlx_directory(str(item)):
+                        options.append((item.name, str(item.resolve())))
+
+            # 2. ~/.cache/huggingface/hub snapshots for MLX models ONLY (verified complete)
+            hf_dir = Path.home() / ".cache" / "huggingface" / "hub"
+            if hf_dir.exists():
+                for item in sorted(hf_dir.glob("models--*mlx*")):
+                    snaps_dir = item / "snapshots"
+                    if snaps_dir.exists():
+                        for snap in snaps_dir.iterdir():
+                            if is_valid_mlx_directory(str(snap)):
+                                clean_name = item.name.replace("models--mlx-community--", "").replace("models--", "")
+                                if not any(opt[0] == clean_name or opt[1] == str(snap.resolve()) for opt in options):
+                                    options.append((clean_name, str(snap.resolve())))
+                                break
+            # 3. Ensure popular MLX Coder, Gemma, and Reasoning models are available
+            if not any("DeepSeek-R1" in opt[0] for opt in options):
+                options.append(("DeepSeek-R1-Distill-Qwen-7B-4bit", "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit"))
+            if not any("Qwen2.5-Coder-3B" in opt[0] for opt in options):
+                options.append(("Qwen2.5-Coder-3B-Instruct-4bit", "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit"))
+            if not any("Qwen2.5-Coder-7B" in opt[0] for opt in options):
+                options.append(("Qwen2.5-Coder-7B-Instruct-4bit", "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"))
+            if not any("gemma-4-e4b" in opt[1].lower() for opt in options):
+                options.append(("Gemma 4 E4B (MLX)", "mlx-community/gemma-4-E4B-it-4bit"))
+            if not any("gemma-4-e2b" in opt[1].lower() for opt in options):
+                options.append(("Gemma 4 E2B (MLX)", "mlx-community/gemma-4-E2B-it-4bit"))
+            if not any("gemma-2-2b" in opt[1].lower() for opt in options):
+                options.append(("Gemma 2 2B (MLX)", "mlx-community/gemma-2-2b-it-4bit"))
+
+            if not options:
+                options = [("Qwen2.5-Coder-3B-Instruct-4bit", "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit")]
+
+        elif "lmstudio" in engine_str:
+            # ONLY LM Studio models
+            try:
+                from rlm_optimized.config import fetch_provider_models, LMSTUDIO_BASE_URL
+                lm_models = fetch_provider_models(LMSTUDIO_BASE_URL)
+                for m_id in lm_models:
+                    options.append((f"{m_id} (LM Studio)", m_id))
+            except Exception:
+                pass
+            if not options:
+                lmstudio_dir = Path.home() / ".lmstudio" / "models"
+                if lmstudio_dir.exists():
+                    for gguf in sorted(lmstudio_dir.rglob("*.gguf")):
+                        sz_mb = gguf.stat().st_size / (1024 * 1024)
+                        options.append((f"{gguf.name} ({sz_mb:.0f}MB)", str(gguf.resolve())))
+            if not options:
+                options = [("No LM Studio models found (check port 1234)", "lmstudio-default")]
+
+        elif "ollama" in engine_str:
+            # ONLY Ollama models
+            try:
+                from rlm_optimized.config import fetch_provider_models
+                ol_models = fetch_provider_models("http://localhost:11434/v1")
+                for m_id in ol_models:
+                    options.append((f"{m_id} (Ollama)", m_id))
+            except Exception:
+                pass
+            if not options:
+                options = [("No Ollama models found (check port 11434)", "ollama-default")]
+
+        else:
+            # llama.cpp / TurboQuant — ONLY .gguf model files
+            if models_dir.exists():
+                for item in sorted(models_dir.iterdir()):
+                    if item.is_file() and item.suffix == ".gguf":
+                        sz_mb = item.stat().st_size / (1024 * 1024)
+                        options.append((f"{item.name} ({sz_mb:.0f}MB)", str(item.resolve())))
+
+            lmstudio_dir = Path.home() / ".lmstudio" / "models"
+            if lmstudio_dir.exists():
+                for gguf in sorted(lmstudio_dir.rglob("*.gguf")):
+                    sz_mb = gguf.stat().st_size / (1024 * 1024)
+                    if not any(opt[1] == str(gguf.resolve()) for opt in options):
+                        options.append((f"{gguf.name} ({sz_mb:.0f}MB)", str(gguf.resolve())))
+
+            if not options:
+                options = [("qwen2.5-coder-3b-instruct-q4_k_m.gguf", "models/qwen2.5-coder-3b-instruct-q4_k_m.gguf")]
+
+        curr_m = getattr(self, "model_name", "")
+        if curr_m and curr_m != "default":
+            matching_idx = next(
+                (i for i, opt in enumerate(options) if opt[1] == curr_m or curr_m in opt[1] or opt[1] in curr_m),
+                None,
+            )
+            if matching_idx is not None:
+                matched_item = options.pop(matching_idx)
+                val = curr_m if curr_m == matched_item[1] or curr_m in matched_item[1] else matched_item[1]
+                options.insert(0, (matched_item[0], val))
+            elif (("mlx" in engine_str and ("mlx" in curr_m.lower() or "safetensors" in curr_m.lower())) or 
+                  ("llama" in engine_str and ("gguf" in curr_m.lower() or "qwen" in curr_m.lower() or "gemma" in curr_m.lower()))):
+                options.insert(0, (curr_m, curr_m))
+
+        return options
+
+    def _populate_supported_models_near_chat(self, engine: str) -> None:
+        """Populate the model dropdown near chat toolbar based strictly on selected backend engine."""
+        try:
+            dropdown = self.query_one("#model-select-dropdown", Select)
+            options = self._get_models_for_engine(engine)
+            dropdown.set_options(options)
+            if options:
+                curr = self.model_name
+                matching = next(
+                    (opt[1] for opt in options if opt[1] == curr or (curr and curr in opt[1]) or (curr and opt[1] in curr)),
+                    None,
                 )
+                if matching is not None:
+                    dropdown.value = matching
+                    self.model_name = matching
+                else:
+                    dropdown.value = options[0][1]
+                    self.model_name = options[0][1]
+            self.update_sidebar_meta()
+            self.update_status_bar()
+        except Exception:
+            pass
 
-                if self.engine_port <= 0:
+    @on(Select.Changed, "#sidebar-engine-select")
+    def _on_sidebar_engine_changed(self, event: Select.Changed) -> None:
+        if event.value:
+            new_engine = str(event.value)
+            self.provider_name = new_engine
+            self.engine_provider = new_engine
+            os.environ["PROVIDER"] = new_engine
+            self._populate_supported_models_near_chat(new_engine)
+            self.notify(
+                f"Switched engine to: {new_engine.upper()}",
+                severity="information",
+                timeout=2,
+            )
+            self.update_sidebar_meta()
+
+    @on(Button.Pressed, "#sidebar-apply-engine-btn")
+    def _on_sidebar_apply_engine_pressed(self) -> None:
+        try:
+            eng = str(self.query_one("#sidebar-engine-select", Select).value)
+            kv = str(self.query_one("#sidebar-kv-select", Select).value)
+            try:
+                ctx = int(self.query_one("#sidebar-ctx-select", Select).value)
+                temp = float(self.query_one("#sidebar-temp-select", Select).value)
+                rep_pen = float(self.query_one("#sidebar-rep-select", Select).value)
+                threads = int(self.query_one("#sidebar-threads-select", Select).value)
+            except Exception:
+                ctx = 12288
+                temp = 0.1
+                rep_pen = 1.08
+                threads = 4
+
+            self.provider_name = eng
+            self.engine_provider = eng
+            self.kv_cache_mode = kv
+            self.context_window_size = ctx
+
+            os.environ["PROVIDER"] = eng
+            if eng in ("llama.cpp", "llama-cpp", "turbo", "turboquant"):
+                os.environ["KV_CACHE_COMPRESSION"] = kv
+                save_last_state({"last_kv_cache_mode": kv})
+            os.environ["RLM_CTX_SIZE"] = str(ctx)
+            os.environ["THREADS"] = str(threads)
+            os.environ["TEMPERATURE"] = str(temp)
+            os.environ["REPEAT_PENALTY"] = str(rep_pen)
+            os.environ["REPETITION_PENALTY"] = str(rep_pen)
+
+            if hasattr(self, "engine") and self.engine and hasattr(self.engine, "client") and self.engine.client:
+                if hasattr(self.engine.client, "temperature"):
+                    self.engine.client.temperature = temp
+                if hasattr(self.engine.client, "repeat_penalty"):
+                    self.engine.client.repeat_penalty = rep_pen
+                if hasattr(self.engine.client, "repetition_penalty"):
+                    self.engine.client.repetition_penalty = rep_pen
+
+            self._populate_supported_models_near_chat(eng)
+
+            # Re-instantiate engine client matching the newly applied engine & model
+            self._load_selected_model(self.model_name, auto_start=False)
+
+            status_msg = self.query_one("#sidebar-engine-status-msg", Static)
+            status_msg.update(f"[green]✓ Applied {eng.upper()} ({kv}) @ {ctx} ctx | rep={rep_pen}[/green]")
+
+            self.notify(
+                f"Applied: {eng.upper()} ({kv}, {ctx} ctx, rep={rep_pen}, {threads} thr)",
+                severity="information",
+                timeout=3,
+            )
+            self.update_sidebar_meta()
+            self.update_status_bar()
+            if not self.externally_managed:
+                self._start_engine(force_restart=True)
+        except Exception as e:
+            self.notify(f"Error applying engine settings: {e}", severity="error", timeout=4)
+
+    def _get_model_select_options(self) -> list[tuple[str, str]]:
+        """Return all available models across MLX, TurboQuant GGUF, LM Studio, and Ollama."""
+        from rlm_optimized.config import list_available_models, format_model_display_name
+        options: list[tuple[str, str]] = []
+        seen_ids: set[str] = set()
+        try:
+            available = list_available_models()
+            for m in available:
+                m_id = m.get("id", "")
+                if not m_id or m_id in seen_ids:
+                    continue
+                seen_ids.add(m_id)
+                label = m.get("name") or format_model_display_name(m_id, provider=m.get("provider", ""))
+                options.append((label, m_id))
+        except Exception:
+            pass
+
+        if not options:
+            return self._get_models_for_engine(getattr(self, "provider_name", "llama.cpp"))
+
+        curr = getattr(self, "model_name", "")
+        if curr and curr != "default":
+            matching_idx = next(
+                (i for i, opt in enumerate(options) if opt[1] == curr or curr in opt[1] or opt[1] in curr),
+                None,
+            )
+            if matching_idx is not None:
+                matched_item = options.pop(matching_idx)
+                options.insert(0, matched_item)
+
+        return options
+
+    def _is_model_connected(self) -> bool:
+        try:
+            from rlm_optimized.llamacpp_client import is_port_in_use
+
+            return is_port_in_use(self.engine_port) or getattr(
+                self, "_last_server_online", False
+            )
+        except Exception:
+            return False
+
+    @on(Select.Changed, "#model-select-dropdown")
+    def _on_model_select_changed(self, event: Select.Changed) -> None:
+        if event.value:
+            new_model = str(event.value)
+            if new_model != self.model_name:
+                self._load_selected_model(new_model, auto_start=True)
+
+    def _get_draft_model_select_options(self) -> list[tuple[str, str]]:
+        options = []
+        try:
+            from rlm_optimized.config import list_available_draft_models
+
+            drafts = list_available_draft_models(target_model=self.model_name)
+            for d in drafts:
+                label = str(d.get("name", d.get("id", "")))
+                options.append((label, d["id"]))
+        except Exception:
+            options = [("None (Disabled)", "none"), ("Auto-Match Draft", "auto")]
+        return options or [("None (Disabled)", "none")]
+
+    @on(Button.Pressed, "#model-toggle-btn")
+    def _on_model_toggle_pressed(self, event: Button.Pressed) -> None:
+        btn_label = str(event.button.label).strip().upper()
+        if btn_label == "UNLOAD" or self._is_model_connected():
+            try:
+                subprocess.run(
+                    ["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL
+                )
+                subprocess.run(
+                    ["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL
+                )
+            except Exception:
+                pass
+            self._last_server_online = False
+            self._server_starting = False
+            self._update_connection_state(False)
+            self.notify(
+                "Model unloaded & engine stopped",
+                severity="information",
+                timeout=2,
+            )
+            self._set_input_enabled(True)
+        else:
+            selected_model = self.model_name
+            try:
+                dropdown = self.query_one("#model-select-dropdown", Select)
+                if dropdown.value:
+                    selected_model = str(dropdown.value)
+            except Exception:
+                pass
+            self._load_selected_model(selected_model, auto_start=True)
+
+    def _load_selected_model(
+        self, model_id: str, auto_start: bool = True
+    ) -> None:
+        """Unified model loader: configures provider, client, port runtime, and starts backend engine if auto_start=True."""
+        if not model_id:
+            return
+
+        # Base provider detection from current active engine / state
+        current_eng = getattr(self, "engine_provider", getattr(self, "provider_name", "turbo"))
+        if current_eng in ("llama.cpp", "llama-cpp"):
+            current_eng = "turbo"
+        provider = current_eng or "turbo"
+        name = model_id
+
+        try:
+            from rlm_optimized.config import (
+                list_available_models,
+                fetch_provider_models,
+                format_model_display_name,
+                LMSTUDIO_BASE_URL,
+            )
+
+            models = list_available_models()
+
+            # Only query the provider that the detected engine actually uses,
+            # instead of hitting all three servers (up to 6s timeout if all down).
+            if provider == "lmstudio":
+                lm_models = fetch_provider_models(LMSTUDIO_BASE_URL)
+                for m_id in lm_models:
+                    if not any(m["id"] == m_id for m in models):
+                        models.append({"id": m_id, "name": f"{m_id} (LM Studio)", "provider": "lmstudio"})
+            elif provider == "ollama":
+                ollama_models = fetch_provider_models("http://localhost:11434/v1")
+                for m_id in ollama_models:
+                    if not any(m["id"] == m_id for m in models):
+                        models.append({"id": m_id, "name": f"{m_id} (Ollama)", "provider": "ollama"})
+            elif provider in ("llama-cpp", "turbo", "turboquant", "mlx"):
+                local_8080 = fetch_provider_models("http://localhost:8080/v1")
+                for m_id in local_8080:
+                    if not any(m["id"] == m_id for m in models):
+                        p = "mlx" if ("mlx" in m_id.lower() or "deepseek" in m_id.lower() or "safetensors" in m_id.lower()) else "turbo"
+                        models.append({"id": m_id, "name": f"{m_id} (Local Server)", "provider": p})
+
+            for m in models:
+                if m["id"] == model_id or m.get("id", "").lower() == model_id.lower():
+                    provider = m.get("provider", provider)
+                    name = m.get("name", model_id)
+                    break
+        except Exception:
+            pass
+
+        # Enhanced provider detection
+        m_lower = model_id.lower()
+        if (os.path.isdir(model_id) and os.path.exists(os.path.join(model_id, "config.json"))) or "safetensors" in m_lower or "snapshots" in m_lower:
+            provider = "mlx"
+        elif "mlx" in m_lower or model_id.startswith("mlx-community/"):
+            provider = "mlx"
+        elif ("deepseek" in m_lower or "r1" in m_lower) and not model_id.endswith(".gguf"):
+            provider = "mlx"
+        elif model_id.endswith(".gguf"):
+            if provider == "lmstudio" or "lmstudio" in m_lower:
+                provider = "lmstudio"
+            else:
+                provider = "turbo"
+        elif "gemini" in m_lower:
+            provider = "gemini"
+        elif "ollama" in m_lower or ":" in model_id:
+            provider = "ollama"
+        elif "groq" in m_lower:
+            provider = "groq"
+        elif "together" in m_lower:
+            provider = "together"
+        elif "openrouter" in m_lower:
+            provider = "openrouter"
+        elif "openai" in m_lower or "gpt" in m_lower:
+            provider = "openai"
+        elif current_eng == "mlx" and not model_id.endswith(".gguf"):
+            provider = "mlx"
+
+        # Kill old server processes only when actively starting a model
+        if auto_start:
+            try:
+                subprocess.run(
+                    ["pkill", "-f", "llama-server"], stderr=subprocess.DEVNULL
+                )
+                subprocess.run(
+                    ["pkill", "-f", "mlx_lm.server"], stderr=subprocess.DEVNULL
+                )
+                time.sleep(0.3)
+            except Exception:
+                pass
+
+        save_last_state(
+            {
+                "last_model": model_id,
+                "last_provider": provider,
+                "last_provider_name": name,
+            }
+        )
+
+        self.model_name = model_id
+        self.provider_name = provider
+        self.engine_provider = provider
+
+        # 2. Re-instantiate engine client
+        if provider in ("llama-cpp", "turbo", "turboquant"):
+            from rlm_optimized.llamacpp_client import LlamaCppClient
+
+            self.engine.client = LlamaCppClient(
+                base_url="http://localhost:8080/v1", model=model_id
+            )
+        elif provider == "mlx":
+            from rlm_optimized.cloud_client import CloudClient
+
+            self.engine.client = CloudClient(
+                provider="mlx",
+                model=model_id,
+                base_url="http://localhost:8080/v1",
+                api_key="not-needed",
+            )
+        elif provider == "ollama":
+            from rlm_optimized.ollama_client import OllamaClient
+
+            self.engine.client = OllamaClient(model=model_id)
+        elif provider == "lmstudio":
+            from rlm_optimized.cloud_client import CloudClient
+            from rlm_optimized.config import LMSTUDIO_BASE_URL, LMSTUDIO_API_KEY
+
+            self.engine.client = CloudClient(
+                provider=None,
+                model=model_id,
+                base_url=LMSTUDIO_BASE_URL,
+                api_key=LMSTUDIO_API_KEY,
+            )
+        else:
+            from rlm_optimized.cloud_client import CloudClient
+
+            self.engine.client = CloudClient(provider=provider, model=model_id)
+
+        # 3. Update engine port & runtime info
+        self.engine_port, self.externally_managed = _provider_runtime_info(
+            provider
+        )
+
+        # 4. Launch engine server if auto_start requested
+        if auto_start:
+            if self.engine_port <= 0:
+                self._update_connection_state(True)
+                self.notify(
+                    f"Connected to {escape(name)}.",
+                    severity="information",
+                    timeout=3,
+                )
+            elif not self.externally_managed:
+                self._start_engine(force_restart=True)
+            else:
+                if is_port_in_use(self.engine_port):
                     self._update_connection_state(True)
                     self.notify(
-                        f"Connected to {escape(selected['name'])}.",
+                        f"Connected to {escape(name)}.",
                         severity="information",
                         timeout=3,
                     )
-                elif not self.externally_managed:
-                    self._start_engine(force_restart=True)
                 else:
-                    if is_port_in_use(self.engine_port):
-                        self._update_connection_state(True)
-                        self.notify(
-                            f"Connected to {escape(selected['name'])}.",
-                            severity="information",
-                            timeout=3,
-                        )
-                    else:
-                        self._update_connection_state(False)
-                        self.notify(
-                            f"Switched to {escape(selected['name'])}. Start service on port {self.engine_port}.",
-                            severity="warning",
-                            timeout=5,
-                        )
-                self.update_status_bar()
-                self.update_sidebar_meta()
+                    self._update_connection_state(False)
+                    self.notify(
+                        f"Switched to {escape(name)}. Start service on port {self.engine_port}.",
+                        severity="warning",
+                        timeout=5,
+                    )
+        self.update_status_bar()
+        self.update_sidebar_meta()
 
-        self.push_screen(ModelPickerModal(), _on_model_picked)
+    def action_select_model(self) -> None:
+        """Focus and open the model select dropdown (model badge click / toolbar)."""
+        try:
+            dropdown = self.query_one("#model-select-dropdown", Select)
+            self.set_focus(dropdown)
+            # Dynamically refresh model list so any new live models are immediately selectable
+            current_val = dropdown.value
+            options = self._get_model_select_options()
+            dropdown.set_options(options)
+            if current_val:
+                dropdown.value = current_val
+            dropdown.action_show_overlay()
+        except Exception:
+            pass
+
+
+    def action_engine_config(self) -> None:
+        """Open the Inference Engine & TurboQuant configuration modal."""
+        def _on_engine_applied(result: Optional[dict]):
+            if result:
+                selected_engine = result.get("engine", "llama.cpp")
+                selected_kv = result.get("kv_mode", "turbo3")
+                selected_model = result.get("model", "")
+
+                self.provider_name = selected_engine
+                self.engine_provider = selected_engine
+                self.kv_cache_mode = selected_kv
+                if selected_model:
+                    self.model_name = selected_model
+
+                os.environ["KV_CACHE_COMPRESSION"] = selected_kv
+                save_last_state({"last_kv_cache_mode": selected_kv})
+                os.environ["PROVIDER"] = selected_engine
+
+                self.notify(
+                    f"⚡ Engine: {selected_engine.upper()} | Model: {os.path.basename(self.model_name)} | KV: {selected_kv}",
+                    severity="information",
+                    timeout=3,
+                )
+                self.update_sidebar_meta()
+                self.update_status_bar()
+                if not self.externally_managed:
+                    self._start_engine(force_restart=True)
+
+        self.push_screen(
+            EngineConfigModal(
+                current_engine=getattr(self, "provider_name", "llama.cpp"),
+                current_kv_mode=getattr(self, "kv_cache_mode", "turbo3"),
+                current_model=self.model_name,
+            ),
+            _on_engine_applied,
+        )
 
     def action_open_folder(self) -> None:
         def _on_folder_picked(path: Optional[str]):
@@ -4023,10 +6052,17 @@ class TorchlightApp(App):
         self.update_sidebar_meta()
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        provider_str = getattr(self, "provider_name", "").lower()
+        provider_str = getattr(self, "engine_provider", getattr(self, "provider_name", "")).lower()
+        model_str = getattr(self, "model_name", "").lower()
+        is_mlx = (
+            "mlx" in provider_str
+            or "mlx" in model_str
+            or (isinstance(self.model_name, str) and os.path.isdir(self.model_name) and os.path.exists(os.path.join(self.model_name, "config.json")))
+            or (isinstance(self.model_name, str) and ("deepseek" in model_str or "r1" in model_str) and not self.model_name.endswith(".gguf"))
+        )
         script_name = (
             "start_mlx_server.sh"
-            if "mlx" in provider_str
+            if is_mlx
             else "start_optimized_local.sh"
         )
         target_script = os.path.join(script_dir, script_name)
@@ -4054,12 +6090,22 @@ class TorchlightApp(App):
                 os.makedirs(log_dir, exist_ok=True)
                 server_log_path = os.path.join(log_dir, "llama_server.log")
                 server_log_file = open(server_log_path, "a", encoding="utf-8")
+
+                env = os.environ.copy()
+                env["PORT"] = str(self.engine_port)
+                env["KV_CACHE_COMPRESSION"] = getattr(self, "kv_cache_mode", "turbo3")
+                draft_arg = getattr(self, "draft_model_name", "none") or "none"
+                if draft_arg != "none":
+                    env["DRAFT_MODEL"] = draft_arg
+                    env["DRAFT_MAX"] = str(getattr(self, "draft_max_tokens", 8))
+
                 subprocess.Popen(
-                    [target_script, self.model_name],
+                    [target_script, self.model_name, draft_arg],
                     cwd=os.path.dirname(target_script),
                     stdout=server_log_file,
                     stderr=server_log_file,
                     start_new_session=True,
+                    env=env,
                 )
                 self._poll_server_launch()
             except Exception as e:
@@ -4156,8 +6202,7 @@ class TorchlightApp(App):
         self.notify("Session killed, REPL memory reset", severity="warning", timeout=3)
 
     # NOTE: The model badge button click is handled by on_model_badge_clicked
-    # above (bound to #input-model-badge). Ctrl+M binding also works via
-    # action_select_model in the BINDINGS list.
+    # above (bound to #input-model-badge) which focuses the toolbar model dropdown.
 
     # ── Approval Modal ──────────────────────────────────────────────────
 
@@ -4197,6 +6242,21 @@ class TorchlightApp(App):
             )
             return True
         return bool(res)
+
+    async def _handle_ask_user(self, args: dict) -> str:
+        question = args.get("question", "")
+        options = args.get("options", [])
+        is_multi = bool(args.get("is_multi_select", False))
+        allow_custom = bool(args.get("allow_custom_input", True))
+        res = await self.push_screen_wait(
+            AskUserModal(
+                question=question,
+                options=options,
+                is_multi_select=is_multi,
+                allow_custom_input=allow_custom,
+            )
+        )
+        return str(res or "No input provided.")
 
     def _capture_prewrite_snapshot(self, tool_name: str, args: dict) -> None:
         """Snapshot file contents *before* a diffable write executes.
@@ -4290,12 +6350,112 @@ class TorchlightApp(App):
         streamed tokens are added on top here to make the gauge climb during generation.
         """
         mem = getattr(self.engine, "_memory", None)
-        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
+        if mem and hasattr(mem, "total_tokens") and isinstance(mem.total_tokens, (int, float)) and mem.total_tokens > 0:
             base = int(mem.total_tokens)
         else:
             calls = getattr(self.engine, "_total_llm_calls", 0)
             base = int(calls) * 450 if calls else 0
         return base + getattr(self, "_stream_token_count", 0)
+
+    def _context_section_breakdown(self) -> str:
+        """Estimate per-section token usage and return a Rich markup string.
+
+        Sections estimated:
+          System Prompt  — base phase prompt + tool syntax suffix
+          Scratchpad/L0  — L0 working memory (task matrix, errors, decisions)
+          Flashlight     — AST beam (0 if disabled / no recent query)
+          Chat History   — all user+assistant messages in active context window
+          Pins           — pinned file slices
+          Streaming      — in-flight tokens being generated right now
+
+        Returns compact multi-line Rich markup suitable for a narrow sidebar.
+        """
+        ctx_max = CTX_SIZE
+        if ctx_max <= 0:
+            return "[dim]N/A[/dim]"
+
+        import time as _t
+        now = _t.monotonic()
+        cached_static = getattr(self, "_ctx_breakdown_cache", None)
+        cached_ts = getattr(self, "_ctx_breakdown_cache_ts", 0.0)
+        stream_tok = getattr(self, "_stream_token_count", 0)
+        SPARK_WIDTH = 8
+
+        if cached_static is not None and (now - cached_ts) < 2.0:
+            if stream_tok > 0:
+                pct = min(100.0, (stream_tok / ctx_max) * 100)
+                filled = min(SPARK_WIDTH, round((pct / 100.0) * SPARK_WIDTH))
+                spark = "▪" * filled + "·" * (SPARK_WIDTH - filled)
+                stream_row = (
+                    f"[dim]{'Streaming':<10}[/dim] "
+                    f"[yellow]{spark}[/yellow] "
+                    f"[bold]{stream_tok:>5,}[/bold] "
+                    f"[dim]{pct:>4.1f}%[/dim]"
+                )
+                return cached_static + "\n" + stream_row
+            return cached_static
+
+        # ── Estimate each section (O(1) in memory) ───────────────────────────
+        mem = getattr(self.engine, "_memory", None)
+
+        # 1. System prompt: rough estimate based on phase
+        phase = getattr(self.engine, "_current_phase", "code")
+        _SYSTEM_SIZES = {"chat": 900, "plan": 1100, "code": 1050, "goal": 1000, "troubleshoot": 950}
+        system_tok = _SYSTEM_SIZES.get(phase, 1000) + 300
+
+        # 2. Scratchpad / L0 — fast memory estimate
+        scratchpad_tok = getattr(mem, "_estimate_l0_tokens", lambda: 150)() if mem else 150
+        if scratchpad_tok == 0:
+            scratchpad_tok = 50
+
+        # 3. Flashlight beam — estimate from last beam size
+        beam_tok = getattr(self, "_last_beam_tokens", 0)
+        if beam_tok == 0:
+            beam_tok = 600 if ctx_max >= 8000 else 250
+
+        # 4. Chat history — committed message tokens in memory
+        chat_tok = getattr(mem, "_cached_msg_tokens", 0) if mem else 0
+
+        # 5. Pinned files
+        pinned_tok = getattr(mem, "_cached_pinned_tokens", 0) if mem else 0
+
+        def _row(label: str, tok: int, color: str) -> str:
+            pct = min(100.0, (tok / ctx_max) * 100)
+            filled = min(SPARK_WIDTH, round((pct / 100.0) * SPARK_WIDTH))
+            spark = "▪" * filled + "·" * (SPARK_WIDTH - filled)
+            return (
+                f"[dim]{label:<10}[/dim] "
+                f"[{color}]{spark}[/{color}] "
+                f"[bold]{tok:>5,}[/bold] "
+                f"[dim]{pct:>4.1f}%[/dim]"
+            )
+
+        rows = [
+            _row("System",     system_tok,     "blue"),
+            _row("Scratchpad", scratchpad_tok, "cyan"),
+            _row("Beam",       beam_tok,       "bright_cyan"),
+            _row("Chat",       chat_tok,       "green"),
+        ]
+        if pinned_tok > 0:
+            rows.append(_row("Pins", pinned_tok, "magenta"))
+
+        static_rows = "\n".join(rows)
+        self._ctx_breakdown_cache = static_rows
+        self._ctx_breakdown_cache_ts = now
+
+        if stream_tok > 0:
+            pct = min(100.0, (stream_tok / ctx_max) * 100)
+            filled = min(SPARK_WIDTH, round((pct / 100.0) * SPARK_WIDTH))
+            spark = "▪" * filled + "·" * (SPARK_WIDTH - filled)
+            stream_row = (
+                f"[dim]{'Streaming':<10}[/dim] "
+                f"[yellow]{spark}[/yellow] "
+                f"[bold]{stream_tok:>5,}[/bold] "
+                f"[dim]{pct:>4.1f}%[/dim]"
+            )
+            return static_rows + "\n" + stream_row
+
+        return static_rows
 
     def _context_usage(self) -> tuple[int, int, float]:
         tokens_est = self._live_context_tokens()
@@ -4383,25 +6543,51 @@ class TorchlightApp(App):
             _on_result,
         )
 
+    def action_paste_image(self) -> None:
+        from core.utils.image_utils import save_clipboard_image
+
+        saved_p = save_clipboard_image(self.project_root)
+        if saved_p:
+            filename = os.path.basename(saved_p)
+            self._add_context_chip(saved_p)
+            self.notify(
+                f"🖼 Attached clipboard image: {filename}",
+                severity="information",
+                timeout=3,
+            )
+            if self._user_input is not None:
+                self.set_focus(self._user_input)
+        else:
+            self.notify("No image found on clipboard.", severity="warning", timeout=2)
+
     @on(Button.Pressed, "#attach-context-btn")
     def _on_attach_context_btn_pressed(self, event: Button.Pressed) -> None:
         event.stop()
         self.action_attach_context()
 
     def _add_context_chip(self, filepath: str) -> None:
+        if not filepath:
+            return
+        clean_path = filepath.strip().lstrip("@")
         chips_bar = self.query_one("#context-chips-bar", Horizontal)
         # Avoid duplicate chips
         existing_chips = [
-            getattr(btn, "_filepath", getattr(btn, "tooltip", ""))
+            getattr(btn, "_filepath", getattr(btn, "tooltip", "")).strip().lstrip("@")
             for btn in chips_bar.query(".context-chip")
         ]
-        if filepath in existing_chips:
+        if clean_path in existing_chips:
             return
 
-        btn = Button(f"@{filepath} ✕", classes="context-chip")
+        from core.utils.image_utils import is_image_file
+
+        is_img = is_image_file(clean_path)
+        icon_prefix = r"[bold green]\[IMG][/] " if is_img else ""
+        chip_classes = "context-chip image-chip" if is_img else "context-chip"
+
+        btn = Button(f"{icon_prefix}{clean_path} ✕", classes=chip_classes)
         # Store original path for submission reconstruction
-        btn._filepath = filepath
-        btn.tooltip = filepath
+        btn._filepath = clean_path
+        btn.tooltip = clean_path
         chips_bar.mount(btn)
         chips_bar.add_class("has-chips")
 
@@ -4439,25 +6625,27 @@ class TorchlightApp(App):
         self.push_screen(FolderPickerModal(self.engine.project_root), _on_picker_result)
 
     def action_toggle_sidebar(self) -> None:
-        self.action_toggle_left_sidebar()
-
-    def action_toggle_left_sidebar(self) -> None:
         try:
-            sidebar = self.query_one("#explorer-sidebar")
+            sb = self.query_one("#explorer-sidebar")
+            resizer = self.query_one("#resizer-left")
             self._show_sidebar = not getattr(self, "_show_sidebar", True)
-            sidebar.display = self._show_sidebar
-            try:
-                resizer = self.query_one("#resizer-left")
-                resizer.display = self._show_sidebar
-            except Exception:
-                pass
+            sb.display = self._show_sidebar
+            resizer.display = self._show_sidebar
         except Exception:
             pass
+
+    def action_toggle_left_sidebar(self) -> None:
+        self.action_toggle_sidebar()
 
     def action_toggle_editor_split(self) -> None:
         try:
             editor_pane = self.query_one("#editor-split-pane")
             editor_pane.display = not editor_pane.display
+            try:
+                resizer_editor = self.query_one("#resizer-editor")
+                resizer_editor.display = editor_pane.display
+            except Exception:
+                pass
             status = "shown" if editor_pane.display else "hidden"
             self.notify(
                 f"Editor split pane {status}", severity="information", timeout=2
@@ -4467,14 +6655,11 @@ class TorchlightApp(App):
 
     def action_toggle_right_sidebar(self) -> None:
         try:
-            sidebar = self.query_one("#plan-sidebar")
+            sb = self.query_one("#plan-sidebar")
+            resizer = self.query_one("#resizer-right")
             self._show_plan_sidebar = not getattr(self, "_show_plan_sidebar", True)
-            sidebar.display = self._show_plan_sidebar
-            try:
-                resizer = self.query_one("#resizer-right")
-                resizer.display = self._show_plan_sidebar
-            except Exception:
-                pass
+            sb.display = self._show_plan_sidebar
+            resizer.display = self._show_plan_sidebar
         except Exception:
             pass
 
@@ -4487,6 +6672,16 @@ class TorchlightApp(App):
         self.left_pane_width = max(14, getattr(self, "left_pane_width", 24) - 2)
         self._apply_pane_widths()
         self.notify(f"Left Pane: {self.left_pane_width} cols", timeout=1)
+
+    def action_expand_editor_pane(self) -> None:
+        self.editor_pane_width = min(140, getattr(self, "editor_pane_width", 50) + 4)
+        self._apply_pane_widths()
+        self.notify(f"Editor Pane: {self.editor_pane_width} cols", timeout=1)
+
+    def action_shrink_editor_pane(self) -> None:
+        self.editor_pane_width = max(20, getattr(self, "editor_pane_width", 50) - 4)
+        self._apply_pane_widths()
+        self.notify(f"Editor Pane: {self.editor_pane_width} cols", timeout=1)
 
     def action_expand_right_pane(self) -> None:
         self.right_pane_width = min(60, getattr(self, "right_pane_width", 30) + 2)
@@ -4502,6 +6697,13 @@ class TorchlightApp(App):
         try:
             explorer = self.query_one("#explorer-sidebar")
             explorer.styles.width = getattr(self, "left_pane_width", 24)
+        except Exception:
+            pass
+
+        try:
+            editor = self.query_one("#editor-split-pane")
+            if hasattr(self, "editor_pane_width") and self.editor_pane_width:
+                editor.styles.width = self.editor_pane_width
         except Exception:
             pass
 
@@ -4525,36 +6727,84 @@ class TorchlightApp(App):
         self.theme = themes[(idx + 1) % len(themes)]
         self.notify(f"Theme: {self.theme}", severity="information", timeout=2)
 
-    def action_reset_session(self) -> None:
-        self.engine.sandbox.reset()
-        self.notify("Python REPL state reset", severity="information", timeout=2)
+    def action_wipe_session(self) -> None:
+        """Completely wipe session context and memory, starting a clean fresh session."""
+        if hasattr(self, "engine") and self.engine:
+            self.engine.reset_session()
 
-    def action_clear(self) -> None:
-        container = self.query_one("#chat-container")
-        container.remove_children()
+        try:
+            container = self.query_one("#chat-container", TranscriptView)
+            container.clear()
+        except Exception:
+            try:
+                container = self.query_one("#chat-container")
+                container.remove_children()
+            except Exception:
+                pass
+
         if self._trajectory_rail is not None:
             self._trajectory_rail.clear()
+
+        # Update telemetry & memory widgets
+        self.update_status_bar()
+        self.update_sidebar_meta()
+        try:
+            mem_widget = self.query_one("#agent-memory-panel", AgentMemoryWidget)
+            mem_widget.update_memory()
+        except Exception:
+            pass
+
+        self.append_output_log(
+            "⚡ Session context wiped — all memory, message history, and REPL state reset to clean slate.",
+            severity="info",
+        )
+        self.notify(
+            "✨ Session context wiped — fresh session started",
+            title="Session Reset",
+            severity="information",
+            timeout=3,
+        )
+
+    def action_reset_session(self) -> None:
+        self.action_wipe_session()
+
+    def action_clear(self) -> None:
+        self.action_wipe_session()
 
     def action_compact_context(self) -> None:
         """Manually trigger memory context compaction."""
         mem = getattr(self.engine, "_memory", None)
-        if not mem:
+        if not mem or len(getattr(mem, "messages", [])) <= 1:
             self.notify(
-                "No active memory context to compact", severity="warning", timeout=3
+                "No active memory context to compact (need at least 2 messages)",
+                title="Context Compaction",
+                severity="warning",
+                timeout=3,
             )
             return
         tb, ta, tf = self.engine.compact_context(mem, force=True)
         self.update_status_bar()
         self.update_sidebar_meta()
+        try:
+            mem_widget = self.query_one("#agent-memory-panel", AgentMemoryWidget)
+            mem_widget.update_memory()
+        except Exception:
+            pass
+
         if tf > 0:
+            msg = f"Context compacted: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)"
+            self.append_output_log(f"🧹 {msg}", severity="info")
             self.notify(
-                f"Context compacted: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)",
+                msg,
+                title="Context Compacted",
                 severity="information",
                 timeout=4,
             )
         else:
+            msg = f"Context already minimal ({ta:,} tokens)"
             self.notify(
-                f"Context already minimal ({ta:,} tokens)",
+                msg,
+                title="Context Compacted",
                 severity="information",
                 timeout=3,
             )
@@ -4659,6 +6909,10 @@ def main():
     last_state = load_last_state()
     saved_provider = last_state.get("last_provider")
     saved_model = last_state.get("last_model")
+    saved_mode = last_state.get("last_execution_mode", "plan")
+    saved_kv = last_state.get("last_kv_cache_mode", "turbo3")
+    
+    os.environ["KV_CACHE_COMPRESSION"] = saved_kv
 
     if saved_model and args.model == MODEL_NAME:
         args.model = saved_model
@@ -4698,6 +6952,7 @@ def main():
         client=client,
         max_depth=args.depth,
         project_root=project_root,
+        execution_mode=saved_mode,
     )
 
     engine_port, externally_managed = _provider_runtime_info(args.provider)

@@ -11,17 +11,23 @@ from typing import AsyncIterator, Optional, Protocol, runtime_checkable
 
 def detect_model_traits(model_name: Optional[str]) -> dict:
     """
-    Detect architecture traits (size, reasoning status) from model name.
+    Detect architecture traits (size, reasoning status, vision capability) from model name.
 
     Returns dict:
       {
          "is_reasoning": bool,
          "param_size_b": Optional[float], # e.g. 1.5, 2.0, 3.0, 7.0, 8.0, 70.0
          "is_small_model": bool,          # True if parameter size < 4.0B
+         "is_vision": bool,               # True if multimodal vision model (Gemma 3, Qwen VL, etc.)
       }
     """
     if not model_name or not isinstance(model_name, str):
-        return {"is_reasoning": False, "param_size_b": None, "is_small_model": False}
+        return {
+            "is_reasoning": False,
+            "param_size_b": None,
+            "is_small_model": False,
+            "is_vision": False,
+        }
 
     name_lower = model_name.lower()
 
@@ -41,12 +47,47 @@ def detect_model_traits(model_name: Optional[str]) -> dict:
         elif "e2b" in name_lower:
             param_size_b = 2.0
 
-    is_small_model = param_size_b is not None and param_size_b < 4.0
+    is_small_model = param_size_b is not None and param_size_b <= 4.0
+
+    # 3. Vision / Multimodal model detection (Gemma 3, Qwen VL, Llama Vision, GPT-4o, Gemini, etc.)
+    is_vision = any(
+        k in name_lower
+        for k in [
+            "gemma-3",
+            "gemma3",
+            "qwen2.5-vl",
+            "qwen2-vl",
+            "qwenvl",
+            "qwen-vl",
+            "llama-3.2-11b-vision",
+            "llama-3.2-90b-vision",
+            "llama-vision",
+            "llava",
+            "moondream",
+            "gpt-4o",
+            "gpt-4-vision",
+            "gpt-4-turbo",
+            "gemini-1.5",
+            "gemini-2.0",
+            "gemini-2.5",
+            "gemini-flash",
+            "gemini-pro",
+            "claude-3",
+            "claude-3-5",
+            "claude-3-7",
+            "-vl-",
+            "-vl",
+            "vision",
+            "multimodal",
+            "mmproj",
+        ]
+    )
 
     return {
         "is_reasoning": is_reasoning,
         "param_size_b": param_size_b,
         "is_small_model": is_small_model,
+        "is_vision": is_vision,
     }
 
 
@@ -71,16 +112,24 @@ class InferenceParams:
     top_p: float = 0.95
     min_p: float = 0.05
     repeat_penalty: float = 1.05
+    repetition_penalty: Optional[float] = None
     presence_penalty: float = 0.0
-    frequency_penalty: float = 0.0
+    frequency_penalty: float = 0.10
     seed: int = -1  # -1 = random
     stop: list[str] = field(default_factory=list)
     use_grammar: Optional[bool] = None
     allowed_tools: Optional[list[str]] = None
 
+    def __post_init__(self):
+        if self.repetition_penalty is not None:
+            self.repeat_penalty = self.repetition_penalty
+        else:
+            self.repetition_penalty = self.repeat_penalty
+
     def describe(self) -> str:
         """One-line description of current params."""
-        return f"temp={self.temperature}, top_k={self.top_k}, top_p={self.top_p}, rep={self.repeat_penalty}"
+        rep = self.repeat_penalty if self.repeat_penalty is not None else self.repetition_penalty
+        return f"temp={self.temperature}, top_k={self.top_k}, top_p={self.top_p}, rep={rep}"
 
     def to_payload(self) -> dict:
         """Convert to API payload dict, excluding None and default values."""
@@ -93,8 +142,12 @@ class InferenceParams:
             payload["top_p"] = self.top_p
         if self.min_p != 0.05:
             payload["min_p"] = self.min_p
-        if self.repeat_penalty != 1.0:
-            payload["repeat_penalty"] = self.repeat_penalty
+        rep = self.repeat_penalty if self.repeat_penalty is not None else self.repetition_penalty
+        if rep is not None and rep != 1.0:
+            payload["repeat_penalty"] = rep
+            payload["repetition_penalty"] = rep
+            payload["repetition_context_size"] = 256
+            payload["repeat_last_n"] = 256
         if self.presence_penalty != 0.0:
             payload["presence_penalty"] = self.presence_penalty
         if self.frequency_penalty != 0.0:
@@ -117,18 +170,20 @@ class InferenceParams:
             min_p=0.05,
             repeat_penalty=1.02,
             seed=-1,
+            stop=["</tool_call>", "</FINAL_ANSWER>"],
         )
 
     @classmethod
     def for_planning(cls) -> "InferenceParams":
         """Reasoning through plans. Moderate creativity. All tools remain available."""
         return cls(
-            temperature=0.4,
+            temperature=0.45,
             top_k=40,
-            top_p=0.92,
-            min_p=0.05,
-            repeat_penalty=1.02,
+            top_p=0.90,
+            min_p=0.08,
+            repeat_penalty=1.12,
             seed=-1,
+            stop=["</tool_call>", "</FINAL_ANSWER>"],
         )
 
     @classmethod
@@ -141,6 +196,7 @@ class InferenceParams:
             min_p=0.05,
             repeat_penalty=1.02,
             seed=-1,
+            stop=["</tool_call>", "</FINAL_ANSWER>"],
         )
 
     @classmethod
@@ -153,6 +209,7 @@ class InferenceParams:
             min_p=0.05,
             repeat_penalty=1.02,
             seed=-1,
+            stop=["</FINAL_ANSWER>"],
         )
 
     @classmethod
@@ -165,7 +222,7 @@ class InferenceParams:
             min_p=0.05,
             repeat_penalty=1.05,
             seed=-1,
-            use_grammar=False,
+            stop=["</CRITIQUE>", "</FINAL_ANSWER>"],
         )
 
     @classmethod
@@ -179,6 +236,7 @@ class InferenceParams:
             repeat_penalty=1.10,
             seed=-1,
             use_grammar=False,
+            stop=["</REFINED_ANSWER>", "</FINAL_ANSWER>", "</tool_call>"],
         )
 
     @classmethod
@@ -188,9 +246,9 @@ class InferenceParams:
         """
         Dynamically return an InferenceParams preset calibrated for both
         the target model architecture (size & reasoning trait) and phase.
+        Hardcoded for <7b models on 8GB RAM.
         """
         base_params = PRESETS.get(phase, cls.for_coding())
-        traits = detect_model_traits(model_name)
 
         params = cls(
             temperature=base_params.temperature,
@@ -198,6 +256,7 @@ class InferenceParams:
             top_p=base_params.top_p,
             min_p=base_params.min_p,
             repeat_penalty=base_params.repeat_penalty,
+            repetition_penalty=base_params.repetition_penalty,
             presence_penalty=base_params.presence_penalty,
             frequency_penalty=base_params.frequency_penalty,
             seed=base_params.seed,
@@ -206,24 +265,28 @@ class InferenceParams:
             allowed_tools=base_params.allowed_tools,
         )
 
-        if traits["is_reasoning"]:
-            # Reasoning / CoT models (DeepSeek-R1, QwQ, etc.) need 1.00 repeat penalty
-            # and ~0.60 temperature to prevent infinite thought loops.
-            params.repeat_penalty = 1.00
-            params.presence_penalty = 0.00
-            params.frequency_penalty = 0.00
-            params.temperature = (
-                0.60 if phase in ["plan", "chat"] else min(params.temperature, 0.60)
-            )
-        elif traits["is_small_model"]:
-            # Small models (<4B) need mild repeat penalty (1.05) to avoid stuck loops
-            params.repeat_penalty = max(params.repeat_penalty, 1.05)
-            params.presence_penalty = 0.00
+        traits = detect_model_traits(model_name)
+        is_small = traits.get("is_small_model", False) or (
+            traits.get("param_size_b") is not None and traits["param_size_b"] <= 4.0
+        )
+
+        if is_small:
+            # Small models (<=4B, e.g. Qwen2.5-Coder-3B, Gemma 2B, DeepSeek-1.5B) have narrow attention dynamic range
+            # and require aggressive presence/frequency penalties and repeat_penalty >= 1.12 to break degenerate token loops.
+            params.repeat_penalty = max(params.repeat_penalty, 1.12)
+            params.repetition_penalty = params.repeat_penalty
+            params.presence_penalty = max(params.presence_penalty, 0.20)
+            params.frequency_penalty = max(params.frequency_penalty, 0.15)
+            if phase in ["plan", "chat"]:
+                params.temperature = max(params.temperature, 0.25)
         else:
-            # Medium/Large 7B+ standard models (e.g. Qwen 2.5 Coder 7B, Llama 3 8B)
-            # need a mild repeat penalty (1.03 - 1.05) to avoid phrase repetitions
-            params.repeat_penalty = 1.03 if phase in ["code", "plan"] else 1.05
-            params.presence_penalty = 0.00
+            # Standard models (7B, 14B, 32B, 70B)
+            params.repeat_penalty = max(params.repeat_penalty, 1.08)
+            params.repetition_penalty = params.repeat_penalty
+            params.presence_penalty = max(params.presence_penalty, 0.15)
+            params.frequency_penalty = max(params.frequency_penalty, 0.10)
+            if phase in ["plan", "chat"]:
+                params.temperature = max(params.temperature, 0.20)
 
         return params
 
@@ -233,6 +296,7 @@ class InferenceParams:
 PRESETS: dict[str, InferenceParams] = {
     "code": InferenceParams.for_coding(),
     "plan": InferenceParams.for_planning(),
+    "goal": InferenceParams.for_coding(),
     "troubleshoot": InferenceParams.for_troubleshoot(),
     "chat": InferenceParams.for_chat(),
     "critic": InferenceParams.for_critic(),

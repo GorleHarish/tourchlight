@@ -136,7 +136,17 @@ class LMStudioClient:
         filtered_messages = []
         for msg in messages:
             if msg.get("role") == "system":
-                system_content.append(msg.get("content", ""))
+                c = msg.get("content", "")
+                if isinstance(c, str):
+                    system_content.append(c)
+                elif isinstance(c, list):
+                    text_parts = [
+                        item.get("text", "")
+                        for item in c
+                        if isinstance(item, dict) and item.get("type") == "text"
+                    ]
+                    if text_parts:
+                        system_content.append("\n".join(text_parts))
             else:
                 filtered_messages.append(msg)
         final_messages = []

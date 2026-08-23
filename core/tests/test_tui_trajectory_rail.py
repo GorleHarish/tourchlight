@@ -6,10 +6,10 @@ import pytest
 def test_dot_glyph_map():
     from rlm_optimized.tui_widgets.trajectory_rail import DOT_GLYPHS
 
-    assert DOT_GLYPHS["running"] == "⏳"
-    assert DOT_GLYPHS["ok"] == "●"
-    assert DOT_GLYPHS["error"] == "✗"
-    assert DOT_GLYPHS["denied"] == "○"
+    assert DOT_GLYPHS["running"] == "*"
+    assert DOT_GLYPHS["ok"] == "o"
+    assert DOT_GLYPHS["error"] == "x"
+    assert DOT_GLYPHS["denied"] == "-"
 
 
 def test_max_dots_constant():
@@ -41,12 +41,12 @@ async def test_rail_add_pending_and_complete_ok():
         dot = rail._dots[0]
         assert "running" in dot.classes
         assert dot.tooltip == "READ_FILE"
-        assert "⏳" in str(dot.content)
+        assert "*" in str(dot.content)
 
         rail.complete("ok")
         await pilot.pause()
         assert "ok" in dot.classes
-        assert "●" in str(dot.content)
+        assert "o" in str(dot.content)
         assert "running" not in dot.classes
         await pilot.pause()
 
@@ -71,13 +71,13 @@ async def test_rail_complete_error_and_denied():
         rail.complete("error")
         await pilot.pause()
         assert "error" in rail._dots[0].classes
-        assert "✗" in str(rail._dots[0].content)
+        assert "x" in str(rail._dots[0].content)
 
         rail.add_pending("WRITE_FILE")
         rail.complete("denied")
         await pilot.pause()
         assert "denied" in rail._dots[-1].classes
-        assert "○" in str(rail._dots[-1].content)
+        assert "-" in str(rail._dots[-1].content)
         assert len(rail._dots) == 2
         await pilot.pause()
 
@@ -196,4 +196,4 @@ async def test_app_pending_step_updates_rail():
         )
         app._handle_step(step)
         assert "ok" in rail._dots[0].classes
-        assert "●" in str(rail._dots[0].content)
+        assert "o" in str(rail._dots[0].content)

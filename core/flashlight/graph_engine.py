@@ -17,6 +17,7 @@ IGNORE_DIRS = {
     "env", "dist", "build", ".next", ".nuxt", "coverage",
     ".pytest_cache", ".mypy_cache", ".ruff_cache", "site-packages",
     ".egg-info", ".torchlight", "graphify-out",
+    "models", "llama-cpp-turboquant", "llama.cpp",
 }
 
 SUPPORTED_EXTENSIONS = {
@@ -507,7 +508,7 @@ class ProjectGraph:
             if not self.load():
                 self.build()
 
-        term = search_term.strip().lower()
+        term = search_term.strip().lower().lstrip("@")
         if not term:
             return self.get_structure()
         matches = []
@@ -528,35 +529,46 @@ class ProjectGraph:
 
         for m in capped:
             ntype = m.get("type", "node").upper()
-            file_rel = m.get("file", m.get("id", ""))
-            line_start = m.get("line_start", 1)
-            file_loc = f"{file_rel}:L{line_start}"
-            doc_str = f" — {m['docstring'][:80]}" if m.get("docstring") else ""
-            output_lines.append(f"  [{ntype}] {m.get('name')} ({file_loc}){doc_str}")
-            total_lines_used += 1
+            nid = m["id"]
+            file_path = m.get("file", nid)
+            lstart = m.get("line_start", 1)
+            sig = m.get("signature", "")
+            doc = m.get("docstring", "")
 
-            # Embed code snippet if we have budget and a file path
-            if total_lines_used < self._MAX_QUERY_OUTPUT_LINES and file_rel and ntype in ("FUNCTION", "CLASS"):
-                snippet = self._read_snippet(file_rel, line_start, m.get("line_end", line_start))
-                if snippet:
-                    for sl in snippet:
-                        output_lines.append(f"    {sl}")
-                        total_lines_used += 1
-                        if total_lines_used >= self._MAX_QUERY_OUTPUT_LINES:
-                            break
+            header = f"- `[{ntype}]` **{m.get('name', nid)}** (`{file_path}:L{lstart}`)"
+            if sig:
+                header += f"\n  Signature: `{sig}`"
+            if doc:
+                first_line = doc.split("\n")[0][:80]
+                header += f"\n  Doc: _{first_line}_"
+
+            # Extract code preview snippet
+            snippet_lines = self._get_node_snippet(m)
+            if snippet_lines:
+                snippet_text = "\n".join(snippet_lines)
+                ext = file_path.rsplit(".", 1)[-1] if "." in file_path else ""
+                header += f"\n  ```{ext}\n{snippet_text}\n  ```"
+
+            output_lines.append(header)
+            total_lines_used += header.count("\n") + 1
+            if total_lines_used >= self._MAX_QUERY_OUTPUT_LINES:
+                output_lines.append(f"... (truncated to {self._MAX_QUERY_OUTPUT_LINES} lines max)")
+                break
 
         output_lines.append(f'  → Use READ_FILE("path:Symbol") for full body, or SEARCH_AST(action="subgraph") for dependencies.')
         return "\n".join(output_lines)
 
-    def _read_snippet(self, rel_path: str, line_start: int, line_end: int) -> List[str]:
-        """Read a short code snippet from disk for a matched node."""
+    def _get_node_snippet(self, node: Dict[str, Any]) -> List[str]:
+        """Extract up to _MAX_SNIPPET_LINES lines for preview in graph query."""
         try:
-            abs_path = self.project_dir / rel_path
-            if not abs_path.exists():
+            rel_file = node.get("file")
+            if not rel_file:
                 return []
-            text = abs_path.read_text(errors="ignore")
-            lines = text.splitlines()
-            start = max(0, line_start - 1)
+            abs_p = self.project_dir / rel_file
+            if not abs_p.exists():
+                return []
+            lines = abs_p.read_text(errors="ignore").splitlines()
+            start = max(0, int(node.get("line_start", 1)) - 1)
             end = min(len(lines), start + self._MAX_SNIPPET_LINES)
             return lines[start:end]
         except Exception:
@@ -571,8 +583,8 @@ class ProjectGraph:
             if not self.load():
                 self.build()
 
-        s_term = source_name.strip().lower()
-        t_term = target_name.strip().lower()
+        s_term = source_name.strip().lower().lstrip("@")
+        t_term = target_name.strip().lower().lstrip("@")
 
         def _find_matches(term: str) -> List[str]:
             exact_id = [nid for nid in self.nodes if nid.lower() == term]
@@ -628,7 +640,7 @@ class ProjectGraph:
                 self.build()
 
         matched_id = None
-        term = symbol_or_path.lower()
+        term = symbol_or_path.strip().lower().lstrip("@")
         # 1. Exact node ID match
         for nid in self.nodes:
             if nid.lower() == term:

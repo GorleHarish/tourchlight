@@ -8,11 +8,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Dict, List, Optional
 import subprocess
 import re
 import logging
 import concurrent.futures
+import sys
 
 from core.errors.types import TestFailureError
 
@@ -166,6 +167,21 @@ class ExecutionFeedbackLoop:
         self._last_web_result: Optional[Any] = None
         self._files_modified_since_test: set[str] = set()
         self._speculative_future: Optional[concurrent.futures.Future] = None
+        self._on_event: Optional[Callable[[str, Dict[str, Any]], None]] = None
+
+    def set_event_callback(
+        self, callback: Optional[Callable[[str, Dict[str, Any]], None]]
+    ) -> None:
+        """Register a callback for test lifecycle events (e.g. 'test_started', 'test_completed')."""
+        self._on_event = callback
+
+    def _emit_event(self, event_type: str, data: Dict[str, Any]) -> None:
+        """Safely invoke registered event callback."""
+        if self._on_event:
+            try:
+                self._on_event(event_type, data)
+            except Exception as e:
+                logger.debug(f"Test event callback error: {e}")
 
     @property
     def has_failing_tests(self) -> bool:
@@ -261,10 +277,41 @@ class ExecutionFeedbackLoop:
                 pass
         return self._run_tests_internal()
 
+    def _record_and_emit_result(self, result: TestRunResult) -> TestRunResult:
+        """Store test result and dispatch UI notification event if tests were executed."""
+        self._last_test_result = result
+        self._test_result_reported = False
+        if result.ran:
+            self._emit_event(
+                "test_completed",
+                {
+                    "command": result.command,
+                    "return_code": result.return_code,
+                    "duration_ms": result.duration_ms,
+                    "passed": result.passed,
+                    "failed": result.failed,
+                    "all_passed": result.all_passed,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "results": [
+                        {"name": r.name, "status": r.status.value, "error": r.error_message}
+                        for r in result.results
+                    ],
+                },
+            )
+        return result
+
     def _run_tests_internal(self) -> TestRunResult:
         """Detect and run the project's test suite or web inspector."""
         self._run_preflight_lint()
         test_cmd = self._detect_test_command()
+        self._emit_event(
+            "test_started",
+            {
+                "command": test_cmd or "web_inspector",
+                "files": list(self._files_modified_since_test),
+            },
+        )
         if not test_cmd:
             # Check if any modified file is a web file (.html, .js, .jsx, .ts, .tsx, .vue, .svelte, .css)
             web_exts = (
@@ -342,13 +389,15 @@ class ExecutionFeedbackLoop:
                                 game_res.console_errors + game_res.failed_requests
                             ),
                         )
-                        return TestRunResult(
-                            command=f"PLAY_AND_VERIFY_GAME {html_files[0]}",
-                            return_code=0 if game_res.is_passed else 1,
-                            duration_ms=game_res.duration_ms,
-                            results=[tr],
-                            stdout=game_res.to_markdown(),
-                            ran=True,
+                        return self._record_and_emit_result(
+                            TestRunResult(
+                                command=f"PLAY_AND_VERIFY_GAME {html_files[0]}",
+                                return_code=0 if game_res.is_passed else 1,
+                                duration_ms=game_res.duration_ms,
+                                results=[tr],
+                                stdout=game_res.to_markdown(),
+                                ran=True,
+                            )
                         )
 
                     from core.execution.web_inspector import WebOutcomeInspector
@@ -373,16 +422,59 @@ class ExecutionFeedbackLoop:
                             res.console_errors + res.failed_requests
                         ),
                     )
-                    return TestRunResult(
-                        command=f"INSPECT_WEB {html_files[0]}",
-                        return_code=0 if res.is_passed else 1,
-                        duration_ms=res.duration_ms,
-                        results=[tr],
-                        stdout=res.to_markdown(),
-                        ran=True,
+                    return self._record_and_emit_result(
+                        TestRunResult(
+                            command=f"INSPECT_WEB {html_files[0]}",
+                            return_code=0 if res.is_passed else 1,
+                            duration_ms=res.duration_ms,
+                            results=[tr],
+                            stdout=res.to_markdown(),
+                            ran=True,
+                        )
                     )
                 except Exception as e:
                     logger.warning(f"Auto Web/Game Outcome Inspection failed: {e}")
+
+            elif modified_web:
+                # Standalone JavaScript/Node syntax verification fallback
+                js_files = [
+                    f for f in modified_web if f.endswith((".js", ".mjs", ".cjs"))
+                ]
+                for js_f in js_files[:3]:
+                    js_p = (
+                        Path(js_f)
+                        if Path(js_f).is_absolute()
+                        else self.project_root / js_f
+                    )
+                    if js_p.exists():
+                        try:
+                            chk = subprocess.run(
+                                ["node", "--check", str(js_p)],
+                                capture_output=True,
+                                text=True,
+                                timeout=3,
+                            )
+                            if chk.returncode != 0:
+                                err_out = (
+                                    chk.stderr.strip() or chk.stdout.strip()
+                                )
+                                tr = TestResult(
+                                    name=js_f,
+                                    status=TestResultStatus.FAIL,
+                                    error_message=err_out,
+                                )
+                                res = TestRunResult(
+                                    command=f"node --check {js_f}",
+                                    return_code=chk.returncode,
+                                    duration_ms=10,
+                                    results=[tr],
+                                    stdout=f"❌ JavaScript Syntax Error in {js_f}:\n```\n{err_out}\n```",
+                                    stderr=err_out,
+                                    ran=True,
+                                )
+                                return self._record_and_emit_result(res)
+                        except Exception:
+                            pass
 
             # Nothing to verify (no test framework and no web files): record a
             # non-run so the gate does not misreport it as a passing or failing
@@ -391,9 +483,7 @@ class ExecutionFeedbackLoop:
             result = TestRunResult(
                 command="", return_code=-1, duration_ms=0, results=[], ran=False
             )
-            self._last_test_result = result
-            self._test_result_reported = False
-            return result
+            return self._record_and_emit_result(result)
 
         try:
             start = datetime.now()
@@ -421,9 +511,7 @@ class ExecutionFeedbackLoop:
                 stderr=r.stderr,
                 ran=True,
             )
-            self._last_test_result = result
-            self._test_result_reported = False
-            return result
+            return self._record_and_emit_result(result)
         except subprocess.TimeoutExpired:
             result = TestRunResult(
                 command=test_cmd,
@@ -441,9 +529,7 @@ class ExecutionFeedbackLoop:
                     f"Test run timed out after {self.timeout}s\nCommand: {test_cmd}"
                 ),
             )
-            self._last_test_result = result
-            self._test_result_reported = False
-            return result
+            return self._record_and_emit_result(result)
         except Exception as e:
             result = TestRunResult(
                 command=test_cmd,
@@ -459,24 +545,85 @@ class ExecutionFeedbackLoop:
                 ran=True,
                 stderr=f"Test run crashed: {e}",
             )
-            self._last_test_result = result
-            self._test_result_reported = False
-            return result
+            return self._record_and_emit_result(result)
 
     def _detect_test_command(self) -> str:
-        if (self.project_root / "pytest.ini").exists() or (
+        py_bin = sys.executable or "python3"
+        has_pyproject = (self.project_root / "pytest.ini").exists() or (
             self.project_root / "pyproject.toml"
-        ).exists():
-            test_files = [
+        ).exists()
+
+        if has_pyproject:
+            # 1. Direct test files modified in this turn
+            direct_test_files = [
                 f
                 for f in self._files_modified_since_test
                 if ("test_" in Path(f).name or "_test" in Path(f).name)
                 and f.endswith(".py")
             ]
-            if test_files:
-                target = " ".join(test_files[:3])
-                return f"python -m pytest {target} -x --tb=short -q"
-            return "python -m pytest -x --tb=short -q"
+            if direct_test_files:
+                target = " ".join(direct_test_files[:3])
+                return f"{py_bin} -m pytest {target} -x --tb=short -q"
+
+            # 2. Associated test file lookup for modified Python source files
+            modified_py = [
+                f for f in self._files_modified_since_test if f.endswith(".py")
+            ]
+            matched_tests = []
+            test_search_dirs = [
+                self.project_root / "core" / "tests",
+                self.project_root / "tests",
+                self.project_root / "src" / "tests",
+            ]
+            for py_f in modified_py:
+                stem = Path(py_f).stem
+                if not stem or stem.startswith("__"):
+                    continue
+                for t_dir in test_search_dirs:
+                    if not t_dir.exists():
+                        continue
+                    for cand_name in (
+                        f"test_{stem}.py",
+                        f"{stem}_test.py",
+                        f"test_{stem}s.py",
+                    ):
+                        cand_p = t_dir / cand_name
+                        if cand_p.exists():
+                            rel = str(cand_p.relative_to(self.project_root))
+                            if rel not in matched_tests:
+                                matched_tests.append(rel)
+                    if not matched_tests:
+                        for cand_p in t_dir.glob(f"test_*{stem}*.py"):
+                            rel = str(cand_p.relative_to(self.project_root))
+                            if rel not in matched_tests:
+                                matched_tests.append(rel)
+
+            if matched_tests:
+                target = " ".join(matched_tests[:3])
+                return f"{py_bin} -m pytest {target} -x --tb=short -q"
+
+            # 3. Scope to standard subproject test directory if modified file belongs to it
+            for py_f in modified_py:
+                p = Path(py_f)
+                if (
+                    "core" in p.parts
+                    and (self.project_root / "core" / "tests").exists()
+                ):
+                    return f"{py_bin} -m pytest core/tests -x --tb=short -q"
+                if (
+                    "src" in p.parts
+                    and (self.project_root / "src" / "tests").exists()
+                ):
+                    return f"{py_bin} -m pytest src/tests -x --tb=short -q"
+
+            # 4. Scope to tests/ or core/tests/ if available
+            if (self.project_root / "tests").exists():
+                return f"{py_bin} -m pytest tests -x --tb=short -q"
+            if (self.project_root / "core" / "tests").exists():
+                return f"{py_bin} -m pytest core/tests -x --tb=short -q"
+
+            return ""
+
         if (self.project_root / "package.json").exists():
             return "npm test --silent"
         if (self.project_root / "Cargo.toml").exists():

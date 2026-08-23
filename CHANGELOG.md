@@ -2,6 +2,46 @@
 
 All notable changes to Torchlight will be documented in this file.
 
+## [v3.0.0] - 2026-08-17
+
+### Added & Improved
+- **Plan Mode for Torchlight Agent (`ExecutionMode.PLAN`)**:
+  - Added dedicated `ExecutionMode.PLAN` ("plan") to `ExecutionMode` enum in `core/memory/models.py`.
+  - **Comprehensive `PLAN_PROMPT` in `core/prompts/system.py`**:
+    - Mandates workspace discovery via read-only tools (`LIST_DIR`, `SEARCH_AST`, `GREP`, `READ_FILE`) to understand existing code and dependencies before creating a plan.
+    - Default behavior: Brainstorms complete architecture, risks, edge cases, and steps, then writes/updates `implementation_plan.md` via `WRITE_FILE`/`EDIT_FILE` with structured sections: Problem Statement & Goal, Architecture & Design Decisions, Open Questions / User Review Required, Proposed Changes (`[MODIFY]`/`[NEW]` with atomic `- [ ]` checkboxes), and Verification Plan (automated tests + manual steps).
+    - Enforces non-mutation of application source code during Plan Mode.
+    - Emits `<FINAL_ANSWER>...</FINAL_ANSWER>` summarizing the plan upon completion.
+  - **Engine & CLI Integration**:
+    - `RLMEngineOptimized` and `StreamingChatSession` support `ExecutionMode.PLAN`.
+    - Verification Gate permits `<FINAL_ANSWER>` with pending `- [ ]` tasks when `implementation_plan.md` exists, but rejects premature `<FINAL_ANSWER>` if `implementation_plan.md` was not created.
+    - CLI `/mode plan`, `context plan "Feature title"`, and `--mode plan` flag.
+    - TUI `SessionModePickerModal` and HUD support with interactive Plan Mode button, `MODE: PLAN` badge, and styling.
+  - **Comprehensive Unit Testing**:
+    - Added `core/tests/test_plan_mode.py` verifying state normalization, resilient phase detection, verification gate handling for both present and missing plans, and CLI streaming chat session execution.
+    - Added Plan Mode tests to `context-manager-cli/tests/test_phase_detection.py`.
+
+## [v2.9.0] - 2026-08-15
+
+
+### Added & Improved
+- **Modular Mode-Tailored System Prompt Templates (`core/prompts/system.py`)**:
+  - Replaced monolithic prompt concatenation with 4 dedicated templates (`CHAT_PROMPT`, `PLAN_PROMPT`, `CODE_PROMPT`, `TROUBLESHOOT_PROMPT`) sharing unified core directives (`SHARED_BASE_DIRECTIVES`).
+  - **`CHAT_PROMPT`**: Dedicated to conversational Q&A, conceptual discussions, and codebase exploration. Wraps direct answers in `<FINAL_ANSWER>...</FINAL_ANSWER>` and restricts tool use to read-only lookups (`SEARCH_AST`, `GREP`, `READ_FILE`, `WEB_SEARCH`). Completely stripped of file writing, `implementation_plan.md`, and write/test validation gates.
+  - **`PLAN_PROMPT`**: Mandates workspace discovery first (`LIST_DIR`, `SEARCH_AST`, `GREP`) before authoring checkbox tasks (`- [ ]`) in `implementation_plan.md`.
+  - **`CODE_PROMPT`**: Enforces surgical edits via `EDIT_FILE`, write gate validation, and test verification loops.
+  - **`TROUBLESHOOT_PROMPT`**: Guides un-truncated traceback analysis, AST caller/callee tracing, and root-cause repair.
+  - Dynamic template injection via `get_phase_system_prompt(phase)` with active tool syntax appending.
+- **Chat Mode Isolation & Resilience**:
+  - **Phase Detection Guard**: `_detect_phase()` in both `RLMEngineOptimized` and `StreamingChatSession` explicitly preserves `phase="chat"` when `execution_mode == ExecutionMode.CHAT` or `mode == "chat"`, preventing keyword triggers like `"error"`, `"fix"`, `"write"`, or `".py"` from flipping Q&A sessions into Code or Troubleshoot mode.
+  - **L0 Working Memory Scratchpad Filtering (`core/memory/manager.py`)**: `format_l0_scratchpad()` suppresses disk task matrix injection (`get_compact_task_matrix()`) in Chat Mode, preventing leftover tasks from `implementation_plan.md` or `.torchlight/tasks.md` from bleeding into the LLM's active scratchpad.
+  - **Verification Gate Bypass (`rlm_optimized/rlm_engine_optimized.py`)**: Engine's Verification Gate now bypasses pending task completion checks and zero-tool rejection in Chat Mode, allowing direct `<FINAL_ANSWER>` responses to be delivered immediately.
+- **Comprehensive Unit Testing**:
+  - Added `test_chat_system_prompt_isolation` and `test_l0_scratchpad_suppresses_task_matrix_in_chat_mode` in `core/tests/test_prompts_and_memory.py`.
+  - Added `test_chat_mode_phase_detection_resilience` and `test_chat_mode_verification_gate_bypassed` in `core/tests/test_session_modes.py`.
+  - Added `test_detect_chat_mode_resilient` in `context-manager-cli/tests/test_phase_detection.py`.
+  - All 534 core tests and 47 CLI tests passing.
+
 ## [v2.8.0] - 2026-08-10
 
 ### Fixed

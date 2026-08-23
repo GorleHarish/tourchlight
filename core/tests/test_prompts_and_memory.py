@@ -137,12 +137,21 @@ def test_tiered_memory_update_system_prompt():
 def test_sanitize_assistant_text():
     from core.prompts.system import sanitize_assistant_text
 
-    raw = """Writing code to file: index.html (14 lines, Basic HTML structure for Snake game)
+    raw = """[CRITICAL NEGATIVE CONSTRAINTS & DIRECTIVE LOCK]
+1. NEVER run `cd` in RUN_COMMAND shell calls. Pass the target directory via the `cwd` argument instead.
+2. NEVER mask symptoms or swallow exceptions
+3. ALWAYS inspect full error logs
+4. Replace placeholders
+[ACTIVE PHASE TOOLS (GOAL): LIST_DIR, WRITE_FILE]
+Writing code to file: index.html (14 lines, Basic HTML structure for Snake game)
 Params: path: index.html
 Result: Written 12 lines to /Users/harishgorle/Desktop/agent test/index.html
 Updating index.html with Snake game structure."""
 
     cleaned = sanitize_assistant_text(raw)
+    assert "[CRITICAL NEGATIVE CONSTRAINTS" not in cleaned
+    assert "[ACTIVE PHASE TOOLS" not in cleaned
+    assert "1. NEVER run `cd`" not in cleaned
     assert "Params:" not in cleaned
     assert "Result:" not in cleaned
     assert "Writing code to file:" not in cleaned
@@ -250,6 +259,46 @@ def test_multi_edit_net_baseline_scratchpad():
     scratchpad = memory.format_l0_scratchpad()
     assert "- Modified Files:" in scratchpad
     assert "src/auth.py (+5, -0) [login, logout]" in scratchpad
+
+
+def test_chat_system_prompt_isolation():
+    """Verify chat system prompt does NOT command writing files, plans, or write gates."""
+    chat_prompt = get_phase_system_prompt("chat")
+    assert "[PHASE: CHAT & EXPLORATION]" in chat_prompt
+    assert "<FINAL_ANSWER>your answer</FINAL_ANSWER>" in chat_prompt
+    assert "Do NOT create `implementation_plan.md`" in chat_prompt
+    assert "WRITE GATE" not in chat_prompt
+    assert "NO PREMATURE FINAL ANSWERS" not in chat_prompt
+
+    code_prompt = get_phase_system_prompt("code")
+    assert "[PHASE: SURGICAL CODING]" in code_prompt
+    assert "WRITE GATE" in code_prompt
+    assert "NO PREMATURE FINAL ANSWERS" in code_prompt
+
+
+def test_l0_scratchpad_suppresses_task_matrix_in_chat_mode(tmp_path):
+    """Verify L0 scratchpad does not inject disk task matrices when in Chat Mode."""
+    from core.memory.models import ExecutionMode
+    project_dir = tmp_path / "scratchpad_proj"
+    project_dir.mkdir()
+
+    # Create leftover implementation plan on disk
+    plan_file = project_dir / "implementation_plan.md"
+    plan_file.write_text("# Plan\n- [ ] Step 1: Add authentication\n- [ ] Step 2: Add tests\n")
+
+    memory = TieredMemory(config=MemoryConfig(max_tokens=4000))
+
+    # In Unified / Goal mode, tasks from disk appear in scratchpad
+    memory.state.execution_mode = ExecutionMode.UNIFIED
+    sp_unified = memory.format_l0_scratchpad(project_root=str(project_dir))
+    assert "step 1: add authentication" in sp_unified.lower()
+
+    # In Chat mode, tasks from disk are suppressed
+    memory.state.execution_mode = ExecutionMode.CHAT
+    sp_chat = memory.format_l0_scratchpad(project_root=str(project_dir))
+    assert "step 1: add authentication" not in sp_chat.lower()
+    assert "active goal" not in sp_chat.lower()
+
 
 
 

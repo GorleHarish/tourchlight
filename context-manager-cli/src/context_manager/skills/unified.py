@@ -390,6 +390,25 @@ class UnifiedSkillRegistry(SkillRegistry):
             if params:
                 _add(name, params)
 
+        # 3. Fallback: Check for bare markdown implementation plan if no tool calls were detected
+        if not results:
+            plan_match = re.search(
+                r"(#{1,6}\s*(?:Step-by-Step\s+)?Implementation Plan[\s\S]*?)(?:```plaintext|\$\s*WRITE_FILE|\Z)",
+                text,
+                re.IGNORECASE,
+            )
+            if not plan_match:
+                plan_match = re.search(
+                    r"(#{1,6}\s*(?:Phase\s*1|Proposed Changes)[\s\S]*?)(?:```plaintext|\$\s*WRITE_FILE|\Z)",
+                    text,
+                    re.IGNORECASE,
+                )
+            if plan_match:
+                plan_content = plan_match.group(1).strip()
+                if "- [ ]" in plan_content or "Proposed Changes" in plan_content or "Phase 1" in plan_content:
+                    clean_plan = re.sub(r"</?FINAL_ANSWER>", "", plan_content).strip()
+                    _add("WRITE_FILE", {"path": "implementation_plan.md", "content": clean_plan})
+
         return results
 
     def execute_skill_sync(self, name: str, params: Dict[str, Any], cwd: str = ".") -> UnifiedToolResult:

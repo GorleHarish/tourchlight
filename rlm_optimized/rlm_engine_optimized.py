@@ -337,7 +337,7 @@ class RLMEngineOptimized:
             str_val = str(value).lower()
         self._execution_mode = str_val
         # Sync to memory state if available
-        mem = getattr(self, "_memory", None)
+        mem = getattr(self, "memory", None)
         if mem and hasattr(mem, "state"):
             from core.memory.models import ExecutionMode
 
@@ -352,6 +352,7 @@ class RLMEngineOptimized:
                 cb(str_val)
             except Exception:
                 pass
+
 
     def set_execution_mode_callback(self, callback) -> None:
         """Register callback to be notified of execution mode changes."""
@@ -444,7 +445,10 @@ class RLMEngineOptimized:
     _STOP_TAG_PAIRS = [
         ("<tool_call>", "</tool_call>"),
         ("<WRITE_FILE", "</WRITE_FILE>"),
-        ("<TOOL", "</TOOL>"),
+        ("<TOOL>", "</TOOL>"),
+        ("<TOOL ", "</TOOL>"),
+        ("<tool>", "</tool>"),
+        ("<tool ", "</tool>"),
         ("<CODE>", "</CODE>"),
         ("<FINAL_ANSWER>", "</FINAL_ANSWER>"),
         ("<SUB_QUERY>", "</SUB_QUERY>"),
@@ -452,8 +456,18 @@ class RLMEngineOptimized:
         ("<action>", "</action>"),
     ]
 
+    def _truncate_trailing_after_stop_tag(self, text: str) -> str:
+        """Truncate any trailing rambling/hallucinated text after the first closed action tag."""
+        for open_tag, close_tag in self._STOP_TAG_PAIRS:
+            if open_tag.lower() in text.lower() and close_tag.lower() in text.lower():
+                close_pos = text.lower().find(close_tag.lower()) + len(close_tag)
+                return text[:close_pos].strip()
+        return text
+
     def _repair_stop_tokens(self, text: str) -> str:
-        """Re-append closing tags that were consumed as stop tokens by llama-server."""
+        """Re-append closing tags that were consumed as stop tokens by llama-server,
+        and prune any trailing hallucinated text after completed action tags."""
+        text = self._truncate_trailing_after_stop_tag(text)
         for open_tag, close_tag in self._STOP_TAG_PAIRS:
             # Check if text has the opening tag but NOT the closing tag
             if (
@@ -513,6 +527,18 @@ class RLMEngineOptimized:
                         pass
                 else:
                     print(chunk, end="", flush=True)
+
+                # Early-stop stream interceptor: as soon as a terminal action tag is closed,
+                # stop consuming further tokens to prevent trailing rambling / hallucinated tags (<tool...).
+                current_accum = "".join(chunks)
+                for open_tag, close_tag in self._STOP_TAG_PAIRS:
+                    if open_tag.lower() in current_accum.lower() and close_tag.lower() in current_accum.lower():
+                        close_pos = current_accum.lower().find(close_tag.lower()) + len(close_tag)
+                        chunks = [current_accum[:close_pos]]
+                        break
+                else:
+                    continue
+                break
 
             if not self.on_token:
                 print()
@@ -600,44 +626,70 @@ class RLMEngineOptimized:
         assert last_err is not None
         raise last_err
 
+    def reset_session(self) -> None:
+        """Completely wipes session context like a brand new session."""
+        self._memory = None
+        self._messages = None
+        self._current_phase = None
+        self._total_llm_calls = 0
+        self._final_answer_rejections = 0
+        self._inline_code_counter = 0
+        if hasattr(self, "_prompt_hash_ring") and self._prompt_hash_ring:
+            self._prompt_hash_ring.clear()
+        if hasattr(self, "sandbox") and self.sandbox:
+            self.sandbox.reset()
+        if hasattr(self, "recovery_engine") and self.recovery_engine:
+            self.recovery_engine.reset()
+
     def compact_context(self, memory=None, force: bool = True) -> tuple[int, int, int]:
         """Manually compact context memory and return (before, after, freed)."""
         target_mem = memory or getattr(self, "_memory", None)
-        if not target_mem:
-            return 0, 0, 0
-        before = getattr(target_mem, "total_tokens", 0)
-        summarizer_fn = _summarizer.simple_summarize if _summarizer else None
-        target_mem.compress_recent(
-            summarizer_fn=summarizer_fn, preserve_first=2, force=force
-        )
-        after = getattr(target_mem, "total_tokens", 0)
-        return before, after, max(0, before - after)
+        if target_mem is not None and hasattr(target_mem, "compress_recent"):
+            before = getattr(target_mem, "total_tokens", 0)
+            summarizer_fn = _summarizer.simple_summarize if _summarizer else None
+            target_mem.compress_recent(
+                summarizer_fn=summarizer_fn, preserve_first=1, force=force
+            )
+            after = getattr(target_mem, "total_tokens", 0)
+            return before, after, max(0, before - after)
+        elif getattr(self, "_messages", None):
+            msgs = self._messages
+            before = sum(len(m.get("content", "")) // 4 for m in msgs)
+            if len(msgs) > 2:
+                sys_msg = msgs[0] if msgs[0].get("role") == "system" else None
+                recent = msgs[-1:]
+                older = msgs[1:-1] if sys_msg else msgs[:-1]
+                summary = f"[Context compacted. {len(older)} turns omitted to save memory.]"
+                new_msgs = ([sys_msg] if sys_msg else []) + [{"role": "system", "content": summary}] + recent
+                self._messages = new_msgs
+            after = sum(len(m.get("content", "")) // 4 for m in self._messages)
+            return before, after, max(0, before - after)
+        return 0, 0, 0
 
     # Phase detection signals (ported from CLI)
     _PLAN_SIGNALS = (
+        "<plan>",
         "plan",
-        "design",
-        "architecture",
-        "approach",
-        "strategy",
-        "how to",
-        "what should",
-        "what would",
-        "think about",
-        "consider",
-        "evaluate",
-        "compare",
-        "tradeoff",
-        "pros and cons",
+        "planning",
+        "brainstorm",
+        "brainstorming",
+        "implementation plan",
+        "steps to implement",
+        "generate plan",
+        "make a plan",
+        "create a plan",
+        "plan mode",
+        "let me plan",
+        "step by step",
+        "here is my plan",
+        "i will:",
+        "steps:",
         "roadmap",
-        "spec",
-        "requirements",
-        "break down",
-        "decompose",
-        "sketch",
-        "outline",
-        "propose",
+        "break down tasks",
+        "break down the tasks",
+        "decompose tasks",
     )
+
 
     _CODE_SIGNALS = (
         "implement",
@@ -1042,20 +1094,38 @@ class RLMEngineOptimized:
     def _detect_phase(self, user_input: str, last_response: str = "") -> str:
         """
         Infer the current agent phase from user input and the last model response.
-        Returns one of: "plan" | "code" | "troubleshoot" | "chat".
+        Returns one of: "goal" | "plan" | "code" | "troubleshoot" | "chat".
         """
         current_mode = getattr(self, "execution_mode", "unified")
+        if current_mode == "chat":
+            return "chat"
+        if current_mode == "plan":
+            return "plan"
+        if current_mode == "code":
+            return "code"
         if current_mode == "goal":
-            plan_file = os.path.join(self.project_root, "implementation_plan.md")
-            if not os.path.exists(plan_file):
-                return "plan"
+            return "goal"
 
         inp_lower = user_input.lower()
         combined = (user_input + " " + last_response).lower()
+        # Check plan signals against user input only to prevent generic model responses from flipping phase
+        if any(s in inp_lower for s in self._PLAN_SIGNALS):
+            return "plan"
         if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
             return "troubleshoot"
-        if any(s in combined for s in self._PLAN_SIGNALS):
-            return "plan"
+
+        if any(
+            s in inp_lower
+            for s in (
+                "resume",
+                "continue",
+                "proceed",
+                "carry on",
+                "pick up",
+                "finish task",
+            )
+        ):
+            return "code"
         if any(
             w in inp_lower
             for w in (
@@ -1083,16 +1153,18 @@ class RLMEngineOptimized:
         if any(s in combined for s in self._CODE_SIGNALS):
             return "code"
         if current_mode == "goal":
-            return "code"
+            return "goal"
         return "chat"
 
     def lock_phase(self, phase: str) -> bool:
-        """Manually lock or unlock the agent phase ('code', 'plan', 'troubleshoot', 'chat', or 'auto')."""
+        """Manually lock or unlock the agent phase ('code', 'plan', 'goal', 'troubleshoot', 'debug', 'chat', or 'auto')."""
         phase_key = (phase or "").lower().strip()
         if phase_key in ("auto", "unlock", "reset"):
             self._params_locked = False
             return True
-        if phase_key in ("code", "plan", "troubleshoot", "chat"):
+        if phase_key == "debug":
+            phase_key = "troubleshoot"
+        if phase_key in ("code", "plan", "goal", "troubleshoot", "chat"):
             self._current_phase = phase_key
             self._params_locked = True
             model_name = getattr(self.client, "model", None) or getattr(
@@ -1109,6 +1181,10 @@ class RLMEngineOptimized:
                 self.client.min_p = calibrated.min_p
             if hasattr(self.client, "repeat_penalty"):
                 self.client.repeat_penalty = calibrated.repeat_penalty
+            if hasattr(self.client, "repetition_penalty"):
+                self.client.repetition_penalty = getattr(
+                    calibrated, "repetition_penalty", calibrated.repeat_penalty
+                )
             if hasattr(self.client, "presence_penalty"):
                 self.client.presence_penalty = calibrated.presence_penalty
             if hasattr(self.client, "frequency_penalty"):
@@ -1118,6 +1194,12 @@ class RLMEngineOptimized:
                 mem.update_system_prompt(get_phase_system_prompt(phase_key))
             return True
         return False
+
+    def get_locked_phase(self) -> str:
+        """Return the current locked phase or 'auto' if dynamic phase detection is active."""
+        if getattr(self, "_params_locked", False):
+            return getattr(self, "_current_phase", "code")
+        return "auto"
 
     def _update_params(self, user_input: str, last_response: str = "") -> None:
         """Auto-switch inference parameters based on detected phase."""
@@ -1141,6 +1223,10 @@ class RLMEngineOptimized:
             self.client.min_p = calibrated.min_p
         if hasattr(self.client, "repeat_penalty"):
             self.client.repeat_penalty = calibrated.repeat_penalty
+        if hasattr(self.client, "repetition_penalty"):
+            self.client.repetition_penalty = getattr(
+                calibrated, "repetition_penalty", calibrated.repeat_penalty
+            )
         if hasattr(self.client, "presence_penalty"):
             self.client.presence_penalty = calibrated.presence_penalty
         if hasattr(self.client, "frequency_penalty"):
@@ -1149,8 +1235,24 @@ class RLMEngineOptimized:
         if mem and hasattr(mem, "update_system_prompt"):
             mem.update_system_prompt(get_phase_system_prompt(phase))
 
+    def _is_vision_supported(self) -> bool:
+        """Check if active LLM client or server supports multimodal image inputs."""
+        if self.client is None:
+            return True
+        if hasattr(self.client, "_server_supports_vision"):
+            return bool(self.client._server_supports_vision)
+        if hasattr(self.client, "is_vision"):
+            return bool(self.client.is_vision)
+        if hasattr(self.client, "traits") and isinstance(self.client.traits, dict):
+            return bool(self.client.traits.get("is_vision", False))
+        return True
+
     async def solve_async(
-        self, task: str, depth: int = 0, phase: Optional[str] = None
+        self,
+        task: str,
+        depth: int = 0,
+        phase: Optional[str] = None,
+        images: Optional[list[str]] = None,
     ) -> SolveResult:
         result = SolveResult(answer="", depth=depth)
         self._total_llm_calls = 0
@@ -1158,20 +1260,76 @@ class RLMEngineOptimized:
         if hasattr(self, "recovery_engine") and self.recovery_engine:
             self.recovery_engine.reset()
 
+        # Extract image references from task text if not explicitly passed
+        from core.utils.image_utils import extract_image_paths_from_text
+
+        img_list = list(images) if images else []
+        if not img_list and task:
+            img_list = extract_image_paths_from_text(task)
+
         # Determine effective phase: explicit param > execution_mode > "code" default
         if phase is None:
             if self.execution_mode == "chat":
                 phase = "chat"
+            elif self.execution_mode == "plan":
+                phase = "plan"
+            elif self.execution_mode == "code":
+                phase = "code"
             elif self.execution_mode == "goal":
-                phase = "code"  # Goal mode starts in code phase but can auto-detect
+                phase = self._detect_phase(task)
             elif self.execution_mode == "unified":
-                phase = (
-                    "code"  # Unified mode defaults to code but enables auto-detection
-                )
+                phase = self._detect_phase(task)
             else:
                 phase = "code"
 
         self._current_phase = phase
+
+        # ── Fix: Inject pending task context for Code Mode continuation commands ──
+        # Qwen 3B cannot infer what task to work on from a vague "continue"
+        # message. We inject the actual next pending task + target file + tool
+        # template so the model emits a <tool_call> on Turn 1.
+        _CONTINUATION_KWS = (
+            "continue", "proceed", "carry on", "next", "resume",
+            "building", "build", "keep going", "go ahead", "start",
+        )
+        if phase == "code" and any(kw in task.lower() for kw in _CONTINUATION_KWS):
+            try:
+                from core.tools.task_helpers import get_workspace_pending_tasks
+
+                _pending = (
+                    get_workspace_pending_tasks(self.project_root)
+                    if self.project_root
+                    else []
+                )
+                if _pending:
+                    _next_task = _pending[0]
+                    _fm = re.search(
+                        r"([a-zA-Z0-9_\-\.\/]+\.(?:html|css|js|py|ts|jsx|tsx|json|go|rs))",
+                        _next_task,
+                    )
+                    _target_file = _fm.group(1) if _fm else None
+                    _target_exists = (
+                        os.path.exists(os.path.join(self.project_root, _target_file))
+                        if _target_file and self.project_root
+                        else False
+                    )
+
+                    if _target_file and _target_exists:
+                        _tool_tmpl = f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{_target_file}", "old_text": "...", "new_text": "..."}}}}</tool_call>'
+                    elif _target_file:
+                        _tool_tmpl = f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{_target_file}", "content": "..."}}}}</tool_call>'
+                    else:
+                        _tool_tmpl = '<tool_call>{"name": "READ_FILE", "arguments": {"path": "implementation_plan.md"}}</tool_call>'
+
+                    task = (
+                        f"[CODE MODE: EXECUTE TASK DIRECTLY]\n"
+                        f"Active Task: {_next_task}\n"
+                        + (f"Target file: {_target_file}\n" if _target_file else "")
+                        + f"You MUST write the full implementation now. Start your response immediately with:\n{_tool_tmpl}\n"
+                        f"Do NOT output conversational text, explanations, or questions."
+                    )
+            except Exception:
+                pass
 
         if TieredMemory and MemoryConfig:
             from .config import CTX_SIZE, estimate_metadata_overhead
@@ -1193,7 +1351,7 @@ class RLMEngineOptimized:
                 if hasattr(self._memory, "update_system_prompt"):
                     self._memory.update_system_prompt(get_phase_system_prompt(phase))
 
-            self._memory.add_user_message(task)
+            self._memory.add_user_message(task, images=img_list if img_list else None)
             memory = self._memory
             use_memory = True
         else:
@@ -1206,7 +1364,29 @@ class RLMEngineOptimized:
                         "content": get_phase_system_prompt(phase),
                     }
                 ]
-            self._messages.append({"role": "user", "content": task})
+            if img_list and self._is_vision_supported():
+                from core.utils.image_utils import format_openai_vision_content
+
+                self._messages.append(
+                    {
+                        "role": "user",
+                        "content": format_openai_vision_content(
+                            task, img_list, project_root=self.project_root
+                        ),
+                    }
+                )
+            elif img_list:
+                from core.utils.image_utils import format_image_text_summary
+
+                summaries = [
+                    format_image_text_summary(img, project_root=self.project_root)
+                    for img in img_list
+                ]
+                notice = "\n".join(summaries)
+                full_text = f"{task}\n\n{notice}".strip() if task else notice
+                self._messages.append({"role": "user", "content": full_text})
+            else:
+                self._messages.append({"role": "user", "content": task})
             messages = self._messages
             use_memory = False
 
@@ -1225,7 +1405,6 @@ class RLMEngineOptimized:
 
         for iteration in range(MAX_ITERATIONS_PER_LEVEL):
             self._total_llm_calls += 1
-
             if use_memory:
                 if memory.should_compress():
                     self._notify_status(
@@ -1237,7 +1416,10 @@ class RLMEngineOptimized:
                     memory.compress_recent(
                         summarizer_fn=summarizer_fn, preserve_first=2, force=True
                     )
-                context = memory.get_context_for_llm(project_root=self.project_root)
+                context = memory.get_context_for_llm(
+                    project_root=self.project_root,
+                    vision_supported=self._is_vision_supported(),
+                )
             else:
                 context = messages
 
@@ -1261,7 +1443,38 @@ class RLMEngineOptimized:
                         "limit",
                     )
                 )
-                if is_ctx_err and use_memory:
+                is_img_err = "image input is not supported" in err_str or "mmproj" in err_str
+                if is_img_err:
+                    if hasattr(self.client, "_server_supports_vision"):
+                        self.client._server_supports_vision = False
+                    if hasattr(self.client, "is_vision"):
+                        self.client.is_vision = False
+                    if use_memory:
+                        context = memory.get_context_for_llm(
+                            project_root=self.project_root,
+                            vision_supported=False,
+                        )
+                    else:
+                        flat_messages = []
+                        for m in messages:
+                            c = m.get("content")
+                            if isinstance(c, list):
+                                parts = [
+                                    p.get("text", "")
+                                    for p in c
+                                    if isinstance(p, dict) and p.get("type") == "text"
+                                ]
+                                flat_messages.append(
+                                    {
+                                        "role": m.get("role", "user"),
+                                        "content": "\n".join(parts),
+                                    }
+                                )
+                            else:
+                                flat_messages.append(m)
+                        context = flat_messages
+                    response = await self._stream_llm_with_retry(context)
+                elif is_ctx_err and use_memory:
                     self._notify_status(
                         "THINKING",
                         {
@@ -1270,7 +1483,10 @@ class RLMEngineOptimized:
                         },
                     )
                     self.compact_context(memory=memory, force=True)
-                    context = memory.get_context_for_llm(project_root=self.project_root)
+                    context = memory.get_context_for_llm(
+                        project_root=self.project_root,
+                        vision_supported=self._is_vision_supported(),
+                    )
                     response = await self._stream_llm_with_retry(context)
                 elif self._is_transient_llm_error(err_str):
                     # Timeout / connection stall — retry with backoff instead of
@@ -1323,6 +1539,8 @@ class RLMEngineOptimized:
             # ── Pre-compute final-answer rejection so Step reflects effective action ──
             rejection_reason = None
             has_failing = False
+            pending_tasks: list = []
+            executed_tools: int = 0
             if action == "final_answer":
                 try:
                     pending_verified = await asyncio.to_thread(
@@ -1336,9 +1554,17 @@ class RLMEngineOptimized:
                         getattr(self.feedback_loop, "has_failing_tests", False)
                     )
 
+                is_plan_mode = (getattr(self, "execution_mode", "unified") == "plan" or phase == "plan")
+                is_chat_mode = (getattr(self, "execution_mode", "unified") == "chat" or phase == "chat")
+                if is_plan_mode or is_chat_mode:
+                    has_failing = False
+
+                is_goal_mode = (getattr(self, "execution_mode", "unified") == "goal")
+                max_gate_rejections = 10 if is_goal_mode else 6
+
                 if (
                     iteration < MAX_ITERATIONS_PER_LEVEL - 2
-                    and getattr(self, "_final_answer_rejections", 0) < 2
+                    and getattr(self, "_final_answer_rejections", 0) < max_gate_rejections
                 ):
                     # 1. Check for failing post-edit tests
                     if has_failing:
@@ -1361,7 +1587,7 @@ class RLMEngineOptimized:
                                 if s.tool_name or s.action in ("tool", "code")
                             )
 
-                            is_info_query = phase == "chat" or any(
+                            is_info_query = any(
                                 q_kw in task.lower()
                                 for q_kw in [
                                     "explain",
@@ -1377,16 +1603,13 @@ class RLMEngineOptimized:
                                     "help me understand",
                                 ]
                             )
+                            if phase == "chat" and not any(
+                                r_kw in task.lower()
+                                for r_kw in ["resume", "continue", "proceed", "carry on", "pick up", "finish"]
+                            ):
+                                is_info_query = True
 
-                            if pending_tasks and phase != "chat":
-                                task_descs = [f"- {t}" for t in pending_tasks[:3]]
-                                rejection_reason = (
-                                    "❌ [VERIFICATION GATE REJECTION]\n"
-                                    "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
-                                    + "\n".join(task_descs)
-                                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls (READ_FILE, EDIT_FILE, WRITE_FILE, SEARCH_AST, RUN_COMMAND) to complete remaining tasks before yielding <FINAL_ANSWER>."
-                                )
-                            elif executed_tools == 0 and not is_info_query and any(
+                            is_resume_or_action_query = any(
                                 kw in task.lower()
                                 for kw in [
                                     "add",
@@ -1402,12 +1625,93 @@ class RLMEngineOptimized:
                                     "remove",
                                     "change",
                                     "refactor",
+                                    "resume",
+                                    "continue",
+                                    "proceed",
+                                    "carry on",
+                                    "pick up",
+                                    "finish",
+                                    "complete",
                                 ]
-                            ):
-                                rejection_reason = (
-                                    "❌ [VERIFICATION GATE REJECTION]\n"
-                                    "You yielded <FINAL_ANSWER> without executing any tools. You MUST execute tool calls (e.g. SEARCH_AST, READ_FILE, EDIT_FILE, WRITE_FILE, RUN_COMMAND) to inspect the workspace and perform the requested changes before yielding <FINAL_ANSWER>."
-                                )
+                            )
+
+                            current_exec_mode = getattr(self, "execution_mode", "unified")
+                            plan_file = os.path.join(self.project_root, "implementation_plan.md")
+                            plan_exists = os.path.exists(plan_file)
+                            plan_written_this_turn = any(
+                                (s.tool_name in ("WRITE_FILE", "EDIT_FILE") and "implementation_plan.md" in str(s.tool_args))
+                                for s in result.steps
+                            )
+
+                            if is_goal_mode or phase == "goal":
+                                if not plan_exists and not plan_written_this_turn and not pending_tasks:
+                                    rejection_reason = (
+                                        "❌ [VERIFICATION GATE REJECTION — MISSING PLAN]\n"
+                                        "You are in Goal Mode, but 'implementation_plan.md' has not been created yet and no tasks are tracked.\n"
+                                        "You MUST first inspect the workspace (using LIST_DIR, SEARCH_AST, READ_FILE) and create 'implementation_plan.md' with actionable checkbox tasks (`- [ ]`) via WRITE_FILE before yielding <FINAL_ANSWER>."
+                                    )
+                                elif pending_tasks:
+                                    next_t = pending_tasks[0]
+                                    task_descs = [f"- {t}" for t in pending_tasks[:3]]
+                                    rejection_reason = (
+                                        "❌ [VERIFICATION GATE REJECTION — GOAL INCOMPLETE]\n"
+                                        f"Task '{next_t}' is still PENDING.\n"
+                                        "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
+                                        + "\n".join(task_descs)
+                                        + f"\n\nWriting implementation_plan.md is only the planning step. Do not yield <FINAL_ANSWER>. Continue executing tool calls (READ_FILE, EDIT_FILE, WRITE_FILE, SEARCH_AST, RUN_COMMAND) to complete task '{next_t}' and remaining tasks."
+                                    )
+                                elif executed_tools == 0 and not is_info_query:
+                                    rejection_reason = (
+                                        "❌ [VERIFICATION GATE REJECTION]\n"
+                                        "You yielded <FINAL_ANSWER> without executing any tools. You MUST execute tool calls (e.g. LIST_DIR, SEARCH_AST, READ_FILE, EDIT_FILE, WRITE_FILE, RUN_COMMAND) to inspect the workspace and perform the requested changes before yielding <FINAL_ANSWER>."
+                                    )
+                            elif current_exec_mode == "plan" or phase == "plan":
+                                if not plan_written_this_turn:
+                                    if "- [ ]" in content or any(kw in content.lower() for kw in ("proposed changes", "implementation plan", "phase 1")):
+                                        try:
+                                            clean_save = re.sub(r"</?FINAL_ANSWER>", "", content).strip()
+                                            with open(plan_file, "w", encoding="utf-8") as pf:
+                                                pf.write(clean_save)
+                                            plan_exists = True
+                                            plan_written_this_turn = True
+                                        except Exception:
+                                            pass
+                                if not plan_written_this_turn:
+                                    rejection_reason = (
+                                        "❌ [VERIFICATION GATE REJECTION — PLAN NOT SAVED]\n"
+                                        "You are in Plan Mode, but 'implementation_plan.md' has not been written or updated during this turn.\n"
+                                        "You MUST first inspect the workspace (using LIST_DIR, SEARCH_AST, READ_FILE) and save 'implementation_plan.md' with brainstormed steps and actionable checkbox tasks (`- [ ]`) via WRITE_FILE before yielding <FINAL_ANSWER>."
+                                    )
+                            elif current_exec_mode != "chat":
+                                if pending_tasks:
+                                    next_t = pending_tasks[0]
+                                    file_m = re.search(
+                                        r"([a-zA-Z0-9_\-\.\/]+\.(?:html|css|js|py|ts|jsx|tsx|json|md|go|rs))",
+                                        next_t,
+                                    )
+                                    target_p = file_m.group(1) if file_m else "index.html"
+                                    target_exists = (
+                                        os.path.exists(os.path.join(self.project_root, target_p))
+                                        if self.project_root
+                                        else False
+                                    )
+                                    if target_exists:
+                                        action_template = f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{target_p}", "old_text": "...", "new_text": "..."}}}}</tool_call>'
+                                    else:
+                                        action_template = f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{target_p}", "content": "..."}}}}</tool_call>'
+
+                                    rejection_reason = (
+                                        "❌ [VERIFICATION GATE REJECTION — TASK INCOMPLETE]\n"
+                                        f"Task '{next_t}' is PENDING. Do NOT output conversational text or <FINAL_ANSWER>.\n"
+                                        "You MUST output a valid <tool_call> tag right now to implement this task:\n"
+                                        f"{action_template}"
+                                    )
+                                elif executed_tools == 0 and not is_info_query and is_resume_or_action_query:
+                                    rejection_reason = (
+                                        "❌ [VERIFICATION GATE REJECTION — TOOL CALL REQUIRED]\n"
+                                        "You yielded conversational text or <FINAL_ANSWER> without executing any tools.\n"
+                                        "You MUST emit a valid <tool_call> tag (e.g. <tool_call>{\"name\": \"READ_FILE\", \"arguments\": {\"path\": \"index.html\"}}</tool_call> or EDIT_FILE/WRITE_FILE/RUN_COMMAND) to perform the requested changes."
+                                    )
                         except Exception:
                             pass
 
@@ -1430,7 +1734,7 @@ class RLMEngineOptimized:
                     self._final_answer_rejections = (
                         getattr(self, "_final_answer_rejections", 0) + 1
                     )
-                    if self._final_answer_rejections >= 2:
+                    if self._final_answer_rejections >= max_gate_rejections:
                         # Mark remaining pending tasks in_progress so the state reflects
                         # active-but-unresolved work, and log the blocker for anti-looping.
                         try:
@@ -1439,10 +1743,9 @@ class RLMEngineOptimized:
                                 mark_task_in_progress,
                             )
 
-                            for pt in get_workspace_pending_tasks(self.project_root)[
-                                :3
-                            ]:
-                                mark_task_in_progress(self.project_root, pt)
+                            pending = get_workspace_pending_tasks(self.project_root)
+                            if pending:
+                                mark_task_in_progress(self.project_root, pending[0])
                             self._notify_tasks_changed({"reason": "gate_escalation"})
                         except Exception:
                             pass
@@ -1451,7 +1754,7 @@ class RLMEngineOptimized:
                                 if hasattr(self.memory, "state") and hasattr(
                                     self.memory.state, "tried_and_failed"
                                 ):
-                                    blocker = "FINAL_ANSWER blocked by verification gate after 2 attempts"
+                                    blocker = f"FINAL_ANSWER blocked by verification gate after {max_gate_rejections} attempts"
                                     if (
                                         blocker
                                         not in self.memory.state.tried_and_failed
@@ -1462,27 +1765,37 @@ class RLMEngineOptimized:
                             except Exception:
                                 pass
                         rejection_reason += (
-                            "\n\n⚠️ [GATE ESCALATION] This is your FINAL rejection for this prompt. "
-                            "If you yield a final answer again it will be accepted but marked UNRESOLVED. "
-                            "Prefer abandoning broken edits (revert to a known-good state) and reporting "
-                            "the blocker explicitly rather than repeating the same fix attempt."
+                            "\n\n⚠️ [GATE ESCALATION] This is your final turn before acceptance. "
+                            "Emit a tool call now to make progress, or conclude with <FINAL_ANSWER> explaining the exact blocker."
                         )
                     step.result = rejection_reason
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
+
+                    sanitized_response = response
+                    if len(response) > 60 and (
+                        "rejection" in response.lower()
+                        or "pending task" in response.lower()
+                        or "unresolvable" in response.lower()
+                        or "known-good" in response.lower()
+                        or response.strip().endswith("```json")
+                        or response.strip().endswith("```")
+                    ):
+                        sanitized_response = "[Attempted conversational text without <tool_call>]"
+
                     if use_memory:
-                        memory.add_assistant_message(response)
+                        memory.add_assistant_message(sanitized_response)
                         memory.add_user_message(rejection_reason)
                     else:
-                        messages.append({"role": "assistant", "content": response})
+                        messages.append({"role": "assistant", "content": sanitized_response})
                         messages.append({"role": "user", "content": rejection_reason})
                     continue
 
                 # Gate exhausted or passed: if failures are still unresolved, surface
                 # them so callers/users never see a clean success on broken work.
                 if (
-                    getattr(self, "_final_answer_rejections", 0) >= 2
+                    getattr(self, "_final_answer_rejections", 0) >= max_gate_rejections
                     and rejection_reason
                 ):
                     if not content.startswith("[UNVERIFIED CHANGES]"):
@@ -1573,28 +1886,89 @@ class RLMEngineOptimized:
                 return result
 
             elif action == "tool":
-                is_valid, err_msg, tool_args = validate_and_normalize_tool_call(
-                    tool_name, tool_args or {}
-                )
-                if not is_valid:
-                    step.result = f"❌ {err_msg}"
-                    result.steps.append(step)
-                    if self.on_step:
-                        self.on_step(step)
-                    self._notify_status(
-                        "TOOL_DONE", {"tool_name": tool_name, "success": False}
+                # Dynamic Pre-Flight Tool Normalization: Auto-promote EDIT_FILE without old_text
+                # on new/empty files or full-file writes (<150 lines). If only partial lines are passed
+                # without old_text, reject with a single surgical-edit directive to protect against truncation.
+                preflight_err = None
+                if tool_name and str(tool_name).upper() == "EDIT_FILE" and isinstance(tool_args, dict):
+                    t_path = tool_args.get("path", "")
+                    if tool_args.get("old_text"):
+                        from core.tools.implementations import _clean_copied_file_text
+                        tool_args["old_text"] = _clean_copied_file_text(str(tool_args["old_text"]), t_path)
+                    if tool_args.get("new_text"):
+                        from core.tools.implementations import _clean_copied_file_text
+                        tool_args["new_text"] = _clean_copied_file_text(str(tool_args["new_text"]), t_path)
+
+                    has_old = bool(
+                        tool_args.get("old_text")
+                        or tool_args.get("diff")
+                        or tool_args.get("start_line")
+                        or tool_args.get("symbol")
                     )
-                    feedback = (
-                        build_step_message("tool_error", err_msg)
-                        + "\nRe-issue the tool call matching the exact schema."
+                    new_c = (
+                        tool_args.get("new_text")
+                        or tool_args.get("content")
+                        or tool_args.get("code")
+                        or tool_args.get("text")
                     )
-                    if use_memory:
-                        memory.add_assistant_message(response)
-                        memory.add_user_message(feedback)
-                    else:
-                        messages.append({"role": "assistant", "content": response})
-                        messages.append({"role": "user", "content": feedback})
-                    continue
+                    if new_c:
+                        from core.tools.implementations import _clean_copied_file_text
+                        new_c = _clean_copied_file_text(str(new_c), t_path)
+
+                    if not has_old and new_c and t_path:
+                        abs_p = os.path.join(self.project_root, t_path) if not os.path.isabs(t_path) else t_path
+                        if not os.path.exists(abs_p) or os.path.getsize(abs_p) == 0:
+                            tool_name = "WRITE_FILE"
+                            tool_args = {"path": t_path, "content": new_c, "force": tool_args.get("force", False)}
+                            step.tool_name = tool_name
+                            step.tool_args = tool_args
+                        else:
+                            try:
+                                with open(abs_p, "r", encoding="utf-8", errors="replace") as f_chk:
+                                    f_lines = [l for l in f_chk.read().splitlines() if l.strip()]
+                                new_lines = [l for l in str(new_c).replace("\\n", "\n").splitlines() if l.strip()]
+                                
+                                # Full-file replacement on small files (<=150 lines): safe to promote
+                                if len(f_lines) <= 150 and (len(new_lines) >= int(len(f_lines) * 0.7) or len(f_lines) <= 3):
+                                    tool_name = "WRITE_FILE"
+                                    tool_args = {"path": t_path, "content": new_c, "force": tool_args.get("force", False)}
+                                    step.tool_name = tool_name
+                                    step.tool_args = tool_args
+                                elif len(new_lines) < len(f_lines):
+                                    # Partial content without old_text: reject early to protect from truncation
+                                    preflight_err = (
+                                        f"⛔ EDIT_FILE rejected: Target file '{t_path}' has {len(f_lines)} lines, but only {len(new_lines)} line(s) "
+                                        f"were provided in 'new_text' with no 'old_text' or line numbers.\n"
+                                        f"To safely edit without losing existing code, read '{t_path}' first to inspect current content and obtain exact 'old_text' anchors:\n"
+                                        f'<tool_call>{{"name": "READ_FILE", "arguments": {{"path": "{t_path}"}}}}</tool_call>'
+                                    )
+                            except Exception:
+                                pass
+
+                    if not preflight_err and not tool_args.get("old_text") and tool_args.get("start_line") and t_path:
+                        abs_p = os.path.join(self.project_root, t_path) if not os.path.isabs(t_path) else t_path
+                        if os.path.exists(abs_p):
+                            try:
+                                with open(abs_p, "r", encoding="utf-8", errors="replace") as f_chk:
+                                    tot_lines = len(f_chk.read().splitlines())
+                                s_line = int(tool_args.get("start_line"))
+                                if s_line > tot_lines:
+                                    preflight_err = (
+                                        f"⛔ EDIT_FILE rejected: start_line {s_line} is out of bounds for '{t_path}' (file has only {tot_lines} lines).\n"
+                                        f"Run READ_FILE to inspect current content and line numbers:\n"
+                                        f'<tool_call>{{"name": "READ_FILE", "arguments": {{"path": "{t_path}"}}}}</tool_call>'
+                                    )
+                            except Exception:
+                                pass
+
+                if preflight_err:
+                    is_valid, err_msg = False, preflight_err
+                else:
+                    is_valid, err_msg, tool_args = validate_and_normalize_tool_call(
+                        tool_name, tool_args or {}
+                    )
+                step.tool_name = tool_name
+                step.tool_args = tool_args
 
                 # ── Duplicate tool call & rate limit detection ─────────────────
                 # Mutating tools (WRITE_FILE, EDIT_FILE, SAVE_MEMORY, UPDATE_TASK_GRAPH, RUN_COMMAND)
@@ -1620,11 +1994,69 @@ class RLMEngineOptimized:
                 is_read_only = tool_name_upper in _READ_ONLY_TOOLS
 
                 is_dup, dup_count, hint = trajectory_lock.is_duplicate(
-                    tool_name, tool_args, is_read_only=is_read_only
+                    tool_name, tool_args or {}, is_read_only=is_read_only
                 )
+                if not is_valid and not is_dup:
+                    trajectory_lock.register(tool_name, tool_args or {})
+                    step.result = f"❌ {err_msg}"
+                    result.steps.append(step)
+                    if self.on_step:
+                        self.on_step(step)
+                    self._notify_status(
+                        "TOOL_DONE", {"tool_name": tool_name, "success": False}
+                    )
+                    feedback = (
+                        build_step_message("tool_error", err_msg)
+                        + "\nRe-issue the tool call matching the exact schema."
+                    )
+                    if use_memory:
+                        memory.add_assistant_message(response)
+                        memory.add_user_message(feedback)
+                    else:
+                        messages.append({"role": "assistant", "content": response})
+                        messages.append({"role": "user", "content": feedback})
+                    continue
+
+                if not is_valid and is_dup:
+                    # Duplicate invalid call: fall through to trajectory lock handling below
+                    pass
                 if is_dup:
-                    alt_hint = get_alternate_trajectory_hint(tool_name)
-                    step.result = f"(duplicate — already executed {tool_name})\n\n{alt_hint}"
+                    t_path = (
+                        str(
+                            tool_args.get("path")
+                            or tool_args.get("file")
+                            or tool_args.get("target")
+                            or tool_args.get("filename")
+                            or ""
+                        )
+                        if isinstance(tool_args, dict)
+                        else ""
+                    )
+                    if t_path and tool_name_upper in ("READ_FILE", "READ", "EDIT_FILE", "EDIT", "WRITE_FILE", "WRITE"):
+                        from core.tools.implementations import tool_read_file_impl
+                        file_preview = tool_read_file_impl({"path": t_path}, self.project_root)
+                        if file_preview and (file_preview.startswith("File not found") or not os.path.exists(os.path.join(self.project_root, t_path))):
+                            hint = (
+                                f"⛔ [FILE NOT FOUND]: '{t_path}' does not exist on disk.\n"
+                                f"Next required action: Create this file now by emitting WRITE_FILE:\n"
+                                f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{t_path}", "content": "// Initial code implementation\\n"}}}}</tool_call>'
+                            )
+                        elif file_preview and not file_preview.startswith("Error"):
+                            lines_list = file_preview.splitlines()
+                            tot_lines = len(lines_list)
+                            if tot_lines > 80:
+                                preview_body = "\n".join(lines_list[:80]) + f"\n... [{tot_lines - 80} more lines in file]"
+                            else:
+                                preview_body = file_preview
+                            hint = (
+                                f"⛔ [DUPLICATE {tool_name_upper} BLOCKED]: Repeated call on '{t_path}' halted.\n"
+                                f"Here is the CURRENT FILE CONTENT of '{t_path}' directly from disk (lines 1–{tot_lines}):\n\n"
+                                f"```\n{preview_body}\n```\n\n"
+                                f"Next required action: Inspect the actual lines above and submit your edit using exact old_text:\n"
+                                f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{t_path}", "old_text": "...", "new_text": "..."}}}}</tool_call>'
+                            )
+
+                    step.result = f"(duplicate — already executed {tool_name})\n\n{hint}"
                     result.steps.append(step)
                     if self.on_step:
                         self.on_step(step)
@@ -1704,17 +2136,70 @@ class RLMEngineOptimized:
                         "TOOL",
                         {"tool_name": tool_name, "args": tool_args, "depth": depth},
                     )
-                    if tool_name and tool_name.upper() == "SET_PHASE":
+                    is_plan_session = (
+                        getattr(self, "_current_phase", "code") == "plan"
+                        or getattr(self, "execution_mode", "") == "plan"
+                    )
+                    t_name_upper = (tool_name or "").upper().strip()
+
+                    if t_name_upper == "ASK_USER":
+                        if getattr(self, "ask_user_fn", None):
+                            if asyncio.iscoroutinefunction(self.ask_user_fn):
+                                user_resp = await self.ask_user_fn(tool_args)
+                            else:
+                                user_resp = self.ask_user_fn(tool_args)
+                            from core.tools.registry import ToolResult
+                            tool_result = ToolResult(
+                                success=True,
+                                output=str(user_resp),
+                            )
+                        else:
+                            tool_result = await asyncio.to_thread(
+                                registry.execute, tool_name, tool_args, self.project_root
+                            )
+                    elif t_name_upper == "SET_PHASE":
                         target_phase = (
                             str(tool_args.get("phase", "code")).lower().strip()
                         )
                         self.lock_phase(target_phase)
                         from core.tools.registry import ToolResult
-
                         tool_result = ToolResult(
                             success=True,
                             output=f"Agent phase switched to '{target_phase}' successfully.",
                         )
+                    elif is_plan_session and t_name_upper in ("WRITE_FILE", "EDIT_FILE"):
+                        target_p = str(tool_args.get("path", "") if isinstance(tool_args, dict) else "").strip()
+                        base_p = os.path.basename(target_p).lower()
+                        norm_p = os.path.normpath(target_p)
+                        is_plan_target = (
+                            base_p in ("implementation_plan.md", "plan.md")
+                            or norm_p == "implementation_plan.md"
+                            or target_p.lower().endswith("implementation_plan.md")
+                            or norm_p.startswith(".torchlight")
+                        )
+                        if not is_plan_target:
+                            from core.tools.registry import ToolResult
+                            tool_result = ToolResult(
+                                success=False,
+                                output=(
+                                    f"❌ [PLAN MODE GUARD] In Plan Mode, you cannot create or modify application code files like '{target_p}'. "
+                                    "Plan Mode is strictly for inspecting the workspace and writing 'implementation_plan.md'. "
+                                    "Conclude your turn immediately with <FINAL_ANSWER> to present the plan summary and open questions for user review."
+                                ),
+                            )
+                        else:
+                            # Normalize path to implementation_plan.md if targeting the plan
+                            if isinstance(tool_args, dict) and base_p in ("implementation_plan.md", "plan.md"):
+                                tool_args["path"] = "implementation_plan.md"
+                            tool_result = await asyncio.to_thread(
+                                registry.execute, tool_name, tool_args, self.project_root
+                            )
+                            if tool_result.success:
+                                tool_result.output += (
+                                    "\n\n💡 [PLAN SAVED] 'implementation_plan.md' has been successfully updated on disk. "
+                                    "Verify the plan: if any edge cases, dependencies, or tasks are missing, update the plan using EDIT_FILE. "
+                                    "When the plan is verified and complete, conclude your turn with <FINAL_ANSWER> summarizing your proposed plan and asking the user for confirmation to switch to Coding Mode to begin implementation."
+                                )
                     else:
                         tool_result = await asyncio.to_thread(
                             registry.execute, tool_name, tool_args, self.project_root
@@ -1826,6 +2311,7 @@ class RLMEngineOptimized:
                             try:
                                 from core.tools.task_helpers import (
                                     auto_mark_task_completed_by_file,
+                                    auto_mark_task_completed_by_command,
                                 )
 
                                 if fpath:
@@ -1842,12 +2328,66 @@ class RLMEngineOptimized:
                                         fpath,
                                         verified=not has_failing,
                                     )
+                                elif (
+                                    tool_name.upper() == "RUN_COMMAND"
+                                    and tool_result.success
+                                ):
+                                    cmd_str = str(
+                                        tool_args.get("cmd")
+                                        or tool_args.get("command")
+                                        or ""
+                                    )
+                                    if cmd_str:
+                                        auto_mark_task_completed_by_command(
+                                            self.project_root,
+                                            cmd_str,
+                                            return_code=0,
+                                        )
                                 self._notify_tasks_changed(
                                     {"tool_name": tool_name, "path": fpath}
                                 )
                             except Exception:
                                 pass
-                            feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."
+
+                            try:
+                                from core.tools.task_helpers import (
+                                    get_workspace_pending_tasks,
+                                )
+
+                                p_tasks = get_workspace_pending_tasks(
+                                    self.project_root
+                                )
+                            except Exception:
+                                p_tasks = []
+
+                            if p_tasks and getattr(self, "execution_mode", "unified") != "chat":
+                                next_task = p_tasks[0]
+                                file_m = re.search(
+                                    r"([a-zA-Z0-9_\-\.\/]+\.(?:html|css|js|py|ts|jsx|tsx|json|md|go|rs))",
+                                    next_task,
+                                )
+                                target_p = file_m.group(1) if file_m else ""
+                                target_exists = (
+                                    os.path.exists(os.path.join(self.project_root, target_p))
+                                    if self.project_root and target_p
+                                    else False
+                                )
+                                if target_exists:
+                                    action_tpl = f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{target_p}", "old_text": "...", "new_text": "..."}}}}</tool_call>'
+                                elif target_p:
+                                    action_tpl = f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{target_p}", "content": "..."}}}}</tool_call>'
+                                else:
+                                    action_tpl = '<tool_call>{"name": "...", "arguments": {...}}</tool_call>'
+
+                                feedback += (
+                                    f"\n🎯 NEXT PENDING TASK: {next_task}\n"
+                                    f"Do NOT yield <FINAL_ANSWER>. Immediately emit the next tool call:\n"
+                                    f"{action_tpl}"
+                                )
+                            elif not p_tasks:
+                                feedback += "\nAll tasks in the plan are completed! You may now conclude with <FINAL_ANSWER>."
+                            else:
+                                feedback += "\nContinue with next step, or if done, use <FINAL_ANSWER> tags."
                     elif tool_name and "EDIT_FILE" in tool_name.upper():
                         # Inject READ_FILE nudge — small models often skip the read step
                         target_path = tool_args.get("path", "the file")
@@ -1866,12 +2406,47 @@ class RLMEngineOptimized:
                         "tool_denied", f"{tool_name} was denied."
                     )
 
+                images_to_attach = None
+                if tool_name and tool_result.success:
+                    t_upper = tool_name.upper()
+                    if t_upper == "VIEW_IMAGE":
+                        img_p = (
+                            tool_args.get("path")
+                            or tool_args.get("file")
+                            or tool_args.get("image")
+                        )
+                        if img_p:
+                            images_to_attach = [img_p]
+                    elif t_upper == "INSPECT_WEB":
+                        m_shot = re.search(
+                            r"\*\*Screenshot Saved:\*\*\s*`([^`]+)`",
+                            tool_result.output or "",
+                        )
+                        if m_shot:
+                            images_to_attach = [m_shot.group(1)]
+
                 if use_memory:
                     memory.add_assistant_message(response)
-                    memory.add_user_message(feedback)
+                    memory.add_user_message(feedback, images=images_to_attach)
                 else:
                     messages.append({"role": "assistant", "content": response})
-                    messages.append({"role": "user", "content": feedback})
+                    if images_to_attach:
+                        from core.utils.image_utils import (
+                            format_openai_vision_content,
+                        )
+
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": format_openai_vision_content(
+                                    feedback,
+                                    images_to_attach,
+                                    project_root=self.project_root,
+                                ),
+                            }
+                        )
+                    else:
+                        messages.append({"role": "user", "content": feedback})
 
             elif action == "code":
                 # Validate content is actually executable code / syntax valid
@@ -2120,17 +2695,51 @@ class RLMEngineOptimized:
                 if self.on_step:
                     self.on_step(step)
 
+                sanitized_resp = response
+                if len(response) > 60 and (
+                    "rejection" in response.lower()
+                    or "pending task" in response.lower()
+                    or response.strip().endswith("```json")
+                    or response.strip().endswith("```")
+                ):
+                    sanitized_resp = "[Attempted reasoning without <tool_call>]"
+
                 if use_memory:
-                    memory.add_assistant_message(response)
+                    memory.add_assistant_message(sanitized_resp)
                 else:
-                    messages.append({"role": "assistant", "content": response})
+                    messages.append({"role": "assistant", "content": sanitized_resp})
 
                 # Progressive escalation to break out of reasoning loops
                 if consecutive_thinking >= MAX_THINKING_LOOPS:
-                    # Force-extract: treat the entire response as the answer
-                    forced = response.strip()
+                    # Force-extract: build a clean, user-friendly final answer
+                    # instead of dumping garbled rejection echoes.
+                    forced = ""
                     if last_code_output:
                         forced = f"Based on computation: {last_code_output}"
+                    else:
+                        # Build a meaningful summary from pending tasks
+                        try:
+                            from core.tools.task_helpers import get_workspace_pending_tasks
+                            _fp = get_workspace_pending_tasks(self.project_root) if self.project_root else []
+                            if _fp:
+                                forced = (
+                                    f"The model was unable to emit a tool call after {MAX_THINKING_LOOPS} attempts.\n"
+                                    f"Next pending task: **{_fp[0]}**\n\n"
+                                    "Try sending a more specific instruction like:\n"
+                                    f'"Write the code for {_fp[0]}" or "Read implementation_plan.md"'
+                                )
+                            else:
+                                forced = (
+                                    f"The model was unable to emit a tool call after {MAX_THINKING_LOOPS} attempts.\n"
+                                    "Try a more specific instruction (e.g. \"read implementation_plan.md\") "
+                                    "or check that implementation_plan.md exists in the workspace."
+                                )
+                        except Exception:
+                            forced = (
+                                f"Turn completed after {MAX_THINKING_LOOPS} reasoning loops. "
+                                "The model could not produce a valid tool call. "
+                                "Try a more specific instruction."
+                            )
                     step_forced = Step(
                         step_number=iteration + 2,
                         depth=depth,
@@ -2147,14 +2756,37 @@ class RLMEngineOptimized:
                     if hasattr(self.client, "temperature"):
                         self.client.temperature = initial_temp
                     return result
-                elif consecutive_thinking >= 4:
-                    nudge = (
-                        "You MUST respond with exactly one action tag now. "
-                        "If you have completed your work, wrap your response in <FINAL_ANSWER>your answer</FINAL_ANSWER>. "
-                        "If you need to perform an action, use <TOOL> or <CODE>."
-                    )
                 else:
-                    nudge = "Please continue with an action using <TOOL>, <CODE>, <SUB_QUERY>, or <FINAL_ANSWER>."
+                    try:
+                        from core.tools.task_helpers import get_workspace_pending_tasks
+                        pending = get_workspace_pending_tasks(self.project_root) if self.project_root else []
+                    except Exception:
+                        pending = []
+
+                    if pending:
+                        next_t = pending[0]
+                        file_m = re.search(
+                            r"([a-zA-Z0-9_\-\.\/]+\.(?:html|css|js|py|ts|jsx|tsx|json|md|go|rs))",
+                            next_t,
+                        )
+                        target_p = file_m.group(1) if file_m else "index.html"
+                        target_exists = (
+                            os.path.exists(os.path.join(self.project_root, target_p))
+                            if self.project_root
+                            else False
+                        )
+                        if target_exists:
+                            tool_tmpl = f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{target_p}", "old_text": "...", "new_text": "..."}}}}</tool_call>'
+                        else:
+                            tool_tmpl = f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{target_p}", "content": "..."}}}}</tool_call>'
+                        nudge = (
+                            f"Do NOT output conversational text. You MUST emit a valid <tool_call> tag right now to execute task '{next_t}':\n"
+                            f"{tool_tmpl}"
+                        )
+                    else:
+                        nudge = (
+                            "Do NOT output conversational text. You MUST emit a valid <tool_call> tag (e.g. <tool_call>{\"name\": \"READ_FILE\", \"arguments\": {\"path\": \"index.html\"}}</tool_call> or EDIT_FILE/WRITE_FILE/RUN_COMMAND)."
+                        )
 
                 if use_memory:
                     memory.add_user_message(nudge)
@@ -2312,6 +2944,78 @@ class RLMEngineOptimized:
                     t_name,
                     tool_args,
                 )
+            else:
+                return (
+                    "tool",
+                    thinking,
+                    "MALFORMED_TOOL_CALL",
+                    [],
+                    "UNKNOWN_TOOL",
+                    {"error": f"Failed to parse tool call from payload: {raw_payload}. Ensure you provide valid JSON with 'name' and 'arguments'."},
+                )
+
+        # 1b. Check for MLX / Qwen special token format: <|tool_call_start|>...<|tool_call_end|>
+        mlx_tool_match = re.search(
+            r"<\|tool_call_start\|>\s*(.*?)(?:<\|tool_call_end\|>|$)",
+            response,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if mlx_tool_match and mlx_tool_match.group(1).strip():
+            raw_payload = mlx_tool_match.group(1).strip()
+            thinking = _get_thinking(mlx_tool_match.start())
+            tool_name = None
+            tool_args = {}
+
+            if raw_payload.startswith("{") and raw_payload.endswith("}"):
+                parsed_json = _clean_and_parse_json(raw_payload)
+                tool_name = parsed_json.get("name") or parsed_json.get("tool") or parsed_json.get("action")
+                tool_args = parsed_json.get("arguments") or parsed_json.get("args") or parsed_json
+            else:
+                fn_match = re.search(r"\[?\s*([a-zA-Z0-9_]+)\s*(?:\((.*?)\))?\s*\]?", raw_payload, re.DOTALL)
+                if fn_match:
+                    candidate_name = fn_match.group(1).strip().upper()
+                    arg_str = (fn_match.group(2) or "").strip()
+                    if candidate_name not in (
+                        "WORKING_MEMORY",
+                        "WORKING_MEMORY_SCRATCHPAD",
+                        "SCRATCHPAD",
+                        "L0_WORKING_MEMORY_SCRATCHPAD",
+                        "THINKING",
+                        "PLAN",
+                    ):
+                        tool_name = candidate_name
+                        if arg_str:
+                            for kv in re.finditer(
+                                r'([a-zA-Z0-9_]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^,\s]+))',
+                                arg_str,
+                            ):
+                                k = kv.group(1)
+                                v = (
+                                    kv.group(2)
+                                    if kv.group(2) is not None
+                                    else (kv.group(3) if kv.group(3) is not None else kv.group(4))
+                                )
+                                tool_args[k] = v
+
+            if tool_name:
+                t_name = str(tool_name).upper()
+                return (
+                    "tool",
+                    thinking,
+                    f"{t_name}({json.dumps(tool_args)})",
+                    [],
+                    t_name,
+                    tool_args,
+                )
+            else:
+                return (
+                    "tool",
+                    thinking,
+                    "MALFORMED_TOOL_CALL",
+                    [],
+                    "UNKNOWN_TOOL",
+                    {"error": f"Failed to parse MLX tool call: {raw_payload}. Provide valid JSON."},
+                )
 
         # 2. Check for <TOOL name="...">JSON</TOOL> or <tool name="...">JSON</tool>
         tool_match = re.search(
@@ -2358,29 +3062,88 @@ class RLMEngineOptimized:
                 tool_args,
             )
 
-        # 3. Check for <WRITE_FILE path="...">content</WRITE_FILE>
-        write_tag_match = re.search(
-            r'<WRITE_FILE\s+path=["\']([^"\']+)["\']>\s*(.*?)(?:</WRITE_FILE>|$)',
+        # 3. Check for direct XML tool tags (e.g. <EDIT_FILE path="..." .../>, <WRITE_FILE path="...">content</WRITE_FILE>, <READ_FILE path="..."/>, <RUN_COMMAND cmd="..."/>)
+        xml_tool_pattern = re.search(
+            r'<([a-zA-Z0-9_]+)\s+([^>]*?)(?:/>|>\s*([\s\S]*?)(?:</\1>|$))',
             response,
-            re.DOTALL | re.IGNORECASE,
+            re.IGNORECASE,
         )
-        if write_tag_match:
-            path_val = write_tag_match.group(1).strip()
-            content_val = write_tag_match.group(2)
-            # When the closing tag was consumed as a stop token the `$`
-            # alternative may have swallowed trailing prose — trim it for code
-            # targets only.
-            if not re.search(r"</WRITE_FILE>", write_tag_match.group(0), re.IGNORECASE):
-                content_val = _trim_trailing_prose(content_val, path_val)
-            thinking = _get_thinking(write_tag_match.start())
-            return (
-                "tool",
-                thinking,
-                f"WRITE_FILE({path_val})",
-                [],
+        if xml_tool_pattern:
+            candidate_name = xml_tool_pattern.group(1).upper()
+            from core.tools.schemas import TOOL_SCHEMAS
+
+            if candidate_name in TOOL_SCHEMAS or candidate_name in (
                 "WRITE_FILE",
-                {"path": path_val, "content": content_val},
-            )
+                "EDIT_FILE",
+                "READ_FILE",
+                "SEARCH_AST",
+                "GREP",
+                "RUN_COMMAND",
+                "LIST_DIR",
+                "VERIFY",
+                "INSPECT_WEB",
+                "PLAY_AND_VERIFY_GAME",
+                "SELF_IMPROVE_GAME",
+                "GIT",
+                "SAVE_MEMORY",
+                "UPDATE_TASK_GRAPH",
+                "ASK_USER",
+                "VIEW_IMAGE",
+                "READ_SYMBOLS",
+            ):
+                attr_str = xml_tool_pattern.group(2) or ""
+                body_content = xml_tool_pattern.group(3)
+                thinking = _get_thinking(xml_tool_pattern.start())
+                tool_args = {}
+
+                # Parse attributes from tag
+                for kv in re.finditer(
+                    r'([a-zA-Z0-9_]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^>\s]+))',
+                    attr_str,
+                ):
+                    k = kv.group(1)
+                    if kv.group(2) is not None:
+                        v = kv.group(2)
+                    elif kv.group(3) is not None:
+                        v = kv.group(3)
+                    else:
+                        v = kv.group(4)
+                        if v.isdigit():
+                            v = int(v)
+                        elif v.lower() == "true":
+                            v = True
+                        elif v.lower() == "false":
+                            v = False
+                    tool_args[k] = v
+
+                # If there is body content and content is not specified in attributes
+                if body_content and body_content.strip():
+                    if candidate_name == "WRITE_FILE" and "content" not in tool_args:
+                        path_val = str(tool_args.get("path", ""))
+                        if not re.search(r"</WRITE_FILE>", xml_tool_pattern.group(0), re.IGNORECASE):
+                            body_content = _trim_trailing_prose(body_content, path_val)
+                        body_lines = body_content.splitlines(keepends=True)
+                        if body_lines and path_val:
+                            first_ln = body_lines[0].strip().strip("`'\"#/*- ")
+                            if (
+                                first_ln.lower() == os.path.basename(path_val).lower()
+                                or first_ln.lower().endswith("/" + os.path.basename(path_val).lower())
+                            ):
+                                body_content = "".join(body_lines[1:]).lstrip("\r\n")
+                        tool_args["content"] = body_content
+                    elif candidate_name == "EDIT_FILE" and "new_text" not in tool_args and "content" not in tool_args:
+                        tool_args["new_text"] = body_content
+
+                t_name = candidate_name
+                summary_str = f"{t_name}({tool_args.get('path', tool_args.get('cmd', json.dumps(tool_args)))})"
+                return (
+                    "tool",
+                    thinking,
+                    summary_str,
+                    [],
+                    t_name,
+                    tool_args,
+                )
 
         # 3b. Check for JSON array output (fallback for Qwen JSON outputs)
         json_array_match = re.search(
@@ -2424,19 +3187,34 @@ class RLMEngineOptimized:
             except Exception:
                 pass
 
-        # 3c. Check for single bare JSON tool call object (e.g. {"name": "EDIT_FILE", "arguments": ...})
+        # 3c. Check for single bare JSON tool call object (e.g. {"name": "EDIT_FILE", ...} or {"path": "...", "content": "..."})
         if "{" in response and any(
-            k in response for k in ('"name"', '"tool"', '"action"', '"tool_name"')
+            k in response
+            for k in (
+                '"name"',
+                '"tool"',
+                '"action"',
+                '"tool_name"',
+                '"path"',
+                '"new_text"',
+                '"old_text"',
+                '"cmd"',
+                '"command"',
+            )
         ):
             try:
+                json_str = None
                 codeblock_match = re.search(
-                    r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", response, re.IGNORECASE
+                    r"```(?:json)?\s*([\s\S]*?)```", response, re.IGNORECASE
                 )
-                json_str = (
-                    codeblock_match.group(1)
-                    if codeblock_match
-                    else _extract_balanced_json_object(response)
-                )
+                if not codeblock_match:
+                    codeblock_match = re.search(
+                        r"```(?:json)?\s*([\s\S]*)$", response, re.IGNORECASE
+                    )
+                if codeblock_match:
+                    json_str = _extract_balanced_json_object(codeblock_match.group(1))
+                if not json_str:
+                    json_str = _extract_balanced_json_object(response)
                 if json_str:
                     p_name, p_args, _ = parse_tool_call_payload(json_str)
                     if p_name:
@@ -2475,6 +3253,78 @@ class RLMEngineOptimized:
                             )
             except Exception:
                 pass
+
+        # 3d. Check for bracket-format or CLI-style tool calls (e.g. [LIST_DIR], [READ_FILE(path="game.js")], [EDIT_FILE: {...}])
+        # Note: If a full implementation plan with checkboxes is present, inline plan interception takes precedence.
+        has_full_plan = (
+            "# Implementation Plan" in response
+            or ("## Proposed Changes" in response and "- [ ]" in response)
+        )
+        bracket_match = (
+            None
+            if has_full_plan
+            else re.search(
+                r'(?:\[|\$)\s*([a-zA-Z0-9_]+)\s*(?::\s*(\{[\s\S]*?\})|\(([\s\S]*?)\))?\s*\]?',
+                response,
+                re.IGNORECASE,
+            )
+        )
+        if bracket_match:
+            cand_name = bracket_match.group(1).upper()
+            from core.tools.schemas import TOOL_SCHEMAS
+
+            if cand_name in TOOL_SCHEMAS or cand_name in (
+                "WRITE_FILE",
+                "EDIT_FILE",
+                "READ_FILE",
+                "SEARCH_AST",
+                "GREP",
+                "RUN_COMMAND",
+                "LIST_DIR",
+                "VERIFY",
+                "INSPECT_WEB",
+                "PLAY_AND_VERIFY_GAME",
+                "SELF_IMPROVE_GAME",
+                "GIT",
+                "SAVE_MEMORY",
+                "UPDATE_TASK_GRAPH",
+                "ASK_USER",
+                "VIEW_IMAGE",
+                "READ_SYMBOLS",
+            ):
+                thinking = _get_thinking(bracket_match.start())
+                t_args = {}
+                json_part = bracket_match.group(2)
+                args_part = bracket_match.group(3)
+
+                if json_part:
+                    t_args = _clean_and_parse_json(json_part)
+                elif args_part:
+                    if args_part.strip().startswith("{") and args_part.strip().endswith("}"):
+                        t_args = _clean_and_parse_json(args_part.strip())
+                    else:
+                        for kv in re.finditer(
+                            r'([a-zA-Z0-9_]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^,\s\)]+))',
+                            args_part,
+                        ):
+                            k = kv.group(1)
+                            v = (
+                                kv.group(2)
+                                if kv.group(2) is not None
+                                else (kv.group(3) if kv.group(3) is not None else kv.group(4))
+                            )
+                            t_args[k] = v
+                elif cand_name == "LIST_DIR":
+                    t_args = {"path": "."}
+
+                return (
+                    "tool",
+                    thinking,
+                    f"{cand_name}({json.dumps(t_args)})",
+                    [],
+                    cand_name,
+                    t_args,
+                )
 
         # 4. Check for <CODE>...</CODE>, <REPL>...</REPL>, or <PYTHON>...</PYTHON>
         code_match = re.search(
@@ -2637,6 +3487,24 @@ class RLMEngineOptimized:
             )
 
             if not is_template and not is_mid_sentence and raw_content:
+                current_mode = getattr(self, "execution_mode", "unified")
+                current_phase = getattr(self, "_current_phase", "code")
+
+                # If in Plan Mode (or Goal Mode), auto-intercept plan content before returning FINAL_ANSWER
+                if current_mode in ("plan", "goal") or current_phase == "plan":
+                    plan_candidate = raw_content if ("- [ ]" in raw_content or "Phase 1" in raw_content or "Proposed Changes" in raw_content) else response
+                    if "- [ ]" in plan_candidate or re.search(r"#{1,6}\s*(?:Phase\s*1|Proposed Changes|Implementation Plan)", plan_candidate, re.IGNORECASE):
+                        clean_plan = re.sub(r"</?FINAL_ANSWER>", "", plan_candidate).strip()
+                        thinking = _get_thinking(final_match.start())
+                        return (
+                            "tool",
+                            thinking,
+                            "WRITE_FILE(implementation_plan.md)",
+                            [("WRITE_FILE", {"path": "implementation_plan.md", "content": clean_plan})],
+                            "WRITE_FILE",
+                            {"path": "implementation_plan.md", "content": clean_plan},
+                        )
+
                 thinking = _get_thinking(final_match.start())
                 return ("final_answer", thinking, raw_content, [], None, None)
 
@@ -2667,6 +3535,18 @@ class RLMEngineOptimized:
                     re.IGNORECASE,
                 )
 
+                if not file_match:
+                    # Also match bare first-line filename comment (e.g. "// game.js", "/* src/app.js */", "# main.py")
+                    first_lines = content.splitlines()
+                    if first_lines:
+                        first_line_cleaned = first_lines[0].strip()
+                        first_line_match = re.match(
+                            r"^(?:#|//|/\*|<!--)\s*`?([a-zA-Z0-9_\-\.\/]+\.[a-zA-Z0-9]+)`?\s*(?:\*/|-->)?$",
+                            first_line_cleaned,
+                        )
+                        if first_line_match:
+                            file_match = first_line_match
+
                 file_match_pre = None
                 if not file_match:
                     # 2. Try to extract from text preceding the block
@@ -2680,7 +3560,7 @@ class RLMEngineOptimized:
                             "\n".join(pre_text.splitlines()[-6:]) if pre_text else ""
                         )
                         file_match_pre = re.search(
-                            r"(?:#{1,6}\s*`?|file|filename|filepath|path|save\s+to|write\s+to|created?\s+file|creating|output\s+to)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?",
+                            r"(?:#{1,6}\s*`?|file|filename|filepath|path|save\s+to|write\s+to|writing\s+file|created?\s+file|creating|output\s+to|here\s+is\s+(?:the\s+)?(?:file\s+)?|update\s+file|modify\s+file|edit\s+file|in\s+file|for\s+file)\s*[:=]?\s*`?([\w\.\-/]+\.\w+)`?",
                             recent_pre,
                             re.IGNORECASE,
                         )
@@ -2690,11 +3570,11 @@ class RLMEngineOptimized:
                 if file_match and current_mode != "chat":
                     # Explicit in-block annotation ALWAYS triggers unless session mode is explicitly Chat
                     target_path = (
-                        file_match.group(1).replace("*/", "").replace("-->", "").strip()
+                        file_match.group(1).replace("*/", "").replace("-->", "").strip("`'\" ")
                     )
                     # Remove only the explicit file annotation line
                     content = re.sub(
-                        r"^(?:#|//|/\*|<!--)\s*(?:file|filename|filepath|path)\s*[:=]?\s*[^\n\r]+\n?",
+                        r"^(?:#|//|/\*|<!--)\s*(?:(?:file|filename|filepath|path)\s*[:=]?\s*)?[^\n\r]+\n?",
                         "",
                         content,
                         count=1,
@@ -2703,8 +3583,40 @@ class RLMEngineOptimized:
                     intercept = True
                 elif file_match_pre and current_mode != "chat":
                     target_path = file_match_pre.group(1).strip()
-                    if not _looks_like_prose_or_outline(content):
+                    if target_path.lower().endswith(".md") or not _looks_like_prose_or_outline(content):
                         intercept = True
+                elif current_mode != "chat" and (
+                    "# Implementation Plan" in content
+                    or ("## Proposed Changes" in content and "- [ ]" in content)
+                    or 'WRITE_FILE("implementation_plan.md"' in response
+                    or "WRITE_FILE('implementation_plan.md'" in response
+                ):
+                    if "# Implementation Plan" in content or "## Proposed Changes" in content:
+                        target_path = "implementation_plan.md"
+                        intercept = True
+                elif current_mode != "chat":
+                    # Fallback: check if the active pending task targets a specific file
+                    try:
+                        from core.tools.task_helpers import get_workspace_pending_tasks
+                        pending = (
+                            get_workspace_pending_tasks(self.project_root)
+                            if getattr(self, "project_root", None)
+                            else []
+                        )
+                        if pending:
+                            next_t = pending[0]
+                            file_m = re.search(
+                                r"([a-zA-Z0-9_\-\.\/]+\.(?:html|css|js|py|ts|jsx|tsx|json|md|go|rs))",
+                                next_t,
+                            )
+                            if file_m:
+                                cand_path = file_m.group(1).strip()
+                                full_cand = os.path.join(self.project_root or "", cand_path)
+                                if not os.path.exists(full_cand) or not _looks_like_prose_or_outline(content):
+                                    target_path = cand_path
+                                    intercept = True
+                    except Exception:
+                        pass
 
                 if intercept and target_path:
                     # Safeguard: check if target file exists in workspace
@@ -2723,6 +3635,26 @@ class RLMEngineOptimized:
                     intercepted_tools.append(
                         ("WRITE_FILE", {"path": target_path, "content": content})
                     )
+
+            if not intercepted_tools and current_mode != "chat":
+                # Check for unblocked markdown plan with checkbox tasks
+                plan_match = re.search(
+                    r"(#\s+Implementation Plan[\s\S]*?)(?:```plaintext|\$\s*WRITE_FILE|\Z)",
+                    response,
+                    re.IGNORECASE,
+                )
+                if plan_match:
+                    plan_content = plan_match.group(1).strip()
+                    if "- [ ]" in plan_content or "## Proposed Changes" in plan_content:
+                        thinking = _get_thinking(plan_match.start())
+                        return (
+                            "tool",
+                            thinking,
+                            "WRITE_FILE(implementation_plan.md)",
+                            [("WRITE_FILE", {"path": "implementation_plan.md", "content": plan_content})],
+                            "WRITE_FILE",
+                            {"path": "implementation_plan.md", "content": plan_content},
+                        )
 
             if intercepted_tools:
                 first_name, first_args = intercepted_tools[0]
@@ -2778,15 +3710,17 @@ class RLMEngineOptimized:
             )
         )
 
-        has_plan_file = bool(
-            re.search(r"implementation_plan\.md", cleaned_body, re.IGNORECASE)
-        )
+        # ── Fix: Only classify as "thinking" if the response is SHORT.
+        # For 3B models, conversational text like "I will use READ_FILE to..."
+        # is normal output, not internal reasoning.  If the body is > 200 chars
+        # and doesn't start with an explicit reasoning prefix, treat it as a
+        # final answer rather than trapping it in a thinking loop.
+        is_short_response = len(cleaned_body) < 200
 
         is_planning_cot = (
             bool(reasoning_prefix_match)
-            or execution_intent
-            or plan_action_start
-            or has_plan_file
+            or (execution_intent and is_short_response)
+            or (plan_action_start and is_short_response)
         )
 
         if is_planning_cot and not has_unclosed_tool_attempt:

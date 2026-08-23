@@ -21,6 +21,9 @@ class ExecutionMode(str, Enum):
     UNIFIED = "unified"
     CHAT = "chat"
     GOAL = "goal"
+    PLAN = "plan"
+    CODE = "code"
+
 
 
 class MemoryEventType(str, Enum):
@@ -67,7 +70,54 @@ class Message:
     timestamp: datetime = field(default_factory=datetime.now)
     token_count: int = 0
     content_chunks: list[ContentChunk] = field(default_factory=list)
+    images: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
+
+    def to_dict(
+        self,
+        format: str = "openai",
+        project_root: Optional[str] = None,
+        vision_supported: bool = True,
+    ) -> dict[str, Any]:
+        """Convert Message to provider-compatible API payload dictionary."""
+        role_str = (
+            self.role.value if isinstance(self.role, MessageRole) else str(self.role)
+        )
+        if not self.images:
+            return {"role": role_str, "content": self.content}
+
+        if not vision_supported:
+            from core.utils.image_utils import format_image_text_summary
+
+            summaries = [
+                format_image_text_summary(img, project_root=project_root)
+                for img in self.images
+            ]
+            notice = "\n".join(summaries)
+            full_text = (
+                f"{self.content}\n\n{notice}".strip() if self.content else notice
+            )
+            return {"role": role_str, "content": full_text}
+
+        # Lazy import to prevent circular dependencies
+        from core.utils.image_utils import (
+            format_ollama_vision_payload,
+            format_openai_vision_content,
+        )
+
+        if format == "ollama":
+            text, b64_images = format_ollama_vision_payload(
+                self.content, self.images, project_root=project_root
+            )
+            d = {"role": role_str, "content": text}
+            if b64_images:
+                d["images"] = b64_images
+            return d
+        else:
+            parts = format_openai_vision_content(
+                self.content, self.images, project_root=project_root
+            )
+            return {"role": role_str, "content": parts}
 
 
 @dataclass
@@ -122,6 +172,7 @@ class SessionState:
     files_baseline_content: dict[str, str] = field(default_factory=dict)
     files_modified_symbols: dict[str, list[str]] = field(default_factory=dict)
     files_read: list[str] = field(default_factory=list)
+    active_images: list[str] = field(default_factory=list)
 
     # Decision & architecture log
     decisions: list[str] = field(default_factory=list)

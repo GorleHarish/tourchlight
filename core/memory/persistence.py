@@ -36,6 +36,7 @@ class SessionPersistence:
                 if isinstance(msg.role, MessageRole)
                 else str(msg.role),
                 "content": msg.content,
+                "images": getattr(msg, "images", []),
                 "timestamp": msg.timestamp.isoformat(),
                 "token_count": msg.token_count,
                 "metadata": msg.metadata,
@@ -204,6 +205,12 @@ def ensure_project_initialized(
                 "last_updated": datetime.now().isoformat(),
                 "needle_ledger": [],
                 "memory_objects": [],
+                "user_preferences": {
+                    "compression_aggressiveness": "medium",
+                    "enable_deduplication": True,
+                    "dedup_similarity_threshold": 0.85,
+                },
+                "dedup_cache": {},
             }
             with open(memory_file, "w", encoding="utf-8") as f:
                 json.dump(default_data, f, indent=2, ensure_ascii=False)
@@ -227,6 +234,13 @@ def ensure_project_initialized(
             gitignore_file.write_text(
                 content + f"{separator}.torchlight/\n", encoding="utf-8"
             )
+    except Exception:
+        pass
+
+    # 4. Ensure .agents/skills directory exists for modular agent skills
+    try:
+        skills_dir = path / ".agents" / "skills"
+        skills_dir.mkdir(parents=True, exist_ok=True)
     except Exception:
         pass
 
@@ -442,3 +456,63 @@ class ProjectMemory:
         objects = self.get_memory_objects(channel_id=channel_id)
         retriever = HybridMemoryRetriever()
         return retriever.retrieve(query, objects, channel_id=channel_id, top_k=top_k)
+
+    def load_user_preferences(self) -> dict:
+        """Load user preferences from project memory."""
+        data = self.load()
+        return data.get("user_preferences", {
+            "compression_aggressiveness": "medium",
+            "enable_deduplication": True,
+            "dedup_similarity_threshold": 0.85,
+        })
+
+    def save_user_preferences(self, preferences: dict) -> None:
+        """Save user preferences to project memory."""
+        data = self.load()
+        data["user_preferences"] = preferences
+        self.save(data)
+
+    def load_dedup_cache(self) -> dict:
+        """Load deduplication cache from project memory."""
+        data = self.load()
+        return data.get("dedup_cache", {})
+
+    def save_dedup_cache(self, cache: dict) -> None:
+        """Save deduplication cache to project memory."""
+        data = self.load()
+        data["dedup_cache"] = cache
+        self.save(data)
+
+    def export_context_profile(self, profile_path: Union[Path, str]) -> None:
+        """Export current context profile and memory config to a file."""
+        profile_path = Path(profile_path)
+        data = {
+            "exported_at": datetime.now().isoformat(),
+            "user_preferences": self.load_user_preferences(),
+            "memory_objects": [
+                {
+                    "kind": mo.kind,
+                    "summary": mo.summary,
+                    "source": mo.source,
+                    "file_paths": mo.file_paths,
+                    "timestamp": mo.timestamp.isoformat() if isinstance(mo.timestamp, datetime) else str(mo.timestamp),
+                }
+                for mo in self.get_memory_objects()[:50]
+            ],
+        }
+        with open(profile_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    def import_context_profile(self, profile_path: Union[Path, str]) -> dict:
+        """Import context profile from a file and merge into project memory."""
+        profile_path = Path(profile_path)
+        if not profile_path.exists():
+            return {}
+        try:
+            with open(profile_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("user_preferences"):
+                self.save_user_preferences(data["user_preferences"])
+            return data
+        except Exception:
+            return {}

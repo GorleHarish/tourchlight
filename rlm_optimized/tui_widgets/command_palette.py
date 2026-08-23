@@ -20,7 +20,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import ClassVar, NamedTuple, Optional
 
-from textual import on
+from textual import events, on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical
@@ -35,6 +35,8 @@ def slash_command_list() -> list[tuple[str, str, str]]:
     """(command, usage, description) triples mirrored from ``_handle_slash_command``."""
     return [
         ("/help", "/help", "Show shortcuts & command cheat sheet"),
+        ("/image", "/image <path> [prompt]", "Attach image for vision model inspection"),
+        ("/paste", "/paste", "Paste image from clipboard into chat context"),
         ("/start", "/start", "Start the engine server"),
         ("/restart", "/restart", "Restart the engine server"),
         ("/stop", "/stop", "Stop the engine server"),
@@ -44,13 +46,19 @@ def slash_command_list() -> list[tuple[str, str, str]]:
         ("/index", "/index", "Build AST knowledge graph"),
         ("/status", "/status", "Open telemetry modal"),
         ("/mode", "/mode [chat|goal]", "Switch session mode"),
+        ("/phase", "/phase [code|plan|debug|chat|auto]", "Lock profile/phase mode"),
         ("/engine", "/engine", "Open model/provider picker"),
+        ("/speculative", "/speculative [draft_model]", "Configure speculative draft model (⚡ acceleration)"),
+        ("/draft", "/draft [model]", "Switch speculative draft model"),
         ("/select", "/select", "Copy selection"),
         ("/copy", "/copy", "Copy entire chat history"),
         ("/copylast", "/copylast", "Copy last response"),
-        ("/compress", "/compress", "Compact context"),
-        ("/clear", "/clear", "Clear chat"),
-        ("/reset", "/reset", "Reset Python sandbox"),
+        ("/compact", "/compact", "Manually compact context memory"),
+        ("/compress", "/compress", "Manually compact context memory"),
+        ("/wipe", "/wipe", "Completely wipe session context & start fresh"),
+        ("/new", "/new", "Wipe session context & start new session"),
+        ("/clear", "/clear", "Clear chat & wipe session context"),
+        ("/reset", "/reset", "Reset session context and Python sandbox"),
     ]
 
 
@@ -256,8 +264,47 @@ class PromptTextArea(TextArea):
         if self._suggestion_callback:
             self._suggestion_callback([])
 
+    def _get_project_root(self) -> str:
+        if self.app and hasattr(self.app, "project_root"):
+            return str(self.app.project_root)
+        if self.app and hasattr(self.app, "engine") and hasattr(self.app.engine, "project_root"):
+            return str(self.app.engine.project_root)
+        return "."
+
+    def on_paste(self, event: events.Paste) -> None:
+        text = (event.text or "").strip()
+        clean = text.strip("'\"")
+        if clean.startswith("file://"):
+            clean = clean[7:]
+        from core.utils.image_utils import is_image_file, save_clipboard_image
+        if clean and is_image_file(clean):
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.ContextFileAttached(self, clean))
+            return
+
+        # Check if system clipboard has an image
+        root = self._get_project_root()
+        saved_p = save_clipboard_image(root)
+        if saved_p:
+            event.stop()
+            event.prevent_default()
+            self.post_message(self.ContextFileAttached(self, saved_p))
+            return
+
     async def _on_key(self, event) -> None:
         key = event.key
+
+        if key in ("ctrl+v", "cmd+v", "ctrl+shift+v"):
+            from core.utils.image_utils import save_clipboard_image
+
+            root = self._get_project_root()
+            saved_p = save_clipboard_image(root)
+            if saved_p:
+                event.stop()
+                event.prevent_default()
+                self.post_message(self.ContextFileAttached(self, saved_p))
+                return
 
         if key in ("ctrl+s", "alt+enter"):
             event.stop()
@@ -471,6 +518,7 @@ class AttachContextModal(ModalScreen[Optional[str]]):
     BINDINGS: ClassVar[list[tuple[str, str, str]]] = [
         ("escape", "cancel", "Cancel"),
         ("enter", "select", "Attach"),
+        ("ctrl+v", "paste_image", "Paste Image"),
         ("up", "cursor_up", "Up"),
         ("down", "cursor_down", "Down"),
         ("home", "scroll_home", "Top"),
@@ -484,6 +532,7 @@ class AttachContextModal(ModalScreen[Optional[str]]):
         project_root: str | Path,
     ) -> None:
         super().__init__()
+        self._project_root = str(project_root)
         files = iter_project_files(project_root)
         self._all_items = [(f, "", "file", f) for f in files]
         self._filtered = self._all_items
@@ -576,6 +625,15 @@ class AttachContextModal(ModalScreen[Optional[str]]):
         idx = min(self._index, len(self._filtered) - 1)
         _, _, _, value = self._filtered[idx]
         self.dismiss(value)
+
+    def action_paste_image(self) -> None:
+        from core.utils.image_utils import save_clipboard_image
+
+        saved_p = save_clipboard_image(self._project_root)
+        if saved_p:
+            self.dismiss(saved_p)
+        elif self.app:
+            self.app.notify("No image found on clipboard.", severity="warning", timeout=2)
 
     def action_cancel(self) -> None:
         self.dismiss(None)

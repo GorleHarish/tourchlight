@@ -126,6 +126,46 @@ async def test_verification_gate_rejects_premature_final_answer():
 
 
 @pytest.mark.anyio
+async def test_verification_gate_rejects_resume_work_without_tools():
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plan_path = os.path.join(tmpdir, "implementation_plan.md")
+        with open(plan_path, "w", encoding="utf-8") as f:
+            f.write("- [ ] Pending resume task\n")
+
+        mock_client = MagicMock()
+        mock_client.stream_chat_with_history.return_value = [
+            "<FINAL_ANSWER>I am resuming the work.</FINAL_ANSWER>"
+        ]
+        engine = RLMEngineOptimized(client=mock_client, project_root=tmpdir)
+
+        res = await engine.solve_async("resume the previous work")
+
+        assert engine._final_answer_rejections >= 1
+        rejected_steps = [s for s in res.steps if s.action == "rejected_final_answer"]
+        assert len(rejected_steps) >= 1
+
+
+@pytest.mark.anyio
+async def test_verification_gate_rejects_zero_tool_in_goal_mode():
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        mock_client = MagicMock()
+        mock_client.stream_chat_with_history.return_value = [
+            "<FINAL_ANSWER>Goal complete without tools.</FINAL_ANSWER>"
+        ]
+        engine = RLMEngineOptimized(client=mock_client, project_root=tmpdir, execution_mode="goal")
+
+        res = await engine.solve_async("continue project work")
+
+        assert engine._final_answer_rejections >= 1
+        rejected_steps = [s for s in res.steps if s.action == "rejected_final_answer"]
+        assert len(rejected_steps) >= 1
+
+
+@pytest.mark.anyio
 async def test_verification_gate_allows_final_answer_when_all_done():
     from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
 
@@ -620,3 +660,38 @@ def test_auto_mark_no_false_positive_substring():
         content = open(plan_path, "r", encoding="utf-8").read()
         assert "- [x] Add auth to main.py" in content
         assert "- [ ] Document auth flow in README-style notes" in content
+
+
+def test_auto_mark_task_completed_by_command():
+    from core.tools.task_helpers import auto_mark_task_completed_by_command
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        plan_path = os.path.join(tmpdir, "implementation_plan.md")
+        with open(plan_path, "w", encoding="utf-8") as f:
+            f.write(
+                "# Plan\n"
+                "- [ ] Install dependencies with npm install\n"
+                "- [ ] Run test suite with pytest\n"
+                "- [ ] Write documentation\n"
+            )
+
+        # 1. Successful npm install command
+        res = auto_mark_task_completed_by_command(tmpdir, "npm install --silent", return_code=0)
+        assert res is True
+        content = open(plan_path, "r", encoding="utf-8").read()
+        assert "- [x] Install dependencies with npm install" in content
+        assert "- [ ] Run test suite with pytest" in content
+
+        # 2. Failed command should not mark task completed
+        res_fail = auto_mark_task_completed_by_command(tmpdir, "pytest -v", return_code=1)
+        assert res_fail is False
+        content = open(plan_path, "r", encoding="utf-8").read()
+        assert "- [ ] Run test suite with pytest" in content
+
+        # 3. Successful pytest command
+        res_pass = auto_mark_task_completed_by_command(tmpdir, "pytest -v", return_code=0)
+        assert res_pass is True
+        content = open(plan_path, "r", encoding="utf-8").read()
+        assert "- [x] Run test suite with pytest" in content
+        assert "- [ ] Write documentation" in content
+

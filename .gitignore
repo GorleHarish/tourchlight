@@ -1,32 +1,87 @@
+# OS files
 .DS_Store
+*.swp
+*.swo
+*~
+
+# Python bytecode and caches
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.cache/
+**/.cache/
 
 # Local env files
 .env
+.env.*
+!.env.example
 
-# Python virtualenvs
+# Python virtualenvs & libraries
 venv/
 .venv/
+venv*/
+*venv*/
+*_venv/
+env/
+.env/
+env*/
+*env*/
+ENV/
 **/mlx-venv/
 **/*-venv/
+**/venv/
+**/.venv/
+pip-wheel-metadata/
+
+# Node / JS dependencies & caches
+node_modules/
+**/node_modules/
+.npm/
+.yarn/
+.turbo/
 
 # Python build artifacts
 *.egg-info/
+.eggs/
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+.installed.cfg
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
 
-# MLX model downloads
+# IDE / Agent workspaces & worktrees
+.gemini/
+.idea/
+.vscode/
+.kilo/node_modules/
+.kilo/worktrees/
+.opencode/node_modules/
+
+# MLX & Model downloads / caches
 rlm_optimized/mlx-models/
-
-# Graphify runtime cache (auto-rebuilt, not source)
-graphify-out/cache/
-
-# Model files & directories
+**/mlx-models/
 models/
 *.gguf
 *.gguf.*
 *.bin
 *.safetensors
+*.pt
+*.pth
+*.onnx
+hf_cache/
 
 # Prebuilt TurboQuant fork binaries (re-downloadable, not source)
 llama-cpp-turboquant/
@@ -35,5 +90,7 @@ llama-cpp-turboquant/
 .torchlight/
 .torchlight_history.log
 test_kuzu_db*
-.ruff_cache/
+*.log
 
+# Graphify runtime cache (auto-rebuilt, not source)
+graphify-out/cache/

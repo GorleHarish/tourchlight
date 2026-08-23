@@ -27,8 +27,8 @@ from textual.widgets import Static
 STATE_BADGES = {
     "IDLE": "[bold green]IDLE[/]",
     "THINKING": "[bold magenta]THINKING...[/]",
-    "CRITIQUING": "[bold yellow]🔍 CRITIQUING...[/]",
-    "REFINED": "[bold green]✨ REFINED[/]",
+    "CRITIQUING": "[bold yellow]CRITIQUING...[/]",
+    "REFINED": "[bold green]REFINED[/]",
     "TOOL": "[bold cyan]EXECUTING TOOL[/]",
     "TOOL_DONE": "[bold green]TOOL DONE[/]",
     "TOOL_DENIED": "[bold red]TOOL DENIED[/]",
@@ -65,29 +65,21 @@ def build_status_segments(
     server_online: bool = False,
     is_running: bool = False,
     task_progress: str = "",
+    test_status: str = "",
+    dedup_stats: dict | None = None,
+    context_profile: str = "",
 ) -> dict[str, str]:
-    """Build the per-segment Rich markup for the status bar.
-
-    Segments:
-      ``sb-state``  — phase badge + server status indicator
-      ``sb-model``  — model name (muted; hidden when offline)
-      ``sb-gauge``  — proportional block bar + % (hidden when offline)
-      ``sb-task``   — live task progress pill
-      ``sb-tps``    — token speed (hidden when not generating)
-      ``sb-tokens`` — token count (hidden when offline)
-      ``sb-errors`` — error counter (always shown when > 0)
-      ``sb-git``    — git branch
-    """
+    """Build the per-segment Rich markup for the status bar."""
     badge = STATE_BADGES.get(state, f"[bold cyan]{escape(state)}[/]")
 
-    # Server status — use muted gray for offline (NOT red)
+    # Server status — clean text
     is_cloud = port <= 0
     if is_cloud:
         srv = "[bold green]CLOUD[/]"
     elif server_online:
-        srv = f"[bold green]●[/] [dim]port {port}[/]"
+        srv = f"[bold green]ONLINE[/] [dim]port {port}[/]"
     else:
-        srv = "[dim]○ Offline[/]"
+        srv = "[dim]OFFLINE[/]"
 
     # TPS — only show when actively generating; hide entirely when idle
     if tps > 0 and is_running:
@@ -95,11 +87,22 @@ def build_status_segments(
     elif is_running:
         tps_str = "[dim]calculating…[/]"
     else:
-        tps_str = ""  # hidden when idle — not "-- tps"
+        tps_str = ""  # hidden when idle
 
     ctx = f"{int(tokens):,}/{int(ctx_max):,}" if ctx_max > 0 else ""
-    err_str = f"✗ [bold red]{errors}[/]" if errors else ""
+    err_str = f"[bold red]ERRORS: {errors}[/]" if errors else ""
     git_str = f"[magenta]{escape(branch)}[/]" if branch else ""
+    
+    # Deduplication stats
+    dedup_str = ""
+    if dedup_stats and dedup_stats.get("tokens_saved", 0) > 0:
+        saved = dedup_stats["tokens_saved"]
+        dedup_str = f"[bold green]SAVED {saved:,} TOKENS[/]"
+    
+    # Context profile
+    profile_str = ""
+    if context_profile:
+        profile_str = f"[dim]{context_profile}[/]"
 
     # Model segment — only when connected
     model_str = f"[bold]{escape(model)}[/]" if (server_online or is_cloud) and model else ""
@@ -111,17 +114,21 @@ def build_status_segments(
         else ""
     )
 
-    task_str = f"[bold yellow]🎯 {escape(task_progress)}[/]" if task_progress else ""
+    task_str = f"[bold yellow]TASK: {escape(task_progress)}[/]" if task_progress else ""
+    test_str = test_status if test_status else ""
 
     return {
         "sb-state": f"{badge} [dim]│[/] {srv}",
         "sb-model": model_str,
         "sb-gauge": gauge_str,
         "sb-task": task_str,
+        "sb-tests": test_str,
         "sb-tps": tps_str,
         "sb-tokens": ctx,
         "sb-errors": err_str,
         "sb-git": git_str,
+        "sb-dedup": dedup_str,
+        "sb-profile": profile_str,
     }
 
 
@@ -152,6 +159,14 @@ class StatusBar(Horizontal):
         color: $foreground-muted;
     }
 
+    StatusBar > Static.sb-dedup {
+        color: $success;
+    }
+
+    StatusBar > Static.sb-profile {
+        color: $foreground-muted;
+    }
+
     StatusBar > Static.sb-spacer {
         width: 1fr;
         height: 1;
@@ -166,9 +181,12 @@ class StatusBar(Horizontal):
         yield Static("", id="sb-model", classes="sb-segment sb-model")
         yield Static("", id="sb-gauge", classes="sb-segment")
         yield Static("", id="sb-task", classes="sb-segment")
+        yield Static("", id="sb-tests", classes="sb-segment sb-tests")
         yield Static("", id="sb-tps", classes="sb-segment")
         yield Static("", id="sb-tokens", classes="sb-segment")
         yield Static("", id="sb-errors", classes="sb-segment")
+        yield Static("", id="sb-dedup", classes="sb-segment sb-dedup")
+        yield Static("", id="sb-profile", classes="sb-segment sb-profile")
         yield Static("", id="sb-spacer", classes="sb-spacer")
         yield Static("", id="sb-git", classes="sb-segment")
 
@@ -178,7 +196,12 @@ class StatusBar(Horizontal):
         Empty strings cause the segment to be hidden (width: auto → 0).
         """
         segments = build_status_segments(**kwargs)
+        if not hasattr(self, "_last_segments"):
+            self._last_segments = {}
         for seg_id, markup in segments.items():
+            if self._last_segments.get(seg_id) == markup:
+                continue
+            self._last_segments[seg_id] = markup
             try:
                 widget = self.query_one(f"#{seg_id}", Static)
                 widget.update(markup)

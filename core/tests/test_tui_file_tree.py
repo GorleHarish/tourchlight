@@ -130,8 +130,49 @@ async def test_git_tree_decorates_file_labels():
             await pilot.pause()
 
 
+@pytest.mark.anyio
+async def test_git_tree_right_click_posts_message():
+    try:
+        from textual.app import App
+        from textual import events
+        from rlm_optimized.tui_widgets.file_tree import GitFileTree
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        p = Path(tmp)
+        test_file = p / "test.py"
+        test_file.write_text("print('hello')")
+
+        captured = []
+
+        class TreeApp(App):
+            def compose(self):
+                yield GitFileTree(tmp, id="tree")
+
+            def on_git_file_tree_file_right_clicked(self, event: GitFileTree.FileRightClicked):
+                captured.append(event.path)
+
+        app = TreeApp()
+        async with app.run_test() as pilot:
+            tree = app.query_one("#tree", GitFileTree)
+            tree.reload()
+            await pilot.pause()
+            await pilot.pause()
+
+            # Simulate right click on the first child line
+            style_mock = type("Style", (), {"meta": {"line": 1}})()
+            click_event = events.Click(tree, x=0, y=0, delta_x=0, delta_y=0, button=3, shift=False, meta=False, ctrl=False, style=style_mock)
+            await tree._on_click(click_event)
+            await pilot.pause()
+
+            assert len(captured) == 1
+            assert captured[0].name == "test.py"
+
+
 class _FakeProc:
     def __init__(self, returncode, stdout, stderr=""):
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
+

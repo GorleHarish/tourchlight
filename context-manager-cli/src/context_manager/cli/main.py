@@ -1,6 +1,6 @@
 import asyncio
-import hashlib
 import json
+import os
 import re
 import time
 from pathlib import Path
@@ -16,6 +16,7 @@ try:
     from core.api.base import InferenceParams, PRESETS
     from core.api.lmstudio import LMStudioClient
     from core.memory.manager import TieredMemory, MemoryConfig
+    from core.memory.models import ExecutionMode
     from core.memory.token_counter import get_token_counter
     from core.compression.compactor import VerbatimCompactor, CompressionConfig
     from core.compression.summarizer import ConversationSummarizer
@@ -32,6 +33,7 @@ except ImportError:
     # Fallback to local modules if core/ is not installed
     from ..api.lmstudio import LMStudioClient, InferenceParams, PRESETS
     from ..memory.manager import TieredMemory, MemoryConfig
+    from ..memory.models import ExecutionMode
     from ..memory.token_counter import get_token_counter
     from ..compression.compactor import VerbatimCompactor, CompressionConfig
     from ..compression.summarizer import ConversationSummarizer
@@ -161,6 +163,7 @@ class StreamingChatSession:
         stream: bool = True,
         project_dir: Optional[str] = None,
         mode: str = "chat",
+        repeat_penalty: Optional[float] = None,
     ):
         if max_tokens <= 0:
             raise ValueError("max_tokens must be positive")
@@ -189,10 +192,16 @@ class StreamingChatSession:
             llm_client=self.client,  # enables LLM-powered state extraction at compression time
         )
         if hasattr(self.memory.state, "execution_mode"):
-            from core.memory.models import ExecutionMode
-
             self.memory.state.execution_mode = (
-                ExecutionMode.GOAL if self.mode == "goal" else ExecutionMode.CHAT
+                ExecutionMode.CODE
+                if self.mode == "code"
+                else ExecutionMode.GOAL
+                if self.mode == "goal"
+                else ExecutionMode.PLAN
+                if self.mode == "plan"
+                else ExecutionMode.UNIFIED
+                if self.mode == "unified"
+                else ExecutionMode.CHAT
             )
 
         self.compactor = VerbatimCompactor(CompressionConfig())
@@ -223,15 +232,13 @@ class StreamingChatSession:
         # _params_locked = True means the user pinned a preset via /params <name>;
         # auto phase-detection is disabled and _params won't change mid-session.
         self._params: InferenceParams = InferenceParams.for_chat()
+        if repeat_penalty is not None:
+            self._params.repeat_penalty = repeat_penalty
+            self._params.repetition_penalty = repeat_penalty
         self._params_locked: bool = False
         self._current_phase: str = "chat"
         self._phase_lock: Optional[str] = None
         self._phase_lock_turns: int = 0
-        self._recent_tool_hashes: list[str] = []
-
-    def _hash_tool_call(self, name: str, params: dict) -> str:
-        payload = f"{name}:{sorted(params.items()) if isinstance(params, dict) else str(params)}"
-        return hashlib.md5(payload.encode()).hexdigest()[:12]
 
     def _event_lock_phase(self, event: str, data: str = "") -> None:
         """Lock phase based on concrete execution events."""
@@ -370,11 +377,25 @@ class StreamingChatSession:
     _PLAN_SIGNALS = (
         "<plan>",
         "<thought>",
+        "plan",
+        "planning",
+        "brainstorm",
+        "brainstorming",
+        "implementation plan",
+        "steps to implement",
+        "generate plan",
+        "make a plan",
+        "create a plan",
+        "plan mode",
         "let me plan",
         "step by step",
         "here is my plan",
         "i will:",
         "steps:",
+        "roadmap",
+        "break down tasks",
+        "break down the tasks",
+        "decompose tasks",
     )
     _CODE_SIGNALS = (
         "write_file",
@@ -430,11 +451,26 @@ class StreamingChatSession:
         Infer the current agent phase from user input and the last model response.
         Returns one of: "plan" | "code" | "troubleshoot" | "chat".
         """
-        if getattr(self, "mode", None) == "goal":
-            import os
-            plan_file = os.path.join(self.project_path, "implementation_plan.md")
-            if not os.path.exists(plan_file):
+        if getattr(self, "mode", None) == "chat":
+            return "chat"
+        if getattr(self, "mode", None) == "plan":
+            return "plan"
+        if getattr(self, "mode", None) == "code":
+            return "code"
+        mem_state = getattr(getattr(self, "memory", None), "state", None)
+        if mem_state and getattr(mem_state, "execution_mode", None) is not None:
+            em_val = mem_state.execution_mode
+            em_str = em_val.value if hasattr(em_val, "value") else str(em_val)
+            if em_str.lower() == "chat":
+                return "chat"
+            if em_str.lower() == "plan":
                 return "plan"
+            if em_str.lower() == "code":
+                return "code"
+
+
+        if getattr(self, "mode", None) == "goal":
+            return "goal"
 
         if self._phase_lock:
             if self._phase_lock_turns > 0:
@@ -442,15 +478,28 @@ class StreamingChatSession:
                 return self._phase_lock
             self._phase_lock = None
 
+        inp_lower = user_input.lower()
         combined = (user_input + " " + last_response).lower()
         if any(s in combined for s in self._TROUBLESHOOT_SIGNALS):
             return "troubleshoot"
-        if any(s in combined for s in self._PLAN_SIGNALS):
+        if any(s in inp_lower for s in self._PLAN_SIGNALS):
             return "plan"
+        if any(
+            s in combined
+            for s in (
+                "resume",
+                "continue",
+                "proceed",
+                "carry on",
+                "pick up",
+                "finish task",
+            )
+        ):
+            return "code"
         if any(s in combined for s in self._CODE_SIGNALS):
             return "code"
         if getattr(self, "mode", None) == "goal":
-            return "code"
+            return "goal"
         return "chat"
 
     def _update_params(self, user_input: str, last_response: str = "") -> None:
@@ -488,6 +537,41 @@ class StreamingChatSession:
         if getattr(self, "trajectory_lock", None):
             is_dup, dup_count, hint = self.trajectory_lock.is_duplicate(name, params, is_read_only=is_read_only)
             if is_dup:
+                t_path = (
+                    str(
+                        params.get("path")
+                        or params.get("file")
+                        or params.get("target")
+                        or params.get("filename")
+                        or ""
+                    )
+                    if isinstance(params, dict)
+                    else ""
+                )
+                if t_path and (name or "").upper() in ("READ_FILE", "READ", "EDIT_FILE", "EDIT", "WRITE_FILE", "WRITE"):
+                    from core.tools.implementations import tool_read_file_impl
+                    proj_root = getattr(self, "project_root", os.getcwd())
+                    file_preview = tool_read_file_impl({"path": t_path}, proj_root)
+                    if file_preview and (file_preview.startswith("File not found") or not os.path.exists(os.path.join(proj_root, t_path))):
+                        hint = (
+                            f"⛔ [FILE NOT FOUND]: '{t_path}' does not exist on disk.\n"
+                            f"Next required action: Create this file now by emitting WRITE_FILE:\n"
+                            f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{t_path}", "content": "// Initial code implementation\\n"}}}}</tool_call>'
+                        )
+                    elif file_preview and not file_preview.startswith("Error"):
+                        lines_list = file_preview.splitlines()
+                        tot_lines = len(lines_list)
+                        if tot_lines > 80:
+                            preview_body = "\n".join(lines_list[:80]) + f"\n... [{tot_lines - 80} more lines in file]"
+                        else:
+                            preview_body = file_preview
+                        hint = (
+                            f"⛔ [DUPLICATE {name.upper()} BLOCKED]: Repeated call on '{t_path}' halted.\n"
+                            f"Here is the CURRENT FILE CONTENT of '{t_path}' directly from disk (lines 1–{tot_lines}):\n\n"
+                            f"```\n{preview_body}\n```\n\n"
+                            f"Next required action: Inspect the actual lines above and submit your edit using exact old_text:\n"
+                            f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{t_path}", "old_text": "...", "new_text": "..."}}}}</tool_call>'
+                        )
                 self._params.temperature = min(0.9, self._params.temperature + 0.3)
                 out = hint or f"STOP: You just repeated the exact same '{name}' call. Try a DIFFERENT tool or approach."
                 if hasattr(self.memory, "state") and self.memory.state and hasattr(self.memory.state, "tried_and_failed"):
@@ -500,16 +584,30 @@ class StreamingChatSession:
             else:
                 self.trajectory_lock.register(name, params)
         else:
-            call_hash = self._hash_tool_call(name, params)
-            if call_hash in self._recent_tool_hashes:
-                self._params.temperature = min(0.9, self._params.temperature + 0.3)
-                out = f"STOP: You just repeated the exact same '{name}' call. Try a DIFFERENT tool or approach."
+            # No trajectory lock available - skip deduplication
+            pass
+
+        # ── Code Mode Guard: Check for implementation plan before modifying code ──
+        if (self.mode == "code" or getattr(self, "_current_phase", "code") == "code") and name.upper() in ("WRITE_FILE", "EDIT_FILE"):
+            fpath = params.get("path") or params.get("file") or ""
+            base_p = os.path.basename(str(fpath)).lower()
+            norm_p = os.path.normpath(str(fpath))
+            is_plan_target = (
+                base_p in ("implementation_plan.md", "plan.md")
+                or norm_p == "implementation_plan.md"
+                or str(fpath).lower().endswith("implementation_plan.md")
+                or norm_p.startswith(".torchlight")
+            )
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            if not os.path.exists(plan_file) and not is_plan_target:
+                out = (
+                    "❌ [CODE MODE GUARD — MISSING IMPLEMENTATION PLAN] 'implementation_plan.md' does not exist in the workspace. "
+                    "In Code Mode, you must check for an implementation plan first before modifying code files. "
+                    "Please conclude with <FINAL_ANSWER> asking the user to switch to Plan Mode (`/mode plan` or `context plan`) to formulate and approve the plan first."
+                )
                 self.memory.add_tool_result(out, tool_name=name)
                 tracker.finish(act, ok=False)
                 return out
-            self._recent_tool_hashes.append(call_hash)
-            if len(self._recent_tool_hashes) > 3:
-                self._recent_tool_hashes.pop(0)
 
         if tier == AUTO:
             try:
@@ -533,7 +631,21 @@ class StreamingChatSession:
 
                 tracker.finish(act, ok=ok)
                 self._notify_file_touched(name, out)
-                self.memory.add_tool_result(out, tool_name=name)
+                tool_images = None
+                if ok and name.upper() == "VIEW_IMAGE":
+                    img_p = (
+                        params.get("path")
+                        or params.get("file")
+                        or params.get("image")
+                    )
+                    if img_p:
+                        tool_images = [img_p]
+                elif ok and name.upper() == "INSPECT_WEB":
+                    m_shot = re.search(r"\*\*Screenshot Saved:\*\*\s*`([^`]+)`", out)
+                    if m_shot:
+                        tool_images = [m_shot.group(1)]
+
+                self.memory.add_tool_result(out, tool_name=name, images=tool_images)
                 if getattr(self, "trajectory_lock", None):
                     self.trajectory_lock.record_output(name, params, out)
 
@@ -549,15 +661,17 @@ class StreamingChatSession:
                     self._event_lock_phase("file_edit", name)
                     fpath = params.get("path") or params.get("file")
                     if fpath:
+                        if "implementation_plan" in str(fpath).lower():
+                            self._plan_updated_this_turn = True
                         added = 0
                         deleted = 0
-                        diff_m = _re.search(r"\(\+(\d+),\s*[-–](\d+)\)", result.output or "")
+                        diff_m = re.search(r"\(\+(\d+),\s*[-–](\d+)\)", result.output or "")
                         if diff_m:
                             added = int(diff_m.group(1))
                             deleted = int(diff_m.group(2))
                         new_content = None
-                        full_p = _os.path.join(self.project_root, fpath) if not _os.path.isabs(fpath) else fpath
-                        if _os.path.exists(full_p):
+                        full_p = os.path.join(self.project_root, fpath) if not os.path.isabs(fpath) else fpath
+                        if os.path.exists(full_p):
                             try:
                                 with open(full_p, "r", encoding="utf-8") as _f:
                                     new_content = _f.read()
@@ -571,6 +685,33 @@ class StreamingChatSession:
                                 new_content=new_content,
                             )
                         self.memory.refresh_pin(fpath, self.project_root)
+                        try:
+                            from core.tools.task_helpers import auto_mark_task_completed_by_file
+
+                            has_failing = bool(
+                                self._feedback_loop
+                                and getattr(self._feedback_loop, "has_failing_tests", False)
+                            )
+                            auto_mark_task_completed_by_file(
+                                self.project_root,
+                                str(fpath),
+                                verified=not has_failing,
+                            )
+                        except Exception:
+                            pass
+                    elif name.upper() in ("RUN_COMMAND", "BASH", "SHELL"):
+                        cmd = params.get("command") or params.get("cmd")
+                        if cmd:
+                            try:
+                                from core.tools.task_helpers import auto_mark_task_completed_by_command
+
+                                auto_mark_task_completed_by_command(
+                                    self.project_root,
+                                    str(cmd),
+                                    return_code=0 if ok else 1,
+                                )
+                            except Exception:
+                                pass
 
                 # Execution feedback: auto-run tests or web inspector after code changes
                 test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
@@ -616,7 +757,36 @@ class StreamingChatSession:
                     elif ok and name.upper() in ("EDIT_FILE", "WRITE_FILE"):
                         fpath = params.get("path") or params.get("file")
                         if fpath:
+                            if "implementation_plan" in str(fpath).lower():
+                                self._plan_updated_this_turn = True
                             self.memory.refresh_pin(fpath, self.project_root)
+                            try:
+                                from core.tools.task_helpers import auto_mark_task_completed_by_file
+
+                                has_failing = bool(
+                                    self._feedback_loop
+                                    and getattr(self._feedback_loop, "has_failing_tests", False)
+                                )
+                                auto_mark_task_completed_by_file(
+                                    self.project_root,
+                                    str(fpath),
+                                    verified=not has_failing,
+                                )
+                            except Exception:
+                                pass
+                    elif ok and name.upper() in ("RUN_COMMAND", "BASH", "SHELL"):
+                        cmd = params.get("command") or params.get("cmd")
+                        if cmd:
+                            try:
+                                from core.tools.task_helpers import auto_mark_task_completed_by_command
+
+                                auto_mark_task_completed_by_command(
+                                    self.project_root,
+                                    str(cmd),
+                                    return_code=0,
+                                )
+                            except Exception:
+                                pass
 
                     # Execution feedback: auto-run tests after code changes
                     test_result = self._feedback_loop.on_tool_executed(name, params, result.output)
@@ -742,7 +912,6 @@ class StreamingChatSession:
         """Async implementation of harness step function."""
         # Generate response for the task
         self.memory.add_user_message(task)
-        self._recent_tool_hashes.clear()
 
         # Detect phase
         self._update_params(task)
@@ -810,8 +979,12 @@ class StreamingChatSession:
                         continue
 
                     dashboard.print_user_input(user_input)
-                    self.memory.add_user_message(user_input)
-                    self._recent_tool_hashes.clear()
+                    from core.utils.image_utils import extract_image_paths_from_text
+
+                    img_paths = extract_image_paths_from_text(user_input)
+                    self.memory.add_user_message(
+                        user_input, images=img_paths if img_paths else None
+                    )
                     if getattr(self, "trajectory_lock", None):
                         self.trajectory_lock.reset()
 
@@ -1011,31 +1184,134 @@ class StreamingChatSession:
         return messages
 
     async def _generate_response(self, user_query: str = "") -> str:
+        self._plan_updated_this_turn = False
         messages = self._build_messages(user_query)
         res = await self.client.chat(messages, params=self._params)
         response = self._repair_stop_tokens(res)
 
-        # Verification gate: check for pending tasks in Goal Mode before allowing FINAL_ANSWER
-        if self.mode == "goal" and "<FINAL_ANSWER>" in response:
+        # Verification gate: check for pending tasks or missing plan in Goal / Plan Mode before allowing FINAL_ANSWER
+        gate_rejections = 0
+        max_gate_rejections = 10
+        while (
+            self.mode == "plan"
+            and "<FINAL_ANSWER>" in response
+            and gate_rejections < max_gate_rejections
+        ):
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            plan_exists = os.path.exists(plan_file)
+            plan_in_response = (
+                ("WRITE_FILE" in response or "EDIT_FILE" in response)
+                and "implementation_plan.md" in response
+            )
+            plan_updated = getattr(self, "_plan_updated_this_turn", False) or plan_in_response
+
+            if not plan_updated:
+                if "- [ ]" in response or any(kw in response.lower() for kw in ("proposed changes", "implementation plan", "phase 1")):
+                    try:
+                        clean_save = re.sub(r"</?FINAL_ANSWER>", "", response).strip()
+                        with open(plan_file, "w", encoding="utf-8") as pf:
+                            pf.write(clean_save)
+                        self._plan_updated_this_turn = True
+                        plan_updated = True
+                        break
+                    except Exception:
+                        pass
+
+            if plan_updated:
+                break
+            gate_rejections += 1
+            rejection = (
+                f"❌ [VERIFICATION GATE REJECTION #{gate_rejections}]\n"
+                "You are in Plan Mode, but 'implementation_plan.md' has not been written or updated during this turn.\n"
+                "You MUST first inspect the workspace (using SEARCH_AST, LIST_DIR, READ_FILE) and save 'implementation_plan.md' with brainstormed steps and actionable checkbox tasks (`- [ ]`) via WRITE_FILE before yielding <FINAL_ANSWER>."
+            )
+            self.memory.add_user_message(rejection)
+            messages = self._build_messages("")
+            res = await self.client.chat(messages, params=self._params)
+            response = self._repair_stop_tokens(res)
+
+        while (
+            self.mode == "goal"
+            and "<FINAL_ANSWER>" in response
+            and gate_rejections < max_gate_rejections
+        ):
             from core.tools.task_helpers import get_workspace_pending_tasks
+
             pending_tasks = get_workspace_pending_tasks(str(self.project_path))
-            if pending_tasks and self._current_phase in ("code", "troubleshoot"):
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            plan_exists = os.path.exists(plan_file)
+
+            if not pending_tasks and plan_exists:
+                break
+
+            gate_rejections += 1
+            if not plan_exists and not pending_tasks:
+                rejection = (
+                    f"❌ [VERIFICATION GATE REJECTION #{gate_rejections}]\n"
+                    "You are in Goal Mode, but 'implementation_plan.md' has not been created yet and no tasks are tracked.\n"
+                    "You MUST first inspect the workspace (using SEARCH_AST, LIST_DIR, READ_FILE) and create 'implementation_plan.md' with actionable checkbox tasks (`- [ ]`) via WRITE_FILE before yielding <FINAL_ANSWER>."
+                )
+            else:
                 task_descs = [f"- {t}" for t in pending_tasks[:3]]
                 rejection = (
-                    "❌ [VERIFICATION GATE REJECTION]\n"
+                    f"❌ [VERIFICATION GATE REJECTION #{gate_rejections}]\n"
                     "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
                     + "\n".join(task_descs)
-                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                    + f"\n\nTask '{pending_tasks[0]}' is still PENDING. You MUST execute tool calls (EDIT_FILE, WRITE_FILE, RUN_COMMAND, etc.) to complete and verify this task. Do NOT return <FINAL_ANSWER> until ALL tasks are verified and completed."
                 )
-                # Add rejection as user message and regenerate
-                self.memory.add_user_message(rejection)
-                messages = self._build_messages("")  # Rebuild with rejection
-                res = await self.client.chat(messages, params=self._params)
-                response = self._repair_stop_tokens(res)
+            # Add rejection as user message and regenerate
+            self.memory.add_user_message(rejection)
+            messages = self._build_messages("")  # Rebuild with rejection
+            res = await self.client.chat(messages, params=self._params)
+            response = self._repair_stop_tokens(res)
+
+        # ── Code Mode Gate: block FINAL_ANSWER when tasks are still pending ──
+        if (
+            self.mode == "code"
+            and "<FINAL_ANSWER>" in response
+            and gate_rejections < max_gate_rejections
+        ):
+            from core.tools.task_helpers import get_workspace_pending_tasks
+            pending_tasks = get_workspace_pending_tasks(str(self.project_path))
+            if pending_tasks:
+                # Extract the content between FINAL_ANSWER tags — if empty, always reject
+                fa_content = re.search(r"<FINAL_ANSWER>(.*?)</FINAL_ANSWER>", response, re.DOTALL)
+                fa_text = fa_content.group(1).strip() if fa_content else ""
+                if not fa_text or len(fa_text) < 20:
+                    task_descs = [f"- {t}" for t in pending_tasks[:3]]
+                    rejection = (
+                        f"❌ [CODE MODE GATE — PREMATURE FINAL ANSWER]\n"
+                        "You returned an empty or trivial <FINAL_ANSWER> but the following tasks are still PENDING:\n"
+                        + "\n".join(task_descs)
+                        + f"\n\nDO NOT output <FINAL_ANSWER> yet. Pick the next pending task ('{pending_tasks[0]}') and immediately emit a tool call to implement it."
+                    )
+                    self.memory.add_user_message(rejection)
+                    messages = self._build_messages("")
+                    res = await self.client.chat(messages, params=self._params)
+                    response = self._repair_stop_tokens(res)
+
+        # ── Plan Mode completion: inject Code Mode switch banner ──
+        if self.mode == "plan" and "<FINAL_ANSWER>" in response:
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            if os.path.exists(plan_file):
+                switch_banner = (
+                    "\n\n---\n"
+                    "✅ **Implementation plan saved.** "
+                    "Switch to Code Mode to begin implementation: "
+                    "type `/mode code` (CLI) or press **Ctrl+G → Code** (TUI)."
+                )
+                # Append banner just before closing </FINAL_ANSWER> if present
+                response = re.sub(
+                    r"</FINAL_ANSWER>",
+                    switch_banner + "</FINAL_ANSWER>",
+                    response,
+                    count=1,
+                )
 
         return response
 
     async def _generate_streaming_response(self, user_query: str = "") -> str:
+        self._plan_updated_this_turn = False
         messages = self._build_messages(user_query)
 
         self._response_tokens = 0
@@ -1053,43 +1329,176 @@ class StreamingChatSession:
                     response_preview="".join(buffer[-50:]),
                     tokens_per_sec=tps,
                 )
-                live.update(stats)
+                live.update(stats, refresh=False)
+            live.update(stats, refresh=True)
 
         full_text = "".join(buffer)
         response = self._repair_stop_tokens(full_text)
 
-        # Verification gate: check for pending tasks in Goal Mode before allowing FINAL_ANSWER
-        if self.mode == "goal" and "<FINAL_ANSWER>" in response:
+        # Verification gate: check for pending tasks or missing plan in Goal / Plan Mode before allowing FINAL_ANSWER
+        gate_rejections = 0
+        max_gate_rejections = 10
+        while (
+            self.mode == "plan"
+            and "<FINAL_ANSWER>" in response
+            and gate_rejections < max_gate_rejections
+        ):
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            plan_exists = os.path.exists(plan_file)
+            plan_in_response = (
+                ("WRITE_FILE" in response or "EDIT_FILE" in response)
+                and "implementation_plan.md" in response
+            )
+            plan_updated = getattr(self, "_plan_updated_this_turn", False) or plan_in_response
+
+            if not plan_updated:
+                if "- [ ]" in response or any(kw in response.lower() for kw in ("proposed changes", "implementation plan", "phase 1")):
+                    try:
+                        clean_save = re.sub(r"</?FINAL_ANSWER>", "", response).strip()
+                        with open(plan_file, "w", encoding="utf-8") as pf:
+                            pf.write(clean_save)
+                        self._plan_updated_this_turn = True
+                        plan_updated = True
+                        break
+                    except Exception:
+                        pass
+
+            if plan_updated:
+                break
+            gate_rejections += 1
+            rejection = (
+                f"❌ [VERIFICATION GATE REJECTION #{gate_rejections}]\n"
+                "You are in Plan Mode, but 'implementation_plan.md' has not been written or updated during this turn.\n"
+                "You MUST first inspect the workspace (using SEARCH_AST, LIST_DIR, READ_FILE) and save 'implementation_plan.md' with brainstormed steps and actionable checkbox tasks (`- [ ]`) via WRITE_FILE before yielding <FINAL_ANSWER>."
+            )
+            self.memory.add_user_message(rejection)
+            messages = self._build_messages("")
+            buffer = []
+            self._response_tokens = 0
+            self._start_time = time.time()
+            stats = self._create_stats_panel()
+            with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
+                async for chunk in self.client.chat_stream(messages, params=self._params):
+                    buffer.append(chunk)
+                    self._response_tokens += max(1, len(chunk) // 3)
+                    elapsed = time.time() - self._start_time
+                    tps = self._response_tokens / elapsed if elapsed > 0 else 0
+                    stats = self._create_stats_panel(
+                        response_preview="".join(buffer[-50:]),
+                        tokens_per_sec=tps,
+                    )
+                    live.update(stats, refresh=False)
+                live.update(stats, refresh=True)
+            full_text = "".join(buffer)
+            response = self._repair_stop_tokens(full_text)
+
+        while (
+            self.mode == "goal"
+            and "<FINAL_ANSWER>" in response
+            and gate_rejections < max_gate_rejections
+        ):
             from core.tools.task_helpers import get_workspace_pending_tasks
+
             pending_tasks = get_workspace_pending_tasks(str(self.project_path))
-            if pending_tasks and self._current_phase in ("code", "troubleshoot"):
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            plan_exists = os.path.exists(plan_file)
+
+            if not pending_tasks and plan_exists:
+                break
+
+            gate_rejections += 1
+            if not plan_exists and not pending_tasks:
+                rejection = (
+                    f"❌ [VERIFICATION GATE REJECTION #{gate_rejections}]\n"
+                    "You are in Goal Mode, but 'implementation_plan.md' has not been created yet and no tasks are tracked.\n"
+                    "You MUST first inspect the workspace (using SEARCH_AST, LIST_DIR, READ_FILE) and create 'implementation_plan.md' with actionable checkbox tasks (`- [ ]`) via WRITE_FILE before yielding <FINAL_ANSWER>."
+                )
+            else:
                 task_descs = [f"- {t}" for t in pending_tasks[:3]]
                 rejection = (
-                    "❌ [VERIFICATION GATE REJECTION]\n"
+                    f"❌ [VERIFICATION GATE REJECTION #{gate_rejections}]\n"
                     "The following tasks in the implementation plan are still PENDING or IN_PROGRESS:\n"
                     + "\n".join(task_descs)
-                    + "\n\nWriting implementation_plan.md is only the planning step. Continue executing tool calls to complete remaining tasks before yielding <FINAL_ANSWER>."
+                    + f"\n\nTask '{pending_tasks[0]}' is still PENDING. You MUST execute tool calls (EDIT_FILE, WRITE_FILE, RUN_COMMAND, etc.) to complete and verify this task. Do NOT return <FINAL_ANSWER> until ALL tasks are verified and completed."
                 )
-                # Add rejection as user message and regenerate
-                self.memory.add_user_message(rejection)
-                messages = self._build_messages("")  # Rebuild with rejection
-                buffer = []
-                self._response_tokens = 0
-                self._start_time = time.time()
-                stats = self._create_stats_panel()
-                with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
-                    async for chunk in self.client.chat_stream(messages, params=self._params):
-                        buffer.append(chunk)
-                        self._response_tokens += max(1, len(chunk) // 3)
-                        elapsed = time.time() - self._start_time
-                        tps = self._response_tokens / elapsed if elapsed > 0 else 0
-                        stats = self._create_stats_panel(
-                            response_preview="".join(buffer[-50:]),
-                            tokens_per_sec=tps,
-                        )
-                        live.update(stats)
-                full_text = "".join(buffer)
-                response = self._repair_stop_tokens(full_text)
+            # Add rejection as user message and regenerate
+            self.memory.add_user_message(rejection)
+            messages = self._build_messages("")  # Rebuild with rejection
+            buffer = []
+            self._response_tokens = 0
+            self._start_time = time.time()
+            stats = self._create_stats_panel()
+            with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
+                async for chunk in self.client.chat_stream(messages, params=self._params):
+                    buffer.append(chunk)
+                    self._response_tokens += max(1, len(chunk) // 3)
+                    elapsed = time.time() - self._start_time
+                    tps = self._response_tokens / elapsed if elapsed > 0 else 0
+                    stats = self._create_stats_panel(
+                        response_preview="".join(buffer[-50:]),
+                        tokens_per_sec=tps,
+                    )
+                    live.update(stats, refresh=False)
+                live.update(stats, refresh=True)
+            full_text = "".join(buffer)
+            response = self._repair_stop_tokens(full_text)
+
+        # ── Code Mode Gate: block empty/premature FINAL_ANSWER when tasks pending ──
+        if (
+            self.mode == "code"
+            and "<FINAL_ANSWER>" in response
+            and gate_rejections < max_gate_rejections
+        ):
+            from core.tools.task_helpers import get_workspace_pending_tasks
+            pending_tasks = get_workspace_pending_tasks(str(self.project_path))
+            if pending_tasks:
+                fa_content = re.search(r"<FINAL_ANSWER>(.*?)</FINAL_ANSWER>", response, re.DOTALL)
+                fa_text = fa_content.group(1).strip() if fa_content else ""
+                if not fa_text or len(fa_text) < 20:
+                    task_descs = [f"- {t}" for t in pending_tasks[:3]]
+                    rejection = (
+                        f"❌ [CODE MODE GATE — PREMATURE FINAL ANSWER]\n"
+                        "You returned an empty or trivial <FINAL_ANSWER> but the following tasks are still PENDING:\n"
+                        + "\n".join(task_descs)
+                        + f"\n\nDO NOT output <FINAL_ANSWER> yet. Pick the next pending task ('{pending_tasks[0]}') and immediately emit a tool call to implement it."
+                    )
+                    self.memory.add_user_message(rejection)
+                    messages = self._build_messages("")
+                    buffer = []
+                    self._response_tokens = 0
+                    self._start_time = time.time()
+                    stats = self._create_stats_panel()
+                    with Live(stats, console=console, refresh_per_second=10, transient=True) as live:
+                        async for chunk in self.client.chat_stream(messages, params=self._params):
+                            buffer.append(chunk)
+                            self._response_tokens += max(1, len(chunk) // 3)
+                            elapsed = time.time() - self._start_time
+                            tps = self._response_tokens / elapsed if elapsed > 0 else 0
+                            stats = self._create_stats_panel(
+                                response_preview="".join(buffer[-50:]),
+                                tokens_per_sec=tps,
+                            )
+                            live.update(stats, refresh=False)
+                        live.update(stats, refresh=True)
+                    full_text = "".join(buffer)
+                    response = self._repair_stop_tokens(full_text)
+
+        # ── Plan Mode completion: inject Code Mode switch banner ──
+        if self.mode == "plan" and "<FINAL_ANSWER>" in response:
+            plan_file = os.path.join(self.project_path, "implementation_plan.md")
+            if os.path.exists(plan_file):
+                switch_banner = (
+                    "\n\n---\n"
+                    "✅ **Implementation plan saved.** "
+                    "Switch to Code Mode to begin implementation: "
+                    "type `/mode code` (CLI) or press **Ctrl+G → Code** (TUI)."
+                )
+                response = re.sub(
+                    r"</FINAL_ANSWER>",
+                    switch_banner + "</FINAL_ANSWER>",
+                    response,
+                    count=1,
+                )
 
         return response
 
@@ -1123,7 +1532,107 @@ class StreamingChatSession:
 
             content += f"\n[dim]Streaming:[/dim] {escape(preview)}"
 
+        # Per-section context breakdown
+        breakdown = self._context_section_breakdown(
+            ctx_tokens=ctx_tokens,
+            response_tokens=self._response_tokens,
+        )
+        if breakdown:
+            content += f"\n\n[dim]─ Context Breakdown ─────────────────[/dim]\n{breakdown}"
+
         return Panel(content, title="[bold]Live Stats[/bold]", border_style="blue")
+
+    def _context_section_breakdown(self, ctx_tokens: int = 0, response_tokens: int = 0) -> str:
+        """Return a compact Rich markup string showing per-section token estimates.
+
+        Sections: System Prompt, Scratchpad/L0, Flashlight Beam, Chat History, Pins, Streaming.
+        Results are cached for 2.0s to avoid redundant formatting during streaming.
+        """
+        ctx_max = self.max_tokens
+        if ctx_max <= 0:
+            return ""
+
+        # ── 2.0s TTL cache — only recompute static sections once per 2 seconds ──
+        now = time.monotonic()
+        cached_static = getattr(self, "_ctx_breakdown_cache", None)
+        cached_ts = getattr(self, "_ctx_breakdown_ts", 0.0)
+        SPARK_W = 10
+        if cached_static is not None and (now - cached_ts) < 2.0:
+            # Still in cache window: only update streaming row (cheap, no I/O)
+            if response_tokens > 0:
+                pct = min(100.0, (response_tokens / ctx_max) * 100)
+                filled = min(SPARK_W, round((pct / 100.0) * SPARK_W))
+                spark = "\u25aa" * filled + "\u00b7" * (SPARK_W - filled)
+                stream_row = (
+                    f"[dim]{'Streaming':<11}[/dim]"
+                    f"[yellow]{spark}[/yellow] "
+                    f"[bold]{response_tokens:>5,}[/bold] "
+                    f"[dim]{pct:>4.1f}%[/dim]"
+                )
+                return cached_static + "\n" + stream_row
+            return cached_static
+
+        # ── Full recompute (at most every 2s, O(1) in memory) ──
+        # 1. System prompt estimate per phase
+        _SYSTEM_SIZES = {"chat": 900, "plan": 1100, "code": 1050, "goal": 1000, "troubleshoot": 950}
+        system_tok = _SYSTEM_SIZES.get(self._current_phase, 1000) + 300  # +300 tool syntax
+
+        # 2. Scratchpad/L0 — fast estimate from memory state
+        scratchpad_tok = getattr(self.memory, "_estimate_l0_tokens", lambda: 150)()
+        if scratchpad_tok == 0:
+            scratchpad_tok = 50
+
+        # 3. Flashlight beam — heuristic
+        beam_tok = 600 if ctx_max >= 8000 else 250
+
+        # 4. Chat history — committed message tokens in memory
+        chat_tok = getattr(self.memory, "_cached_msg_tokens", 0)
+
+        # 5. Pinned files
+        pinned_tok = getattr(self.memory, "_cached_pinned_tokens", 0)
+
+        total_static = system_tok + scratchpad_tok + beam_tok + chat_tok + pinned_tok
+        if total_static <= 0:
+            return ""
+
+        def _row(label: str, tok: int, color: str) -> str:
+            pct = min(100.0, (tok / ctx_max) * 100)
+            filled = min(SPARK_W, round((pct / 100.0) * SPARK_W))
+            spark = "\u25aa" * filled + "\u00b7" * (SPARK_W - filled)
+            return (
+                f"[dim]{label:<11}[/dim]"
+                f"[{color}]{spark}[/{color}] "
+                f"[bold]{tok:>5,}[/bold] "
+                f"[dim]{pct:>4.1f}%[/dim]"
+            )
+
+        row_list = [
+            _row("System",     system_tok,     "blue"),
+            _row("Scratchpad",  scratchpad_tok, "cyan"),
+            _row("Beam",        beam_tok,       "bright_cyan"),
+            _row("Chat",        chat_tok,       "green"),
+        ]
+        if pinned_tok > 0:
+            row_list.append(_row("Pins", pinned_tok, "magenta"))
+
+        static_rows = "\n".join(row_list)
+
+        # Cache the static rows (no streaming row) for 2s
+        self._ctx_breakdown_cache = static_rows  # type: ignore[attr-defined]
+        self._ctx_breakdown_ts = now              # type: ignore[attr-defined]
+
+        if response_tokens > 0:
+            pct = min(100.0, (response_tokens / ctx_max) * 100)
+            filled = min(SPARK_W, round((pct / 100.0) * SPARK_W))
+            spark = "\u25aa" * filled + "\u00b7" * (SPARK_W - filled)
+            stream_row = (
+                f"[dim]{'Streaming':<11}[/dim]"
+                f"[yellow]{spark}[/yellow] "
+                f"[bold]{response_tokens:>5,}[/bold] "
+                f"[dim]{pct:>4.1f}%[/dim]"
+            )
+            return static_rows + "\n" + stream_row
+        return static_rows
 
     async def _compress_context(self, force: bool = True):
         tokens_before = self.memory.total_tokens
@@ -1164,15 +1673,65 @@ class StreamingChatSession:
             dashboard.print_success(
                 f"Context manually compressed: {tb:,} → {ta:,} tokens ({tf:,} tokens freed)"
             )
-        elif command == "/clear":
+        elif command in ("/clear", "/reset", "/new", "/wipe"):
             self.memory.clear()
-            dashboard.print_success("Context cleared")
+            dashboard.print_success("Session context wiped — all memory cleared")
         elif command == "/tokens":
             dashboard.print_info(
                 f"Current tokens: {self.memory.total_tokens:,} / {self.max_tokens:,}"
             )
         elif command in ("/quit", "/exit"):
             raise KeyboardInterrupt
+        elif command in ("/paste", "/paste-image"):
+            from core.utils.image_utils import save_clipboard_image
+            saved_p = save_clipboard_image(self.project_root)
+            if not saved_p:
+                dashboard.print_warning("No image found on clipboard.")
+            else:
+                rel_p = os.path.relpath(saved_p, self.project_root)
+                arg = f"{rel_p} {arg}".strip()
+                command = "/image"
+        if command == "/image":
+            if not arg.strip():
+                dashboard.print_warning("Usage: /image <path/to/image.png> [optional question/instruction]")
+            else:
+                arg_parts = arg.strip().split(maxsplit=1)
+                img_path = arg_parts[0]
+                img_prompt = arg_parts[1] if len(arg_parts) > 1 else f"Inspect and analyze image: {img_path}"
+                from core.utils.image_utils import is_image_file, get_image_metadata
+                full_p = os.path.join(self.project_root, img_path) if not os.path.isabs(img_path) else img_path
+                if not os.path.exists(full_p):
+                    dashboard.print_error(f"Image not found: {img_path}")
+                else:
+                    meta = get_image_metadata(full_p, project_root=self.project_root)
+                    dashboard.print_info(f"[IMG] Attached image: {img_path} ({meta.get('width')}x{meta.get('height')} {meta.get('format')}, {meta.get('size_kb')} KB)")
+                    self.memory.add_user_message(img_prompt, images=[img_path])
+                    if getattr(self, "trajectory_lock", None):
+                        self.trajectory_lock.reset()
+                    self._update_params(img_prompt)
+                    tracker = dashboard.action_tracker()
+                    with tracker:
+                        if self.memory.should_compress():
+                            act = tracker.start("compress", "Compressing context...")
+                            await self._compress_context()
+                            tracker.finish(act)
+                        think_act = tracker.start("thinking", "Inspecting image...")
+                        try:
+                            if self.stream_enabled:
+                                response = await self._generate_streaming_response(img_prompt)
+                            else:
+                                response = await self._generate_response(img_prompt)
+                        except RuntimeError as e:
+                            tracker.finish(think_act, ok=False)
+                            dashboard.print_error(str(e))
+                            return
+                        tracker.finish(think_act)
+                        response = await self._verify_and_refine_if_needed(
+                            response, user_task=img_prompt, phase_name=self._current_phase
+                        )
+                        self.memory.add_assistant_message(response)
+                    dashboard.print_response(sanitize_assistant_text(response))
+                    dashboard.show_snapshot(self.memory.get_snapshot())
         elif command == "/save":
             from ..memory.persistence import SessionPersistence
 
@@ -1180,7 +1739,7 @@ class StreamingChatSession:
             name = arg.strip() if arg else None
             path = persistence.save_session(self.memory, session_name=name)
             dashboard.print_success(f"Session saved: {path}")
-        elif command == "/params":
+        elif command in ("/params", "/phase", "/profile"):
             await self._handle_params_command(arg.strip())
         elif command == "/reindex":
             self._rebuild_index()
@@ -1190,20 +1749,33 @@ class StreamingChatSession:
             self._flash_preview(query)
         elif command == "/mode":
             mode_arg = arg.strip().lower()
-            if mode_arg in ("chat", "goal", "unified"):
+            if mode_arg in ("code", "chat", "goal", "plan", "unified"):
                 self.mode = mode_arg
                 if hasattr(self.memory.state, "execution_mode"):
                     from core.memory.models import ExecutionMode
 
-                    if mode_arg == "goal":
+                    if mode_arg == "code":
+                        new_mode = ExecutionMode.CODE
+                    elif mode_arg == "goal":
                         new_mode = ExecutionMode.GOAL
+                    elif mode_arg == "plan":
+                        new_mode = ExecutionMode.PLAN
                     elif mode_arg == "unified":
                         new_mode = ExecutionMode.UNIFIED
                     else:
                         new_mode = ExecutionMode.CHAT
                     self.memory.state.execution_mode = new_mode
 
-                if mode_arg == "goal":
+                if mode_arg == "code":
+                    if not self._params_locked:
+                        self._current_phase = "code"
+                        self._params = PRESETS["code"]
+                        self._phase_lock = "code"
+                        self._phase_lock_turns = 2
+                    dashboard.print_success(
+                        "Switched to Code Mode (Surgical coding & task execution)"
+                    )
+                elif mode_arg == "goal":
                     # Goal mode is a coding workflow — align with the TUI engine
                     # (goal → code phase) so the full tool whitelist stays available.
                     # Explicit /params locks are left untouched.
@@ -1230,6 +1802,15 @@ class StreamingChatSession:
                             )
                     else:
                         dashboard.print_success("Switched to Goal Mode (harness unavailable)")
+                elif mode_arg == "plan":
+                    if not self._params_locked:
+                        self._current_phase = "plan"
+                        self._params = PRESETS["plan"]
+                        self._phase_lock = "plan"
+                        self._phase_lock_turns = 2
+                    dashboard.print_success(
+                        "Switched to Plan Mode (Brainstorm & maintain implementation_plan.md)"
+                    )
                 elif mode_arg == "unified":
                     dashboard.print_success("Switched to Unified Mode (Dynamic Phase Auto-Detection)")
                 else:
@@ -1238,14 +1819,21 @@ class StreamingChatSession:
                     )
             else:
                 current_label = (
-                    "🎯 Goal Mode (Task tracking in .torchlight/tasks.md)"
+                    "💻 Code Mode (Surgical coding & task execution)"
+                    if self.mode == "code"
+                    else "🎯 Goal Mode (Task tracking in .torchlight/tasks.md)"
                     if self.mode == "goal"
+                    else "📋 Plan Mode (Brainstorm & maintain implementation_plan.md)"
+                    if self.mode == "plan"
+                    else "⚡ Unified Mode (Dynamic Phase Auto-Detection)"
+                    if self.mode == "unified"
                     else "💬 Chat Mode (Lightweight Q&A)"
                 )
                 console.print(f"[bold cyan]Current Mode:[/bold cyan] {current_label}")
                 console.print(
-                    "[dim]Usage: /mode chat  (Lightweight Q&A) | /mode goal  (Task tracking & Harness)[/dim]"
+                    "[dim]Usage: /mode code  (Code & Tasks) | /mode plan  (Brainstorm & Plan) | /mode chat  (Lightweight Q&A) | /mode goal  (Harness) | /mode unified (Dynamic)[/dim]"
                 )
+
 
         elif command in ("/tasks", "/goal", "/subagents"):
             if AutonomousHarness:
@@ -1297,6 +1885,9 @@ class StreamingChatSession:
             dashboard.print_success("Auto phase-detection re-enabled.")
             return
 
+        if arg == "debug":
+            arg = "troubleshoot"
+
         # Named preset
         if arg in PRESETS:
             self._params = PRESETS[arg]
@@ -1305,16 +1896,26 @@ class StreamingChatSession:
             dashboard.print_success(f"Locked to preset '{arg}': {self._params.describe()}")
             return
 
-        # Key=value overrides  e.g.  /params temp=0.15 top_k=25 seed=42
-        kv_pairs = _re.findall(r"(\w+)=([\d.]+)", arg)
+        # Key=value overrides  e.g.  /params temp=0.15 top_k=25 rep=1.05 repetition_penalty=1.08
+        kv_pairs = _re.findall(r"([\w_]+)=([\d.]+)", arg)
         if kv_pairs:
             for key, val in kv_pairs:
                 # Normalise aliases
-                key = {"temp": "temperature", "rep": "repeat_penalty"}.get(key, key)
+                key = {
+                    "temp": "temperature",
+                    "rep": "repeat_penalty",
+                    "repeat": "repeat_penalty",
+                    "repetition": "repeat_penalty",
+                    "repetition_penalty": "repeat_penalty",
+                    "rep_pen": "repeat_penalty",
+                }.get(key.lower(), key)
                 if hasattr(self._params, key):
                     field_type = type(getattr(self._params, key))
                     try:
                         setattr(self._params, key, field_type(val))
+                        if key in ("repeat_penalty", "repetition_penalty"):
+                            self._params.repeat_penalty = float(val)
+                            self._params.repetition_penalty = float(val)
                     except (ValueError, TypeError) as e:
                         dashboard.print_warning(f"Bad value for {key}: {e}")
                 else:
@@ -1325,7 +1926,7 @@ class StreamingChatSession:
 
         dashboard.print_warning(
             f"Unknown /params arg '{arg}'. "
-            "Use: auto | code | plan | troubleshoot | chat | key=value"
+            "Use: auto | code | plan | troubleshoot | chat | key=value (e.g. temp=0.2 rep=1.05)"
         )
 
     def _print_help(self):
@@ -1343,9 +1944,11 @@ class StreamingChatSession:
   /help        — this help
   /status      — context statistics
   /tasks       — show sub-agent goal & task progress telemetry
+  /image <p>   — attach image file for visual analysis (Gemma 3 / Vision LLMs)
+  /paste       — paste image from clipboard into chat context
   /stream      — toggle streaming
   /compress, /compact — compress context manually now
-  /clear       — wipe all context
+  /clear, /new, /wipe — wipe all context and start fresh
   /tokens      — show token usage
   /save [name] — save session
   /quit        — exit
@@ -1365,7 +1968,7 @@ class StreamingChatSession:
   /files       — list indexed files
 
 [bold]Approval tiers:[/bold]
-  AUTO    — runs immediately (READ_FILE, WEB_*, DOC_*, SAVE_MEMORY, safe shell)
+  AUTO    — runs immediately (READ_FILE, VIEW_IMAGE, WEB_*, DOC_*, SAVE_MEMORY, safe shell)
   CONFIRM — shows preview, one keypress (WRITE_FILE, pip/npm install, scripts)
   REVIEW  — destructive warning, default=No (rm, git push, git commit, sudo)
 """
@@ -1376,6 +1979,9 @@ class StreamingChatSession:
 def chat(
     url: str = typer.Option("http://localhost:1234/v1", "--url", "-u", help="LM Studio API URL"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name"),
+    image: Optional[str] = typer.Option(
+        None, "--image", "-i", help="Initial image file path to inspect (PNG, JPG, WEBP, etc.)"
+    ),
     max_tokens: int = typer.Option(
         4096,
         "--max-tokens",
@@ -1383,6 +1989,13 @@ def chat(
         help="Context window size. Match your model's actual n_ctx in LM Studio (default: 4096).",
         min=100,
         max=200000,
+    ),
+    repeat_penalty: Optional[float] = typer.Option(
+        None,
+        "--repeat-penalty",
+        "--repetition-penalty",
+        "--rep",
+        help="Repetition penalty for generation (e.g. 1.05). Prevents repeating text or code loops.",
     ),
     no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming"),
     project: Optional[str] = typer.Option(
@@ -1392,7 +2005,7 @@ def chat(
         "chat",
         "--mode",
         "-mode",
-        help="Execution mode: 'chat' (lightweight Q&A) or 'goal' (task tracking & harness)",
+        help="Execution mode: 'chat' (lightweight Q&A), 'plan' (brainstorm & plan), or 'goal' (task tracking & harness)",
     ),
 ):
     """Start an interactive chat session with context management and flashlight."""
@@ -1404,6 +2017,10 @@ def chat(
     if m_str == "goal":
         console.print(
             "[bold green]🎯 Mode: Goal Mode[/bold green] [dim](Autonomous task tracking in .torchlight/tasks.md)[/dim]"
+        )
+    elif m_str == "plan":
+        console.print(
+            "[bold cyan]📋 Mode: Plan Mode[/bold cyan] [dim](Brainstorm architecture & write/update implementation_plan.md)[/dim]"
         )
     else:
         console.print(
@@ -1423,6 +2040,41 @@ def chat(
         stream=not no_stream,
         project_dir=project,
         mode=m_str,
+        repeat_penalty=repeat_penalty,
+    )
+    asyncio.run(session.start())
+
+
+@app.command()
+def plan(
+    title: Optional[str] = typer.Argument(None, help="Target feature or task description to plan"),
+    url: str = typer.Option("http://localhost:1234/v1", "--url", "-u", help="LM Studio API URL"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name"),
+    max_tokens: int = typer.Option(4096, "--max-tokens", "-t", help="Context window size"),
+    repeat_penalty: Optional[float] = typer.Option(
+        None,
+        "--repeat-penalty",
+        "--repetition-penalty",
+        "--rep",
+        help="Repetition penalty for generation (e.g. 1.05).",
+    ),
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Project directory"),
+):
+    """Start a planning session to brainstorm and write/update implementation_plan.md."""
+    if title:
+        console.print(f"[bold cyan]📋 Starting Plan Mode:[/bold cyan] {title}")
+    else:
+        console.print(
+            "[bold cyan]📋 Starting Plan Mode[/bold cyan] [dim](Brainstorm architecture & write/update implementation_plan.md)[/dim]"
+        )
+    session = StreamingChatSession(
+        base_url=url,
+        model=model,
+        max_tokens=max_tokens,
+        stream=True,
+        project_dir=project,
+        mode="plan",
+        repeat_penalty=repeat_penalty,
     )
     asyncio.run(session.start())
 
@@ -1433,6 +2085,13 @@ def goal(
     url: str = typer.Option("http://localhost:1234/v1", "--url", "-u", help="LM Studio API URL"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Model name"),
     max_tokens: int = typer.Option(4096, "--max-tokens", "-t", help="Context window size"),
+    repeat_penalty: Optional[float] = typer.Option(
+        None,
+        "--repeat-penalty",
+        "--repetition-penalty",
+        "--rep",
+        help="Repetition penalty for generation (e.g. 1.05).",
+    ),
     project: Optional[str] = typer.Option(None, "--project", "-p", help="Project directory"),
 ):
     """Start an autonomous goal execution session driven by .torchlight task tracking."""
@@ -1444,12 +2103,14 @@ def goal(
         stream=True,
         project_dir=project,
         mode="goal",
+        repeat_penalty=repeat_penalty,
     )
     if AutonomousHarness:
         harness = AutonomousHarness(project_root=session.project_path, memory=session.memory)
         harness.ensure_goal_spec_initialized(title=title, description=title)
         console.print("[dim]✓ Goal spec initialized in .torchlight/goal_spec.json & tasks.md[/dim]")
     asyncio.run(session.start())
+
 
 
 @app.command()

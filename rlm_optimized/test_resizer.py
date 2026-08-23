@@ -65,7 +65,7 @@ async def _drag_resizer(app, pilot, selector, delta_x):
     await pilot.pause()
     app.post_message(
         events.MouseMove(
-            widget=app.screen,
+            widget=resizer,
             x=x0 + delta_x,
             y=y0 + 1,
             delta_x=delta_x,
@@ -184,3 +184,33 @@ async def _test_sidebar_toggle_bindings():
 
 def test_sidebar_toggle_bindings():
     asyncio.run(_test_sidebar_toggle_bindings())
+
+
+async def _test_editor_resizer_drag_and_clicks():
+    async for app, pilot in _start_app():
+        editor_resizer = app.query_one("#resizer-editor")
+        assert editor_resizer is not None
+        assert editor_resizer.display is False
+
+        # Open a tab
+        test_file = os.path.join(app.engine.project_root, "demo.py")
+        with open(test_file, "w") as f:
+            f.write("print('hello')\n")
+        app.open_file_tab(test_file)
+        await pilot.pause()
+        assert editor_resizer.display is True
+
+        # Test expand / shrink clicks
+        app.editor_pane_width = 50
+        await _click_resizer(pilot, "#resizer-editor", 1)
+        assert app.editor_pane_width == 54
+        await _click_resizer(pilot, "#resizer-editor", 3)
+        assert app.editor_pane_width == 50
+
+        # Test drag
+        await _drag_resizer(app, pilot, "#resizer-editor", 10)
+        assert app.editor_pane_width == 60
+
+
+def test_editor_resizer_drag_and_clicks():
+    asyncio.run(_test_editor_resizer_drag_and_clicks())

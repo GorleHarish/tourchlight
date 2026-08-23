@@ -321,3 +321,167 @@ async def test_torchlight_app_headless_run_has_editor_pane():
         assert tab_buttons is not None
         content_area = app.query_one("#editor-content-area")
         assert content_area is not None
+
+
+@pytest.mark.anyio
+async def test_editor_view_renders_syntax_with_line_numbers():
+    try:
+        import asyncio
+        from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+        from rlm_optimized.tui_app import TorchlightApp
+        from rich.syntax import Syntax
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    engine = MagicMock(spec=RLMEngineOptimized)
+    engine.project_root = tempfile.gettempdir()
+    engine._total_llm_calls = 0
+    engine.max_depth = 10
+    app = TorchlightApp(
+        engine=engine,
+        model_name="qwen2.5-coder-7b-instruct",
+        provider_name="llama-cpp",
+    )
+
+    test_file = os.path.join(tempfile.gettempdir(), "test_line_numbers_view.js")
+    with open(test_file, "w", encoding="utf-8") as f:
+        f.write("const a = 1;\nconst b = 2;\n")
+
+    try:
+        async with app.run_test() as pilot:
+            app.open_file_tab(test_file)
+            await asyncio.sleep(0.05)
+            editor_view = app.query_one("#active-editor-view")
+            assert editor_view is not None
+            renderable = editor_view.render()._renderable
+            assert isinstance(renderable, Syntax)
+            assert renderable.line_numbers is True
+    finally:
+        if os.path.exists(test_file):
+            os.unlink(test_file)
+
+
+@pytest.mark.anyio
+async def test_open_file_tab_does_not_open_modal():
+    try:
+        import asyncio
+        from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+        from rlm_optimized.tui_app import TorchlightApp, FileActionModal
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    engine = MagicMock(spec=RLMEngineOptimized)
+    engine.project_root = tempfile.gettempdir()
+    engine._total_llm_calls = 0
+    engine.max_depth = 10
+    app = TorchlightApp(
+        engine=engine,
+        model_name="qwen2.5-coder-7b-instruct",
+        provider_name="llama-cpp",
+    )
+
+    test_file = os.path.join(tempfile.gettempdir(), "test_regular_click.py")
+    with open(test_file, "w", encoding="utf-8") as f:
+        f.write("x = 100\n")
+
+    try:
+        async with app.run_test() as pilot:
+            app.open_file_tab(test_file)
+            await asyncio.sleep(0.05)
+            # Ensure no modal screen is active on regular open
+            assert not isinstance(app.screen, FileActionModal)
+            assert app._active_tab_path == test_file
+    finally:
+        if os.path.exists(test_file):
+            os.unlink(test_file)
+
+
+@pytest.mark.anyio
+async def test_show_file_actions_modal_styling():
+    try:
+        import asyncio
+        from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+        from rlm_optimized.tui_app import TorchlightApp, FileActionModal
+        from textual.widgets import Button
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    engine = MagicMock(spec=RLMEngineOptimized)
+    engine.project_root = tempfile.gettempdir()
+    engine._total_llm_calls = 0
+    engine.max_depth = 10
+    app = TorchlightApp(
+        engine=engine,
+        model_name="qwen2.5-coder-7b-instruct",
+        provider_name="llama-cpp",
+    )
+
+    test_file = os.path.join(tempfile.gettempdir(), "test_actions_click.py")
+    with open(test_file, "w", encoding="utf-8") as f:
+        f.write("x = 200\n")
+
+    try:
+        async with app.run_test() as pilot:
+            app.show_file_actions(test_file)
+            await asyncio.sleep(0.05)
+            assert isinstance(app.screen, FileActionModal)
+            buttons = app.screen.query(Button)
+            # Verify 4 flat buttons
+            assert len(buttons) == 4
+            for btn in buttons:
+                assert btn.variant == "default"
+    finally:
+        if os.path.exists(test_file):
+            os.unlink(test_file)
+
+
+@pytest.mark.anyio
+async def test_editor_pane_resizer_and_scrollbars():
+    try:
+        import asyncio
+        from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+        from rlm_optimized.tui_app import TorchlightApp, PaneResizer
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    engine = MagicMock(spec=RLMEngineOptimized)
+    engine.project_root = tempfile.gettempdir()
+    engine._total_llm_calls = 0
+    engine.max_depth = 10
+    app = TorchlightApp(
+        engine=engine,
+        model_name="qwen2.5-coder-7b-instruct",
+        provider_name="llama-cpp",
+    )
+
+    test_file = os.path.join(tempfile.gettempdir(), "test_editor_resizer.py")
+    with open(test_file, "w", encoding="utf-8") as f:
+        f.write("a = " + "1" * 200 + "\n" * 100)
+
+    try:
+        async with app.run_test() as pilot:
+            resizer = app.query_one("#resizer-editor", PaneResizer)
+            assert resizer is not None
+            # Initially no tabs open -> hidden
+            assert resizer.display is False
+
+            app.open_file_tab(test_file)
+            await asyncio.sleep(0.05)
+            assert resizer.display is True
+
+            # Test expanding and shrinking editor pane
+            app.action_expand_editor_pane()
+            assert app.editor_pane_width == 54
+            app.action_shrink_editor_pane()
+            assert app.editor_pane_width == 50
+
+            # Test scrollable content area
+            content_area = app.query_one("#editor-content-area")
+            assert content_area is not None
+            assert content_area.styles.overflow_x == "auto" or content_area.styles.overflow_x == "scroll"
+            assert content_area.styles.overflow_y == "auto" or content_area.styles.overflow_y == "scroll"
+            assert content_area.styles.scrollbar_size_vertical == 1
+            assert content_area.styles.scrollbar_size_horizontal == 1
+    finally:
+        if os.path.exists(test_file):
+            os.unlink(test_file)

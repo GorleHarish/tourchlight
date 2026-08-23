@@ -1,0 +1,194 @@
+Created At: 2026-08-20T01:13:01+05:30
+Completed At: 2026-08-20T01:13:01+05:30
+
+				The command exited with code 0.
+				Output:
+				<truncated 3453 lines>
+@@ -4054,12 +5851,21 @@ class TorchlightApp(App):
+                 os.makedirs(log_dir, exist_ok=True)
+                 server_log_path = os.path.join(log_dir, "llama_server.log")
+                 server_log_file = open(server_log_path, "a", encoding="utf-8")
++
++                env = os.environ.copy()
++                env["KV_CACHE_COMPRESSION"] = getattr(self, "kv_cache_mode", "turbo3")
++                draft_arg = getattr(self, "draft_model_name", "none") or "none"
++                if draft_arg != "none":
++                    env["DRAFT_MODEL"] = draft_arg
++                    env["DRAFT_MAX"] = str(getattr(self, "draft_max_tokens", 8))
++
+                 subprocess.Popen(
+-                    [target_script, self.model_name],
++                    [target_script, self.model_name, draft_arg],
+                     cwd=os.path.dirname(target_script),
+                     stdout=server_log_file,
+                     stderr=server_log_file,
+                     start_new_session=True,
++                    env=env,
+                 )
+                 self._poll_server_launch()
+             except Exception as e:
+@@ -4156,8 +5962,7 @@ class TorchlightApp(App):
+         self.notify("Session killed, REPL memory reset", severity="warning", timeout=3)
+ 
+     # NOTE: The model badge button click is handled by on_model_badge_clicked
+-    # above (bound to #input-model-badge). Ctrl+M binding also works via
+-    # action_select_model in the BINDINGS list.
++    # above (bound to #input-model-badge) which focuses the toolbar model dropdown.
+ 
+     # ── Approval Modal ──────────────────────────────────────────────────
+ 
+@@ -4290,7 +6095,7 @@ class TorchlightApp(App):
+         streamed tokens are added on top here to make the gauge climb during generation.
+         """
+         mem = getattr(self.engine, "_memory", None)
+-        if mem and hasattr(mem, "total_tokens") and mem.total_tokens > 0:
++        if mem and hasattr(mem, "total_tokens") and isinstance(mem.total_tokens, (int, float)) and mem.total_tokens > 0:
+             base = int(mem.total_tokens)
+         else:
+             calls = getattr(self.engine, "_total_llm_calls", 0)
+@@ -4383,25 +6188,51 @@ class TorchlightApp(App):
+             _on_result,
+         )
+ 
++    def action_paste_image(self) -> None:
++        from core.utils.image_utils import save_clipboard_image
++
++        saved_p = save_clipboard_image(self.project_root)
++        if saved_p:
++            filename = os.path.basename(saved_p)
++            self._add_context_chip(saved_p)
++            self.notify(
++                f"🖼 Attached clipboard image: {filename}",
++                severity="information",
++                timeout=3,
++            )
++            if self._user_input is not None:
++                self.set_focus(self._user_input)
++        else:
++            self.notify("No image found on clipboard.", severity="warning", timeout=2)
++
+     @on(Button.Pressed, "#attach-context-btn")
+     def _on_attach_context_btn_pressed(self, event: Button.Pressed) -> None:
+         event.stop()
+         self.action_attach_context()
+ 
+     def _add_context_chip(self, filepath: str) -> None:
++        if not filepath:
++            return
++        clean_path = filepath.strip().lstrip("@")
+         chips_bar = self.query_one("#context-chips-bar", Horizontal)
+         # Avoid duplicate chips
+         existing_chips = [
+-            getattr(btn, "_filepath", getattr(btn, "tooltip", ""))
++            getattr(btn, "_filepath", getattr(btn, "tooltip", "")).strip().lstrip("@")
+             for btn in chips_bar.query(".context-chip")
+         ]
+-        if filepath in existing_chips:
++        if clean_path in existing_chips:
+             return
+ 
+-        btn = Button(f"@{filepath} ✕", classes="context-chip")
++        from core.utils.image_utils import is_image_file
++
++        is_img = is_image_file(clean_path)
++        icon_prefix = r"[bold green]\[IMG][/] " if is_img else ""
++        chip_classes = "context-chip image-chip" if is_img else "context-chip"
++
++        btn = Button(f"{icon_prefix}{clean_path} ✕", classes=chip_classes)
+         # Store original path for submission reconstruction
+-        btn._filepath = filepath
+-        btn.tooltip = filepath
++        btn._filepath = clean_path
++        btn.tooltip = clean_path
+         chips_bar.mount(btn)
+         chips_bar.add_class("has-chips")
+ 
+@@ -4439,25 +6270,27 @@ class TorchlightApp(App):
+         self.push_screen(FolderPickerModal(self.engine.project_root), _on_picker_result)
+ 
+     def action_toggle_sidebar(self) -> None:
+-        self.action_toggle_left_sidebar()
+-
+-    def action_toggle_left_sidebar(self) -> None:
+         try:
+-            sidebar = self.query_one("#explorer-sidebar")
++            sb = self.query_one("#explorer-sidebar")
++            resizer = self.query_one("#resizer-left")
+             self._show_sidebar = not getattr(self, "_show_sidebar", True)
+-            sidebar.display = self._show_sidebar
+-            try:
+-                resizer = self.query_one("#resizer-left")
+-                resizer.display = self._show_sidebar
+-            except Exception:
+-                pass
++            sb.display = self._show_sidebar
++            resizer.display = self._show_sidebar
+         except Exception:
+             pass
+ 
++    def action_toggle_left_sidebar(self) -> None:
++        self.action_toggle_sidebar()
++
+     def action_toggle_editor_split(self) -> None:
+         try:
+             editor_pane = self.query_one("#editor-split-pane")
+             editor_pane.display = not editor_pane.display
++            try:
++                resizer_editor = self.query_one("#resizer-editor")
++                resizer_editor.display = editor_pane.display
++            except Exception:
++                pass
+             status = "shown" if editor_pane.display else "hidden"
+             self.notify(
+                 f"Editor split pane {status}", severity="information", timeout=2
+@@ -4467,14 +6300,11 @@ class TorchlightApp(App):
+ 
+     def action_toggle_right_sidebar(self) -> None:
+         try:
+-            sidebar = self.query_one("#plan-sidebar")
++            sb = self.query_one("#plan-sidebar")
++            resizer = self.query_one("#resizer-right")
+             self._show_plan_sidebar = not getattr(self, "_show_plan_sidebar", True)
+-            sidebar.display = self._show_plan_sidebar
+-            try:
+-                resizer = self.query_one("#resizer-right")
+-                resizer.display = self._show_plan_sidebar
+-            except Exception:
+-                pass
++            sb.display = self._show_plan_sidebar
++            resizer.display = self._show_plan_sidebar
+         except Exception:
+             pass
+ 
+@@ -4488,6 +6318,16 @@ class TorchlightApp(App):
+         self._apply_pane_widths()
+         self.notify(f"Left Pane: {self.left_pane_width} cols", timeout=1)
+ 
++    def action_expand_editor_pane(self) -> None:
++        self.editor_pane_width = min(140, getattr(self, "editor_pane_width", 50) + 4)
++        self._apply_pane_widths()
++        self.notify(f"Editor Pane: {self.editor_pane_width} cols", timeout=1)
++
++    def action_shrink_editor_pane(self) -> None:
++        self.editor_pane_width = max(20, getattr(self, "editor_pane_width", 50) - 4)
++        self._apply_pane_widths()
++        self.notify(f"Editor Pane: {self.editor_pane_width} cols", timeout=1)
++
+     def action_expand_right_pane(self) -> None:
+         self.right_pane_width = min(60, getattr(self, "right_pane_width", 30) + 2)
+         self._apply_pane_widths()
+@@ -4505,6 +6345,13 @@ class TorchlightApp(App):
+         except Exception:
+             pass
+ 
++        try:
++            editor = self.query_one("#editor-split-pane")
++            if hasattr(self, "editor_pane_width") and self.editor_pane_width:
++                editor.styles.width = self.editor_pane_width
++        except Exception:
++            pass
++
+         try:
+             plan = self.query_one("#plan-sidebar")
+             plan.styles.width = getattr(self, "right_pane_width", 30)
+

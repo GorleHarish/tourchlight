@@ -25,18 +25,55 @@ def test_parse_response_bare_json_tool_call():
     assert tool_args2 == {"path": "app.py", "content": "print(1)"}
 
 
-def test_detect_phase_goal_mode_missing_plan_forces_plan(tmp_path):
-    """Verify Goal mode detects missing implementation_plan.md and forces 'plan' phase."""
+def test_detect_phase_goal_mode_detects_goal_phase(tmp_path):
+    """Verify Goal mode detects 'goal' phase."""
     engine = RLMEngineOptimized(project_root=str(tmp_path), execution_mode="goal")
-    
-    # Even when user prompt asks to 'create file' or 'build feature', missing implementation_plan.md forces 'plan' phase
     phase = engine._detect_phase("create index.html file with html code")
-    assert phase == "plan"
-    
-    # Create implementation_plan.md
-    plan_file = tmp_path / "implementation_plan.md"
-    plan_file.write_text("# Plan\n- [ ] Task 1")
-    
-    # Now that implementation_plan.md exists, phase switches to 'code' for code creation prompt
-    phase_after = engine._detect_phase("create index.html file with html code")
-    assert phase_after == "code"
+    assert phase == "goal"
+
+
+@pytest.mark.anyio
+async def test_solve_async_goal_mode_missing_plan_rejects_premature_final_answer(tmp_path):
+    """Verify Goal mode rejects premature FINAL_ANSWER on turn 1 when implementation_plan.md is missing."""
+    from unittest.mock import MagicMock
+
+    mock_client = MagicMock()
+    responses = [
+        # First turn: premature FINAL_ANSWER without writing plan
+        ['<FINAL_ANSWER>I will implement everything in index.html.</FINAL_ANSWER>'],
+        # Second turn: agent writes implementation plan
+        ['<tool_call>{"name": "WRITE_FILE", "arguments": {"path": "implementation_plan.md", "content": "# Plan\\n- [x] Task 1\\n"}}</tool_call>'],
+        # Third turn: final answer after task completion
+        ['<FINAL_ANSWER>Goal complete.</FINAL_ANSWER>'],
+    ]
+    iter_resp = iter(responses)
+
+    def mock_stream(*args, **kwargs):
+        try:
+            return next(iter_resp)
+        except StopIteration:
+            return ["<FINAL_ANSWER>Done.</FINAL_ANSWER>"]
+
+    mock_client.stream_chat_with_history.side_effect = mock_stream
+
+    engine = RLMEngineOptimized(client=mock_client, project_root=str(tmp_path), execution_mode="goal")
+    res = await engine.solve_async("Build index.html app")
+
+    assert len(res.steps) >= 2
+    # Step 1 should be a rejected_final_answer due to missing plan
+    assert res.steps[0].action == "rejected_final_answer"
+    assert "MISSING PLAN" in res.steps[0].result or "VERIFICATION GATE REJECTION" in res.steps[0].result
+    assert res.steps[0].step_number == 1
+
+
+@pytest.mark.anyio
+async def test_solve_async_goal_mode_sets_goal_phase_initially(tmp_path):
+    """Verify solve_async in Goal Mode initializes phase to 'goal'."""
+    from unittest.mock import MagicMock
+
+    mock_client = MagicMock()
+    mock_client.stream_chat_with_history.return_value = ["<FINAL_ANSWER>Done.</FINAL_ANSWER>"]
+
+    engine = RLMEngineOptimized(client=mock_client, project_root=str(tmp_path), execution_mode="goal")
+    assert engine._detect_phase("Build web app") == "goal"
+

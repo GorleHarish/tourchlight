@@ -5,9 +5,50 @@
 
 /* ── Base ──────────────────────────────────────────────────────────────── */
 
+* {
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    scrollbar-color-active: $accent;
+    scrollbar-corner-color: transparent;
+}
+
 Screen {
     background: $background;
     color: $foreground;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    scrollbar-color-active: $accent;
+    scrollbar-corner-color: transparent;
+}
+
+ScrollBar {
+    background: transparent;
+}
+
+ScrollBar.-horizontal {
+    height: 1;
+    min-height: 1;
+    max-height: 1;
+}
+
+ScrollBar.-vertical {
+    width: 1;
+    min-width: 1;
+    max-width: 1;
+}
+
+ScrollBarCorner {
+    background: transparent;
 }
 
 Static {
@@ -47,6 +88,15 @@ Footer {
     background: $surface;
     border-right: heavy $primary;
     padding: 0 0;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    scrollbar-color-active: $accent;
+    scrollbar-corner-color: transparent;
 }
 
 #plan-sidebar {
@@ -64,40 +114,96 @@ Footer {
 #editor-split-pane {
     display: none;
     width: 3fr;
+    min-width: 20;
+    max-width: 140;
     height: 100%;
-    border-right: heavy $primary;
     background: $background;
 }
 
 #tab-bar-header {
     height: 1;
+    min-height: 1;
+    max-height: 1;
+    width: 1fr;
     background: $panel;
-    border-bottom: solid $primary;
+    border: none;
+    padding: 0;
+    align: left middle;
 }
 
 #tab-buttons-container {
     width: 1fr;
     height: 1;
+    min-height: 1;
+    max-height: 1;
     overflow-x: auto;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-color: $panel;
+    align: left middle;
+}
+
+EditorTab {
+    height: 1;
+    min-height: 1;
+    max-height: 1;
+    width: auto;
+    min-width: 6;
+    background: $surface;
+    color: $foreground-muted;
+    padding: 0 1;
+    margin: 0 1 0 0;
+    border: none;
+}
+
+EditorTab.-active {
+    background: $background;
+    color: $primary;
+    text-style: bold;
+}
+
+EditorTab:hover {
+    background: $panel;
+    color: $foreground;
 }
 
 .tab-item-active {
     height: 1;
+    min-height: 1;
+    max-height: 1;
     width: auto;
+    min-width: 6;
     background: $surface;
-    border-bottom: solid $primary;
-    margin-right: 1;
+    color: $foreground;
+    text-style: bold;
+    border: none;
+    padding: 0 1;
+    margin: 0 0 0 0;
 }
 
 .tab-item-inactive {
     height: 1;
+    min-height: 1;
+    max-height: 1;
     width: auto;
-    background: $panel;
-    margin-right: 1;
+    min-width: 6;
+    background: transparent;
+    color: $foreground-muted;
+    border: none;
+    padding: 0 1;
+    margin: 0 0 0 0;
+}
+
+.tab-item-active:hover,
+.tab-item-inactive:hover {
+    background: $surface-darken-1;
+    color: $accent;
 }
 
 .tab-label-btn {
     height: 1;
+    min-height: 1;
+    max-height: 1;
     min-width: 6;
     padding: 0 1;
     border: none;
@@ -112,27 +218,41 @@ Footer {
 
 .tab-close-btn {
     height: 1;
-    min-width: 3;
-    padding: 0 0;
+    min-height: 1;
+    max-height: 1;
+    min-width: 2;
+    width: auto;
+    padding: 0 1 0 0;
+    margin: 0 1 0 0;
     border: none;
     background: transparent;
     color: $foreground-muted;
+    text-align: center;
+    content-align: center middle;
 }
 
 .tab-close-btn:hover {
     color: $error;
-    background: $panel;
+    background: transparent;
 }
 
 #toggle-split-btn {
+    dock: right;
     width: auto;
     height: 1;
-    min-width: 6;
+    min-height: 1;
+    max-height: 1;
+    min-width: 3;
     padding: 0 1;
     border: none;
-    background: $surface;
-    color: $accent;
+    background: transparent;
+    color: $foreground-muted;
     text-style: bold;
+}
+
+#toggle-split-btn:hover {
+    color: $accent;
+    background: $surface;
 }
 
 #editor-content-area {
@@ -141,12 +261,22 @@ Footer {
     background: $background;
     overflow-y: auto;
     overflow-x: auto;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    scrollbar-color-active: $accent;
+    scrollbar-corner-color: transparent;
 }
 
 #active-editor-view {
-    width: 1fr;
-    height: 1fr;
-    min-height: 20;
+    width: auto;
+    min-width: 100%;
+    height: auto;
+    min-height: 100%;
     background: $background;
     color: $foreground;
     border: none;
@@ -157,8 +287,10 @@ Footer {
 }
 
 .editor-view {
-    width: 1fr;
-    height: 1fr;
+    width: auto;
+    min-width: 100%;
+    height: auto;
+    min-height: 100%;
     padding: 0 1;
     background: $background;
     color: $foreground;
@@ -250,7 +382,7 @@ Footer {
     border-bottom: none;
 }
 
-#compact-btn, #help-btn {
+#compact-btn, #help-btn, #wipe-context-btn {
     width: auto;
     height: 1;
     margin-left: 1;
@@ -301,31 +433,76 @@ Footer {
     content-align: left middle;
 }
 
+#agent-tab-context-actions {
+    height: auto;
+    width: 100%;
+    margin-top: 1;
+    margin-bottom: 0;
+    padding: 0 0;
+}
+
+#agent-tab-context-actions Button {
+    width: auto;
+    height: 1;
+    min-height: 1;
+    border: none;
+    padding: 0 1;
+    margin-right: 1;
+    margin-top: 0;
+    margin-bottom: 0;
+    text-style: bold;
+}
+
+.sidebar-toggle-btn {
+    border: none;
+    padding: 0 1;
+    height: 1;
+    min-height: 1;
+    background: $panel;
+    color: $accent;
+    margin-top: 0;
+    margin-bottom: 0;
+    text-style: dim;
+}
+
+.sidebar-toggle-btn:hover {
+    background: $primary;
+    color: $background;
+    text-style: bold;
+}
+
+#agent-tab-ctx-breakdown {
+    display: none;
+    margin-top: 0;
+    margin-bottom: 1;
+    padding: 0 0;
+}
+
 /* ── File Tree ────────────────────────────────────────────────────────── */
 
-#file-tree {
+#file-tree, Tree, DirectoryTree, GitFileTree {
     height: 1fr;
     background: $background;
     border: solid $panel;
     color: $foreground;
     margin-bottom: 1;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    scrollbar-color-active: $accent;
+    scrollbar-corner-color: transparent;
 }
 
-#file-tree:focus {
+#file-tree:focus, Tree:focus, DirectoryTree:focus, GitFileTree:focus {
     border: tall $accent;
 }
 
-Tree {
-    background: $background;
-    color: $foreground;
-}
-
-Tree:hover {
+Tree:hover, DirectoryTree:hover, GitFileTree:hover {
     background: $surface;
-}
-
-Tree:focus {
-    border: tall $accent;
 }
 
 /* ── Implementation Plan Panel ────────────────────────────────────────── */
@@ -458,8 +635,8 @@ TextArea:disabled {
 
 #input-area {
     height: auto;
-    min-height: 4;
-    max-height: 8;
+    min-height: 6;
+    max-height: 18;
     background: $surface;
     border-top: solid $panel;
     padding: 0 1;
@@ -472,20 +649,71 @@ TextArea:disabled {
     align: center middle;
 }
 
+#user-input-card {
+    height: auto;
+    min-height: 5;
+    max-height: 14;
+    margin: 0;
+    padding: 0;
+    background: $surface;
+    border: solid $panel;
+}
+
 #user-input {
     width: 1fr;
     height: auto;
-    min-height: 1;
-    max-height: 12;
-    background: $background;
+    min-height: 3;
+    max-height: 6;
+    background: transparent;
     color: $foreground;
-    border: tall $primary;
+    border: none;
+    padding: 0 1;
 }
 
 #user-input:focus {
-    background: $surface;
-    border: tall $accent;
+    background: transparent;
+    border: none;
     color: $foreground;
+}
+
+#input-toolbar {
+    height: 3;
+    width: 1fr;
+    align: left middle;
+    background: $panel;
+    padding: 0 1;
+    border-top: solid $panel;
+}
+
+Button Label {
+    height: 1;
+    content-align: center middle;
+    text-align: center;
+}
+
+#toolbar-left-controls {
+    width: auto;
+    height: 3;
+    align: left middle;
+}
+
+#toolbar-right-actions {
+    dock: right;
+    width: auto;
+    height: 3;
+    align: right middle;
+}
+
+#attach-context-btn {
+    height: 1;
+    width: 3;
+    content-align: center middle;
+    text-align: center;
+    border: none;
+    margin: 1 1 0 0;
+    padding: 0;
+    background: $surface;
+    color: $text;
 }
 
 /* Slash-command / @file autocomplete dropdown under the prompt */
@@ -516,11 +744,120 @@ TextArea:disabled {
     background: $accent;
 }
 
+#mode-select-btn {
+    height: 1;
+    width: auto;
+    min-width: 8;
+    content-align: center middle;
+    text-align: center;
+    border: none;
+    background: $surface;
+    color: $accent;
+    text-style: bold;
+    padding: 0 1;
+    margin: 1 1 0 0;
+}
+
+#mode-select-dropdown {
+    width: 22;
+    min-width: 20;
+    max-width: 24;
+    height: 1;
+    content-align: center middle;
+    text-align: center;
+    border: none;
+    margin: 1 1 0 0;
+}
+
+#mode-select-dropdown SelectCurrent {
+    height: 1;
+    content-align: center middle;
+    text-align: center;
+    padding: 0 1;
+    border: none;
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+}
+
+#model-select-dropdown {
+    width: auto;
+    min-width: 20;
+    max-width: 36;
+    height: 1;
+    content-align: left middle;
+    text-align: left;
+    border: none;
+    margin: 1 1 0 0;
+}
+
+#model-select-dropdown SelectCurrent {
+    height: 1;
+    content-align: left middle;
+    text-align: left;
+    padding: 0 1;
+    border: none;
+    background: $surface;
+    color: $text;
+}
+
+#draft-select-dropdown {
+    width: auto;
+    min-width: 18;
+    max-width: 32;
+    height: 1;
+    content-align: left middle;
+    text-align: left;
+    border: none;
+    margin: 1 1 0 0;
+}
+
+#draft-select-dropdown SelectCurrent {
+    height: 1;
+    content-align: left middle;
+    text-align: left;
+    padding: 0 1;
+    border: none;
+    background: $surface;
+    color: $accent;
+}
+
+SelectOverlay {
+    width: auto;
+    min-width: 26;
+    max-width: 44;
+    height: auto;
+    max-height: 12;
+    border: solid $accent;
+    background: $surface-darken-1;
+}
+
+OptionList {
+    width: auto;
+    min-width: 44;
+}
+
+#model-toggle-btn {
+    width: auto;
+    min-width: 10;
+    height: 1;
+    content-align: center middle;
+    text-align: center;
+    border: none;
+    padding: 0 1;
+    margin: 1 1 0 0;
+}
+
 #send-btn {
     width: auto;
     min-width: 8;
-    height: 3;
-    margin: 0 0 0 1;
+    height: 1;
+    content-align: center middle;
+    text-align: center;
+    border: none;
+    padding: 0 2;
+    margin: 1 0 0 0;
+    text-style: bold;
 }
 
 #send-btn:disabled {
@@ -529,10 +866,12 @@ TextArea:disabled {
 }
 
 #input-spinner {
-    width: 3;
-    height: 3;
+    width: auto;
+    min-width: 2;
+    height: 1;
     color: $primary;
     content-align: center middle;
+    margin: 1 1 0 0;
 }
 
 .stream-text {
@@ -765,6 +1104,29 @@ CollapsibleContents {
     margin-right: 1;
 }
 
+.mode-badge-unified {
+    width: auto;
+    height: 1;
+    padding: 0 1;
+    border: none;
+    background: $warning;
+    color: $background;
+    text-style: bold;
+    margin-right: 1;
+}
+
+.mode-badge-plan {
+    width: auto;
+    height: 1;
+    padding: 0 1;
+    border: none;
+    background: $accent;
+    color: $background;
+    text-style: bold;
+    margin-right: 1;
+}
+
+
 /* Approval modal buttons */
 .btn-gold {
     background: $warning;
@@ -836,9 +1198,10 @@ CollapsibleContents {
 /* Context Chips */
 #context-chips-bar {
     height: auto;
+    min-height: 1;
     max-height: 3;
-    padding-left: 1;
-    margin-bottom: 1;
+    padding: 0;
+    margin: 0 0 1 0;
     display: none;
 }
 
@@ -857,6 +1220,18 @@ CollapsibleContents {
 }
 
 .context-chip:hover {
+    background: $error;
+    color: $text;
+}
+
+.context-chip.image-chip {
+    background: $success 25%;
+    color: $text;
+    border-left: solid $success;
+    text-style: bold;
+}
+
+.context-chip.image-chip:hover {
     background: $error;
     color: $text;
 }
@@ -951,8 +1326,163 @@ CenterEmptyState .empty-state-hint {
 
 /* ── Agent tab subwidgets ─────────────────────────────────────────────── */
 
+#agent-tab-scroll {
+    height: 1fr;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    padding: 0 0;
+}
+
 #agent-tab-conn-status, #agent-tab-model-info, #agent-tab-context-bar {
     padding: 0 1 1 1;
     width: 100%;
     color: $foreground;
 }
+
+#sidebar-speculative-btn {
+    width: 100%;
+    height: 3;
+    border: none;
+    margin: 1 1;
+    padding: 0 1;
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+}
+
+#sidebar-speculative-btn:hover {
+    background: $accent;
+    color: $background;
+}
+
+#agent-memory-panel {
+    padding: 0 1;
+    width: 100%;
+    height: auto;
+    max-height: 32;
+    min-height: 8;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    scrollbar-color-active: $accent;
+    color: $foreground;
+    background: $background;
+    border: solid $panel;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+#agent-memory-panel > #agent-memory-text {
+    width: auto;
+    min-width: 100%;
+    height: auto;
+    color: $foreground;
+}
+
+/* ── Skills tab subwidgets ────────────────────────────────────────────── */
+
+#skills-tab-scroll {
+    height: 1fr;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    padding: 0 0;
+}
+
+#skills-action-bar {
+    height: 3;
+    align: left middle;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+#skills-action-bar Button {
+    margin-right: 1;
+    border: none;
+    padding: 0 1;
+    height: 3;
+}
+
+#skills-status-msg {
+    padding: 0 1;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#skills-list-panel {
+    padding: 0 1 1 1;
+    width: 100%;
+    color: $foreground;
+}
+
+/* ── Model & Engine tab subwidgets ────────────────────────────────────── */
+
+#engine-tab-scroll {
+    height: 1fr;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-size-vertical: 1;
+    scrollbar-size-horizontal: 1;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+    scrollbar-color: $panel;
+    scrollbar-color-hover: $primary;
+    padding: 0 1;
+}
+
+#engine-tab-scroll Select {
+    width: 100%;
+    margin-bottom: 1;
+    border: solid $panel;
+    background: $surface;
+    color: $foreground;
+    height: auto;
+}
+
+#sidebar-apply-engine-btn {
+    width: 100%;
+    height: 3;
+    margin-top: 1;
+    margin-bottom: 1;
+    border: none;
+    background: $primary;
+    color: $background;
+    text-style: bold;
+}
+
+#sidebar-apply-engine-btn:hover {
+    background: $accent;
+    color: $background;
+}
+
+#sidebar-engine-status-msg {
+    padding: 0 1;
+    width: 100%;
+    text-align: center;
+    color: $accent;
+}
+
+
+
+
+

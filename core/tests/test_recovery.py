@@ -58,6 +58,18 @@ def test_recovery_hint_connection_error():
     assert "lmstudio" in hint.lower() or "connect" in hint.lower()
 
 
+def test_recovery_hint_503_loading_model():
+    from core.errors.types import ConnectionError
+    error = ConnectionError(
+        provider="llama-server",
+        message="HTTP Error 503: Service Unavailable (Loading model)",
+    )
+    hint = get_recovery_hint(error)
+    assert "loading model weights" in hint.lower() or "loading" in hint.lower()
+
+
+
+
 def test_recovery_hint_security_error():
     error = SecurityError(attempted="/etc/passwd", allowed_scope="/project")
     hint = get_recovery_hint(error)

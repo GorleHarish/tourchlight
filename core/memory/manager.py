@@ -5,11 +5,13 @@ L0-L3 memory hierarchy with progressive compression.
 """
 
 import difflib
+import os
 import re
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, Callable
+from pathlib import Path
+from typing import Optional, Callable, Union
 
 from .models import (
     Message,
@@ -29,6 +31,8 @@ from .selective_compression import (
     CompressionConfig,
     CompressionLevel,
 )
+from .deduplication import DeduplicationEngine, DeduplicationStats
+from rlm_optimized.config import ContextProfile, get_context_profile
 
 
 # L0 scratchpad hygiene limits. These bound the dynamic working-memory block
@@ -339,6 +343,10 @@ class MemoryConfig:
     use_selective_compression: bool = True
     enable_auto_compaction: bool = True
     max_messages: int = 50
+    # Maximum entries to retain in SessionState lists to prevent unbounded growth
+    max_session_state_entries: int = 50
+    # Context profile for model-aware budget allocation
+    context_profile: ContextProfile = ContextProfile.LARGE_12K
 
     @classmethod
     def auto_tune(cls, max_tokens: int, metadata_overhead: int = 0) -> "MemoryConfig":
@@ -367,6 +375,9 @@ class MemoryConfig:
 
         history_budget = max(500, max_tokens - metadata_overhead - safety_margin)
 
+        # Get context profile for model-aware defaults
+        profile = ContextProfile.from_context_size(max_tokens)
+        
         if max_tokens <= 2000:
             return cls(
                 max_tokens=history_budget,
@@ -378,6 +389,8 @@ class MemoryConfig:
                 message_compact_threshold=200,
                 metadata_overhead=metadata_overhead,
                 max_messages=max_messages,
+                max_session_state_entries=30,
+                context_profile=profile,
             )
         elif max_tokens <= 4000:
             return cls(
@@ -390,6 +403,8 @@ class MemoryConfig:
                 message_compact_threshold=300,
                 metadata_overhead=metadata_overhead,
                 max_messages=max_messages,
+                max_session_state_entries=40,
+                context_profile=profile,
             )
         elif max_tokens <= 8000:
             return cls(
@@ -402,6 +417,8 @@ class MemoryConfig:
                 message_compact_threshold=500,
                 metadata_overhead=metadata_overhead,
                 max_messages=max_messages,
+                max_session_state_entries=50,
+                context_profile=profile,
             )
         else:
             return cls(
@@ -414,6 +431,8 @@ class MemoryConfig:
                 message_compact_threshold=800,
                 metadata_overhead=metadata_overhead,
                 max_messages=max_messages,
+                max_session_state_entries=80,
+                context_profile=profile,
             )
 
 
@@ -434,6 +453,9 @@ class TieredMemory:
         llm_client=None,
     ):
         self.config = config
+        # Note: Context profile is applied in MemoryConfig.auto_tune(), not here.
+        # This allows users to create custom MemoryConfig instances with specific values.
+        
         self.tokenizer = tokenizer or get_token_counter()
         self.state = SessionState()
         self.messages: deque[Message] = deque(maxlen=config.max_messages)
@@ -449,11 +471,26 @@ class TieredMemory:
         # even after compression. Max 4 files (FIFO eviction).
         self._pinned_files: deque[tuple[str, str]] = deque(maxlen=4)
         self._pinned_token_budget: int = config.pinned_token_budget
+        self._cached_pinned_tokens: int = 0
         self._cached_msg_tokens: int = 0
         self._last_persist_ts: float = 0.0
         self._event_listeners: list[Callable[[MemoryEvent], None]] = []
         self._is_compacting: bool = False
         self.enable_auto_compaction: bool = getattr(config, "enable_auto_compaction", True)
+        
+        # Deduplication engine
+        self._deduplication_engine = DeduplicationEngine(tokenizer=self.tokenizer)
+        self._enable_deduplication: bool = True
+        self._last_deduplication_stats: Optional[DeduplicationStats] = None
+        
+        # Load persisted dedup cache and user preferences
+        if self._project_memory:
+            self.load_dedup_cache()
+            prefs = self.load_user_preferences()
+            if prefs:
+                self._enable_deduplication = prefs.get("enable_deduplication", True)
+                if "dedup_similarity_threshold" in prefs:
+                    self._deduplication_engine.similarity_detector.threshold = prefs["dedup_similarity_threshold"]
 
     def add_event_listener(self, listener: Callable[[MemoryEvent], None]) -> None:
         """Register a callback for memory events (MESSAGE_ADDED, PIN_ADDED, COMPACTION_TRIGGERED, etc.)."""
@@ -538,21 +575,37 @@ class TieredMemory:
         if not force and (now - self._last_persist_ts) < 5.0:
             return
         self._last_persist_ts = now
+        # Prune session state before persisting to keep serialized size manageable
+        self._prune_session_state()
         try:
             self._project_memory.persist_session_state(self.state)
         except Exception:
             pass
 
+    def _estimate_l0_tokens(self) -> int:
+        """Fast O(1) estimate of dynamic L0 scratchpad tokens without disk I/O or recursion."""
+        chars = 0
+        if self.state.errors_seen:
+            chars += sum(len(e) for e in self.state.errors_seen[-5:])
+        if self.state.failing_tests:
+            chars += sum(len(str(t)) for t in self.state.failing_tests[-5:])
+        if self.state.current_task:
+            chars += len(self.state.current_task)
+        if self.state.decisions:
+            chars += sum(len(d) for d in self.state.decisions[-5:])
+        if self.state.arch_decisions:
+            chars += sum(len(d) for d in self.state.arch_decisions[-5:])
+        if self.state.files_modified:
+            chars += sum(len(f) + 20 for f in self.state.files_modified[-3:])
+        if self.state.active_file:
+            chars += len(self.state.active_file) + 20
+        if chars == 0:
+            return 0
+        return max(15, chars // 4)
+
     @property
     def total_tokens(self) -> int:
-        pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
-        # Include estimated tokens of dynamic L0 scratchpad so context budget is net of scratchpad overhead
-        try:
-            l0_scratchpad = self.format_l0_scratchpad()
-            l0_tokens = self.tokenizer.count(l0_scratchpad) if l0_scratchpad else 0
-        except Exception:
-            l0_tokens = 0
-        return self._cached_msg_tokens + pinned_tokens + l0_tokens
+        return self._cached_msg_tokens + self._cached_pinned_tokens + self._estimate_l0_tokens()
 
     def _append_message(self, msg: Message) -> None:
         if len(self.messages) == self.messages.maxlen and self.messages:
@@ -599,11 +652,45 @@ class TieredMemory:
                 return
         self.add_system_message(content)
 
-    def add_user_message(self, content: str) -> None:
+    def record_image_attached(
+        self, path: Union[str, Path], project_root: Optional[str] = None
+    ) -> None:
+        """Record an attached image in SessionState, normalizing to a relative workspace path."""
+        if not path:
+            return
+        p_str = str(path).strip()
+        if p_str.startswith("data:image/"):
+            return
+        # Normalize to relative path if within project_root
+        if project_root and os.path.isabs(p_str):
+            try:
+                rel = os.path.relpath(p_str, project_root)
+                if not rel.startswith(".."):
+                    p_str = rel
+            except Exception:
+                pass
+        if p_str not in self.state.active_images:
+            self.state.active_images.append(p_str)
+            if len(self.state.active_images) > 5:
+                self.state.active_images = self.state.active_images[-5:]
+
+    def add_user_message(
+        self,
+        content: str,
+        images: Optional[list[str]] = None,
+        project_root: Optional[str] = None,
+    ) -> None:
+        img_list = list(images) if images else []
+        tok_count = self.tokenizer.count(content)
+        if img_list:
+            for img in img_list:
+                tok_count += self.tokenizer.count_image(img)
+                self.record_image_attached(img, project_root=project_root)
         msg = Message(
             role=MessageRole.USER,
             content=content,
-            token_count=self.tokenizer.count(content),
+            images=img_list,
+            token_count=tok_count,
         )
         self._append_message(msg)
         self._update_state_from_message(msg)
@@ -617,11 +704,19 @@ class TieredMemory:
         self._append_message(msg)
         self._update_state_from_message(msg)
 
-    def add_tool_result(self, content: str, tool_name: str = "") -> None:
+    def add_tool_result(
+        self, content: str, tool_name: str = "", images: Optional[list[str]] = None
+    ) -> None:
+        img_list = list(images) if images else []
+        tok_count = self.tokenizer.count(content)
+        if img_list:
+            for img in img_list:
+                tok_count += self.tokenizer.count_image(img)
         msg = Message(
             role=MessageRole.TOOL_RESULT,
             content=content,
-            token_count=self.tokenizer.count(content),
+            images=img_list,
+            token_count=tok_count,
             metadata={"tool_name": tool_name},
         )
         self._append_message(msg)
@@ -630,7 +725,7 @@ class TieredMemory:
         """Return headroom-aware budget allocations for the current turn."""
         return ContextBudget(
             max_tokens=self.config.max_tokens,
-            used_tokens=self.total_tokens,
+            used_tokens=self._cached_msg_tokens + self._cached_pinned_tokens,
             base_pinned_tokens=self.config.pinned_token_budget,
             metadata_overhead=self.config.metadata_overhead,
         )
@@ -661,10 +756,12 @@ class TieredMemory:
         for i, (p, _) in enumerate(self._pinned_files):
             if p == path:
                 self._pinned_files[i] = (path, content)
+                self._cached_pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
                 self._notify_pin_event(path)
                 return
         # New pin — FIFO eviction when deque is full
         self._pinned_files.append((path, content))
+        self._cached_pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
         self._notify_pin_event(path)
 
     def _notify_pin_event(self, path: str) -> None:
@@ -687,6 +784,7 @@ class TieredMemory:
             [(p, c) for p, c in self._pinned_files if p != path],
             maxlen=self._pinned_files.maxlen,
         )
+        self._cached_pinned_tokens = sum(self.tokenizer.count(c) for _, c in self._pinned_files)
 
     def refresh_pin(self, path: str, project_root: str) -> None:
         """Re-read an edited file from disk and update its pin in memory."""
@@ -712,6 +810,7 @@ class TieredMemory:
     def clear_pins(self) -> None:
         """Remove all pinned files."""
         self._pinned_files.clear()
+        self._cached_pinned_tokens = 0
 
     def add_message(
         self, role: MessageRole, content: str, metadata: Optional[dict] = None
@@ -744,6 +843,14 @@ class TieredMemory:
         force: bool = False,
     ) -> str:
         """Compress older messages, preserving the first N messages. Truncates oversized messages if needed."""
+        # Run deduplication first to reduce context before compression
+        # Only run when there's actual context pressure (not just for testing)
+        if self._enable_deduplication and len(self.messages) > 1:
+            current_ratio = self.total_tokens / self.config.max_tokens if self.config.max_tokens > 0 else 0
+            # Only deduplicate when context is getting full or forced
+            if current_ratio >= 0.6 or force:
+                self.deduplicate_context()
+        
         # Auto-upgrade force to True if overall context ratio is high
         current_ratio = self.total_tokens / self.config.max_tokens if self.config.max_tokens > 0 else 0
         if current_ratio >= 0.75:
@@ -842,6 +949,9 @@ class TieredMemory:
         older_messages = list(self.messages)
         self.messages.clear()
 
+        # Prune session state to prevent unbounded growth
+        self._prune_session_state()
+
         summary_content = None
         if summarizer_fn:
             try:
@@ -886,7 +996,11 @@ class TieredMemory:
             )
 
     def get_context_for_llm(
-        self, user_query: str = "", project_root: Optional[str] = None
+        self,
+        user_query: str = "",
+        project_root: Optional[str] = None,
+        format: str = "openai",
+        vision_supported: bool = True,
     ) -> list[dict]:
         """Build the message list for the LLM.
 
@@ -897,16 +1011,34 @@ class TieredMemory:
         of re-evaluating the full context on every tool call, while keeping exact
         file content and goal progress visible to the model right before it
         generates.
+        
+        Deduplication is applied to messages before context building to save tokens.
         """
+        # Apply deduplication to LLM context payload without mutating active history
+        messages_to_render = self.messages
+        if self._enable_deduplication and len(self.messages) > 1:
+            deduplicated_messages, stats = self._deduplication_engine.process_messages(list(self.messages))
+            self._last_deduplication_stats = stats
+            messages_to_render = deduplicated_messages
+        
         context = []
         pinned_budget = self.get_effective_budget().pinned_tokens
         l0_scratchpad = self.format_l0_scratchpad(project_root=project_root)
 
-        for msg in self.messages:
-            role = (
-                msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
-            )
-            context.append({"role": role, "content": msg.content})
+        for msg in messages_to_render:
+            if hasattr(msg, "to_dict"):
+                context.append(
+                    msg.to_dict(
+                        format=format,
+                        project_root=project_root,
+                        vision_supported=vision_supported,
+                    )
+                )
+            else:
+                role = (
+                    msg.role.value if isinstance(msg.role, MessageRole) else str(msg.role)
+                )
+                context.append({"role": role, "content": msg.content})
 
         # Append L0 Scratchpad and pinned files after history (trailing system blocks)
         if l0_scratchpad:
@@ -925,6 +1057,82 @@ class TieredMemory:
                 context.append({"role": "system", "content": "\n".join(pinned_lines)})
 
         return context
+
+    def deduplicate_context(self, force: bool = False) -> DeduplicationStats:
+        """Run semantic deduplication on current message history.
+        
+        Args:
+            force: Force deduplication even if recently run
+            
+        Returns:
+            DeduplicationStats with details on what was deduplicated
+        """
+        if not self._enable_deduplication:
+            return DeduplicationStats()
+        
+        if len(self.messages) <= 1:
+            return DeduplicationStats()
+        
+        deduplicated_messages, stats = self._deduplication_engine.process_messages(list(self.messages))
+        
+        if stats.deduplicated_messages > 0 or force:
+            self.messages.clear()
+            self._cached_msg_tokens = 0
+            for msg in deduplicated_messages:
+                self._append_message(msg)
+            self._last_deduplication_stats = stats
+            # Persist updated cache
+            self.save_dedup_cache()
+        
+        return stats
+
+    def enable_deduplication(self, enabled: bool = True) -> None:
+        """Enable or disable semantic deduplication."""
+        self._enable_deduplication = enabled
+        if not enabled:
+            self._deduplication_engine.reset()
+
+    def get_deduplication_stats(self) -> Optional[DeduplicationStats]:
+        """Get the last deduplication statistics."""
+        return self._last_deduplication_stats
+
+    def save_dedup_cache(self) -> None:
+        """Persist deduplication cache to project memory."""
+        if not self._project_memory:
+            return
+        try:
+            cache = self._deduplication_engine.get_cache()
+            self._project_memory.save_dedup_cache(cache)
+        except Exception:
+            pass
+
+    def load_dedup_cache(self) -> None:
+        """Load deduplication cache from project memory."""
+        if not self._project_memory:
+            return
+        try:
+            cache = self._project_memory.load_dedup_cache()
+            self._deduplication_engine.load_cache(cache)
+        except Exception:
+            pass
+
+    def save_user_preferences(self, preferences: dict) -> None:
+        """Persist user preferences to project memory."""
+        if not self._project_memory:
+            return
+        try:
+            self._project_memory.save_user_preferences(preferences)
+        except Exception:
+            pass
+
+    def load_user_preferences(self) -> dict:
+        """Load user preferences from project memory."""
+        if not self._project_memory:
+            return {}
+        try:
+            return self._project_memory.load_user_preferences()
+        except Exception:
+            return {}
 
     def format_l0_scratchpad(
         self,
@@ -945,6 +1153,11 @@ class TieredMemory:
         6. Tech stack (only if non-empty)
         7. Tried_and_failed (only if relevant to current file/task)
         8. Facts (skip entirely if budget exhausted)
+        
+        Enhanced with:
+        - Content-aware entry selection (not just priority-ordered)
+        - Deduplication within scratchpad
+        - Dynamic sizing based on model profile
         """
         if budget is None:
             budget = self.get_effective_budget()
@@ -953,11 +1166,23 @@ class TieredMemory:
         max_chars = min(1800 * budget.chars_per_token, budget.l0_chars)
         sections = []
 
+        # Track added content to avoid duplication
+        added_content = set()
+
+        def add_section(priority: float, line: str) -> bool:
+            """Add a section if not duplicated and within budget."""
+            content_key = line[:100]  # Use first 100 chars as dedup key
+            if content_key in added_content:
+                return False
+            added_content.add(content_key)
+            sections.append((priority, line))
+            return True
+
         # Priority 1: Active errors_seen (most recent, up to section cap)
         if self.state.errors_seen:
             unique_errors = list(dict.fromkeys(self.state.errors_seen))[-section_cap:]
             shown = "; ".join(_scratchpad_clean(e, entry_limit) for e in unique_errors)
-            sections.append((1, f"- Active Errors: {shown}"))
+            add_section(1, f"- Active Errors: {shown}")
 
         # Priority 2: Failing tests (names only, not full tracebacks)
         if self.state.failing_tests:
@@ -972,63 +1197,53 @@ class TieredMemory:
                     _scratchpad_clean(tn, entry_limit)
                     for tn in clean_test_names[:section_cap]
                 )
-                sections.append((2, f"- Failing Tests: {shown}"))
+                add_section(2, f"- Failing Tests: {shown}")
 
-        # Priority 3: Active task, status, next task, & active file
-        if project_root:
-            from core.tools.task_helpers import (
-                get_compact_task_matrix,
-                get_workspace_task_status_summary,
-            )
+        # Priority 2.5: Active image attachments & visual assets
+        if getattr(self.state, "active_images", None):
+            from core.utils.image_utils import get_image_metadata
 
-            matrix_lines = get_compact_task_matrix(project_root, budget=budget)
-            if matrix_lines:
-                for idx, line in enumerate(matrix_lines):
-                    sections.append((3.0 + idx * 0.1, line))
-            else:
-                tsummary = get_workspace_task_status_summary(project_root)
-                cur_task = tsummary.get("current_task")
-                next_task = tsummary.get("next_task")
-                total = tsummary.get("total_count", 0)
-                completed = tsummary.get("completed_count", 0)
-                remaining = tsummary.get("remaining_tasks", [])
+            img_items = []
+            for img_p in self.state.active_images[-section_cap:]:
+                meta = get_image_metadata(img_p, project_root=project_root)
+                w, h = meta.get("width", 0), meta.get("height", 0)
+                dim_str = (
+                    f" ({w}x{h} {meta.get('format', 'IMG')})"
+                    if w > 0 and h > 0
+                    else ""
+                )
+                img_items.append(f"{img_p}{dim_str}")
+            if img_items:
+                add_section(2.5, f"- Active Images: {', '.join(img_items)}")
 
-                if cur_task:
-                    c_desc = _scratchpad_clean(cur_task["description"], entry_limit)
-                    c_stat = cur_task["status"].upper()
-                    sections.append((3.0, f"- Current Task [{c_stat}]: {c_desc}"))
+        # Priority 3: Active task, status, next task, & active file (suppressed in Chat Mode)
+        mode_val = getattr(self.state, "execution_mode", None)
+        mode_str = mode_val.value if hasattr(mode_val, "value") else str(mode_val or "").lower()
+        is_chat_mode = mode_str == "chat" or mode_str.endswith(".chat")
+
+        if not is_chat_mode:
+            if project_root:
+                from core.tools.task_helpers import get_compact_task_matrix
+
+                matrix_lines = get_compact_task_matrix(project_root, budget=budget)
+                if matrix_lines:
+                    for idx, line in enumerate(matrix_lines):
+                        add_section(3.0 + idx * 0.1, line)
                 elif self.state.current_task:
-                    sections.append(
-                        (
-                            3.0,
-                            f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
-                        )
+                    add_section(
+                        3.0,
+                        f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
                     )
-
-                if next_task:
-                    n_desc = _scratchpad_clean(next_task["description"], entry_limit)
-                    sections.append((3.2, f"- Next Task [PENDING]: {n_desc}"))
-
-                if total > 0:
-                    sections.append((3.3, f"- Task Progress: ({completed}/{total} completed)"))
-
-                if remaining:
-                    shown = ", ".join(_scratchpad_clean(t, entry_limit) for t in remaining[:3])
-                    sections.append((3.5, f"- Remaining Tasks: {shown}"))
-        elif self.state.current_task:
-            sections.append(
-                (
+            elif self.state.current_task:
+                add_section(
                     3.0,
                     f"- Active Goal: {_scratchpad_clean(self.state.current_task, entry_limit)}",
                 )
-            )
 
         if self.state.active_file:
-            sections.append(
-                (
-                    3.1,
-                    f"- Active File: {_scratchpad_clean(self.state.active_file, entry_limit)}",
-                )
+            add_section(
+                3.1,
+                f"- Active File: {_scratchpad_clean(self.state.active_file, entry_limit)}",
             )
 
         # Priority 4: Architecture decisions (most recent, up to section cap)
@@ -1038,7 +1253,7 @@ class TieredMemory:
             shown = "; ".join(
                 _scratchpad_clean(d, entry_limit) for d in decs_strs[-section_cap:]
             )
-            sections.append((4, f"- Key Decisions: {shown}"))
+            add_section(4, f"- Key Decisions: {shown}")
 
         # Priority 5: Files modified in last 3 turns
         if self.state.files_modified:
@@ -1054,14 +1269,14 @@ class TieredMemory:
                     clean_f += f" [{', '.join(syms[:3])}]"
                 mod_items.append(clean_f)
             shown = ", ".join(mod_items)
-            sections.append((5, f"- Modified Files: {shown}"))
+            add_section(5, f"- Modified Files: {shown}")
 
         # Priority 6: Tech stack (only if non-empty)
         if self.state.tech_stack:
             shown = ", ".join(
                 _scratchpad_clean(t, entry_limit) for t in self.state.tech_stack[:4]
             )
-            sections.append((6, f"- Tech Stack: {shown}"))
+            add_section(6, f"- Tech Stack: {shown}")
 
         # Priority 7: Tried_and_failed (up to section cap, only if relevant to current file/task)
         if self.state.tried_and_failed:
@@ -1081,7 +1296,7 @@ class TieredMemory:
                 _scratchpad_clean(t, entry_limit)
                 for t in list(dict.fromkeys(tf_candidates))[-section_cap:]
             )
-            sections.append((7, f"- Tried & Failed: {shown}"))
+            add_section(7, f"- Tried & Failed: {shown}")
 
         # Priority 8: Facts (skip entirely if budget exhausted)
         if self._project_memory and (self.state.current_task or self.state.intent):
@@ -1095,8 +1310,8 @@ class TieredMemory:
                         if m[0].summary
                     ]
                     if mem_texts:
-                        sections.append(
-                            (8, f"- Facts & Past Context: {'; '.join(mem_texts)}")
+                        add_section(
+                            8, f"- Facts & Past Context: {'; '.join(mem_texts)}"
                         )
             except Exception:
                 pass
@@ -1216,6 +1431,42 @@ class TieredMemory:
             files_modified=self.state.files_modified,
             decisions=self.state.decisions,
         )
+
+    def _prune_session_state(self) -> None:
+        """Trim SessionState lists to configured maximum to prevent unbounded growth."""
+        max_entries = self.config.max_session_state_entries
+        
+        # Lists to prune (keep most recent entries)
+        lists_to_prune = [
+            ("files_modified", max_entries),
+            ("errors_seen", max_entries),
+            ("decisions", max_entries),
+            ("arch_decisions", max_entries),
+            ("tried_and_failed", max_entries),
+            ("tech_stack", max_entries),
+            ("failing_tests", max_entries),
+            ("dependencies_added", max_entries),
+            ("files_read", max_entries),
+        ]
+        
+        for attr_name, limit in lists_to_prune:
+            lst = getattr(self.state, attr_name, None)
+            if lst and len(lst) > limit:
+                setattr(self.state, attr_name, lst[-limit:])
+        
+        # Also prune dicts that track file metadata
+        dicts_to_prune = [
+            "files_modified_stats",
+            "files_modified_symbols",
+            "files_baseline_content",
+        ]
+        for attr_name in dicts_to_prune:
+            d = getattr(self.state, attr_name, None)
+            if d and len(d) > max_entries:
+                # Keep only entries for the most recently modified files
+                recent_files = set(self.state.files_modified[-max_entries:])
+                pruned = {k: v for k, v in d.items() if k in recent_files}
+                setattr(self.state, attr_name, pruned)
 
     def clear(self) -> None:
         self.messages.clear()

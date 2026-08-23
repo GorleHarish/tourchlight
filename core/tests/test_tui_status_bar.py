@@ -58,10 +58,13 @@ def test_build_status_segments_defaults():
         "sb-model",
         "sb-gauge",
         "sb-task",
+        "sb-tests",
         "sb-tps",
         "sb-tokens",
         "sb-errors",
         "sb-git",
+        "sb-dedup",
+        "sb-profile",
     }
     assert "IDLE" in seg["sb-state"]
     assert "CLOUD" in seg["sb-state"]
@@ -88,7 +91,7 @@ def test_build_status_segments_populated():
     assert r"a\[b]c" in seg["sb-model"]
     assert "12.3 t/s" in seg["sb-tps"]
     assert "1,024/12,288" in seg["sb-tokens"]
-    assert "✗" in seg["sb-errors"]
+    assert "ERRORS: 2" in seg["sb-errors"]
     assert "main" in seg["sb-git"]
 
 
@@ -96,7 +99,7 @@ def test_build_status_segments_server_offline_and_branch_escape():
     from rlm_optimized.tui_widgets.status_bar import build_status_segments
 
     seg = build_status_segments(state="IDLE", port=8080, server_online=False)
-    assert "Offline" in seg["sb-state"]
+    assert "OFFLINE" in seg["sb-state"].upper()
     seg2 = build_status_segments(branch="feat/x[y]")
     assert r"feat/x\[y]" in seg2["sb-git"]
 

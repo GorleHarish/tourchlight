@@ -51,7 +51,7 @@ def _clean_task_text(text: str) -> str:
     """Normalize task text by stripping list bullets, numbers, markdown formatting, and extra spaces."""
     if not text:
         return ""
-    cleaned = re.sub(r"^(?:\d+[\.\)]|[-*+>])\s*", "", text.strip())
+    cleaned = re.sub(r"^(?:\[T?\d+(?:\.\d+)*\]|\d+(?:\.\d+)*[\.\)]?|[-*+>])\s*", "", text.strip())
     cleaned = re.sub(r"\[[ xX/\-v✓~>]\]\s*", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip().lower()
     return cleaned
@@ -59,13 +59,30 @@ def _clean_task_text(text: str) -> str:
 
 def _is_task_match(query_norm: str, task_norm: str) -> bool:
     """Strictly verify if query matches a task line without false-positive subset matches."""
-    q_clean = _clean_task_text(query_norm)
-    t_clean = _clean_task_text(task_norm)
+    q_str = str(query_norm or "").strip()
+    t_str = str(task_norm or "").strip()
+    if not q_str or not t_str:
+        return False
+
+    # Check for direct integer, hierarchical index, or tag match (e.g., "1", "1.1", "task 1.1", "T1.1", "#1")
+    q_match = re.match(r"^(?:task\s*#?|#|T|P)?(\d+(?:\.\d+)*)$", q_str, re.IGNORECASE)
+    if q_match:
+        target_id = q_match.group(1)
+        t_num_match = re.match(r"^(?:\[T?(\d+(?:\.\d+)*)\]|(\d+(?:\.\d+)*)[\.\)]?)\s+", t_str)
+        if t_num_match:
+            found_id = t_num_match.group(1) or t_num_match.group(2)
+            if found_id == target_id:
+                return True
+
+    # Check for exact task hash match (e.g. "task_1_1", "task_a1b2c3d4")
+    if q_str.startswith("task_") and t_str.startswith("task_") and q_str == t_str:
+        return True
+
+    q_clean = _clean_task_text(q_str)
+    t_clean = _clean_task_text(t_str)
     if not q_clean or not t_clean:
         return False
     if q_clean == t_clean:
-        return True
-    if query_norm.lower().strip().startswith("task_"):
         return True
     # If both strings are long enough, allow high-overlap prefix/substring match
     if len(q_clean) >= 8 and len(t_clean) >= 8:
@@ -79,9 +96,11 @@ def _is_task_match(query_norm: str, task_norm: str) -> bool:
 def parse_all_tasks_from_markdown(source: str) -> list[dict]:
     """
     Parse all task items from markdown content or file path.
-    Returns list of dicts: [{"description": str, "status": str, "raw_state": str}]
+    Returns list of dicts: [{"description": str, "status": str, "raw_state": str, "task_number": Optional[str|int], "phase": Optional[str], "task_hash": str}]
     where status is 'completed', 'in_progress', 'skipped', or 'pending'.
     """
+    import hashlib
+
     lines = []
     if os.path.exists(source):
         try:
@@ -94,11 +113,18 @@ def parse_all_tasks_from_markdown(source: str) -> list[dict]:
 
     tasks = []
     seen = set()
+    current_phase = None
     in_task_section = False
 
     # 1. First pass: Checkbox items (highest priority)
     for line in lines:
         stripped = line.strip()
+        if stripped.startswith("#"):
+            pm = re.search(r"\bPhase\s*(\d+(?:\.\d+)?|[IVXLCDM]+)?\s*[:\-–]?\s*([^\n]*)", stripped, re.IGNORECASE)
+            if pm:
+                current_phase = stripped.lstrip("#* ").strip()
+            continue
+
         m = CHK_REGEX.match(stripped)
         if m:
             state, task_raw = m.group(1), m.group(2).strip()
@@ -116,21 +142,37 @@ def parse_all_tasks_from_markdown(source: str) -> list[dict]:
                 status = "skipped"
             else:
                 status = "pending"
+            num_m = re.match(r"^(?:\[T?(\d+(?:\.\d+)*)\]|(\d+(?:\.\d+)*)[\.\)]?)\s+", task_raw)
+            task_num_str = num_m.group(1) or num_m.group(2) if num_m else None
+            try:
+                task_number = int(task_num_str) if task_num_str and task_num_str.isdigit() else task_num_str
+            except Exception:
+                task_number = task_num_str
+
+            raw_seed = f"{current_phase or ''}_{task_num_str or ''}_{norm}"
+            task_hash = f"task_{hashlib.md5(raw_seed.encode('utf-8')).hexdigest()[:8]}"
+
             tasks.append(
                 {
                     "description": task_raw,
                     "status": status,
                     "raw_state": state,
+                    "task_number": task_number,
+                    "phase": current_phase,
+                    "task_hash": task_hash,
                 }
             )
 
     # 2. Fallback pass: list items under explicit execution/task headers
     if not tasks:
-        bullet_regex = re.compile(r"^(?:[-*+]|\d+[\.\)])\s+(.+)$")
+        bullet_regex = re.compile(r"^(?:[-*+]|\d+(?:\.\d+)*[\.\)])\s+(.+)$")
         for line in lines:
             stripped = line.strip()
             if stripped.startswith("#"):
                 in_task_section = bool(EXECUTION_HEADER_REGEX.search(stripped))
+                pm = re.search(r"\bPhase\s*(\d+(?:\.\d+)?|[IVXLCDM]+)?\s*[:\-–]?\s*([^\n]*)", stripped, re.IGNORECASE)
+                if pm:
+                    current_phase = stripped.lstrip("#* ").strip()
                 continue
             if in_task_section:
                 bm = bullet_regex.match(stripped)
@@ -142,11 +184,24 @@ def parse_all_tasks_from_markdown(source: str) -> list[dict]:
                     if norm in seen:
                         continue
                     seen.add(norm)
+                    num_m = re.match(r"^(?:\[T?(\d+(?:\.\d+)*)\]|(\d+(?:\.\d+)*)[\.\)]?)\s+", task_raw)
+                    task_num_str = num_m.group(1) or num_m.group(2) if num_m else None
+                    try:
+                        task_number = int(task_num_str) if task_num_str and task_num_str.isdigit() else task_num_str
+                    except Exception:
+                        task_number = task_num_str
+
+                    raw_seed = f"{current_phase or ''}_{task_num_str or ''}_{norm}"
+                    task_hash = f"task_{hashlib.md5(raw_seed.encode('utf-8')).hexdigest()[:8]}"
+
                     tasks.append(
                         {
                             "description": task_raw,
                             "status": "pending",
                             "raw_state": " ",
+                            "task_number": task_number,
+                            "phase": current_phase,
+                            "task_hash": task_hash,
                         }
                     )
 
@@ -172,11 +227,14 @@ def parse_all_tasks_from_markdown(source: str) -> list[dict]:
                 if norm in seen:
                     continue
                 seen.add(norm)
+                num_m = re.match(r"^(\d+)[\.\)]\s*", task_raw)
+                task_number = int(num_m.group(1)) if num_m else None
                 tasks.append(
                     {
                         "description": task_raw,
                         "status": "pending",
                         "raw_state": " ",
+                        "task_number": task_number,
                     }
                 )
 
@@ -276,7 +334,7 @@ def _patch_plan_checkbox(plan_path: str, query_norm: str, box_char: str) -> bool
         new_lines = []
         file_changed = False
         list_item_regex = re.compile(
-            r"^(\s*(?:[-*+>]|\d+[\.\)])\s*)(?:\[[ xX/\-v✓~]\]\s*)?(.*)$"
+            r"^(\s*(?:[-*+>]|\d+(?:\.\d+)*[\.\)]|\[T\d+(?:\.\d+)*\])\s*)(?:\[[ xX/\-v✓~]\]\s*)?(.*)$"
         )
         for line in lines:
             m_chk = CHK_REGEX.match(line.strip())
@@ -319,10 +377,17 @@ def _render_plan_checkboxes(project_root: str, tasks: list[dict]) -> None:
         return
 
     status_map = {}
-    for t in tasks:
-        norm = _norm(t.get("description") or t.get("id") or "")
+    num_status_map = {}
+    for idx, t in enumerate(tasks, start=1):
+        desc = str(t.get("description") or t.get("id") or "")
+        norm = _norm(desc)
+        st = t.get("status", "pending")
         if norm:
-            status_map[norm] = t.get("status", "pending")
+            status_map[norm] = st
+        t_num_match = re.match(r"^(?:\[T?(\d+(?:\.\d+)*)\]|(\d+(?:\.\d+)*)[\.\)]?)\s+", desc.strip())
+        t_num = (t_num_match.group(1) or t_num_match.group(2)) if t_num_match else str(t.get("task_number") or idx)
+        if t_num is not None:
+            num_status_map[str(t_num)] = st
 
     try:
         with open(plan_path, "r", encoding="utf-8") as f:
@@ -334,7 +399,9 @@ def _render_plan_checkboxes(project_root: str, tasks: list[dict]) -> None:
             if m:
                 task_raw = m.group(2).strip()
                 norm = _norm(task_raw)
-                st = status_map.get(norm)
+                m_num = re.match(r"^(?:\[T?(\d+(?:\.\d+)*)\]|(\d+(?:\.\d+)*)[\.\)]?)\s+", task_raw)
+                t_num = (m_num.group(1) or m_num.group(2)) if m_num else None
+                st = status_map.get(norm) or (num_status_map.get(str(t_num)) if t_num is not None else None)
                 if st:
                     box = _status_to_box(st)
                     updated_line = re.sub(r"\[[ xX/\-v✓~]\]", f"[{box}]", line, count=1)
@@ -410,6 +477,9 @@ def _status_badge(status: str) -> str:
     return "⚪ PENDING"
 
 
+_COMPACT_MATRIX_CACHE: dict = {}
+
+
 def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
     """
     Generate an ultra-compact visual Task Matrix for LLM context injection.
@@ -420,6 +490,37 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
         return []
 
     alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
+    plan_path = os.path.join(project_root, "implementation_plan.md")
+    alt_tasks_path = os.path.join(project_root, ".torchlight", "tasks.md")
+
+    # Fast-path: Check file mtimes to avoid reading/parsing disk files when unchanged
+    max_mtime = 0.0
+    for p in (alt_goal_path, plan_path, alt_tasks_path):
+        try:
+            if os.path.exists(p):
+                max_mtime = max(max_mtime, os.path.getmtime(p))
+        except OSError:
+            pass
+
+    # Check budget pressure if budget object passed (compress to 1-line when context usage > 45%)
+    is_tight = False
+    section_cap = 3
+    if budget is not None:
+        if hasattr(budget, "context_usage_ratio"):
+            is_tight = budget.context_usage_ratio > 0.45
+        elif hasattr(budget, "headroom_ratio"):
+            is_tight = budget.headroom_ratio < 0.55
+        elif hasattr(budget, "scratchpad_section_cap"):
+            is_tight = budget.scratchpad_section_cap <= 3
+        if hasattr(budget, "scratchpad_section_cap"):
+            section_cap = min(budget.scratchpad_section_cap, 3)
+
+    cache_key = (project_root, is_tight, section_cap)
+    if cache_key in _COMPACT_MATRIX_CACHE:
+        cached_mtime, cached_res = _COMPACT_MATRIX_CACHE[cache_key]
+        if cached_mtime == max_mtime:
+            return cached_res
+
     gdata = _load_goal_spec(alt_goal_path)
     tasks = []
     if gdata and gdata.get("tasks"):
@@ -429,6 +530,9 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
                 "description": str(t.get("description") or t.get("id") or "Task"),
                 "status": str(t.get("status", "pending")),
                 "depends_on": t.get("depends_on", []),
+                "phase": t.get("phase"),
+                "task_number": t.get("task_number"),
+                "task_hash": t.get("task_hash"),
             })
     else:
         for md_name in ("implementation_plan.md", os.path.join(".torchlight", "tasks.md")):
@@ -437,14 +541,18 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
                 parsed = parse_all_tasks_from_markdown(md_path)
                 for t in parsed:
                     tasks.append({
-                        "id": None,
+                        "id": t.get("task_hash"),
                         "description": t.get("description", "Task"),
                         "status": t.get("status", "pending"),
                         "depends_on": [],
+                        "phase": t.get("phase"),
+                        "task_number": t.get("task_number"),
+                        "task_hash": t.get("task_hash"),
                     })
                 break
 
     if not tasks:
+        _COMPACT_MATRIX_CACHE[cache_key] = (max_mtime, [])
         return []
 
     total = len(tasks)
@@ -453,29 +561,22 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
     filled = int((done_count / max(1, total)) * 10)
     bar = "█" * filled + "░" * (10 - filled)
 
-    # Check budget pressure if budget object passed (compress to 1-line when context usage > 45%)
-    is_tight = False
-    if budget is not None:
-        if hasattr(budget, "context_usage_ratio"):
-            is_tight = budget.context_usage_ratio > 0.45
-        elif hasattr(budget, "headroom_ratio"):
-            is_tight = budget.headroom_ratio < 0.55
-        elif hasattr(budget, "scratchpad_section_cap"):
-            is_tight = budget.scratchpad_section_cap <= 3
-
     in_prog = [t for t in tasks if t["status"] in ("in_progress", "active", "verifying")]
     pending = [t for t in tasks if t["status"] == "pending"]
+
+    active_phase = in_prog[0].get("phase") if in_prog else (pending[0].get("phase") if pending else None)
+    phase_hdr = f" | {active_phase}" if active_phase else ""
 
     if is_tight or total > 5:
         active_raw = _clean_task_text(in_prog[0]["description"]) if in_prog else (_clean_task_text(pending[0]["description"]) if pending else "None")
         next_raw = _clean_task_text(pending[0]["description"]) if (in_prog and pending) else (_clean_task_text(pending[1]["description"]) if len(pending) > 1 else "None")
         active_str = active_raw[:35] + "..." if len(active_raw) > 38 else active_raw
         next_str = next_raw[:35] + "..." if len(next_raw) > 38 else next_raw
-        return [f"- Task Matrix: [{bar}] {done_count}/{total} Done ({percent}%) | Active: {active_str} | Next: {next_str}"]
+        res_lines = [f"- Task Matrix: [{bar}] {done_count}/{total} Done ({percent}%){phase_hdr} | Active: {active_str} | Next: {next_str}"]
+        _COMPACT_MATRIX_CACHE[cache_key] = (max_mtime, res_lines)
+        return res_lines
 
-    lines = [f"- Task Matrix: [{bar}] {done_count}/{total} Completed ({percent}%)"]
-    section_cap = budget.scratchpad_section_cap if budget and hasattr(budget, "scratchpad_section_cap") else 3
-    section_cap = min(section_cap, 3)  # Cap at max 3 shown tasks in context to prevent context budget tax
+    lines = [f"- Task Matrix: [{bar}] {done_count}/{total} Completed ({percent}%){phase_hdr}"]
 
     # Priority: active/verifying task -> next pending tasks -> blocked/failed tasks
     shown_tasks = []
@@ -494,8 +595,10 @@ def get_compact_task_matrix(project_root: str, budget=None) -> list[str]:
         if len(desc) > 38:
             desc = desc[:35] + "..."
         badge = _status_badge(t["status"])
-        lines.append(f"  • [{badge}] {desc}")
+        num_prefix = f"#{t['task_number']} " if t.get("task_number") else ""
+        lines.append(f"  • [{badge}] {num_prefix}{desc}")
 
+    _COMPACT_MATRIX_CACHE[cache_key] = (max_mtime, lines)
     return lines
 
 
@@ -535,12 +638,32 @@ def mark_task_status(
             raw_tasks = gdata.get("tasks", [])
             query_l = str(task_id_or_desc).lower().strip()
             query_norm = _norm(query_l)
+            target_num = None
+            q_num_match = re.match(r"^(?:task\s*#?|#|T|P)?(\d+(?:\.\d+)*)$", query_l, re.IGNORECASE)
+            if q_num_match:
+                target_num = q_num_match.group(1)
+
             goal_changed = False
-            for t in raw_tasks:
+            for idx, t in enumerate(raw_tasks, start=1):
                 t_id = str(t.get("id") or "").lower().strip()
-                t_norm = _norm(t.get("description") or "")
-                if query_l == t_id or (query_norm and query_norm == t_norm):
+                t_desc = str(t.get("description") or "")
+                t_norm = _norm(t_desc)
+                t_num_match = re.match(r"^(?:\[T?(\d+(?:\.\d+)*)\]|(\d+(?:\.\d+)*)[\.\)]?)\s+", t_desc.strip())
+                t_num = (t_num_match.group(1) or t_num_match.group(2)) if t_num_match else str(t.get("task_number") or idx)
+
+                matched = False
+                if target_num is not None:
+                    if str(t_num) == str(target_num) or str(idx) == str(target_num):
+                        matched = True
+                elif query_l == t_id or (query_norm and query_norm == t_norm) or _is_task_match(query_l, t_desc):
+                    matched = True
+
+                if matched:
                     t["status"] = canon_status
+                    goal_changed = True
+                elif canon_status == "in_progress" and t.get("status") == "in_progress":
+                    # Enforce single active task exclusivity: revert prior in_progress task back to pending
+                    t["status"] = "pending"
                     goal_changed = True
             if goal_changed:
                 with open(alt_goal_path, "w", encoding="utf-8") as f:
@@ -619,18 +742,18 @@ def insert_task_into_plan(
 
 
 def _extract_referenced_files(text: str) -> list[str]:
-    """Extract distinct code/markup filenames referenced in task description."""
+    """Extract distinct code/markup filepaths referenced in task description."""
     if not text:
         return []
     matches = re.findall(
-        r"\b[\w\.-]+\.(?:py|js|ts|jsx|tsx|html|css|json|rs|go|sh|c|cpp|h|hpp|sql|yml|yaml|toml|rb|php|swift|kt)\b",
+        r"(?:[\w\.-]+[/\\])*[\w\.-]+\.(?:py|js|ts|jsx|tsx|html|css|json|rs|go|sh|c|cpp|h|hpp|sql|yml|yaml|toml|rb|php|swift|kt)\b",
         text,
         re.IGNORECASE,
     )
     seen = set()
     res = []
     for m in matches:
-        low = m.lower()
+        low = os.path.basename(m).lower()
         if (
             low
             not in (
@@ -644,6 +767,59 @@ def _extract_referenced_files(text: str) -> list[str]:
             seen.add(low)
             res.append(m)
     return res
+
+
+def _extract_task_file_and_scope(text: str) -> dict:
+    """
+    Extract file path, line range, AST symbol anchor, and [NEW] flag from a task description.
+    Supports formats like:
+      - [src/auth.py:L15-L40] Implement JWT verification
+      - [src/auth.py:15-40] Implement JWT verification
+      - [src/auth.py#verify_token] Add expiry check
+      - [src/utils/crypto.py] [NEW] Scaffold hashing helper
+      - `src/components/Header.jsx` Build topbar
+      - Update index.html and style.css
+    """
+    if not text:
+        return {"target_files": [], "line_range": None, "symbol": None, "is_new": False}
+
+    is_new = bool(
+        re.search(r"\[NEW\]|\bnew file\b|\bcreate file\b", text, re.IGNORECASE)
+    )
+
+    bracket_m = re.search(
+        r"\[([a-zA-Z0-9_\-\./\\]+\.[a-zA-Z0-9]+)(?:[:#]([a-zA-Z0-9_\-]+(?:\s*-\s*[a-zA-Z0-9_]+)?))?\]",
+        text,
+    )
+    line_range = None
+    symbol = None
+    target_files = []
+
+    if bracket_m:
+        fpath = bracket_m.group(1).strip()
+        target_files.append(fpath)
+        spec = bracket_m.group(2)
+        if spec:
+            spec = spec.strip()
+            lr_m = re.match(r"^L?(\d+)\s*-\s*L?(\d+)$", spec, re.IGNORECASE)
+            if lr_m:
+                line_range = (int(lr_m.group(1)), int(lr_m.group(2)))
+            else:
+                symbol = spec.lstrip("#:")
+
+    all_refs = _extract_referenced_files(text)
+    for ref in all_refs:
+        if ref not in target_files and os.path.basename(ref).lower() not in [
+            os.path.basename(f).lower() for f in target_files
+        ]:
+            target_files.append(ref)
+
+    return {
+        "target_files": target_files,
+        "line_range": line_range,
+        "symbol": symbol,
+        "is_new": is_new,
+    }
 
 
 def _find_file_in_project(project_root: str, base: str) -> Optional[str]:
@@ -677,8 +853,10 @@ def _file_looks_complete(path: Optional[str]) -> bool:
         return False
     if _norm(text) in _STUB_EXACT:
         return False
-    if _STUB_RE.search(text[:2000]):
-        return False
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    if len(lines) <= 2:
+        if _norm(text) in _STUB_EXACT or _STUB_RE.search(text):
+            return False
     return True
 
 
@@ -749,7 +927,10 @@ def verify_task_targeted(project_root: str, task: dict, timeout: int = 5) -> tup
         for tf in target_files:
             bname = os.path.basename(tf)
             if bname.startswith("test_") or bname.endswith("_test.py"):
-                vcmd = f"pytest {tf}"
+                import sys
+
+                py_bin = sys.executable or "python3"
+                vcmd = f"{py_bin} -m pytest {tf} -q"
                 break
 
     if not vcmd:
@@ -806,6 +987,7 @@ def auto_mark_task_completed_by_file(
     alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
     plan_path = os.path.join(project_root, "implementation_plan.md")
 
+    norm_file_path = file_path.replace("\\", "/").lower().lstrip("./")
     word_re = re.compile(
         rf"(?<![\.\w-]){re.escape(base_name)}(?![\.\w-])", re.IGNORECASE
     )
@@ -818,7 +1000,19 @@ def auto_mark_task_completed_by_file(
                 continue
             desc = str(t.get("description") or "")
             t_files = [os.path.basename(f).lower() for f in t.get("target_files", [])]
-            if base_name.lower() in t_files or word_re.search(desc):
+            t_full_files = [
+                f.replace("\\", "/").lower().lstrip("./")
+                for f in t.get("target_files", [])
+            ]
+            if (
+                base_name.lower() in t_files
+                or norm_file_path in t_full_files
+                or any(
+                    norm_file_path.endswith(f) or f.endswith(norm_file_path)
+                    for f in t_full_files
+                )
+                or word_re.search(desc)
+            ):
                 candidates.append(t)
     else:
         if os.path.exists(plan_path):
@@ -826,60 +1020,286 @@ def auto_mark_task_completed_by_file(
             for t in parsed:
                 if t["status"] not in ("pending", "in_progress"):
                     continue
-                if word_re.search(t["description"]):
+                scope_info = _extract_task_file_and_scope(t["description"])
+                t_files = [
+                    os.path.basename(f).lower() for f in scope_info["target_files"]
+                ]
+                t_full = [
+                    f.replace("\\", "/").lower().lstrip("./")
+                    for f in scope_info["target_files"]
+                ]
+                if (
+                    base_name.lower() in t_files
+                    or norm_file_path in t_full
+                    or any(
+                        norm_file_path.endswith(f) or f.endswith(norm_file_path)
+                        for f in t_full
+                    )
+                    or word_re.search(t["description"])
+                ):
                     candidates.append(
                         {
                             "id": None,
                             "description": t["description"],
-                            "target_files": _extract_referenced_files(t["description"]),
+                            "target_files": scope_info["target_files"],
+                            "line_range": scope_info["line_range"],
+                            "symbol": scope_info["symbol"],
+                            "is_new": scope_info["is_new"],
                             "status": t["status"],
                         }
                     )
 
     if not candidates:
+        # Fallback: If no task explicitly named this specific file, match active in_progress task or first pending task
+        if gdata:
+            open_tasks = [
+                t
+                for t in gdata.get("tasks", [])
+                if t.get("status", "pending") in ("pending", "in_progress")
+            ]
+            in_prog = [t for t in open_tasks if t.get("status") == "in_progress"]
+            if in_prog:
+                candidates = in_prog
+            elif open_tasks:
+                candidates = [open_tasks[0]]
+        elif os.path.exists(plan_path):
+            parsed = parse_all_tasks_from_markdown(plan_path)
+            open_tasks = [
+                t for t in parsed if t["status"] in ("pending", "in_progress")
+            ]
+            in_prog = [t for t in open_tasks if t["status"] == "in_progress"]
+            target_t = in_prog[0] if in_prog else (open_tasks[0] if open_tasks else None)
+            if target_t:
+                candidates.append(
+                    {
+                        "id": None,
+                        "description": target_t["description"],
+                        "target_files": _extract_referenced_files(
+                            target_t["description"]
+                        ),
+                        "status": target_t["status"],
+                    }
+                )
+
+    if not candidates:
         return False
 
-    # Count how many tasks are currently in_progress across the whole project
-    already_in_progress = any(
-        c.get("status") == "in_progress" for c in candidates
+    # Select at most ONE target candidate task to advance:
+    # 1. Prefer the candidate that is already in_progress
+    # 2. Otherwise pick the first pending candidate
+    target_cand = None
+    in_prog_cands = [c for c in candidates if c.get("status") == "in_progress"]
+    if in_prog_cands:
+        target_cand = in_prog_cands[0]
+    else:
+        pending_cands = [c for c in candidates if c.get("status") == "pending"]
+        if pending_cands:
+            target_cand = pending_cands[0]
+
+    if not target_cand:
+        return False
+
+    desc = str(target_cand.get("description") or "")
+    target_files = target_cand.get("target_files") or _extract_referenced_files(desc)
+    refs = [os.path.basename(rf).lower() for rf in target_files]
+
+    if len(refs) > 1:
+        existing = [rf for rf in refs if _find_file_in_project(project_root, rf)]
+        if len(existing) == len(refs) and verified:
+            ok_ver, msg_ver = verify_task_targeted(project_root, target_cand)
+            target_status = "completed" if ok_ver else "failed"
+        elif existing:
+            target_status = "in_progress"
+        else:
+            return False
+    else:
+        ref = refs[0] if refs else base_name.lower()
+        full_path = _find_file_in_project(project_root, ref) or (
+            file_path if os.path.isabs(file_path) else os.path.join(project_root, file_path)
+        )
+        if (
+            verified
+            and full_path
+            and os.path.isfile(full_path)
+            and _file_looks_complete(full_path)
+        ):
+            ok_ver, msg_ver = verify_task_targeted(project_root, target_cand)
+            target_status = "completed" if ok_ver else "failed"
+        else:
+            target_status = "in_progress"
+
+    if target_cand.get("status") == target_status:
+        return False
+
+    return mark_task_status(
+        project_root, desc or target_cand.get("id", ""), status=target_status
     )
+
+
+def auto_mark_task_completed_by_command(
+    project_root: str, command: str, return_code: int = 0
+) -> bool:
+    """
+    Auto-detect open tasks that correspond to a successful shell command (e.g. `npm install`,
+    `pytest`, `cargo test`, `python manage.py migrate`, `pip install`) and mark them completed.
+
+    Matching is strict:
+      - Only matches tasks that have NO target_files or specifically mention the command/action.
+      - If return_code == 0, marks status as 'completed'.
+    """
+    if not project_root or not command or return_code != 0:
+        return False
+
+    cmd_clean = command.strip().lower()
+    if not cmd_clean:
+        return False
+
+    alt_goal_path = os.path.join(project_root, ".torchlight", "goal_spec.json")
+    plan_path = os.path.join(project_root, "implementation_plan.md")
+
+    tokens = set(re.findall(r"[a-z0-9_-]+", cmd_clean))
+    is_install = bool(tokens & {"install", "add", "setup"})
+    is_test = bool(tokens & {"test", "pytest", "jest", "unittest", "vitest"})
+    is_migrate = bool(tokens & {"migrate", "migration", "migrations"})
+    is_build = bool(tokens & {"build", "bundle", "compile"})
+
+    candidates = []
+    gdata = _load_goal_spec(alt_goal_path)
+    if gdata:
+        for t in gdata.get("tasks", []):
+            if t.get("status", "pending") not in ("pending", "in_progress"):
+                continue
+            desc = str(t.get("description") or "").lower()
+            if any(tok in desc for tok in tokens if len(tok) >= 4):
+                candidates.append(t)
+            elif is_install and any(
+                w in desc
+                for w in (
+                    "install depend",
+                    "install package",
+                    "npm install",
+                    "pip install",
+                )
+            ):
+                candidates.append(t)
+            elif is_test and any(
+                w in desc
+                for w in (
+                    "run test",
+                    "execute test",
+                    "verify test",
+                    "pytest",
+                    "npm test",
+                )
+            ):
+                candidates.append(t)
+            elif is_migrate and any(
+                w in desc
+                for w in (
+                    "run migration",
+                    "migrate database",
+                    "apply migration",
+                )
+            ):
+                candidates.append(t)
+            elif is_build and any(
+                w in desc
+                for w in (
+                    "build project",
+                    "build bundle",
+                    "npm run build",
+                    "cargo build",
+                )
+            ):
+                candidates.append(t)
+    else:
+        if os.path.exists(plan_path):
+            parsed = parse_all_tasks_from_markdown(plan_path)
+            for t in parsed:
+                if t["status"] not in ("pending", "in_progress"):
+                    continue
+                desc = t["description"].lower()
+                if any(tok in desc for tok in tokens if len(tok) >= 4):
+                    candidates.append(
+                        {
+                            "id": None,
+                            "description": t["description"],
+                            "status": t["status"],
+                        }
+                    )
+                elif is_install and any(
+                    w in desc
+                    for w in (
+                        "install depend",
+                        "install package",
+                        "npm install",
+                        "pip install",
+                    )
+                ):
+                    candidates.append(
+                        {
+                            "id": None,
+                            "description": t["description"],
+                            "status": t["status"],
+                        }
+                    )
+                elif is_test and any(
+                    w in desc
+                    for w in (
+                        "run test",
+                        "execute test",
+                        "verify test",
+                        "pytest",
+                        "npm test",
+                    )
+                ):
+                    candidates.append(
+                        {
+                            "id": None,
+                            "description": t["description"],
+                            "status": t["status"],
+                        }
+                    )
+                elif is_migrate and any(
+                    w in desc
+                    for w in (
+                        "run migration",
+                        "migrate database",
+                        "apply migration",
+                    )
+                ):
+                    candidates.append(
+                        {
+                            "id": None,
+                            "description": t["description"],
+                            "status": t["status"],
+                        }
+                    )
+                elif is_build and any(
+                    w in desc
+                    for w in (
+                        "build project",
+                        "build bundle",
+                        "npm run build",
+                        "cargo build",
+                    )
+                ):
+                    candidates.append(
+                        {
+                            "id": None,
+                            "description": t["description"],
+                            "status": t["status"],
+                        }
+                    )
 
     marked_any = False
     for cand in candidates:
         desc = str(cand.get("description") or "")
-        target_files = cand.get("target_files") or _extract_referenced_files(desc)
-        refs = [os.path.basename(rf).lower() for rf in target_files]
-
-        if len(refs) > 1:
-            existing = [rf for rf in refs if _find_file_in_project(project_root, rf)]
-            if len(existing) == len(refs) and verified:
-                ok_ver, msg_ver = verify_task_targeted(project_root, cand)
-                target_status = "completed" if ok_ver else "failed"
-            elif existing:
-                target_status = "in_progress"
-            else:
-                continue
-        else:
-            ref = refs[0] if refs else base_name.lower()
-            full_path = _find_file_in_project(project_root, ref)
-            if verified and full_path and _file_looks_complete(full_path):
-                ok_ver, msg_ver = verify_task_targeted(project_root, cand)
-                target_status = "completed" if ok_ver else "failed"
-            else:
-                target_status = "in_progress"
-
-        if target_status == "in_progress" and already_in_progress and cand.get("status") != "in_progress":
-            # Preserve strict serial execution: do not flip multiple pending tasks to in_progress at once
-            continue
-
-        if cand.get("status") == target_status:
-            continue
+        t_id = cand.get("id")
         if mark_task_status(
-            project_root, desc or cand.get("id", ""), status=target_status
+            project_root, task_id_or_desc=t_id or desc, status="completed"
         ):
             marked_any = True
-            if target_status == "in_progress":
-                already_in_progress = True
 
     return marked_any
 
@@ -970,22 +1390,44 @@ def sync_workspace_tasks(
         if norm in seen:
             continue
         seen.add(norm)
+        scope_info = _extract_task_file_and_scope(pt["description"])
         if norm in existing:
-            merged.append(dict(existing[norm]))
+            ex_task = dict(existing[norm])
+            if not ex_task.get("target_files") and scope_info["target_files"]:
+                ex_task["target_files"] = scope_info["target_files"]
+            if not ex_task.get("line_range") and scope_info["line_range"]:
+                ex_task["line_range"] = scope_info["line_range"]
+            if not ex_task.get("symbol") and scope_info["symbol"]:
+                ex_task["symbol"] = scope_info["symbol"]
+            if not ex_task.get("is_new") and scope_info["is_new"]:
+                ex_task["is_new"] = scope_info["is_new"]
+            if pt.get("task_number") and not ex_task.get("task_number"):
+                ex_task["task_number"] = pt["task_number"]
+            if pt.get("phase") and not ex_task.get("phase"):
+                ex_task["phase"] = pt["phase"]
+            if pt.get("task_hash") and not ex_task.get("task_hash"):
+                ex_task["task_hash"] = pt["task_hash"]
+            merged.append(ex_task)
         else:
             new_task = {
-                "id": _stable_task_id(all_ids),
+                "id": pt.get("task_hash") or _stable_task_id(all_ids),
                 "description": pt["description"],
+                "task_number": pt.get("task_number"),
+                "phase": pt.get("phase"),
+                "task_hash": pt.get("task_hash"),
                 "status": (
                     "verified"
-                    if pt["status"] == "completed"
+                    if pt["status"] in ("completed", "verified", "done")
                     else "in_progress"
-                    if pt["status"] == "in_progress"
+                    if pt["status"] in ("in_progress", "active")
                     else "skipped"
-                    if pt["status"] == "skipped"
+                    if pt["status"] in ("skipped", "skip")
                     else "pending"
                 ),
-                "target_files": [],
+                "target_files": scope_info["target_files"],
+                "line_range": scope_info["line_range"],
+                "symbol": scope_info["symbol"],
+                "is_new": scope_info["is_new"],
                 "depends_on": [],
                 "outputs_summary": None,
                 "attempts": 0,
@@ -1026,7 +1468,12 @@ def sync_workspace_tasks(
             f"# Goal: {goal_title}",
             "## Tasks Breakdown\n",
         ]
+        curr_phase = None
         for t in merged:
+            phase = t.get("phase")
+            if phase and phase != curr_phase:
+                curr_phase = phase
+                md_lines.append(f"\n### {curr_phase}")
             box = _status_to_box(t.get("status", "pending"))
             md_lines.append(f"- [{box}] {t.get('description') or t.get('id')}")
         with open(alt_tasks_path, "w", encoding="utf-8") as f:
@@ -1134,10 +1581,14 @@ def get_workspace_task_status_summary(project_root: str) -> dict:
         return result
 
     result["total_count"] = len(tasks)
-    result["completed_count"] = sum(1 for t in tasks if t["status"] in ("completed", "skipped"))
+    result["completed_count"] = sum(
+        1 for t in tasks if t["status"] in ("completed", "verified", "done", "skipped")
+    )
 
     # Determine current active task & next task
-    in_prog = [t for t in tasks if t["status"] == "in_progress"]
+    in_prog = [
+        t for t in tasks if t["status"] in ("in_progress", "active", "verifying")
+    ]
     pending = [t for t in tasks if t["status"] == "pending"]
 
     if in_prog:

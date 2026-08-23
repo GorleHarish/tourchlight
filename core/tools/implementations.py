@@ -553,36 +553,54 @@ def _extract_identifiers(snippet: str, language: str) -> list:
 def tool_read_file_impl(args: dict, project_root: str) -> str:
     """READ_FILE — read a file with optional line-range or symbol syntax."""
     try:
-        path = (args.get("path") or "").strip()
+        path = (args.get("path") or "").strip().lstrip("@")
         if not path:
             return "READ_FILE requires a file path. Use RUN_COMMAND('ls') to see directory contents."
 
-        # Parse optional :N-M or :SymbolName suffix
+        # Helper to parse integer safely from string / int / 'L10'
+        def _parse_line_int(val: Any) -> Optional[int]:
+            if val is None:
+                return None
+            if isinstance(val, int):
+                return max(1, val)
+            s = str(val).strip()
+            digits = re.sub(r"[^\d]", "", s)
+            return max(1, int(digits)) if digits else None
+
         range_start = None
         range_end = None
         symbol_name = None
 
-        m_range = re.match(r"^(.+?)\s*:\s*(\d+)-(\d+)\s*$", path)
-        m_line = re.match(r"^(.+?)\s*:\s*(\d+)\s*$", path)
+        m_range = re.match(r"^(.+?)\s*:\s*[Ll]?(\d+)\s*-\s*[Ll]?(\d+)\s*$", path)
+        m_line = re.match(r"^(.+?)\s*:\s*[Ll]?(\d+)\s*$", path)
         m_sym = re.match(r"^(.+?)\s*:\s*([A-Za-z_]\w*)\s*$", path)
 
         if m_range:
             path, range_start, range_end = (
                 m_range.group(1).strip(),
-                int(m_range.group(2)),
-                int(m_range.group(3)),
+                max(1, int(m_range.group(2))),
+                max(1, int(m_range.group(3))),
             )
         elif m_line:
-            path, range_start = m_line.group(1).strip(), int(m_line.group(2))
+            path, range_start = m_line.group(1).strip(), max(1, int(m_line.group(2)))
             range_end = range_start
         elif m_sym:
             path, symbol_name = m_sym.group(1).strip(), m_sym.group(2)
         else:
-            if args.get("start_line") is not None or args.get("end_line") is not None:
-                range_start = int(args["start_line"]) if args.get("start_line") is not None else 1
-                range_end = int(args["end_line"]) if args.get("end_line") is not None else None
-            elif args.get("symbol"):
-                symbol_name = str(args["symbol"]).strip()
+            range_val = args.get("range") or args.get("lines")
+            if range_val and isinstance(range_val, str) and "-" in range_val:
+                r_parts = range_val.split("-", 1)
+                range_start = _parse_line_int(r_parts[0])
+                range_end = _parse_line_int(r_parts[1])
+            elif range_val and isinstance(range_val, (list, tuple)) and len(range_val) >= 2:
+                range_start = _parse_line_int(range_val[0])
+                range_end = _parse_line_int(range_val[1])
+            else:
+                if args.get("start_line") is not None or args.get("end_line") is not None:
+                    range_start = _parse_line_int(args.get("start_line")) or 1
+                    range_end = _parse_line_int(args.get("end_line"))
+                elif args.get("symbol"):
+                    symbol_name = str(args["symbol"]).strip()
 
         # Path resolution
         p = os.path.abspath(os.path.join(project_root, path))
@@ -602,12 +620,16 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
                         f"The suffix after ':' was not recognized as a LINE, RANGE (N-M), or SYMBOL.\n"
                         f"Valid formats: '{base_path}:10-20', '{base_path}:15', or '{base_path}:ClassOrFunc'."
                     )
-            return f"File not found: {path}. Use RUN_COMMAND('ls') to verify."
+            return (
+                f"File not found: '{path}'.\n"
+                f"If you are creating a new file or starting a new task, use WRITE_FILE to create and write the code:\n"
+                f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{path}", "content": "// Initial code implementation\\n"}}}}</tool_call>'
+            )
 
         if os.path.isdir(p):
             return f"{path} is a directory. Use RUN_COMMAND('ls {path}') to list it."
 
-        # Image file rejection
+        # Image file redirection
         image_extensions = {
             ".png",
             ".jpg",
@@ -621,7 +643,7 @@ def tool_read_file_impl(args: dict, project_root: str) -> str:
         }
         ext = os.path.splitext(p)[1].lower()
         if ext in image_extensions:
-            return f"Cannot read image file: {os.path.basename(p)}."
+            return f"ℹ️ '{os.path.basename(p)}' is a binary image file. Use VIEW_IMAGE(path='{path}') to inspect this image visually."
 
         # Binary detection
         file_size = os.path.getsize(p)
@@ -1096,7 +1118,137 @@ def _check_compile(content: str, filename: str, project_root: str) -> Optional[s
                 except OSError:
                     pass
 
-    return None
+def _clean_copied_file_text(text: str, filename: str = "") -> str:
+    """Strip display decorations (line number prefixes, symbol maps, markdown codeblock fences,
+    file header/footer annotations, pinned file framing) if model copied verbatim from READ_FILE
+    or memory scratchpad into old_text, new_text, or content.
+    """
+    if not text or not isinstance(text, str):
+        return text
+
+    # Handle unescaped literal \\n and \\t from raw JSON serialization
+    if "\\n" in text and "\n" not in text:
+        text = text.replace("\\n", "\n").replace("\\t", "\t")
+
+    lines = text.splitlines()
+    if not lines:
+        return text
+
+    cleaned_lines = []
+    in_symbol_map = False
+
+    for line in lines:
+        trimmed = line.strip()
+
+        # 1. Pinned file framing headers/footers e.g. "--- game.js ---", "--- end game.js ---"
+        if re.match(r"^---\s*[\w\.\-/]+\s*---$", trimmed) or re.match(
+            r"^---\s*end\s+[\w\.\-/]+\s*---$", trimmed, re.IGNORECASE
+        ):
+            continue
+        if trimmed == "[Pinned file contents — use for EDIT_FILE old_text:]":
+            continue
+
+        # 2. Symbol map header e.g. "Symbols:"
+        if trimmed == "Symbols:":
+            in_symbol_map = True
+            continue
+
+        # 3. Inside symbol map: skip symbol entries e.g. "L   6  fn     update"
+        if in_symbol_map:
+            if re.match(
+                r"^L\s*\d+\s+(?:fn|class|struct|interface|type|const|var|let|def|func|val|pub|async)\s+\w+",
+                trimmed,
+                re.IGNORECASE,
+            ):
+                continue
+            elif not trimmed:
+                continue
+            else:
+                # Reached non-symbol line, exit symbol map
+                in_symbol_map = False
+
+        # 4. File line count headers e.g. "game.js (42 lines)", "game.js lines 1–42 (of 42 total)"
+        if re.search(
+            r"^(?:[\w\.\-/]+\s+)?(?:\(\d+\s*lines\)|lines\s*\d+[–\-]\d+\s*\(of\s*\d+\s*total\))$",
+            trimmed,
+            re.IGNORECASE,
+        ):
+            continue
+
+        # 5. Markdown code fences e.g. "```js", "```python", "```"
+        if re.match(r"^```[a-zA-Z0-9_\-]*$", trimmed) or trimmed == "```":
+            continue
+
+        # 6. READ_FILE truncation suffixes e.g. "... (capped at 100 lines...)"
+        if re.search(
+            r"^\.\.\.\s*\((?:capped at \d+ lines|\d+ more lines).*\)$",
+            trimmed,
+            re.IGNORECASE,
+        ):
+            continue
+
+        # 7. Line number prefixes e.g. " 1 | const canvas...", "  42 | ctx...", "L10 | def foo()"
+        line_num_match = re.match(r"^\s*(?:L\s*)?\d+\s*\|\s?(.*)$", line)
+        if line_num_match:
+            cleaned_lines.append(line_num_match.group(1))
+        else:
+            cleaned_lines.append(line)
+
+    res = "\n".join(cleaned_lines)
+    if text.endswith("\n") and not res.endswith("\n"):
+        res += "\n"
+    return res
+
+
+def _strip_leading_filename_header(content: str, filename: str) -> str:
+    """Strip redundant leading filename headers or markdown labels from file content."""
+    if not content or not filename:
+        return content
+    base = os.path.basename(filename).strip()
+    if not base:
+        return content
+
+    lines = content.splitlines(keepends=True)
+    if not lines:
+        return content
+
+    first_line = lines[0].strip()
+
+    # Edge Case 1: Shebang lines (e.g. #!/usr/bin/env node) must NEVER be stripped
+    if first_line.startswith("#!"):
+        return content
+
+    # Edge Case 2: In markdown files, legitimate '# README.md' title headers must NOT be stripped
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in (".md", ".markdown", ".rst") and first_line.startswith("#"):
+        if not re.search(r"^(?:#{1,6}|<!--)\s*(?:file|filename|filepath|path)\s*[:=]", first_line, re.IGNORECASE):
+            return content
+
+    base_lower = base.lower()
+
+    # 1. Check if first line is bare filename or relative path (e.g. "game.js", "src/game.js", "`game.js`", "### game.js")
+    cleaned_first = first_line.strip("`'\"#/*- ").strip()
+    if (
+        cleaned_first.lower() == base_lower
+        or cleaned_first.lower().endswith("/" + base_lower)
+        or cleaned_first.lower().endswith("\\" + base_lower)
+    ):
+        return "".join(lines[1:]).lstrip("\r\n")
+
+    # 2. Check if first line is markdown header or file label (e.g. "### File: game.js", "// file: game.js")
+    m = re.search(
+        r"^(?:#{1,6}|//|/\*|<!--|#)\s*(?:file|filename|filepath|path)\s*[:=]?\s*`?([^\n\r`]+)`?",
+        first_line,
+        re.IGNORECASE,
+    )
+    if m and os.path.basename(m.group(1).strip()).lower() == base_lower:
+        return "".join(lines[1:]).lstrip("\r\n")
+
+    # 3. Check for leftover leading codeblock fence (e.g. ```javascript\n...)
+    if first_line.startswith("```"):
+        return "".join(lines[1:]).lstrip("\r\n")
+
+    return content
 
 
 def _validate_and_repair(
@@ -1118,6 +1270,12 @@ def _validate_and_repair(
     """
     if not content or not content.strip():
         return "ok", content
+
+    # 0. Clean accidental leading filename header, symbol maps, line numbers, or markdown codeblock fences
+    content = _clean_copied_file_text(content, filename)
+    content = _strip_leading_filename_header(content, filename)
+    if content.endswith("```"):
+        content = re.sub(r"[\r\n]+```\s*$", "", content)
 
     # 1. Auto-repair (safe ruff fixes), then deterministic formatting
     repaired = _auto_repair(content, filename, project_root)
@@ -1206,6 +1364,15 @@ def _is_test_file(filepath: str) -> bool:
 def _sync_ast_graph(project_root: str, file_path: str) -> None:
     """Incrementally update AST graph when a file is created or edited."""
     try:
+        # Skip static markup, styling, docs, and assets where AST symbol trees are inapplicable
+        lower_path = file_path.lower()
+        if lower_path.endswith((
+            ".html", ".htm", ".css", ".scss", ".sass", ".less",
+            ".svg", ".json", ".md", ".txt", ".yaml", ".yml",
+            ".csv", ".tsv", ".xml", ".ini", ".conf", ".toml",
+        )):
+            return
+
         from core.flashlight.graph_engine import update_project_graph_file
 
         update_project_graph_file(project_root, file_path)
@@ -1251,6 +1418,9 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
     if not path_raw or not str(path_raw).strip():
         return "Error: Missing required 'path' parameter for WRITE_FILE."
 
+    if content is not None:
+        content = _clean_copied_file_text(str(content), str(path_raw))
+
     path_str = str(path_raw).strip()
     protect_tests = (
         args.get("protect_tests", False)
@@ -1294,6 +1464,21 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
                     return (
                         f"No change: file content of {path_str} is already identical. "
                         f"Hint: Use READ_FILE to verify current contents, or WRITE_FILE if you need to overwrite."
+                    )
+
+                # Accidental Code Deletion Guard:
+                # If target file already has substantial code (>= 8 lines) and the new write
+                # provides significantly fewer lines (< 60% of existing lines), reject unless force=True.
+                existing_lines = [l for l in existing_content.splitlines() if l.strip()]
+                new_lines = [l for l in content.splitlines() if l.strip()]
+                if len(existing_lines) >= 8 and len(new_lines) < int(len(existing_lines) * 0.6) and not force:
+                    return (
+                        f"⛔ [ACCIDENTAL CODE OVERWRITE BLOCKED]: Target file '{path_str}' already has {len(existing_lines)} lines of code, "
+                        f"but WRITE_FILE was called with only {len(new_lines)} line(s) without 'force: true'.\n"
+                        f"This would overwrite and destroy previous progress/functions.\n"
+                        f"Next required action: Use EDIT_FILE to surgically insert or modify code:\n"
+                        f'<tool_call>{{"name": "EDIT_FILE", "arguments": {{"path": "{path_str}", "old_text": "...", "new_text": "..."}}}}</tool_call>\n'
+                        f"Or if you genuinely intend to replace the entire file, pass 'force': true."
                     )
             except Exception:
                 pass
@@ -1425,6 +1610,66 @@ def _get_symbol_bounds_ast(content: str, symbol_name: str) -> Optional[Tuple[int
                         return start, end
     except Exception:
         pass
+    return None
+
+
+def _get_symbol_bounds_general(content: str, symbol_name: str, ext: str = "") -> Optional[Tuple[int, int]]:
+    """Helper to locate exact start and end line bounds (1-based) for a symbol across Python, JS, TS, Go, Rust, etc."""
+    if not content or not symbol_name:
+        return None
+
+    # 1. Python AST parsing
+    ext_norm = ext.lower().lstrip(".")
+    if ext_norm in ("py", ""):
+        bounds = _get_symbol_bounds_ast(content, symbol_name)
+        if bounds:
+            return bounds
+
+    lines = content.splitlines()
+    total = len(lines)
+
+    # 2. Brace-based languages (JS, TS, C, C++, Java, Rust, Go, CSS)
+    sym_clean = re.escape(symbol_name)
+    patterns = [
+        re.compile(rf"^\s*(?:export\s+)?(?:async\s+)?function\s+{sym_clean}\b"),
+        re.compile(rf"^\s*(?:export\s+)?(?:const|let|var)\s+{sym_clean}\s*="),
+        re.compile(rf"^\s*(?:export\s+)?class\s+{sym_clean}\b"),
+        re.compile(rf"^\s*(?:pub\s+)?fn\s+{sym_clean}\b"),
+        re.compile(rf"^\s*(?:def|func|fun)\s+{sym_clean}\b"),
+        re.compile(rf"^\s*{sym_clean}\s*\([^)]*\)\s*\{{"),
+        re.compile(rf"\b{sym_clean}\b"),
+    ]
+
+    start_line = None
+    for i, line in enumerate(lines):
+        for pat in patterns:
+            if pat.search(line):
+                start_line = i + 1
+                break
+        if start_line is not None:
+            break
+
+    if start_line is None:
+        return None
+
+    # Track brace balance from start_line
+    brace_depth = 0
+    found_first_brace = False
+    for i in range(start_line - 1, total):
+        line = lines[i]
+        clean_l = re.sub(r"//.*$", "", line)
+        for char in clean_l:
+            if char == "{":
+                brace_depth += 1
+                found_first_brace = True
+            elif char == "}":
+                brace_depth -= 1
+                if found_first_brace and brace_depth <= 0:
+                    return start_line, i + 1
+
+    if start_line is not None:
+        return start_line, start_line
+
     return None
 
 
@@ -1560,6 +1805,11 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     diff_attempted = False
                     break
 
+        if old_text:
+            old_text = _clean_copied_file_text(str(old_text), path)
+        if new_text:
+            new_text = _clean_copied_file_text(str(new_text), path)
+
         if not path:
             return "EDIT_FILE requires a file path."
 
@@ -1572,12 +1822,51 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
 
-        # Auto-fallback 1: If content/code was passed to EDIT_FILE without old_text or diff, treat as full file write via WRITE_FILE
-        if not old_text and not diff_attempted and not start_line and not symbol_name:
-            content_arg = args.get("content") or args.get("code") or args.get("text")
+        # Auto-fallback 1: If content/code/new_text was passed to EDIT_FILE without old_text in args, diff, start_line, or symbol:
+        has_old_text_arg = "old_text" in args or "old" in args or "search" in args
+        if not has_old_text_arg and not diff_attempted and not start_line and not symbol_name:
+            content_arg = (
+                args.get("content")
+                or args.get("code")
+                or args.get("text")
+                or args.get("new_text")
+            )
             if content_arg:
+                content_arg = _clean_copied_file_text(str(content_arg), path)
+                if os.path.exists(p):
+                    try:
+                        with open(p, "r", encoding="utf-8", errors="replace") as f_curr:
+                            existing_content = f_curr.read()
+                        existing_lines = [l.strip() for l in existing_content.splitlines() if l.strip()]
+                        new_lines = [l.strip() for l in str(content_arg).replace("\\n", "\n").splitlines() if l.strip()]
+                        if len(existing_lines) > 2 and len(new_lines) < len(existing_lines) and not force:
+                            # Check if content_arg defines a symbol that already exists in the file
+                            ext = os.path.splitext(p)[1]
+                            new_syms = _extract_symbols(str(content_arg))
+                            if new_syms:
+                                for _, kind, sym_name in new_syms:
+                                    bounds = _get_symbol_bounds_general(existing_content, sym_name, ext)
+                                    if bounds:
+                                        s_l, e_l = bounds
+                                        ex_lines = existing_content.splitlines(keepends=True)
+                                        s_idx = s_l - 1
+                                        e_idx = min(len(ex_lines), e_l)
+                                        new_content = "".join(ex_lines[:s_idx]) + (str(content_arg) if str(content_arg).endswith("\n") else str(content_arg) + "\n") + "".join(ex_lines[e_idx:])
+                                        return _commit_edit_and_format_result(
+                                            p, new_content, existing_content, project_root, force, reject_on_stub,
+                                            f"Surgically replaced {kind} '{sym_name}' in {path} (lines {s_l}-{e_l})"
+                                        )
+
+                            return (
+                                f"⛔ Edit rejected: You called EDIT_FILE with partial content ({len(new_lines)} lines), "
+                                f"which is smaller than existing file '{path}' ({len(existing_lines)} lines) with no 'old_text' or line numbers.\n"
+                                f"To safely edit without losing existing code, read '{path}' first to obtain exact 'old_text' anchors:\n"
+                                f'<tool_call>{{"name": "READ_FILE", "arguments": {{"path": "{path}"}}}}</tool_call>'
+                            )
+                    except Exception:
+                        pass
                 return tool_write_file_impl(
-                    {"path": path, "content": content_arg}, project_root
+                    {"path": path, "content": content_arg, "force": force}, project_root
                 )
 
         if not os.path.exists(p):
@@ -1587,12 +1876,38 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             )
             if content_arg and not old_text and not diff_attempted:
                 return tool_write_file_impl(
-                    {"path": path, "content": content_arg}, project_root
+                    {"path": path, "content": content_arg, "force": force}, project_root
                 )
-            return f"File not found: {path}"
+            fallback_content = (
+                new_text
+                or args.get("content")
+                or args.get("code")
+                or args.get("text")
+                or old_text
+                or "// Initial code implementation\n"
+            )
+            return (
+                f"File not found: '{path}'.\n"
+                f"To create this file from scratch, use WRITE_FILE:\n"
+                f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{path}", "content": {json.dumps(fallback_content)}}}}}</tool_call>'
+            )
 
         with open(p, "r", encoding="utf-8") as f:
             content = f.read()
+
+        if not content.strip():
+            # Auto-fallback 3: If existing file is empty (0-bytes / template placeholder), populate directly
+            new_val = (
+                new_text
+                or args.get("content")
+                or args.get("code")
+                or args.get("text")
+                or ""
+            )
+            if new_val:
+                return tool_write_file_impl(
+                    {"path": path, "content": new_val, "force": force}, project_root
+                )
 
         # AST Symbol-anchored replacement mode
         if symbol_name:
@@ -1621,13 +1936,42 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 return f"Surgically replaced symbol '{symbol_name}' in {path} (lines {s_l}-{e_l}).{stub_note}"
 
         # Line-bounded search window handling
-        if start_line is not None and end_line is not None:
+        parsed_s = None
+        parsed_e = None
+        if start_line is not None or end_line is not None:
+            def _parse_l_int(val: Any) -> Optional[int]:
+                if val is None:
+                    return None
+                if isinstance(val, int):
+                    return max(1, val)
+                s_digits = re.sub(r"[^\d]", "", str(val).strip())
+                return max(1, int(s_digits)) if s_digits else None
+
+            parsed_s = _parse_l_int(start_line)
+            parsed_e = _parse_l_int(end_line)
+            if parsed_s is not None and parsed_e is None:
+                parsed_e = parsed_s
+
+        if parsed_s is not None and parsed_e is not None:
             try:
-                s_l = max(1, int(start_line))
-                e_l = int(end_line)
+                s_l = parsed_s
+                e_l = parsed_e
                 lines = content.splitlines(keepends=True)
+                total_lines = len(lines)
+
+                if s_l > e_l:
+                    return f"Edit failed: start_line ({s_l}) cannot be greater than end_line ({e_l})."
+
+                # Strict bounds check: if old_text is not provided, start_line cannot exceed total lines
+                if not old_text and s_l > total_lines:
+                    return (
+                        f"Edit failed: start_line {s_l} is out of bounds for '{path}' which currently has only {total_lines} line(s).\n"
+                        f"Next required action: Run READ_FILE to inspect the actual line numbers:\n"
+                        f'<tool_call>{{"name": "READ_FILE", "arguments": {{"path": "{path}"}}}}</tool_call>'
+                    )
+
                 s_idx = s_l - 1
-                e_idx = min(len(lines), e_l)
+                e_idx = min(total_lines, e_l)
                 target_slice = "".join(lines[s_idx:e_idx])
                 if old_text:
                     if old_text in target_slice:
@@ -1635,43 +1979,151 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         new_content = (
                             "".join(lines[:s_idx]) + new_slice + "".join(lines[e_idx:])
                         )
+                        new_total = len(new_content.splitlines())
+                        return _commit_edit_and_format_result(
+                            p,
+                            new_content,
+                            content,
+                            project_root,
+                            force,
+                            reject_on_stub,
+                            f"Surgically edited {path} within line range {s_l}-{e_l} (file now has {new_total} lines)",
+                        )
+                    elif old_text in content:
+                        # Line drift auto-recovery with proximity matching:
+                        # If old_text appears multiple times, pick the occurrence closest to the requested s_l
+                        matches = []
+                        start_search = 0
+                        while True:
+                            idx = content.find(old_text, start_search)
+                            if idx == -1:
+                                break
+                            line_no = content[:idx].count("\n") + 1
+                            matches.append((abs(line_no - s_l), idx, line_no))
+                            start_search = idx + len(old_text)
+
+                        matches.sort(key=lambda m: m[0])
+                        _, loc_idx, actual_start = matches[0]
+                        actual_end = actual_start + old_text.count("\n")
+                        new_content = (
+                            content[:loc_idx]
+                            + new_text
+                            + content[loc_idx + len(old_text) :]
+                        )
+                        new_total = len(new_content.splitlines())
+                        return _commit_edit_and_format_result(
+                            p,
+                            new_content,
+                            content,
+                            project_root,
+                            force,
+                            reject_on_stub,
+                            f"Surgically edited {path} (relocated from lines {s_l}-{e_l} to lines {actual_start}-{actual_end} due to line drift, file now has {new_total} lines)",
+                        )
                     else:
                         return (
                             f"Edit failed: 'old_text' not found within line range {s_l}-{e_l} of {path}. "
                             f"READ_FILE('{path}') first, then provide the exact text from the file as old_text."
                         )
+                elif s_l == e_l:
+                    return (
+                        f"Edit failed: Single-line edit on '{path}:{s_l}' requires 'old_text' to safely anchor the change. "
+                        f"Provide 'old_text' with the current line content to replace, or use WRITE_FILE to update the file in full."
+                    )
                 else:
                     new_content = "".join(lines[:s_idx]) + new_text
-                    if new_text and not new_text.endswith("\n") and e_idx < len(lines):
+                    if new_text and not new_text.endswith("\n") and e_idx < total_lines:
                         new_content += "\n"
                     new_content += "".join(lines[e_idx:])
-                return _commit_edit_and_format_result(
-                    p,
-                    new_content,
-                    content,
-                    project_root,
-                    force,
-                    reject_on_stub,
-                    f"Surgically edited {path} within line range {s_l}-{e_l}",
-                )
+                    new_total = len(new_content.splitlines())
+                    return _commit_edit_and_format_result(
+                        p,
+                        new_content,
+                        content,
+                        project_root,
+                        force,
+                        reject_on_stub,
+                        f"Surgically edited {path} within line range {s_l}-{e_l} (file now has {new_total} lines)",
+                    )
             except ValueError:
                 pass
 
-        if not old_text or diff_attempted:
-            if diff_attempted:
-                return (
-                    "Edit failed: Malformed diff block syntax in 'diff'. Could not locate valid SEARCH block, '=======' divider, and '>>>>>>> REPLACE' footer.\n"
-                    "Ensure your diff block follows this exact format:\n"
-                    "<<<<<<< SEARCH\n"
-                    "<exact text to replace>\n"
-                    "=======\n"
-                    "<new replacement text>\n"
-                    ">>>>>>> REPLACE\n\n"
-                    f'Or use exact JSON arguments: {{"path": "{path}", "old_text": "...", "new_text": "..."}}'
+        ext = os.path.splitext(p)[1]
+        lines = content.splitlines(keepends=True)
+        total_lines = len(lines)
+        content_lines = lines
+
+        if diff_attempted and not old_text:
+            return (
+                "Edit failed: Malformed diff block syntax in 'diff'. Could not locate valid SEARCH block, '=======' divider, and '>>>>>>> REPLACE' footer.\n"
+                "Ensure your diff block follows this exact format:\n"
+                "<<<<<<< SEARCH\n"
+                "<exact text to replace>\n"
+                "=======\n"
+                "<new replacement text>\n"
+                ">>>>>>> REPLACE\n\n"
+                f'Or use exact JSON arguments: {{"path": "{path}", "old_text": "...", "new_text": "..."}}'
+            )
+
+        # ── Solution 1: Handle empty, whitespace, or single-char old_text (insert / symbol replace / append mode) ──
+        if not old_text or len(old_text.strip()) == 0:
+            if not new_text or not new_text.strip():
+                return "EDIT_FILE requires non-empty new_text to modify or append to the file."
+
+            # Case A: parsed start line provided -> insert at parsed_s
+            if parsed_s is not None:
+                s_idx = max(0, min(total_lines, parsed_s - 1))
+                new_content = "".join(lines[:s_idx]) + (new_text if new_text.endswith("\n") else new_text + "\n") + "".join(lines[s_idx:])
+                return _commit_edit_and_format_result(
+                    p, new_content, content, project_root, force, reject_on_stub,
+                    f"Surgically inserted new code at line {parsed_s} in {path}"
                 )
-            return "EDIT_FILE requires old_text (or a <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block) to find, or line range (start_line/end_line). To overwrite full file, use WRITE_FILE."
+
+            # Case B: new_text declares a function/class that already exists in content -> replace that symbol
+            new_syms = _extract_symbols(new_text)
+            if new_syms:
+                for _, kind, sym_name in new_syms:
+                    bounds = _get_symbol_bounds_general(content, sym_name, ext)
+                    if bounds:
+                        s_l, e_l = bounds
+                        s_idx = s_l - 1
+                        e_idx = min(total_lines, e_l)
+                        new_content = "".join(lines[:s_idx]) + (new_text if new_text.endswith("\n") else new_text + "\n") + "".join(lines[e_idx:])
+                        return _commit_edit_and_format_result(
+                            p, new_content, content, project_root, force, reject_on_stub,
+                            f"Surgically replaced {kind} '{sym_name}' in {path} (lines {s_l}-{e_l})"
+                        )
+
+            # Case C: Smart insert before trailing listeners / export statements
+            listener_match = re.search(r"(\n\s*(?:window\.|document\.)?addEventListener\s*\(|\n\s*(?:export\s+default|module\.exports\s*=))", content)
+            if listener_match:
+                ins_idx = listener_match.start()
+                new_content = content[:ins_idx] + "\n\n" + new_text.strip() + "\n" + content[ins_idx:]
+                return _commit_edit_and_format_result(
+                    p, new_content, content, project_root, force, reject_on_stub,
+                    f"Surgically inserted code before event listeners/exports in {path}"
+                )
+
+            # Case D: Append to the end of the file
+            sep = "\n\n" if not content.endswith("\n\n") else ""
+            if not content.endswith("\n"):
+                sep = "\n\n"
+            new_content = content + sep + new_text.strip() + "\n"
+            return _commit_edit_and_format_result(
+                p, new_content, content, project_root, force, reject_on_stub,
+                f"Surgically appended new code to {path}"
+            )
+
         if new_text == old_text:
-            return "No change: old_text and new_text are identical."
+            return (
+                "No change: old_text and new_text are identical — the edit would make zero modifications.\n"
+                "Action required: Provide DIFFERENT old_text and new_text values, or:\n"
+                "1. Use READ_FILE first to see the exact current content\n"
+                "2. Then copy the EXACT text you want to replace as old_text\n"
+                "3. Provide the NEW replacement text as new_text\n"
+                "4. Or use WRITE_FILE to overwrite the entire file\n"
+                "5. Or use 'symbol' parameter to target a specific function/class"
+            )
         if content.strip() and old_text.strip() == content.strip() and not new_text.strip():
             return f"Edit failed: Attempted to replace entire content of '{path}' with empty text via EDIT_FILE. Use WRITE_FILE if you explicitly intend to overwrite or clear a file."
 
@@ -1681,10 +2133,64 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         if "\\n" in new_text and "\n" not in new_text:
             new_text = new_text.replace("\\n", "\n").replace("\\t", "\t")
 
-        # Tier 1: Exact string match
+        # Strip line number prefixes if model copied from READ_FILE output (e.g. "  1 | <style>")
+        if re.search(r"^\s*\d+\s*\|\s*", old_text, re.MULTILINE):
+            old_text = re.sub(r"^\s*\d+\s*\|\s*", "", old_text, flags=re.MULTILINE)
+
+        # Normalize typographic smart quotes and non-breaking spaces if exact match not immediately found
+        def _clean_smart_chars(s: str) -> str:
+            return (
+                s.replace("“", '"')
+                .replace("”", '"')
+                .replace("‘", "'")
+                .replace("’", "'")
+                .replace("\u00a0", " ")
+            )
+
+        if old_text not in content:
+            cleaned_candidate = _clean_smart_chars(old_text)
+            if cleaned_candidate in content:
+                old_text = cleaned_candidate
+
+        # ── Solution 2: Exact string match with smart disambiguation ──
         if old_text in content:
             count = content.count(old_text)
             if count > 1:
+                # 1. If start_line is provided, pick the occurrence nearest to parsed_s
+                if parsed_s is not None:
+                    matches = []
+                    start_search = 0
+                    while True:
+                        idx = content.find(old_text, start_search)
+                        if idx == -1:
+                            break
+                        line_no = content[:idx].count("\n") + 1
+                        matches.append((abs(line_no - parsed_s), idx, line_no))
+                        start_search = idx + len(old_text)
+                    matches.sort(key=lambda m: m[0])
+                    _, loc_idx, actual_start = matches[0]
+                    new_content = content[:loc_idx] + new_text + content[loc_idx + len(old_text):]
+                    return _commit_edit_and_format_result(
+                        p, new_content, content, project_root, force, reject_on_stub,
+                        f"Surgically edited {path} (disambiguated match nearest line {parsed_s})"
+                    )
+
+                # 2. If old_text is very short (<= 3 chars, e.g. "}", "\n", ";") and new_text has a symbol declaration
+                if len(old_text.strip()) <= 3:
+                    new_syms = _extract_symbols(new_text)
+                    if new_syms:
+                        for _, kind, sym_name in new_syms:
+                            bounds = _get_symbol_bounds_general(content, sym_name, ext)
+                            if bounds:
+                                s_l, e_l = bounds
+                                s_idx = s_l - 1
+                                e_idx = min(total_lines, e_l)
+                                new_content = "".join(lines[:s_idx]) + (new_text if new_text.endswith("\n") else new_text + "\n") + "".join(lines[e_idx:])
+                                return _commit_edit_and_format_result(
+                                    p, new_content, content, project_root, force, reject_on_stub,
+                                    f"Surgically replaced {kind} '{sym_name}' in {path} (lines {s_l}-{e_l})"
+                                )
+
                 return f"Edit failed: 'old_text' matches {count} locations. Provide line numbers (start_line/end_line) or more context to make it unique."
 
             new_content = content.replace(old_text, new_text)
@@ -1701,8 +2207,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         # Helper: Normalize lines for line-based matching
         def normalize_line(l):
             return l.strip()
-
-        content_lines = content.splitlines(keepends=True)
 
         # Tier 2: Fuzzy whitespace-agnostic line matching
         old_norm = [
@@ -1734,7 +2238,30 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 best_end = j
 
         if matches_found > 1:
-            return f"Edit failed: 'old_text' fuzzy-matches {matches_found} locations. Provide line numbers (start_line/end_line) or more context."
+            if parsed_s is not None:
+                # Pick match nearest to parsed_s
+                best_start = -1
+                best_diff = 999999
+                for i in range(len(content_lines)):
+                    match_count = 0
+                    j = i
+                    while j < len(content_lines) and match_count < len(old_norm):
+                        if not content_lines[j].strip():
+                            j += 1
+                            continue
+                        if content_lines[j].strip() == old_norm[match_count]:
+                            match_count += 1
+                            j += 1
+                        else:
+                            break
+                    if match_count == len(old_norm):
+                        diff = abs((i + 1) - parsed_s)
+                        if diff < best_diff:
+                            best_diff = diff
+                            best_start = i
+                            best_end = j
+            else:
+                return f"Edit failed: 'old_text' fuzzy-matches {matches_found} locations. Provide line numbers (start_line/end_line) or more context."
 
         if best_start != -1:
             new_content = "".join(content_lines[:best_start]) + new_text
@@ -1822,8 +2349,8 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                             f"Surgically edited {path} (wildcard replaced block from line {head_match_idx + 1} to {tail_match_idx})",
                         )
 
-        # Tier 4: Anchor Matching (First line & Last line match uniquely)
-        if len(old_norm) >= 3:
+        # ── Solution 5: Multi-Anchor Matching (Entry & Exit Anchor) ──
+        if len(old_norm) >= 2:
             first_l = old_norm[0]
             last_l = old_norm[-1]
 
@@ -1834,36 +2361,41 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 i for i, l in enumerate(content_lines) if l.strip() == last_l
             ]
 
-            if len(first_matches) == 1 and len(last_matches) == 1:
-                f_idx = first_matches[0]
-                l_idx = last_matches[0]
-                if f_idx < l_idx:
-                    new_content = "".join(content_lines[:f_idx]) + new_text
-                    if (
-                        new_text
-                        and not new_text.endswith("\n")
-                        and (l_idx + 1) < len(content_lines)
-                    ):
-                        new_content += "\n"
-                    new_content += "".join(content_lines[l_idx + 1 :])
+            # Find valid (first, last) pair
+            valid_pairs = []
+            for f_i in first_matches:
+                for l_i in last_matches:
+                    if f_i < l_i and (l_i - f_i) <= len(old_norm) + 15:
+                        valid_pairs.append((f_i, l_i))
 
-                    return _commit_edit_and_format_result(
-                        p,
-                        new_content,
-                        content,
-                        project_root,
-                        force,
-                        reject_on_stub,
-                        f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})",
-                    )
+            if len(valid_pairs) == 1:
+                f_idx, l_idx = valid_pairs[0]
+                new_content = "".join(content_lines[:f_idx]) + new_text
+                if (
+                    new_text
+                    and not new_text.endswith("\n")
+                    and (l_idx + 1) < len(content_lines)
+                ):
+                    new_content += "\n"
+                new_content += "".join(content_lines[l_idx + 1 :])
 
-        # Tier 5: Difflib similarity ratio matching (>= 60% similarity for small models)
+                return _commit_edit_and_format_result(
+                    p,
+                    new_content,
+                    content,
+                    project_root,
+                    force,
+                    reject_on_stub,
+                    f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})",
+                )
+
+        # Tier 5: Difflib similarity ratio matching (>= 50% similarity for small models)
         best_ratio = 0.0
         best_diff_start = -1
         best_diff_end = -1
         window_size = len(old_norm)
 
-        for w_size in range(max(1, window_size - 3), window_size + 4):
+        for w_size in range(max(1, window_size - 4), window_size + 5):
             for i in range(len(content_lines) - w_size + 1):
                 block = "".join(content_lines[i : i + w_size])
                 ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
@@ -1872,7 +2404,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     best_diff_start = i
                     best_diff_end = i + w_size
 
-        if best_ratio >= 0.60 and best_diff_start != -1:
+        if best_ratio >= 0.50 and best_diff_start != -1:
             new_content = "".join(content_lines[:best_diff_start]) + new_text
             if (
                 new_text
@@ -1896,7 +2428,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         best_subseq_len = 0
         best_subseq_start = -1
         old_stripped = old_text.strip()
-        if len(old_stripped) >= 20:
+        if len(old_stripped) >= 15:
             for i in range(len(content) - len(old_stripped) // 3):
                 end = min(i + len(old_stripped) + len(old_stripped) // 3, len(content))
                 candidate = content[i:end]
@@ -1906,7 +2438,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         best_subseq_len = bloc.size
                         best_subseq_start = i + bloc.a
 
-        if best_subseq_len >= len(old_stripped) * 0.65 and best_subseq_start != -1:
+        if best_subseq_len >= len(old_stripped) * 0.50 and best_subseq_start != -1:
             match_start = content.rfind("\n", 0, best_subseq_start) + 1
             remaining = content[best_subseq_start:]
             match_end = remaining.find("\n")
@@ -1937,6 +2469,31 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})",
             )
 
+        # ── Solution 3: Symbol-Level Replacement Fallback ──
+        new_syms = _extract_symbols(new_text)
+        if new_syms:
+            for _, kind, sym_name in new_syms:
+                bounds = _get_symbol_bounds_general(content, sym_name, ext)
+                if bounds:
+                    s_l, e_l = bounds
+                    s_idx = s_l - 1
+                    e_idx = min(total_lines, e_l)
+                    new_content = "".join(lines[:s_idx]) + (new_text if new_text.endswith("\n") else new_text + "\n") + "".join(lines[e_idx:])
+                    return _commit_edit_and_format_result(
+                        p, new_content, content, project_root, force, reject_on_stub,
+                        f"Surgically replaced {kind} '{sym_name}' in {path} (lines {s_l}-{e_l})"
+                    )
+
+        # ── Solution 4: High-Coverage Whole-File Safe Auto-Promotion Fallback ──
+        new_lines_cnt = len(new_text.splitlines())
+        if new_lines_cnt >= max(5, int(len(content_lines) * 0.5)):
+            status, val_payload = _validate_and_repair(new_text, p, project_root, force=force, reject_on_stub=reject_on_stub)
+            if status == "ok":
+                return _commit_edit_and_format_result(
+                    p, val_payload, content, project_root, force, reject_on_stub,
+                    f"Surgically updated {path} (auto-promoted complete implementation, {new_lines_cnt} lines)"
+                )
+
         # All tiers failed — provide closest match as diagnostic
         closest_ratio = 0.0
         closest_line = 1
@@ -1964,9 +2521,11 @@ def tool_read_symbols_impl(args: dict, project_root: str) -> str:
             args.get(
                 "path", args.get("file", args.get("filename", args.get("filepath", "")))
             )
-        ).strip()
+        ).strip().lstrip("@")
         if not path:
             return "READ_SYMBOLS requires a file path. Use RUN_COMMAND('ls') to see directory contents."
+
+        from core.utils.image_utils import is_image_file
 
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
 
@@ -1983,6 +2542,9 @@ def tool_read_symbols_impl(args: dict, project_root: str) -> str:
             return f"File not found: {path}"
         if os.path.isdir(p):
             return f"{path} is a directory. Use RUN_COMMAND('ls {path}') to list it."
+
+        if is_image_file(p):
+            return f"ℹ️ '{os.path.basename(p)}' is an image file and does not contain AST code symbols. Visual context is attached for vision models, or use VIEW_IMAGE to inspect."
 
         try:
             with open(p, "r", encoding="utf-8") as f:
@@ -2053,7 +2615,7 @@ def tool_grep_impl(args: dict, project_root: str) -> str:
 
     try:
         pattern = args.get("pattern", "")
-        path = args.get("path", ".")
+        path = str(args.get("path", ".")).strip().lstrip("@")
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
         if not pattern:
             return "GREP requires a pattern. Usage: GREP(pattern='def ', path='src')"
@@ -2533,6 +3095,8 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
             data = json.load(f)
 
         tasks = data.get("tasks", [])
+        phase = args.get("phase")
+        task_num = args.get("task_number") or args.get("number")
         if action in ("add_subtask", "add_task"):
             existing_ids = [str(t.get("id") or "") for t in tasks]
             if not task_id:
@@ -2542,6 +3106,8 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
             new_task = {
                 "id": task_id,
                 "description": description or f"Sub-task {task_id}",
+                "task_number": task_num,
+                "phase": phase,
                 "target_files": target_files
                 if isinstance(target_files, list)
                 else [target_files],
@@ -2578,8 +3144,10 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
                 return "UPDATE_TASK_GRAPH action 'skip_task' requires 'task_id'."
             found = False
             task_desc = ""
+            from core.tools.task_helpers import _is_task_match
             for t in tasks:
-                if t.get("id") == task_id or t.get("description") == task_id:
+                t_num = str(t.get("task_number") or "")
+                if t.get("id") == task_id or t.get("description") == task_id or (t_num and t_num == str(task_id)) or _is_task_match(str(task_id), str(t.get("description") or "")):
                     t["status"] = "skipped"
                     task_desc = t.get("description") or t.get("id")
                     found = True
@@ -2598,8 +3166,10 @@ def tool_update_task_graph_impl(args: dict, project_root: str) -> str:
             status_val = args.get("status", "pending")
             found = False
             task_desc = ""
+            from core.tools.task_helpers import _is_task_match
             for t in tasks:
-                if t.get("id") == task_id or t.get("description") == task_id:
+                t_num = str(t.get("task_number") or "")
+                if t.get("id") == task_id or t.get("description") == task_id or (t_num and t_num == str(task_id)) or _is_task_match(str(task_id), str(t.get("description") or "")):
                     t["status"] = status_val
                     task_desc = t.get("description") or t.get("id")
                     found = True
@@ -2672,9 +3242,23 @@ def tool_verify_impl(args: dict, project_root: str) -> str:
 
 
 def tool_ask_user_impl(args: dict, project_root: str) -> str:
-    """ASK_USER — ask the user a question."""
+    """ASK_USER — ask the user a question with structured options and custom input."""
     question = args.get("question", "")
-    return f"[AWAITING USER INPUT] {question}"
+    options = args.get("options", [])
+    is_multi = bool(args.get("is_multi_select", False))
+    allow_custom = bool(args.get("allow_custom_input", True))
+
+    lines = [f"[AWAITING USER INPUT] {question}"]
+    if options and isinstance(options, list):
+        opt_type = "Checkbox (Multi-Select)" if is_multi else "Radio (Single Choice)"
+        lines.append(f"Input Type: {opt_type}")
+        for idx, opt in enumerate(options, 1):
+            marker = "[ ]" if is_multi else "( )"
+            lines.append(f"  {marker} {idx}. {opt}")
+        if allow_custom:
+            marker = "[ ]" if is_multi else "( )"
+            lines.append(f"  {marker} {len(options) + 1}. Custom text input (reply with your own answer)")
+    return "\n".join(lines)
 
 
 def tool_set_phase_impl(args: dict, project_root: str) -> str:
@@ -2855,11 +3439,15 @@ def tool_git_impl(args: dict, project_root: str) -> str:
 
 def tool_search_ast_impl(args: dict, project_root: str) -> str:
     """Query AST Knowledge Graph (search, path, subgraph, structure, update, summary)."""
-    query = str(args.get("query", "")).strip()
+    query = str(args.get("query", "")).strip().lstrip("@")
     action = str(args.get("action", "search")).strip().lower()
     top_k = int(args.get("top_k", 5))
 
     from core.flashlight.graph_engine import get_project_graph
+    from core.utils.image_utils import is_image_file
+
+    if query and is_image_file(query):
+        return f"ℹ️ '{os.path.basename(query)}' is an image file and does not contain AST code symbols. Visual context is attached for vision models, or use VIEW_IMAGE to inspect."
 
     graph = get_project_graph(project_root)
 
@@ -2897,10 +3485,10 @@ def tool_search_ast_impl(args: dict, project_root: str) -> str:
             return rebuilt_res
         return res
     elif action in ("path", "find_path"):
-        target = str(args.get("target", args.get("to", ""))).strip()
+        target = str(args.get("target", args.get("to", ""))).strip().lstrip("@")
         if not target and "," in query:
             parts = query.split(",", 1)
-            query, target = parts[0].strip(), parts[1].strip()
+            query, target = parts[0].strip().lstrip("@"), parts[1].strip().lstrip("@")
         res = graph.find_path(query, target)
         if "Path search failed" in res:
             graph.build()
@@ -3049,3 +3637,74 @@ def self_improve_game(
         return report.to_markdown()
     except Exception as e:
         return f"Error executing HTML game self-improvement cycle: {e}"
+
+
+def tool_view_image_impl(args: dict, project_root: str) -> str:
+    """VIEW_IMAGE — inspect an image visually and attach to memory context."""
+    path = args.get("path") or args.get("file") or args.get("image") or ""
+    prompt = args.get("prompt") or args.get("query") or args.get("instruction") or ""
+    return view_image(path=path, prompt=prompt, project_root=project_root)
+
+
+def view_image(
+    path: str = "", prompt: str = "", project_root: str = ".", **kwargs: Any
+) -> str:
+    """Inspect an image file, validate its structure, and attach to active memory."""
+    path = str(path or "").strip()
+    global _global_memory_mgr
+    if not path and _global_memory_mgr is not None and getattr(_global_memory_mgr, "state", None):
+        active_imgs = getattr(_global_memory_mgr.state, "active_images", [])
+        if active_imgs:
+            path = active_imgs[-1]
+
+    if not path:
+        return "VIEW_IMAGE requires a 'path' parameter specifying the image file."
+
+    from core.utils.image_utils import (
+        is_image_file,
+        get_image_metadata,
+        get_image_mime_type,
+    )
+
+    full_p = (
+        os.path.abspath(os.path.join(project_root, path))
+        if not os.path.isabs(path)
+        else path
+    )
+
+    # Security check
+    cwd_abs = os.path.abspath(project_root)
+    cwd_prefix = cwd_abs if cwd_abs.endswith(os.sep) else cwd_abs + os.sep
+    if not full_p.startswith(cwd_prefix) and full_p != cwd_abs:
+        return f"Access denied: {path} is outside the workspace."
+
+    if not os.path.exists(full_p):
+        return f"File not found: {path}."
+
+    if os.path.isdir(full_p):
+        return f"{path} is a directory, not an image file."
+
+    if not is_image_file(full_p):
+        mime = get_image_mime_type(full_p)
+        if not mime.startswith("image/"):
+            return f"File '{path}' is not a recognized image format."
+
+    meta = get_image_metadata(full_p, project_root=project_root)
+
+    # Record in active memory if available
+    if _global_memory_mgr is not None and hasattr(_global_memory_mgr, "record_file_read"):
+        try:
+            _global_memory_mgr.record_file_read(path)
+        except Exception:
+            pass
+
+    dim_info = (
+        f"{meta['width']}x{meta['height']}"
+        if meta.get("width") and meta.get("height")
+        else "vector/dynamic"
+    )
+    prompt_str = f" Prompt: '{prompt}'" if prompt else ""
+    return (
+        f"[IMG] [VIEW_IMAGE] Successfully loaded '{path}' ({dim_info} {meta.get('format', 'IMAGE')}, {meta.get('size_kb', 0)} KB).{prompt_str}\n"
+        f"Image content has been attached to context for visual inspection."
+    )

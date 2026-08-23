@@ -96,8 +96,8 @@ def display_step(step: Step):
     elif step.action == "rejected_final_answer":
         rej_panel = Panel(
             Markdown(step.result or step.content),
-            title=f"{indent}⚠️ Premature Final Answer Intercepted (Continuing Execution)",
-            border_style="yellow",
+            title=f"{indent}🔄 Auto-Advancing to Next Task (Continuing Execution)",
+            border_style="cyan",
             padding=(1, 2),
         )
         console.print(rej_panel)

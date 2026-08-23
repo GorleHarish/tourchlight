@@ -1,5 +1,53 @@
-venv/
+# OS & Editor
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Python bytecode and caches
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.cache/
+**/.cache/
+
+# Local env files
 .env
+.env.*
+!.env.example
+
+# Python virtualenvs & libraries
+venv/
+.venv/
+venv*/
+*venv*/
+*_venv/
+env/
+.env/
+env*/
+*env*/
+ENV/
+**/venv/
+**/.venv/
+
+# Node / JS dependencies & caches
+node_modules/
+**/node_modules/
+
+# Python build artifacts
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Torchlight logs and runtime state
 .torchlight/
+.torchlight_history.log
+*.log

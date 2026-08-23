@@ -19,6 +19,8 @@ import subprocess
 from collections.abc import Iterable
 from pathlib import Path
 
+from textual import events
+from textual.message import Message
 from textual.widgets import DirectoryTree
 
 try:
@@ -139,9 +141,60 @@ def _should_skip_path(path: Path) -> bool:
 class GitFileTree(DirectoryTree):
     """DirectoryTree whose file labels carry git status decorations."""
 
+    DEFAULT_CSS = """
+    GitFileTree {
+        height: 1fr;
+        background: $background;
+        border: solid $panel;
+        color: $foreground;
+        margin-bottom: 1;
+        scrollbar-size-vertical: 1;
+        scrollbar-size-horizontal: 1;
+        scrollbar-background: transparent;
+        scrollbar-color: #30363d;
+        scrollbar-color-hover: $primary;
+        scrollbar-color-active: $accent;
+    }
+    """
+
+    class FileRightClicked(Message):
+        """Emitted when a file in the tree is right-clicked."""
+
+        def __init__(self, path: Path) -> None:
+            self.path = path
+            super().__init__()
+
     def __init__(self, path: str | Path, **kwargs) -> None:
         super().__init__(str(path), **kwargs)
         self._git_status: dict[str, str] = {}
+
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        if event.button in (2, 3):  # Secondary / Right click
+            event.stop()
+            meta = event.style.meta
+            if "line" in meta:
+                cursor_line = meta["line"]
+                self.cursor_line = cursor_line
+                node = self.get_node_at_line(cursor_line)
+                if node and hasattr(node, "data") and node.data:
+                    p = getattr(node.data, "path", None)
+                    if p and os.path.isfile(str(p)):
+                        self.post_message(self.FileRightClicked(Path(p)))
+
+    async def _on_click(self, event: events.Click) -> None:
+        if event.button in (2, 3):  # Secondary / Right click
+            event.stop()
+            meta = event.style.meta
+            if "line" in meta:
+                cursor_line = meta["line"]
+                self.cursor_line = cursor_line
+                node = self.get_node_at_line(cursor_line)
+                if node and hasattr(node, "data") and node.data:
+                    p = getattr(node.data, "path", None)
+                    if p and os.path.isfile(str(p)):
+                        self.post_message(self.FileRightClicked(Path(p)))
+            return
+        await super()._on_click(event)
 
     def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
         """Filter out hidden dotfiles and OS clutter from tree view."""

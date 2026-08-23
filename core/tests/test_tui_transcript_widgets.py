@@ -115,7 +115,7 @@ async def test_app_transcript_wiring():
     engine._total_llm_calls = 0
     engine.max_depth = 10
     app = TorchlightApp(engine=engine, model_name="test", provider_name="llama-cpp")
-    async with app.run_test() as pilot:
+    async with app.run_test():
         container = app.query_one("#chat-container")
         assert len(container.query(MessageCard)) == 0
 
@@ -154,3 +154,110 @@ async def test_transcript_view_prunes_over_cap():
         await pilot.pause()
         await pilot.pause()
         assert len(view.children) <= TranscriptView.MAX_CHILDREN
+
+
+@pytest.mark.anyio
+async def test_message_card_copy_and_reuse_actions(monkeypatch):
+    """Verify MessageCard copy and reuse actions work for user and assistant messages."""
+    try:
+        from textual.app import App
+        from textual.widgets import TextArea
+
+        from rlm_optimized.tui_widgets.transcript import MessageCard
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    copied = []
+
+    def mock_copy(text: str) -> bool:
+        copied.append(text)
+        return True
+
+    monkeypatch.setattr("rlm_optimized.tui_app.copy_to_clipboard", mock_copy)
+
+    class DummyApp(App):
+        def compose(self):
+            yield TextArea(id="user-input")
+            yield MessageCard("fix the bug in auth.py", role="user")
+            yield MessageCard("Here is the fix", role="assistant")
+
+    app = DummyApp()
+    async with app.run_test():
+        cards = app.query(MessageCard)
+        assert len(cards) == 2
+        user_card = cards[0]
+        assistant_card = cards[1]
+
+        # 1. Test Copy action on user message
+        user_card.action_copy()
+        assert "fix the bug in auth.py" in copied
+
+        # 2. Test Reuse action on user message (loads into #user-input)
+        user_card.action_reuse()
+        input_widget = app.query_one("#user-input", TextArea)
+        assert input_widget.text == "fix the bug in auth.py"
+
+        # 3. Test Copy action on assistant message
+        assistant_card.action_copy()
+        assert "Here is the fix" in copied
+
+
+@pytest.mark.anyio
+async def test_message_card_duration_and_time_str():
+    """Verify MessageCard duration formatting, empty user headers, and timestamp override."""
+    try:
+        from textual.app import App
+        from textual.widgets import Static
+
+        from rlm_optimized.tui_widgets.transcript import MessageCard
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    class TimeApp(App):
+        def compose(self):
+            # User card: no duration or timestamp
+            yield MessageCard("user prompt", role="user", id="card-user")
+            # Assistant card with float duration
+            yield MessageCard("assistant response", role="assistant", duration=2.36, id="card-asst-float")
+            # Final card with str duration
+            yield MessageCard("final answer", role="final", duration="1.8s", id="card-final-str")
+            # Assistant card without duration
+            yield MessageCard("plain assistant", role="assistant", id="card-plain")
+            # Backward-compat timestamp override
+            yield MessageCard("legacy card", role="assistant", timestamp="16:02", id="card-legacy")
+
+    app = TimeApp()
+    async with app.run_test() as pilot:
+        user_card = app.query_one("#card-user", MessageCard)
+        asst_float = app.query_one("#card-asst-float", MessageCard)
+        final_str = app.query_one("#card-final-str", MessageCard)
+        plain_asst = app.query_one("#card-plain", MessageCard)
+        legacy_card = app.query_one("#card-legacy", MessageCard)
+
+        # 1. User card has empty time string (no wall-clock timestamp)
+        assert user_card._time_str() == ""
+        user_time_static = user_card.query_one(".message-card-time", Static)
+        assert str(user_time_static.content) == ""
+
+        # 2. Assistant card with float duration formats to 1 decimal place ("2.4s")
+        assert asst_float._time_str() == "2.4s"
+        float_time_static = asst_float.query_one(".message-card-time", Static)
+        assert str(float_time_static.content) == "2.4s"
+
+        # 3. Final card with string duration preserves string
+        assert final_str._time_str() == "1.8s"
+        final_time_static = final_str.query_one(".message-card-time", Static)
+        assert str(final_time_static.content) == "1.8s"
+
+        # 4. Plain assistant without duration is empty
+        assert plain_asst._time_str() == ""
+        plain_time_static = plain_asst.query_one(".message-card-time", Static)
+        assert str(plain_time_static.content) == ""
+
+        # 5. Legacy timestamp override
+        assert legacy_card._time_str() == "16:02"
+        legacy_time_static = legacy_card.query_one(".message-card-time", Static)
+        assert str(legacy_time_static.content) == "16:02"
+
+        await pilot.pause()
+

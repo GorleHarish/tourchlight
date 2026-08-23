@@ -131,8 +131,7 @@ def test_validate_and_repair_rejects_broken_python():
         "def broken_func(\n", "broken.py", os.getcwd()
     )
     assert status == "error"
-    assert "Syntax error" in payload
-    assert "NOT written" in payload
+    assert "syntax_error" in payload.lower() or "syntax gate" in payload.lower()
 
 
 def test_validate_and_repair_accepts_valid_python():
@@ -152,7 +151,7 @@ def test_compile_gate_rejects_return_outside_function():
 
     status, payload = _validate_and_repair("return 1\n", "x.py", os.getcwd())
     assert status == "error"
-    assert "Syntax error" in payload
+    assert "compile_error" in payload.lower() or "compile gate" in payload.lower()
 
 
 def test_validate_and_repair_non_code_files_pass():
@@ -195,7 +194,7 @@ def test_write_file_blocks_broken_syntax_and_truncation():
         res = tool_write_file_impl(
             {"path": file_path, "content": "def broken_func(\n"}, tmpdir
         )
-        assert "Syntax error" in res
+        assert "syntax_error" in res.lower() or "syntax gate" in res.lower()
         assert not os.path.exists(file_path)
 
         trunc_path = os.path.join(tmpdir, "stub.py")
@@ -225,7 +224,7 @@ def test_edit_file_blocks_broken_syntax():
             },
             tmpdir,
         )
-        assert "Syntax error" in res
+        assert "syntax_error" in res.lower() or "syntax gate" in res.lower()
         with open(file_path, "r", encoding="utf-8") as f:
             assert f.read() == initial
 

@@ -40,14 +40,31 @@ PORT=${PORT:-8080}
 # KV cache: asymmetric real TurboQuant (TheTom/llama-cpp-turboquant fork).
 # K stays q8_0 (exact, cheap); V uses turbo4 (~4.125 bpv) — verified safe on M1
 # via the prefix-reuse quality gate (unlike q4_0 which garbles output).
-# Legacy KV_CACHE_COMPRESSION env still accepted and sets BOTH K and V.
 KV_CACHE_TYPE_K=${KV_CACHE_TYPE_K:-q8_0}
 KV_CACHE_TYPE_V=${KV_CACHE_TYPE_V:-turbo4}
 if [ -n "${KV_CACHE_COMPRESSION:-}" ]; then
-    KV_CACHE_TYPE_K="$KV_CACHE_COMPRESSION"
-    KV_CACHE_TYPE_V="$KV_CACHE_COMPRESSION"
+    if [ "$KV_CACHE_COMPRESSION" = "turbo3" ]; then
+        KV_CACHE_TYPE_K="turbo3"
+        KV_CACHE_TYPE_V="turbo3"
+    elif [ "$KV_CACHE_COMPRESSION" = "turbo4" ]; then
+        KV_CACHE_TYPE_K="q8_0"
+        KV_CACHE_TYPE_V="turbo4"
+    elif [ "$KV_CACHE_COMPRESSION" = "f16" ]; then
+        KV_CACHE_TYPE_K="f16"
+        KV_CACHE_TYPE_V="f16"
+    else
+        KV_CACHE_TYPE_K="$KV_CACHE_COMPRESSION"
+        KV_CACHE_TYPE_V="$KV_CACHE_COMPRESSION"
+    fi
 fi
+
+# YaRN / RoPE scaling for extended context (effective context = CTX_SIZE * YARN_FACTOR)
+# Supported by llama.cpp TurboQuant fork. Values: 1.0 (disabled), 2.0, 4.0, 8.0
+# Only works with models trained with RoPE (most modern LLMs: Llama, Gemma, Qwen, Mistral, etc.)
+YARN_FACTOR=${YARN_FACTOR:-1.0}
 MODEL_INPUT=${1:-""}
+DRAFT_INPUT=${2:-"${DRAFT_MODEL:-""}"}
+DRAFT_MAX=${DRAFT_MAX:-8}
 
 if [ -n "$MODEL_INPUT" ]; then
     if [ -f "$MODEL_INPUT" ]; then
@@ -56,30 +73,69 @@ if [ -n "$MODEL_INPUT" ]; then
         MODEL_PATH="$PROJECT_ROOT/models/$MODEL_INPUT"
     elif [ -f "$PROJECT_ROOT/models/${MODEL_INPUT}.gguf" ]; then
         MODEL_PATH="$PROJECT_ROOT/models/${MODEL_INPUT}.gguf"
-    elif [[ "$MODEL_INPUT" == *"qwen"* ]]; then
-        MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
-    elif [[ "$MODEL_INPUT" == *"4e4b"* ]] || [[ "$MODEL_INPUT" == *"e4b"* ]] || [[ "$MODEL_INPUT" == *"E4B"* ]]; then
-        MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E4B-it-Q4_K_M.gguf"
-    elif [[ "$MODEL_INPUT" == *"4e2b"* ]] || [[ "$MODEL_INPUT" == *"e2b"* ]] || [[ "$MODEL_INPUT" == *"E2B"* ]]; then
-        MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"
     else
-        MODEL_PATH="$MODEL_INPUT"
+        MATCH=$(find "$PROJECT_ROOT/models" "$HOME/.lmstudio/models" -name "*${MODEL_INPUT}*.gguf" 2>/dev/null | head -n 1 || true)
+        if [ -n "$MATCH" ] && [ -f "$MATCH" ]; then
+            MODEL_PATH="$MATCH"
+        elif [[ "$MODEL_INPUT" == *"3b"* ]] || [[ "$MODEL_INPUT" == *"3B"* ]]; then
+            MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf"
+        elif [[ "$MODEL_INPUT" == *"qwen"* ]]; then
+            MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
+        elif [[ "$MODEL_INPUT" == *"4e4b"* ]] || [[ "$MODEL_INPUT" == *"e4b"* ]] || [[ "$MODEL_INPUT" == *"E4B"* ]]; then
+            MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E4B-it-Q4_K_M.gguf"
+        elif [[ "$MODEL_INPUT" == *"4e2b"* ]] || [[ "$MODEL_INPUT" == *"e2b"* ]] || [[ "$MODEL_INPUT" == *"E2B"* ]] || [[ "$MODEL_INPUT" == *"gemma"* ]]; then
+            MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"
+        else
+            MODEL_PATH="$MODEL_INPUT"
+        fi
     fi
 else
-    MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"
+    MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf"
+fi
+
+# Resolve Speculative Draft Model
+DRAFT_MODEL_PATH=""
+if [ -n "$DRAFT_INPUT" ] && [ "$DRAFT_INPUT" != "none" ] && [ "$DRAFT_INPUT" != "None" ]; then
+    if [ "$DRAFT_INPUT" = "auto" ]; then
+        if [[ "$MODEL_PATH" == *"qwen"* ]]; then
+            if [ -f "$PROJECT_ROOT/models/qwen2.5-coder-0.5b-instruct-q8_0.gguf" ]; then
+                DRAFT_MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-0.5b-instruct-q8_0.gguf"
+            elif [ -f "$PROJECT_ROOT/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf" ]; then
+                DRAFT_MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+            fi
+        elif [[ "$MODEL_PATH" == *"gemma"* ]] || [[ "$MODEL_PATH" == *"4e4b"* ]] || [[ "$MODEL_PATH" == *"E4B"* ]]; then
+            if [ -f "$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf" ]; then
+                DRAFT_MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"
+            fi
+        fi
+    elif [ -f "$DRAFT_INPUT" ]; then
+        DRAFT_MODEL_PATH="$DRAFT_INPUT"
+    elif [ -f "$PROJECT_ROOT/models/$DRAFT_INPUT" ]; then
+        DRAFT_MODEL_PATH="$PROJECT_ROOT/models/$DRAFT_INPUT"
+    elif [ -f "$PROJECT_ROOT/models/${DRAFT_INPUT}.gguf" ]; then
+        DRAFT_MODEL_PATH="$PROJECT_ROOT/models/${DRAFT_INPUT}.gguf"
+    elif [[ "$DRAFT_INPUT" == *"0.5b"* ]] || [[ "$DRAFT_INPUT" == *"05b"* ]]; then
+        DRAFT_MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-0.5b-instruct-q8_0.gguf"
+    elif [[ "$DRAFT_INPUT" == *"1.5b"* ]] || [[ "$DRAFT_INPUT" == *"15b"* ]]; then
+        DRAFT_MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
+    elif [[ "$DRAFT_INPUT" == *"4e2b"* ]] || [[ "$DRAFT_INPUT" == *"e2b"* ]] || [[ "$DRAFT_INPUT" == *"E2B"* ]] || [[ "$DRAFT_INPUT" == *"gemma"* ]]; then
+        if [ -f "$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf" ]; then
+            DRAFT_MODEL_PATH="$PROJECT_ROOT/models/gemma-4-E2B-it-Q4_K_M.gguf"
+        fi
+    fi
 fi
 
 # Auto-detect RAM for safe context sizing
 TOTAL_RAM_GB=$(sysctl -n hw.memsize 2>/dev/null | awk '{print int($1/1073741824)}')
 if [ "${TOTAL_RAM_GB:-0}" -le 8 ]; then
     CTX_SIZE=${CTX_SIZE:-12288}
-    THREADS=${THREADS:-4}
-    BATCH_SIZE=${BATCH_SIZE:-512}
+    THREADS=${THREADS:-3}
+    BATCH_SIZE=${BATCH_SIZE:-2048}
     log_info "🔒 8GB RAM detected (${TOTAL_RAM_GB}GB) — safe mode: CTX=${CTX_SIZE}, threads=${THREADS}"
 else
     CTX_SIZE=${CTX_SIZE:-12288}
-    THREADS=${THREADS:-4}
-    BATCH_SIZE=${BATCH_SIZE:-512}
+    THREADS=${THREADS:-3}
+    BATCH_SIZE=${BATCH_SIZE:-2048}
     log_info "✅ ${TOTAL_RAM_GB}GB RAM detected — TurboQuant base mode: CTX=${CTX_SIZE}, threads=${THREADS}"
 fi
 
@@ -88,7 +144,10 @@ if [ ! -f "$MODEL_PATH" ]; then
     if [ -f "$PROJECT_ROOT/rlm_optimized/venv/bin/activate" ]; then
         source "$PROJECT_ROOT/rlm_optimized/venv/bin/activate"
     fi
-    if [[ "$MODEL_PATH" == *"qwen"* ]]; then
+    if [[ "$MODEL_PATH" == *"3b"* ]] || [[ "$MODEL_PATH" == *"3B"* ]]; then
+        python3 -m rlm_optimized.download_qwen3b
+        MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-3b-instruct-q4_k_m.gguf"
+    elif [[ "$MODEL_PATH" == *"qwen"* ]]; then
         python3 -m rlm_optimized.download_qwen
         MODEL_PATH="$PROJECT_ROOT/models/qwen2.5-coder-7b-instruct-q4_k_m.gguf"
     elif [[ "$MODEL_PATH" == *"e4b"* ]] || [[ "$MODEL_PATH" == *"E4B"* ]] || [[ "$MODEL_PATH" == *"4e4b"* ]]; then
@@ -149,31 +208,57 @@ if [[ "$MODEL_PATH" == *"qwen"* ]]; then
     FLASH_ATTENTION="on"
     REPEAT_PENALTY="1.0"
 elif [[ "$MODEL_PATH" == *"gemma"* ]]; then
-    # Use q4_0 for both K and V cache for Gemma models
-    KV_CACHE_TYPE_K="q4_0"
-    KV_CACHE_TYPE_V="q4_0"
+    if [ -z "$KV_CACHE_COMPRESSION" ]; then
+        KV_CACHE_TYPE_K="q8_0"
+        KV_CACHE_TYPE_V="q8_0"
+    fi
 fi
 
 log_info "Booting llama-server with the following parameters:"
 log_info "  - Model: $MODEL_PATH"
+if [ -n "$DRAFT_MODEL_PATH" ] && [ -f "$DRAFT_MODEL_PATH" ]; then
+    log_info "  - ⚡ Speculative Draft Model: $DRAFT_MODEL_PATH (draft-max: $DRAFT_MAX)"
+fi
 log_info "  - Port: $PORT"
 log_info "  - Context Size: $CTX_SIZE"
+if [ "$YARN_FACTOR" != "1.0" ]; then
+    log_info "  - YaRN Factor: $YARN_FACTOR (effective context: $((CTX_SIZE * ${YARN_FACTOR%.*})))"
+fi
 log_info "  - KV Cache (K/V): $KV_CACHE_TYPE_K / $KV_CACHE_TYPE_V (TurboQuant)"
 log_info "  - FlashAttention: ON"
 log_info "  - Metal GPU Layers: ALL (-ngl 99)"
 log_info "  - Threads: $THREADS"
 log_info "  - Batch Size: $BATCH_SIZE"
 
-exec "$LLAMA_SERVER_BIN" \
-    -m "$MODEL_PATH" \
-    --port "$PORT" \
-    -c "$CTX_SIZE" \
-    -ngl 99 \
-    -fa "$FLASH_ATTENTION" \
-    -t "$THREADS" \
-    -b "$BATCH_SIZE" \
-    -np 1 \
-    --repeat-penalty "$REPEAT_PENALTY" \
-    --cache-type-k "$KV_CACHE_TYPE_K" \
-    --cache-type-v "$KV_CACHE_TYPE_V" \
-    ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}
+exec_args=(
+    "$LLAMA_SERVER_BIN"
+    -m "$MODEL_PATH"
+    --port "$PORT"
+    -c "$CTX_SIZE"
+    -ngl 99
+    -fa "$FLASH_ATTENTION"
+    -t "$THREADS"
+    -b "$BATCH_SIZE"
+    -np 1
+    --repeat-penalty "$REPEAT_PENALTY"
+    --cache-type-k "$KV_CACHE_TYPE_K"
+    --cache-type-v "$KV_CACHE_TYPE_V"
+)
+
+if [ -n "$DRAFT_MODEL_PATH" ] && [ -f "$DRAFT_MODEL_PATH" ]; then
+    exec_args+=(
+        -md "$DRAFT_MODEL_PATH"
+        --spec-draft-n-max "$DRAFT_MAX"
+        -ngld 99
+    )
+fi
+
+if [ "$YARN_FACTOR" != "1.0" ]; then
+    exec_args+=(--yarn-attn-factor "$YARN_FACTOR")
+fi
+
+if [ ${#EXTRA_ARGS[@]} -gt 0 ]; then
+    exec_args+=("${EXTRA_ARGS[@]}")
+fi
+
+exec "${exec_args[@]}"

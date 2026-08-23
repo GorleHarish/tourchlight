@@ -32,6 +32,17 @@ LINE_COLORS = {
 }
 
 
+def escape_markup(text: str) -> str:
+    """Safely escape text for Textual markup parsing.
+
+    Escapes backslashes first, then all square brackets [, preventing
+    unmatched brackets or bracketed code/strings from causing MarkupError.
+    """
+    if not text:
+        return ""
+    return str(text).replace("\\", "\\\\").replace("[", "\\[")
+
+
 def render_unified_diff(
     old_text: str,
     new_text: str,
@@ -85,14 +96,15 @@ def diff_markup(
     *,
     max_lines: int = 80,
 ) -> str:
-    """Render diff entries as Rich markup, truncated to ``max_lines``."""
+    """Render diff entries as Rich/Textual markup, truncated to ``max_lines``."""
     out: list[str] = []
     for kind, line in entries:
         color = LINE_COLORS.get(kind)
+        escaped_line = escape_markup(line)
         if color:
-            out.append(f"[{color}]{escape(line)}[/]")
+            out.append(f"[{color}]{escaped_line}[/]")
         else:
-            out.append(escape(line))
+            out.append(escaped_line)
         if len(out) >= max_lines:
             out.append("[dim]... [Diff Truncated for UI Performance][/]")
             break
@@ -220,6 +232,6 @@ class DiffView(Container):
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="diff-view-header"):
-            yield Static(escape(self._path) or "diff", classes="diff-view-path")
-            yield Static(escape(diff_summary(self._entries)), classes="diff-view-stat")
+            yield Static(self._path or "diff", classes="diff-view-path", markup=False)
+            yield Static(diff_summary(self._entries), classes="diff-view-stat", markup=False)
         yield Static(diff_markup(self._entries), classes="diff-view-body")

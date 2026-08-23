@@ -99,6 +99,7 @@ def classify_tool(tool_name: str, args: dict = None) -> str:
         "SEARCH_AST",
         "LIST_DIR",
         "INSPECT_WEB",
+        "VIEW_IMAGE",
         "PLAY_AND_VERIFY_GAME",
         "SAVE_MEMORY",
         "UPDATE_TASK_GRAPH",

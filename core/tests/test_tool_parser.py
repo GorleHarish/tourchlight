@@ -25,7 +25,46 @@ def test_tolerant_json_repair():
     # Test unterminated string at end
     unterminated = '{"path": "foo/bar.py", "content": "line1'
     repaired_un = tolerant_json_repair(unterminated)
-    assert repaired_un.endswith('"')
+    assert repaired_un.endswith('"}')
+    import json
+    parsed = json.loads(repaired_un)
+    assert parsed["path"] == "foo/bar.py"
+    assert parsed["content"] == "line1"
+
+
+def test_parse_bare_markdown_json_and_truncated_content():
+    # Test bare markdown JSON tool call without <tool_call> tags
+    raw_markdown = """```json
+{
+  "name": "WRITE_FILE",
+  "arguments": {
+    "path": "game.js",
+    "content": "// game.js\\nconst canvas = document.getElementById('canvas');\\nfunction update() {\\n  return true;\\n}"
+  }
+}
+```"""
+    t_name, t_args, meta = parse_tool_call_payload(raw_markdown)
+    assert t_name == "WRITE_FILE"
+    assert t_args["path"] == "game.js"
+    assert "const canvas" in t_args["content"]
+
+    # Test truncated streaming JSON where string and braces are cut off
+    truncated = """{
+  "name": "WRITE_FILE",
+  "arguments": {
+    "path": "game.js",
+    "content": "// game.js\\nconst canvas = document.getElementById('canvas');\\nctx.clearRect(0, 0,"""
+    t_name2, t_args2, meta2 = parse_tool_call_payload(truncated)
+    assert t_name2 == "WRITE_FILE"
+    assert t_args2["path"] == "game.js"
+    assert "ctx.clearRect" in t_args2["content"]
+
+    # Test parameter dict without explicit tool name
+    bare_params = '{"path": "game.js", "content": "let x = 1;"}'
+    t_name3, t_args3, meta3 = parse_tool_call_payload(bare_params)
+    assert t_name3 == "WRITE_FILE"
+    assert t_args3["path"] == "game.js"
+
 
 
 def test_extract_balanced_json_object():

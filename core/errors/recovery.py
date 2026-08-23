@@ -26,7 +26,9 @@ from .types import (
 _TOOL_ERROR_HINTS: dict[str, Callable[[ToolError], str]] = {
     "FileNotFound": lambda e: (
         f"File '{e.tool_args.get('path', '')}' not found. "
-        "Use GREP or RUN_COMMAND('find . -name ...') to locate it first."
+        f"If creating a new file, emit WRITE_FILE now: "
+        f'<tool_call>{{"name": "WRITE_FILE", "arguments": {{"path": "{e.tool_args.get("path", "")}", "content": "..."}}}}</tool_call>. '
+        "Otherwise use GREP or LIST_DIR to locate existing files."
     ),
     "PermissionDenied": lambda e: (
         "Permission denied. Check directory permissions with RUN_COMMAND('ls -la')."
@@ -101,7 +103,11 @@ def get_recovery_hint(error: TorchlightError) -> str:
         return "Context is full. Compress older messages or start a new session."
 
     if isinstance(error, ConnectionError):
+        msg_lower = str(getattr(error, "reason", None) or getattr(error, "message", None) or "").lower()
+        if "503" in msg_lower or "loading model" in msg_lower:
+            return "Local model server is currently loading model weights into RAM/VRAM. Please wait a few seconds and retry."
         return f"Cannot reach {error.provider}. Check if the server is running."
+
 
     if isinstance(error, SecurityError):
         return "That path is outside the workspace. Use a relative path instead."

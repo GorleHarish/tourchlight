@@ -59,6 +59,37 @@ class TokenCounter:
                 hi = mid - 1
         return " ".join(words[:lo])
 
+    def count_image(self, image_input: Optional[object] = None) -> int:
+        """
+        Estimate token consumption for an image input (~600-800 tokens for standard 1024x1024 / tile).
+        Calibrated for Gemma 3, Qwen VL, Llama 3.2 Vision, and GPT-4o.
+        """
+        if image_input == "":
+            return 0
+        return 640
+
+    def count_message(self, message: object) -> int:
+        """Count total tokens in a Message object including text and attached images."""
+        if not message:
+            return 0
+        text = getattr(message, "content", "")
+        if isinstance(text, list):
+            tot = 0
+            for part in text:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        tot += self.count(part.get("text", ""))
+                    elif part.get("type") == "image_url":
+                        tot += self.count_image(part.get("image_url"))
+            return tot
+
+        tot = self.count(str(text))
+        images = getattr(message, "images", None)
+        if images:
+            for img in images:
+                tot += self.count_image(img)
+        return tot
+
 
 _counters: dict[str, "TokenCounter"] = {}
 

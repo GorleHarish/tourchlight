@@ -19,16 +19,15 @@ External skills (loaded from agent_skills/*.py at startup):
   - Any class that subclasses BaseSkill and is placed in the agent_skills/ directory
 """
 
-import asyncio
 import ast
+import asyncio
 import operator
 import os
 import re
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-
+from typing import Any, Dict, List, Optional, Tuple
 
 # ── Result type ───────────────────────────────────────────────────────────────
 
@@ -146,9 +145,68 @@ class CalculatorSkill(BaseSkill):
         )
 
 
+def parse_frontmatter(content: str) -> Tuple[Dict[str, Any], str]:
+    """
+    Splits a markdown file into (metadata_dict, body_markdown).
+    Gracefully falls back to a regex/key-value parser if PyYAML is not installed.
+    """
+    content = content.strip()
+    match = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)$", content, re.DOTALL)
+    if not match:
+        return {}, content
+
+    yaml_text, body = match.groups()
+    metadata: Dict[str, Any] = {}
+    try:
+        import yaml
+        loaded = yaml.safe_load(yaml_text)
+        if isinstance(loaded, dict):
+            metadata = loaded
+    except Exception:
+        # Zero-dependency fallback parser for basic YAML lines
+        for line in yaml_text.splitlines():
+            line_str = line.strip()
+            if ":" in line_str and not line_str.startswith("#"):
+                k, v = line_str.split(":", 1)
+                k = k.strip()
+                v = v.strip().strip("'\"")
+                if v.startswith("[") and v.endswith("]"):
+                    items = [it.strip().strip("'\"") for it in v[1:-1].split(",") if it.strip()]
+                    metadata[k] = items
+                else:
+                    metadata[k] = v
+
+    return metadata, body.strip()
+
+
+def get_skill_directories(workspace_root: Optional[str] = None) -> List[str]:
+    """
+    Return candidate directories containing skills in priority order:
+    1. <workspace>/.agents/skills
+    2. <workspace>/skills
+    3. <workspace>/agent_skills
+    4. ~/.config/torchlight/skills (global user configuration)
+    """
+    root = workspace_root or os.getcwd()
+    candidates = [
+        os.path.join(root, ".agents", "skills"),
+        os.path.join(root, "skills"),
+        os.path.join(root, "agent_skills"),
+        os.path.expanduser("~/.config/torchlight/skills"),
+    ]
+    seen = set()
+    valid = []
+    for d in candidates:
+        norm = os.path.abspath(os.path.expanduser(d))
+        if os.path.isdir(norm) and norm not in seen:
+            seen.add(norm)
+            valid.append(norm)
+    return valid
+
+
 class MarkdownDocumentSkill(BaseSkill):
     """
-    Lightweight skill backed by agent_skills/<name>/SKILL.md.
+    Lightweight skill backed by SKILL.md.
 
     This lets users add modular markdown guidance without writing Python code.
     The skill returns the skill document plus any caller input so the agent can
@@ -157,11 +215,23 @@ class MarkdownDocumentSkill(BaseSkill):
     risk_level = "auto"
     category   = "docs"
 
-    def __init__(self, name: str, description: str, icon: str, file_path: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        icon: str,
+        file_path: str,
+        risk_level: str = "auto",
+        category: str = "docs",
+        tags: Optional[List[str]] = None,
+    ) -> None:
         self.name = name
         self.description = description
         self.icon = icon
         self._file_path = file_path
+        self.risk_level = risk_level
+        self.category = category
+        self.tags = tags or []
 
     def _read_markdown(self) -> str:
         with open(self._file_path, encoding="utf-8") as f:
@@ -183,7 +253,7 @@ class MarkdownDocumentSkill(BaseSkill):
             return SkillResult(
                 success=True,
                 output=output,
-                metadata={"kind": "markdown_skill", "path": self._file_path},
+                metadata={"kind": "markdown_skill", "path": self._file_path, "tags": self.tags},
             )
         except Exception as e:
             return SkillResult(success=False, output="", error=str(e))
@@ -192,33 +262,54 @@ class MarkdownDocumentSkill(BaseSkill):
         return f"{self.icon} **{self.name}**: {self.description}"
 
 
-def _extract_markdown_skill_metadata(file_path: str) -> tuple[str, str, str]:
+def _extract_markdown_skill_metadata(file_path: str) -> Tuple[str, str, str, str, str, List[str]]:
+    """
+    Extract (skill_name, description, icon, risk_level, category, tags) from a markdown file.
+    Supports YAML frontmatter with fallback to legacy heading/icon scraping.
+    """
     content = open(file_path, encoding="utf-8").read()
-    lines = [line.strip() for line in content.splitlines()]
-
-    title = ""
-    description = ""
-    icon = "📘"
-
-    heading = next((line[2:].strip() for line in lines if line.startswith("# ")), "")
-    if heading:
-        title = heading
-
-    for line in lines:
-        if line.lower().startswith("icon:"):
-            icon = line.split(":", 1)[1].strip() or icon
-            break
-
-    for line in lines:
-        if not line or line.startswith("#") or line.lower().startswith("icon:"):
-            continue
-        description = line
-        break
+    metadata, body = parse_frontmatter(content)
 
     slug = os.path.basename(os.path.dirname(file_path)) or os.path.splitext(os.path.basename(file_path))[0]
-    skill_name = re.sub(r"[^a-z0-9_]+", "_", (title or slug).lower()).strip("_") or "markdown_skill"
-    summary = description[:160] if description else f"Markdown skill from {os.path.basename(file_path)}"
-    return skill_name, summary, icon
+    if slug == "." or slug == "":
+        slug = os.path.splitext(os.path.basename(file_path))[0]
+
+    raw_name = metadata.get("name") or metadata.get("title") or ""
+    icon = metadata.get("icon") or "📘"
+    description = metadata.get("description") or metadata.get("summary") or ""
+    risk_level = metadata.get("risk_level") or metadata.get("risk") or "auto"
+    category = metadata.get("category") or "docs"
+    raw_tags = metadata.get("tags") or []
+    if isinstance(raw_tags, str):
+        tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+    elif isinstance(raw_tags, list):
+        tags = [str(t).strip() for t in raw_tags if str(t).strip()]
+    else:
+        tags = []
+
+    # Fallback to legacy markdown heading/icon scraping if frontmatter was empty/incomplete
+    if not description or not raw_name:
+        lines = [line.strip() for line in body.splitlines()]
+        heading = next((line_entry[2:].strip() for line_entry in lines if line_entry.startswith("# ")), "")
+        if not raw_name and heading:
+            raw_name = heading
+
+        if icon == "📘":
+            for line in lines:
+                if line.lower().startswith("icon:"):
+                    icon = line.split(":", 1)[1].strip() or icon
+                    break
+
+        if not description:
+            for line in lines:
+                if not line or line.startswith("#") or line.lower().startswith("icon:"):
+                    continue
+                description = line
+                break
+
+    skill_name = re.sub(r"[^a-z0-9_]+", "_", (raw_name or slug).lower()).strip("_") or "markdown_skill"
+    summary = str(description)[:160] if description else f"Markdown skill from {os.path.basename(file_path)}"
+    return skill_name, summary, str(icon), str(risk_level), str(category), tags
 
 
 # ── Async helper ─────────────────────────────────────────────────────────────
@@ -230,7 +321,7 @@ def _run_async(coro):
     """
     import concurrent.futures
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(asyncio.run, coro).result()
     except RuntimeError:
@@ -316,7 +407,8 @@ class _LazySkill(BaseSkill):
         """Import the real module and instantiate the skill class."""
         if self._real is not None:
             return self._real
-        import importlib.util, sys
+        import importlib.util
+        import sys
         module_name = f"_lazy_{self.name}"
         spec = importlib.util.spec_from_file_location(module_name, self._file_path)
         if not spec or not spec.loader:
@@ -337,16 +429,23 @@ class _LazySkill(BaseSkill):
             return SkillResult(success=False, output="", error=f"Skill load error: {e}")
 
 
-def create_default_registry() -> SkillRegistry:
+def create_default_registry(workspace_root: Optional[str] = None) -> SkillRegistry:
     """
     Build the default SkillRegistry with built-in skills,
-    then register lazy stubs for any external skills in agent_skills/*.py.
+    then register lazy stubs for any external skills in standard directories:
+      - .agents/skills/
+      - skills/
+      - agent_skills/
+      - ~/.config/torchlight/skills/
 
     External skills are NOT imported at startup — the module is loaded only
     on the first execute() call. This keeps startup fast and avoids injecting
     unnecessary tokens for skills that are never used in a session.
     """
-    import sys, importlib.util, inspect, ast as _ast
+    import ast as _ast
+    import importlib.util
+    import inspect
+    import sys
 
     registry = SkillRegistry()
 
@@ -354,135 +453,163 @@ def create_default_registry() -> SkillRegistry:
     registry.register(GitSkill())
     registry.register(CalculatorSkill())
 
-    # ── External skills — lazy stubs ──────────────────────────────────────────
-    cwd        = os.getcwd()
-    skills_dir = os.path.join(cwd, "agent_skills")
-
-    if not os.path.isdir(skills_dir):
+    # ── External skills — lazy stubs across standard directories ───────────────
+    skill_dirs = get_skill_directories(workspace_root)
+    if not skill_dirs:
         return registry
 
-    if skills_dir not in sys.path:
-        sys.path.insert(0, skills_dir)
+    for skills_dir in skill_dirs:
+        if skills_dir not in sys.path:
+            sys.path.insert(0, skills_dir)
 
-    for filename in sorted(os.listdir(skills_dir)):
-        full_path = os.path.join(skills_dir, filename)
-
-        if os.path.isdir(full_path):
-            skill_md = os.path.join(full_path, "SKILL.md")
-            if os.path.isfile(skill_md):
-                try:
-                    skill_name, description, icon = _extract_markdown_skill_metadata(skill_md)
-                    registry.register(MarkdownDocumentSkill(
-                        name=skill_name,
-                        description=description,
-                        icon=icon,
-                        file_path=skill_md,
-                    ))
-                except Exception as e:
-                    print(f"⚠️  Failed to load markdown skill from {skill_md}: {e}")
-            continue
-
-        if not filename.endswith(".py") or filename.startswith("__"):
-            continue
-
-        file_path = full_path
-
-        # ── Fast AST scan — read the file without executing it ────────────────
-        # We extract three things without importing the module:
-        #   1. The class name that subclasses BaseSkill
-        #   2. The `name` class attribute (used as the registry key)
-        #   3. The `icon` class attribute
-        # If scanning fails for any reason we fall back to eager loading.
         try:
-            source = open(file_path, encoding="utf-8").read()
-            tree   = _ast.parse(source, filename=filename)
-
-            skill_classes = []  # (class_name, name_val, icon_val, risk_level, category)
-            for node in _ast.walk(tree):
-                if not isinstance(node, _ast.ClassDef):
-                    continue
-                # Only classes that inherit from BaseSkill (by name)
-                bases = [getattr(b, "id", None) for b in node.bases]
-                if "BaseSkill" not in bases:
-                    continue
-
-                name_val = icon_val = risk_val = cat_val = desc_val = None
-                for stmt in node.body:
-                    if not isinstance(stmt, _ast.Assign):
-                        continue
-                    for target in stmt.targets:
-                        if not isinstance(target, _ast.Name):
-                            continue
-                        if target.id == "name" and isinstance(stmt.value, _ast.Constant):
-                            name_val = stmt.value.value
-                        if target.id == "icon" and isinstance(stmt.value, _ast.Constant):
-                            icon_val = stmt.value.value
-                        if target.id == "risk_level" and isinstance(stmt.value, _ast.Constant):
-                            risk_val = stmt.value.value
-                        if target.id == "category" and isinstance(stmt.value, _ast.Constant):
-                            cat_val = stmt.value.value
-                        if target.id == "description" and isinstance(stmt.value, _ast.Constant):
-                            desc_val = stmt.value.value
-
-                if name_val:
-                    skill_classes.append((
-                        node.name, 
-                        name_val, 
-                        icon_val or "🔧",
-                        risk_val or "confirm",
-                        cat_val or "skill",
-                        desc_val or f"{name_val} skill"
-                    ))
-
-            for class_name, skill_name, icon, risk_level, category, description in skill_classes:
-                # Build a one-line prompt by scanning get_prompt() return value
-                # — just grab the first string constant, falling back to skill_name.
-                prompt_line = f"{icon} **{skill_name}**: {description}"
-                for node in _ast.walk(tree):
-                    if (
-                        isinstance(node, _ast.FunctionDef)
-                        and node.name == "get_prompt"
-                    ):
-                        for child in _ast.walk(node):
-                            if isinstance(child, _ast.Constant) and isinstance(child.value, str):
-                                first_line = child.value.splitlines()[0].strip()
-                                if first_line:
-                                    prompt_line = first_line
-                                    break
-                        break
-
-                stub = _LazySkill(
-                    name        = skill_name,
-                    icon        = icon,
-                    prompt_line = prompt_line,
-                    file_path   = file_path,
-                    class_name  = class_name,
-                    risk_level  = risk_level,
-                    category    = category,
-                    description = description,
-                )
-                registry.register(stub)
-
+            entries = sorted(os.listdir(skills_dir))
         except Exception:
-            # AST scan failed — fall back to eager load so the skill still works
+            continue
+
+        for filename in entries:
+            full_path = os.path.join(skills_dir, filename)
+
+            # Directory skill (e.g. .agents/skills/my-skill/SKILL.md)
+            if os.path.isdir(full_path):
+                skill_md = os.path.join(full_path, "SKILL.md")
+                if not os.path.isfile(skill_md):
+                    skill_md = os.path.join(full_path, "skill.md")
+                if os.path.isfile(skill_md):
+                    try:
+                        skill_name, description, icon, risk_level, category, tags = _extract_markdown_skill_metadata(skill_md)
+                        if not registry.get(skill_name):
+                            registry.register(MarkdownDocumentSkill(
+                                name=skill_name,
+                                description=description,
+                                icon=icon,
+                                file_path=skill_md,
+                                risk_level=risk_level,
+                                category=category,
+                                tags=tags,
+                            ))
+                    except Exception as e:
+                        print(f"⚠️  Failed to load markdown skill from {skill_md}: {e}")
+                continue
+
+            # Standalone markdown skill (e.g. skills/my-skill.md)
+            if filename.endswith(".md") and not filename.startswith("__") and filename.upper() != "README.MD":
+                try:
+                    skill_name, description, icon, risk_level, category, tags = _extract_markdown_skill_metadata(full_path)
+                    if not registry.get(skill_name):
+                        registry.register(MarkdownDocumentSkill(
+                            name=skill_name,
+                            description=description,
+                            icon=icon,
+                            file_path=full_path,
+                            risk_level=risk_level,
+                            category=category,
+                            tags=tags,
+                        ))
+                except Exception as e:
+                    print(f"⚠️  Failed to load markdown skill from {full_path}: {e}")
+                continue
+
+            if not filename.endswith(".py") or filename.startswith("__"):
+                continue
+
+            file_path = full_path
+
+            # ── Fast AST scan — read the file without executing it ────────────────
             try:
-                spec = importlib.util.spec_from_file_location(filename[:-3], file_path)
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    sys.modules[filename[:-3]] = module
-                    spec.loader.exec_module(module)  # type: ignore[union-attr]
-                    for _, obj in inspect.getmembers(module):
+                source = open(file_path, encoding="utf-8").read()
+                tree   = _ast.parse(source, filename=filename)
+
+                skill_classes = []  # (class_name, name_val, icon_val, risk_level, category, desc_val)
+                for node in _ast.walk(tree):
+                    if not isinstance(node, _ast.ClassDef):
+                        continue
+                    # Only classes that inherit from BaseSkill (by name)
+                    bases = [getattr(b, "id", None) for b in node.bases]
+                    if "BaseSkill" not in bases:
+                        continue
+
+                    name_val = icon_val = risk_val = cat_val = desc_val = None
+                    for stmt in node.body:
+                        if not isinstance(stmt, _ast.Assign):
+                            continue
+                        for target in stmt.targets:
+                            if not isinstance(target, _ast.Name):
+                                continue
+                            if target.id == "name" and isinstance(stmt.value, _ast.Constant):
+                                name_val = stmt.value.value
+                            if target.id == "icon" and isinstance(stmt.value, _ast.Constant):
+                                icon_val = stmt.value.value
+                            if target.id == "risk_level" and isinstance(stmt.value, _ast.Constant):
+                                risk_val = stmt.value.value
+                            if target.id == "category" and isinstance(stmt.value, _ast.Constant):
+                                cat_val = stmt.value.value
+                            if target.id == "description" and isinstance(stmt.value, _ast.Constant):
+                                desc_val = stmt.value.value
+
+                    if name_val:
+                        skill_classes.append((
+                            node.name,
+                            name_val,
+                            icon_val or "🔧",
+                            risk_val or "confirm",
+                            cat_val or "skill",
+                            desc_val or f"{name_val} skill"
+                        ))
+
+                for class_name, skill_name, icon, risk_level, category, description in skill_classes:
+                    if registry.get(skill_name):
+                        continue
+
+                    prompt_line = f"{icon} **{skill_name}**: {description}"
+                    for node in _ast.walk(tree):
                         if (
-                            inspect.isclass(obj)
-                            and issubclass(obj, BaseSkill)
-                            and obj is not BaseSkill
-                            and obj not in (GitSkill, CalculatorSkill)
+                            isinstance(node, _ast.FunctionDef)
+                            and node.name == "get_prompt"
                         ):
-                            try:
-                                registry.register(obj())
-                            except Exception:
-                                pass
-            except Exception as e:
-                print(f"⚠️  Failed to load skill from {filename}: {e}")
+                            for child in _ast.walk(node):
+                                if isinstance(child, _ast.Constant) and isinstance(child.value, str):
+                                    first_line = child.value.splitlines()[0].strip()
+                                    if first_line:
+                                        prompt_line = first_line
+                                        break
+                            break
+
+                    stub = _LazySkill(
+                        name        = skill_name,
+                        icon        = icon,
+                        prompt_line = prompt_line,
+                        file_path   = file_path,
+                        class_name  = class_name,
+                        risk_level  = risk_level,
+                        category    = category,
+                        description = description,
+                    )
+                    registry.register(stub)
+
+            except Exception:
+                # AST scan failed — fall back to eager load so the skill still works
+                try:
+                    mod_name = f"_dyn_{filename[:-3]}"
+                    spec = importlib.util.spec_from_file_location(mod_name, file_path)
+                    if spec and spec.loader:
+                        module = importlib.util.module_from_spec(spec)
+                        sys.modules[mod_name] = module
+                        spec.loader.exec_module(module)  # type: ignore[union-attr]
+                        for _, obj in inspect.getmembers(module):
+                            if (
+                                inspect.isclass(obj)
+                                and issubclass(obj, BaseSkill)
+                                and obj is not BaseSkill
+                                and obj not in (GitSkill, CalculatorSkill)
+                            ):
+                                try:
+                                    inst = obj()
+                                    if not registry.get(inst.name):
+                                        registry.register(inst)
+                                except Exception:
+                                    pass
+                except Exception as e:
+                    print(f"⚠️  Failed to load skill from {filename}: {e}")
 
     return registry

@@ -74,6 +74,12 @@ except ImportError:
         if create_git:
             ensure_git_repository(path)
 
+        try:
+            skills_dir = path / ".agents" / "skills"
+            skills_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
         return path
 
     def init_new_project(project_path: Union[Path, str]) -> Path:

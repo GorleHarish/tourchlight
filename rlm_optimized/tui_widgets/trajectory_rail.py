@@ -15,10 +15,10 @@ from textual.containers import Vertical
 from textual.widgets import Static
 
 DOT_GLYPHS = {
-    "running": "⏳",
-    "ok": "●",
-    "error": "✗",
-    "denied": "○",
+    "running": "*",
+    "ok": "o",
+    "error": "x",
+    "denied": "-",
 }
 
 MAX_DOTS = 80

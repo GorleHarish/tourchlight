@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Torchlight TurboQuant Model & Engine Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">⚡</div>
+        <div class="brand-text">
+          <h1>Torchlight TurboQuant Studio</h1>
+          <p class="subtitle">Multi-Model & Multi-Engine Inference Benchmarking GUI</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-platform" id="platform-badge">Apple Silicon (M1/Metal)</span>
+        <span class="badge badge-status" id="server-status"><span class="status-dot"></span> Ready</span>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="app-layout">
+      <!-- Left Panel: Configuration & Controls -->
+      <aside class="control-panel">
+        <div class="card-section">
+          <div class="section-title">
+            <span class="step-num">1</span>
+            <h3>Inference Engine</h3>
+          </div>
+          <div class="engine-cards" id="engine-selector">
+            <div class="engine-card active" data-engine="llamacpp">
+              <div class="engine-icon">🦙</div>
+              <div class="engine-meta">
+                <h4>llama.cpp</h4>
+                <p>Metal LUT Shaders & C++ Backend</p>
+              </div>
+              <div class="radio-indicator"></div>
+            </div>
+            <div class="engine-card" data-engine="mlx">
+              <div class="engine-icon">🍎</div>
+              <div class="engine-meta">
+                <h4>Apple MLX</h4>
+                <p>Native Array Engine & Python JIT</p>
+              </div>
+              <div class="radio-indicator"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-section">
+          <div class="section-title">
+            <span class="step-num">2</span>
+            <h3>KV Cache Mode (TurboQuant)</h3>
+          </div>
+          <div class="kv-options" id="kv-selector">
+            <label class="kv-pill active" data-kv="turbo3">
+              <input type="radio" name="kv_mode" value="turbo3" checked>
+              <div class="pill-content">
+                <span class="pill-title">TurboQuant (3-bit)</span>
+                <span class="pill-desc">~75% KV Memory Reduction (turbo3)</span>
+              </div>
+            </label>
+            <label class="kv-pill" data-kv="turbo4">
+              <input type="radio" name="kv_mode" value="turbo4">
+              <div class="pill-content">
+                <span class="pill-title">TurboQuant (4-bit)</span>
+                <span class="pill-desc">Balanced Speed & Accuracy (turbo4)</span>
+              </div>
+            </label>
+            <label class="kv-pill" data-kv="f16">
+              <input type="radio" name="kv_mode" value="f16">
+              <div class="pill-content">
+                <span class="pill-title">Standard Baseline (f16)</span>
+                <span class="pill-desc">Without TurboQuant (Uncompressed)</span>
+              </div>
+            </label>
+            <label class="kv-pill" data-kv="compare">
+              <input type="radio" name="kv_mode" value="compare">
+              <div class="pill-content">
+                <span class="pill-title">⚡ Compare Both</span>
+                <span class="pill-desc">Run With vs. Without TurboQuant</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card-section">
+          <div class="section-title">
+            <span class="step-num">3</span>
+            <h3>Select Model</h3>
+            <button class="btn-refresh" id="btn-refresh-models" title="Refresh local models">🔄 Refresh</button>
+          </div>
+          <div class="model-select-wrapper">
+            <select id="model-select" class="custom-select">
+              <option value="" disabled selected>Scanning local models...</option>
+            </select>
+            <div class="model-meta-preview" id="model-meta-preview">
+              <span class="meta-tag" id="meta-size">- MB</span>
+              <span class="meta-tag" id="meta-type">GGUF / MLX</span>
+              <span class="meta-tag" id="meta-location">./models</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-section">
+          <div class="section-title">
+            <span class="step-num">4</span>
+            <h3>Inference Parameters</h3>
+          </div>
+          <div class="params-grid">
+            <div class="param-group">
+              <div class="param-header">
+                <label for="max-tokens">Max Tokens</label>
+                <span class="param-val" id="max-tokens-val">64</span>
+              </div>
+              <input type="range" id="max-tokens" min="16" max="512" step="16" value="64">
+            </div>
+            <div class="param-group">
+              <div class="param-header">
+                <label for="threads">CPU Threads</label>
+                <span class="param-val" id="threads-val">4</span>
+              </div>
+              <input type="range" id="threads" min="1" max="8" step="1" value="4">
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-wrapper">
+          <button class="btn-primary" id="btn-run-test">
+            <span class="btn-icon">▶</span> Run Benchmark & Test
+          </button>
+        </div>
+      </aside>
+
+      <!-- Right Panel: Workspace, Output & Telemetry -->
+      <section class="workspace-panel">
+        <!-- Prompt & Task Card -->
+        <div class="card prompt-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">📝</span>
+              <h3>Benchmark Task & Prompt</h3>
+            </div>
+            <div class="presets-group" id="preset-buttons">
+              <button class="preset-btn active" data-preset="1">LRU Cache</button>
+              <button class="preset-btn" data-preset="2">Async Rate Limiter</button>
+              <button class="preset-btn" data-preset="3">Binary Search Tree</button>
+              <button class="preset-btn" data-preset="custom">Custom</button>
+            </div>
+          </div>
+          <textarea id="prompt-input" class="prompt-textarea" rows="3" placeholder="Enter benchmark prompt or select a preset above..."></textarea>
+        </div>
+
+        <!-- Live Performance Gauges -->
+        <div class="metrics-grid">
+          <div class="metric-card" id="metric-prefill">
+            <div class="metric-header">
+              <span class="metric-label">Prefill Speed</span>
+              <span class="metric-icon">⚡</span>
+            </div>
+            <div class="metric-value"><span id="val-prefill">--</span> <span class="unit">t/s</span></div>
+            <div class="metric-sub" id="sub-prefill">Prompt Processing</div>
+          </div>
+          <div class="metric-card" id="metric-decode">
+            <div class="metric-header">
+              <span class="metric-label">Decode Speed</span>
+              <span class="metric-icon">🚀</span>
+            </div>
+            <div class="metric-value"><span id="val-decode">--</span> <span class="unit">t/s</span></div>
+            <div class="metric-sub" id="sub-decode">Token Generation</div>
+          </div>
+          <div class="metric-card" id="metric-ttft">
+            <div class="metric-header">
+              <span class="metric-label">Time to First Token</span>
+              <span class="metric-icon">⏱</span>
+            </div>
+            <div class="metric-value"><span id="val-ttft">--</span> <span class="unit">ms</span></div>
+            <div class="metric-sub" id="sub-ttft">Initial Latency</div>
+          </div>
+          <div class="metric-card" id="metric-ram">
+            <div class="metric-header">
+              <span class="metric-label">Peak Memory</span>
+              <span class="metric-icon">💾</span>
+            </div>
+            <div class="metric-value"><span id="val-ram">--</span> <span class="unit">MB</span></div>
+            <div class="metric-sub" id="sub-ram">VRAM / Unified RAM</div>
+          </div>
+        </div>
+
+        <!-- Generated Output & AST Syntax Validation -->
+        <div class="card output-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">💻</span>
+              <h3>Generated Code Output</h3>
+            </div>
+            <div class="output-actions">
+              <span class="ast-badge" id="ast-badge">AST: WAITING</span>
+              <button class="btn-action" id="btn-copy-code" title="Copy Code">📋 Copy</button>
+            </div>
+          </div>
+          <div class="code-container">
+            <pre><code id="code-output">// Code generation output will stream here...</code></pre>
+          </div>
+        </div>
+
+        <!-- Comparison History Table -->
+        <div class="card history-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">📊</span>
+              <h3>Side-by-Side Benchmark History</h3>
+            </div>
+            <div class="history-actions">
+              <button class="btn-action" id="btn-clear-history">🗑 Clear</button>
+              <button class="btn-action" id="btn-export-json">📥 Export JSON</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="benchmark-table" id="results-table">
+              <thead>
+                <tr>
+                  <th>Engine</th>
+                  <th>KV Mode</th>
+                  <th>Model</th>
+                  <th>Prefill (t/s)</th>
+                  <th>Decode (t/s)</th>
+                  <th>TTFT (ms)</th>
+                  <th>Peak RAM</th>
+                  <th>AST Syntax</th>
+                </tr>
+              </thead>
+              <tbody id="results-tbody">
+                <tr class="empty-row">
+                  <td colspan="8">No benchmark runs recorded yet. Click "Run Benchmark & Test" above.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

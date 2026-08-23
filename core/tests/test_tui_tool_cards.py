@@ -20,9 +20,11 @@ def test_summarize_args():
     from rlm_optimized.tui_widgets.tool_card import summarize_args
 
     assert summarize_args(None) == ""
-    s = summarize_args({"path": "/tmp/a.py", "query": "def foo"})
+    s = summarize_args({"path": "/tmp/a.py", "query": "def foo", "task_id": "1.1", "description": "Add foo"})
     assert "path: /tmp/a.py" in s
     assert "query: def foo" in s
+    assert "task_id: 1.1" in s
+    assert "description: Add foo" in s
 
     long_val = summarize_args({"cmd": "x" * 300})
     assert "..." in long_val
@@ -35,9 +37,16 @@ def test_target_from_args_line_ranges():
     from rlm_optimized.tui_widgets.tool_card import ToolCallCard
 
     assert ToolCallCard._target_from_args({"path": "src/main.py", "start_line": 10, "end_line": 25}) == "src/main.py:L10-L25"
+    assert ToolCallCard._target_from_args({"path": "src/main.py", "start_line": 10, "end_line": 25, "task_id": "1.1", "description": "Add boundary check"}) == "src/main.py:L10-L25 — [1.1] Add boundary check"
+    assert ToolCallCard._target_from_args({"path": "src/main.py", "description": "Add boundary check"}) == "src/main.py — Add boundary check"
+    assert ToolCallCard._target_from_args({"path": "src/main.py", "task_id": "1.2"}) == "src/main.py — [1.2]"
     assert ToolCallCard._target_from_args({"path": "src/main.py", "start_line": 10}) == "src/main.py:L10"
     assert ToolCallCard._target_from_args({"path": "src/main.py", "symbol": "foo_func"}) == "src/main.py:foo_func"
     assert ToolCallCard._target_from_args({"path": "src/main.py:10-25"}) == "src/main.py:10-25"
+    assert ToolCallCard._target_from_args("SEARCH_AST", {"query": "login_user", "path": "src/auth.py"}) == "src/auth.py :: login_user"
+    assert ToolCallCard._target_from_args("SEARCH_AST", {"query": "get_plan"}) == "query: get_plan"
+    assert ToolCallCard._target_from_args("GREP", {"pattern": "def test", "path": "core/tests/"}) == "/def test/ in core/tests/"
+
 
 
 def test_truncate_output():
@@ -107,12 +116,12 @@ async def test_tool_card_complete_ok():
         )
         await pilot.pause()
         assert card._status == "ok"
-        assert card._status_widget.content == "✓"
+        assert card._status_widget.content == "OK"
         assert {"tool-card-status", "ok"} <= card._status_widget.classes
         assert "status-ok" in card.classes
         badge = card.query_one(".risk-badge")
-        assert badge.content == "✓ DONE"
-        assert "risk-done" in badge.classes
+        assert "AUTO" in badge.content
+        assert "risk-auto" in badge.classes
         assert "500ms" in str(card._time_widget.content)
         body = card.query_one(".tool-card-body")
         assert "OK: read /tmp/x.py" in str(body.content)
@@ -140,11 +149,11 @@ async def test_tool_card_complete_error_expands():
         card.complete(result="Error: boom", args={"command": "pytest"}, status="error")
         await pilot.pause()
         assert card._status == "error"
-        assert card._status_widget.content == "✗"
+        assert card._status_widget.content == "ERR"
         assert "status-error" in card.classes
         badge = card.query_one(".risk-badge")
-        assert badge.content == "✗ FAILED"
-        assert "risk-error" in badge.classes
+        assert "AUTO" in badge.content
+        assert "risk-auto" in badge.classes
         if tc.Collapsible is not None:
             section = card.query_one(".tool-card-section")
             assert section.collapsed is False
@@ -174,13 +183,14 @@ async def test_tool_card_complete_denied():
         )
         await pilot.pause()
         assert card._status == "denied"
-        assert card._status_widget.content == "⚠️"
+        assert card._status_widget.content == "DENIED"
         assert {"tool-card-status", "denied"} <= card._status_widget.classes
         assert "status-denied" in card.classes
         badge = card.query_one(".risk-badge")
-        assert badge.content == "⚠️ DENIED"
-        assert "risk-denied" in badge.classes
+        assert "CONFIRM" in badge.content
+        assert "risk-confirm" in badge.classes
         await pilot.pause()
+
 
 
 @pytest.mark.anyio
@@ -246,3 +256,89 @@ async def test_app_pending_card_wiring():
         cards = container.query(ToolCallCard)
         assert len(cards) == 1
         assert cards[0]._status == "ok"
+
+
+@pytest.mark.anyio
+async def test_tool_card_short_output_auto_expands():
+    """Verify tool calls with <= 10 lines of output default to expanded."""
+    try:
+        from textual.app import App
+        from rlm_optimized.tui_widgets import tool_card as tc
+        from rlm_optimized.tui_widgets.tool_card import ToolCallCard
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    class CardApp(App):
+        def compose(self):
+            yield ToolCallCard("READ_FILE", args={"path": "short.txt"})
+
+    app = CardApp()
+    async with app.run_test() as pilot:
+        card = app.query_one(ToolCallCard)
+        short_output = "line 1\nline 2\nline 3\nline 4\nline 5"
+        card.complete(result=short_output, args={"path": "short.txt"}, status="ok")
+        await pilot.pause()
+        if tc.Collapsible is not None:
+            section = card.query_one(".tool-card-section")
+            # <= 10 lines should be expanded (not collapsed)
+            assert section.collapsed is False
+
+
+@pytest.mark.anyio
+async def test_tool_card_long_output_collapses():
+    """Verify tool calls with > 10 lines of output default to collapsed."""
+    try:
+        from textual.app import App
+        from rlm_optimized.tui_widgets import tool_card as tc
+        from rlm_optimized.tui_widgets.tool_card import ToolCallCard
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    class CardApp(App):
+        def compose(self):
+            yield ToolCallCard("READ_FILE", args={"path": "long.txt"})
+
+    app = CardApp()
+    async with app.run_test() as pilot:
+        card = app.query_one(ToolCallCard)
+        long_output = "\n".join(f"line {i}" for i in range(25))
+        card.complete(result=long_output, args={"path": "long.txt"}, status="ok")
+        await pilot.pause()
+        if tc.Collapsible is not None:
+            section = card.query_one(".tool-card-section")
+            # > 10 lines should be collapsed
+            assert section.collapsed is True
+
+
+@pytest.mark.anyio
+async def test_tool_card_copy_action(monkeypatch):
+    """Verify ToolCallCard.action_copy extracts result/payload and triggers copy."""
+    try:
+        from textual.app import App
+        from rlm_optimized.tui_widgets.tool_card import ToolCallCard
+    except (ImportError, ModuleNotFoundError) as e:
+        pytest.skip(f"Textual not installed in test environment: {e}")
+
+    copied = []
+
+    def mock_copy(text: str) -> bool:
+        copied.append(text)
+        return True
+
+    monkeypatch.setattr("rlm_optimized.tui_app.copy_to_clipboard", mock_copy)
+
+    class CardApp(App):
+        def compose(self):
+            yield ToolCallCard("RUN_COMMAND", args={"command": "pytest"})
+
+    app = CardApp()
+    async with app.run_test() as pilot:
+        card = app.query_one(ToolCallCard)
+        card.complete(result="12 passed in 1.2s", args={"command": "pytest"}, status="ok")
+        await pilot.pause()
+
+        # Trigger copy action
+        card.action_copy()
+        assert len(copied) == 1
+        assert copied[0] == "12 passed in 1.2s"
+
