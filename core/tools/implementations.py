@@ -2469,9 +2469,19 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})",
             )
 
+        # ── Solution 4: High-Coverage Whole-File Safe Auto-Promotion Fallback ──
+        new_lines_cnt = len(new_text.splitlines())
+        if new_lines_cnt >= max(5, int(len(content_lines) * 0.5)):
+            status, val_payload = _validate_and_repair(new_text, p, project_root, force=force, reject_on_stub=reject_on_stub)
+            if status == "ok":
+                return _commit_edit_and_format_result(
+                    p, val_payload, content, project_root, force, reject_on_stub,
+                    f"Surgically updated {path} (auto-promoted complete implementation, {new_lines_cnt} lines)"
+                )
+
         # ── Solution 3: Symbol-Level Replacement Fallback ──
         new_syms = _extract_symbols(new_text)
-        if new_syms:
+        if new_syms and len(new_syms) == 1:
             for _, kind, sym_name in new_syms:
                 bounds = _get_symbol_bounds_general(content, sym_name, ext)
                 if bounds:
@@ -2483,16 +2493,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         p, new_content, content, project_root, force, reject_on_stub,
                         f"Surgically replaced {kind} '{sym_name}' in {path} (lines {s_l}-{e_l})"
                     )
-
-        # ── Solution 4: High-Coverage Whole-File Safe Auto-Promotion Fallback ──
-        new_lines_cnt = len(new_text.splitlines())
-        if new_lines_cnt >= max(5, int(len(content_lines) * 0.5)):
-            status, val_payload = _validate_and_repair(new_text, p, project_root, force=force, reject_on_stub=reject_on_stub)
-            if status == "ok":
-                return _commit_edit_and_format_result(
-                    p, val_payload, content, project_root, force, reject_on_stub,
-                    f"Surgically updated {path} (auto-promoted complete implementation, {new_lines_cnt} lines)"
-                )
 
         # All tiers failed — provide closest match as diagnostic
         closest_ratio = 0.0
