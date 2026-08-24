@@ -1,25 +1,38 @@
-# OS files
+# OS & editor temporary files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 *.swp
 *.swo
 *~
 
-# Python bytecode and caches
+# Python bytecode, typing & caches
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+**/.pytest_cache/
 .ruff_cache/
+**/.ruff_cache/
 .mypy_cache/
+**/.mypy_cache/
 .coverage
+.coverage.*
 htmlcov/
 .cache/
 **/.cache/
 
-# Local env files
+# Local environment & secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
 # Python virtualenvs & libraries
 venv/
@@ -32,10 +45,11 @@ env/
 env*/
 *env*/
 ENV/
-**/mlx-venv/
-**/*-venv/
+venv_mlx/
 **/venv/
 **/.venv/
+**/*-venv/
+**/mlx-venv/
 pip-wheel-metadata/
 
 # Node / JS dependencies & caches
@@ -44,9 +58,13 @@ node_modules/
 .npm/
 .yarn/
 .turbo/
+.pnpm-store/
+.parcel-cache/
+.next/
 
 # Python build artifacts
 *.egg-info/
+**/*.egg-info/
 .eggs/
 dist/
 build/
@@ -60,20 +78,30 @@ parts/
 sdist/
 var/
 wheels/
+*.whl
 share/python-wheels/
 
 # IDE / Agent workspaces & worktrees
 .gemini/
+**/.gemini/
 .idea/
+**/.idea/
 .vscode/
-.kilo/node_modules/
-.kilo/worktrees/
-.opencode/node_modules/
+**/.vscode/
+.kilo/
+.opencode/
+.cursor/
+**/.cursor/
+.windsurf/
+**/.windsurf/
+*.sublime-project
+*.sublime-workspace
 
-# MLX & Model downloads / caches
+# Large Models, weights, downloads & checkpoints
+models/
+**/models/
 rlm_optimized/mlx-models/
 **/mlx-models/
-models/
 *.gguf
 *.gguf.*
 *.bin
@@ -81,17 +109,31 @@ models/
 *.pt
 *.pth
 *.onnx
+*.tflite
+*.ckpt
+*.h5
+*.model
 hf_cache/
+**/.cache/huggingface/
+**/.cache/torch/
 
 # Prebuilt TurboQuant fork binaries (re-downloadable, not source)
 llama-cpp-turboquant/
 
-# Torchlight logs and runtime state
+# Torchlight logs, runtime state & databases
 .torchlight/
+**/.torchlight/
 .torchlight_history.log
+**/.torchlight_history.log
+.context-memory.json
+**/.context-memory.json
 test_kuzu_db*
+*.db
+*.sqlite
+*.sqlite3
 *.log
+**/*.log
 
-# Graphify runtime cache (auto-rebuilt, not source)
+# Graphify runtime cache & rebuild locks (auto-rebuilt, not source)
 graphify-out/cache/
 graphify-out/.rebuild.lock
