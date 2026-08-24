@@ -26,3 +26,9 @@ Rules and design patterns for building lag-free, visually artifact-free Terminal
 - **LRU Cache Markdown & Syntax Trees**: Use `@lru_cache(maxsize=128)` on code block extractors (`extract_code_blocks`) and Pygments `Syntax` object creation (`_build_cached_syntax`) in `transcript.py`.
 - **TPS-Adaptive Stream Throttling**: Scale `_token_throttle_interval` dynamically (e.g., `0.033s` → `0.045s`) when streaming throughput exceeds 60 tokens/sec.
 - **Resize Event Debouncing**: Debounce `on_resize()` events with a 100ms timer (`set_timer`) to prevent continuous layout recalculation during window dragging.
+
+## 6. Multi-Item & Question Modal Discipline
+
+- **No Array Truncation to Index `[0]`**: Interactive modals presenting plan review questions, confirmations, or batch choices must never hardcode taking only index `[0]`. Modals handling collections (e.g., `AskUserModal`, approval dialogs) must accept the full list (`questions: list[dict]`) and dynamically generate scrollable sub-groups (`RadioSet` for single choice, `Checkbox` for multi-select) inside a `VerticalScroll` container.
+- **Composite Answer Aggregation**: Modals presenting multiple questions must aggregate selections across all $N$ sections into a structured composite response mapping each question to its chosen option(s) (e.g., `Q1: Selected: ... | Q2: Selected: ...`).
+- **Modal Input & Backdrop Styling**: Ensure all modals use 100% opaque solid background (`background: #0d1117;`), solid border (`border: solid $primary;`), and flat action buttons (`border: none; padding: 0 1; height: 3;`).

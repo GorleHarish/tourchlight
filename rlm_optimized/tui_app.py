@@ -479,13 +479,13 @@ class AskUserModal(ModalScreen[str]):
     DEFAULT_CSS = """
     AskUserModal {
         align: center middle;
-        background: rgba(0, 0, 0, 0.7);
+        background: #0d1117;
     }
     #ask-dialog {
         width: 90%;
-        max-width: 84;
+        max-width: 86;
         max-height: 85%;
-        border: round $primary;
+        border: solid $primary;
         background: $surface;
         padding: 1 2;
     }
@@ -495,16 +495,21 @@ class AskUserModal(ModalScreen[str]):
         color: $primary;
         margin-bottom: 1;
     }
-    #ask-question {
+    .ask-question-header {
         color: $foreground;
-        margin-bottom: 1;
+        text-style: bold;
+        margin-top: 1;
+        margin-bottom: 0;
     }
     #ask-options-container {
-        max-height: 12;
+        max-height: 18;
         overflow-y: auto;
         border: solid $panel;
         background: $background;
         padding: 1;
+        margin-bottom: 1;
+    }
+    .ask-q-group {
         margin-bottom: 1;
     }
     #ask-custom-label {
@@ -521,6 +526,9 @@ class AskUserModal(ModalScreen[str]):
         margin-top: 1;
     }
     #ask-buttons Button {
+        border: none;
+        padding: 0 1;
+        height: 3;
         margin: 0 1;
         min-width: 18;
     }
@@ -528,31 +536,48 @@ class AskUserModal(ModalScreen[str]):
 
     def __init__(
         self,
-        question: str,
+        question: str = "",
         options: Optional[list[str]] = None,
         is_multi_select: bool = False,
         allow_custom_input: bool = True,
+        questions: Optional[list[dict]] = None,
     ) -> None:
         super().__init__()
-        self.question_text = question or "Agent requested input:"
-        self.options = options or []
-        self.is_multi_select = is_multi_select
+        if questions and isinstance(questions, list):
+            self.questions = questions
+        elif question or options:
+            self.questions = [
+                {
+                    "question": question or "Agent requested input:",
+                    "options": options or [],
+                    "is_multi_select": is_multi_select,
+                    "allow_custom_input": allow_custom_input,
+                }
+            ]
+        else:
+            self.questions = []
         self.allow_custom_input = allow_custom_input
 
     def compose(self) -> ComposeResult:
         with Vertical(id="ask-dialog"):
             yield Label("❓ Agent Question / Plan Review", id="ask-title")
-            yield Static(self.question_text, id="ask-question")
 
-            if self.options:
-                with Vertical(id="ask-options-container"):
-                    if not self.is_multi_select:
-                        with RadioSet(id="ask-radioset"):
-                            for i, opt in enumerate(self.options):
-                                yield RadioButton(opt, value=(i == 0))
-                    else:
-                        for i, opt in enumerate(self.options):
-                            yield Checkbox(opt, value=(i == 0), id=f"ask-check-{i}")
+            if self.questions:
+                with VerticalScroll(id="ask-options-container"):
+                    for q_idx, q_data in enumerate(self.questions):
+                        q_text = q_data.get("question", f"Question {q_idx + 1}")
+                        yield Label(f"❓ {q_text}", classes="ask-question-header")
+                        q_opts = q_data.get("options", [])
+                        is_multi = bool(q_data.get("is_multi_select", False))
+                        if q_opts:
+                            if not is_multi:
+                                with RadioSet(id=f"ask-radioset-{q_idx}", classes="ask-q-group"):
+                                    for opt_idx, opt in enumerate(q_opts):
+                                        yield RadioButton(opt, value=(opt_idx == 0), id=f"ask-radio-{q_idx}-{opt_idx}")
+                            else:
+                                with Vertical(id=f"ask-checkgroup-{q_idx}", classes="ask-q-group"):
+                                    for opt_idx, opt in enumerate(q_opts):
+                                        yield Checkbox(opt, value=(opt_idx == 0), id=f"ask-check-{q_idx}-{opt_idx}")
 
             if self.allow_custom_input:
                 yield Label("Custom input / additional feedback (optional):", id="ask-custom-label")
@@ -581,23 +606,35 @@ class AskUserModal(ModalScreen[str]):
         self._perform_submit()
 
     def _perform_submit(self) -> None:
-        selected_choices: list[str] = []
-        if self.options:
-            if not self.is_multi_select:
-                try:
-                    radio_set = self.query_one("#ask-radioset", RadioSet)
-                    if radio_set.pressed_button:
-                        selected_choices.append(str(radio_set.pressed_button.label))
-                except Exception:
-                    pass
-            else:
-                for i, opt in enumerate(self.options):
+        results = []
+        is_single = len(self.questions) == 1
+        for q_idx, q_data in enumerate(self.questions):
+            q_text = q_data.get("question", f"Question {q_idx + 1}")
+            q_opts = q_data.get("options", [])
+            is_multi = bool(q_data.get("is_multi_select", False))
+            selected: list[str] = []
+            if q_opts:
+                if not is_multi:
                     try:
-                        cb = self.query_one(f"#ask-check-{i}", Checkbox)
-                        if cb.value:
-                            selected_choices.append(opt)
+                        radio_set = self.query_one(f"#ask-radioset-{q_idx}", RadioSet)
+                        if radio_set.pressed_button:
+                            selected.append(str(radio_set.pressed_button.label))
                     except Exception:
                         pass
+                else:
+                    for opt_idx, opt in enumerate(q_opts):
+                        try:
+                            cb = self.query_one(f"#ask-check-{q_idx}-{opt_idx}", Checkbox)
+                            if cb.value:
+                                selected.append(opt)
+                        except Exception:
+                            pass
+            if selected:
+                sel_str = selected[0] if not is_multi else ", ".join(selected)
+                if is_single:
+                    results.append(f"Selected: {sel_str}")
+                else:
+                    results.append(f"{q_text}: Selected: {sel_str}")
 
         custom_text = ""
         if self.allow_custom_input:
@@ -607,12 +644,6 @@ class AskUserModal(ModalScreen[str]):
             except Exception:
                 pass
 
-        results = []
-        if selected_choices:
-            if not self.is_multi_select:
-                results.append(f"Selected: {selected_choices[0]}")
-            else:
-                results.append(f"Selected: {', '.join(selected_choices)}")
         if custom_text:
             results.append(f"Custom Input: {custom_text}")
 
@@ -4626,18 +4657,12 @@ class TorchlightApp(App):
                             plan_text = pf.read()
                     review_questions = parse_plan_review_questions(plan_text)
                     if review_questions:
-                        q_data = review_questions[0]
                         user_selection = await self.push_screen_wait(
-                            AskUserModal(
-                                question=q_data["question"],
-                                options=q_data.get("options", []),
-                                is_multi_select=q_data.get("is_multi_select", False),
-                                allow_custom_input=q_data.get("allow_custom_input", True),
-                            )
+                            AskUserModal(questions=review_questions)
                         )
                         if user_selection and user_selection != "User dismissed prompt without input.":
                             self.notify(
-                                f"Review choice recorded: {user_selection[:60]}",
+                                f"Review choices recorded: {user_selection[:60]}",
                                 severity="information",
                                 timeout=4,
                             )
@@ -4724,16 +4749,29 @@ class TorchlightApp(App):
         if self._first_token_time and (now - self._first_token_time) > 0.05:
             self._live_tps = self._stream_token_count / (now - self._first_token_time)
 
-        # Keep the status-bar context gauge climbing during generation
+        # Keep the status-bar context gauge climbing during generation (throttled to 1.0s)
         try:
-            if now - getattr(self, "_last_status_refresh_ts", 0.0) > 0.5:
+            if now - getattr(self, "_last_status_refresh_ts", 0.0) > 1.0:
                 self._last_status_refresh_ts = now
                 self.call_after_refresh(self.update_status_bar)
         except Exception:
             pass
 
-        throttled = now - self._token_throttle_last < self._token_throttle_interval
+        # Adaptive throttle interval based on TPS
+        throttle_interval = 0.045 if getattr(self, "_live_tps", 0.0) > 60 else getattr(self, "_token_throttle_interval", 0.033)
+        throttled = (now - getattr(self, "_token_throttle_last", 0.0)) < throttle_interval
 
+        if throttled:
+            if not getattr(self, "_flush_pending", False):
+                self._flush_pending = True
+                self.call_after_refresh(self._flush_streaming_widget)
+            return
+
+        self._flush_pending = False
+        self._token_throttle_last = now
+        self._render_streaming_update()
+
+    def _render_streaming_update(self) -> None:
         try:
             widget = self._ensure_streaming_widget()
             display_text = self._streaming_text
@@ -4759,11 +4797,6 @@ class TorchlightApp(App):
             if len(display_text) > 4000:
                 display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
 
-            if throttled:
-                self.call_after_refresh(self._flush_streaming_widget)
-                return
-            self._token_throttle_last = now
-
             escaped = escape(display_text)
             widget.update_markup(escaped)
 
@@ -4777,24 +4810,26 @@ class TorchlightApp(App):
 
             if self._pending_tool_card is not None:
                 self._pending_tool_card.update_running()
-            self.call_after_refresh(self._scroll_chat_to_end)
+            if not getattr(self, "_scroll_pending", False):
+                self._scroll_pending = True
+                self.call_after_refresh(self._do_scroll_chat_to_end)
         except Exception:
             pass
 
+    def _do_scroll_chat_to_end(self) -> None:
+        self._scroll_pending = False
+        self._scroll_chat_to_end()
+
     def _flush_streaming_widget(self) -> None:
         """Apply any pending streaming text that was throttled."""
+        self._flush_pending = False
         if self._streaming_view is None:
             return
-        display_text = self._streaming_text
-        if "<tool_call>" in display_text.lower():
-            parts = re.split(r"<tool_call>", display_text, flags=re.IGNORECASE)
-            display_text = parts[0].strip()
-        display_text = sanitize_assistant_text(display_text)
-        if len(display_text) > 4000:
-            display_text = "... [truncated streaming] ...\n" + display_text[-4000:]
-        self._streaming_view.update_markup(escape(display_text))
+        self._render_streaming_update()
 
     def _remove_streaming(self) -> None:
+        self._flush_pending = False
+        self._scroll_pending = False
         if getattr(self, "_streaming_widget", None) is not None:
             try:
                 self._streaming_widget.remove()
@@ -6244,18 +6279,27 @@ class TorchlightApp(App):
         return bool(res)
 
     async def _handle_ask_user(self, args: dict) -> str:
-        question = args.get("question", "")
-        options = args.get("options", [])
-        is_multi = bool(args.get("is_multi_select", False))
-        allow_custom = bool(args.get("allow_custom_input", True))
-        res = await self.push_screen_wait(
-            AskUserModal(
-                question=question,
-                options=options,
-                is_multi_select=is_multi,
-                allow_custom_input=allow_custom,
+        questions_list = args.get("questions")
+        if isinstance(questions_list, list) and questions_list:
+            res = await self.push_screen_wait(
+                AskUserModal(
+                    questions=questions_list,
+                    allow_custom_input=bool(args.get("allow_custom_input", True)),
+                )
             )
-        )
+        else:
+            question = args.get("question", "")
+            options = args.get("options", [])
+            is_multi = bool(args.get("is_multi_select", False))
+            allow_custom = bool(args.get("allow_custom_input", True))
+            res = await self.push_screen_wait(
+                AskUserModal(
+                    question=question,
+                    options=options,
+                    is_multi_select=is_multi,
+                    allow_custom_input=allow_custom,
+                )
+            )
         return str(res or "No input provided.")
 
     def _capture_prewrite_snapshot(self, tool_name: str, args: dict) -> None:

@@ -823,10 +823,12 @@ class StreamingView(Container):
         """Replace the streaming body with plain text (markup disabled)."""
         if self._body is not None:
             self._body.update(markup)
-            # Update token count
-            self._token_count = estimate_token_count(markup)
-            if self._token_widget:
-                self._token_widget.update(f"{self._token_count:,} tok")
+            # Update token count only on change
+            new_count = estimate_token_count(markup)
+            if new_count != self._token_count:
+                self._token_count = new_count
+                if self._token_widget:
+                    self._token_widget.update(f"{self._token_count:,} tok")
 
     def set_meta(self, meta: str) -> None:
         """Update the live meta footer (tps / tokens / latency)."""

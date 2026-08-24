@@ -1120,8 +1120,8 @@ def _check_compile(content: str, filename: str, project_root: str) -> Optional[s
 
 def _clean_copied_file_text(text: str, filename: str = "") -> str:
     """Strip display decorations (line number prefixes, symbol maps, markdown codeblock fences,
-    file header/footer annotations, pinned file framing) if model copied verbatim from READ_FILE
-    or memory scratchpad into old_text, new_text, or content.
+    file header/footer annotations, pinned file framing, and stray copy/token artifacts) if model
+    copied verbatim from READ_FILE or memory scratchpad into old_text, new_text, or content.
     """
     if not text or not isinstance(text, str):
         return text
@@ -1140,16 +1140,18 @@ def _clean_copied_file_text(text: str, filename: str = "") -> str:
     for line in lines:
         trimmed = line.strip()
 
-        # 1. Pinned file framing headers/footers e.g. "--- game.js ---", "--- end game.js ---"
-        if re.match(r"^---\s*[\w\.\-/]+\s*---$", trimmed) or re.match(
-            r"^---\s*end\s+[\w\.\-/]+\s*---$", trimmed, re.IGNORECASE
+        # 1. Pinned file framing headers/footers e.g. "--- game.js ---", "--- index.html---", "=== style.css ==="
+        if (
+            re.match(r"^---\s*[\w\.\-/: ]+\s*---$", trimmed)
+            or re.match(r"^---\s*end\s+[\w\.\-/: ]+\s*---$", trimmed, re.IGNORECASE)
+            or re.match(r"^===\s*[\w\.\-/: ]+\s*===$", trimmed)
+            or trimmed.startswith("[Pinned file")
+            or trimmed.endswith("old_text:]")
         ):
             continue
-        if trimmed == "[Pinned file contents — use for EDIT_FILE old_text:]":
-            continue
 
-        # 2. Symbol map header e.g. "Symbols:"
-        if trimmed == "Symbols:":
+        # 2. Symbol map header e.g. "Symbols:" or "Symbols in file:"
+        if trimmed.lower() in ("symbols:", "symbols in file:"):
             in_symbol_map = True
             continue
 
@@ -1167,7 +1169,7 @@ def _clean_copied_file_text(text: str, filename: str = "") -> str:
                 # Reached non-symbol line, exit symbol map
                 in_symbol_map = False
 
-        # 4. File line count headers e.g. "game.js (42 lines)", "game.js lines 1–42 (of 42 total)"
+        # 4. File line count headers e.g. "game.js (42 lines)", "index.html (26 lines)", "lines 1–42 (of 42 total)"
         if re.search(
             r"^(?:[\w\.\-/]+\s+)?(?:\(\d+\s*lines\)|lines\s*\d+[–\-]\d+\s*\(of\s*\d+\s*total\))$",
             trimmed,
@@ -1175,7 +1177,7 @@ def _clean_copied_file_text(text: str, filename: str = "") -> str:
         ):
             continue
 
-        # 5. Markdown code fences e.g. "```js", "```python", "```"
+        # 5. Markdown code fences e.g. "```js", "```html", "```python", "```"
         if re.match(r"^```[a-zA-Z0-9_\-]*$", trimmed) or trimmed == "```":
             continue
 
@@ -1187,12 +1189,34 @@ def _clean_copied_file_text(text: str, filename: str = "") -> str:
         ):
             continue
 
-        # 7. Line number prefixes e.g. " 1 | const canvas...", "  42 | ctx...", "L10 | def foo()"
-        line_num_match = re.match(r"^\s*(?:L\s*)?\d+\s*\|\s?(.*)$", line)
+        # 7. Line number prefixes with optional stray copy/token artifacts e.g.
+        # " 1 | const canvas...", " 5 | al <meta...", "  42 | ctx...", "L10 | def foo()", " 1: import os", " 1. const x"
+        line_num_match = re.match(
+            r"^\s*(?:L\s*)?\d+\s*[|:]\s?(?:(?:al|el|le|la|il|l|a)\s+)?(.*)$", line
+        )
+        if not line_num_match:
+            line_num_match = re.match(
+                r"^\s*(?:L\s*)?\d+\.\s?(?:(?:al|el|le|la|il|l|a)\s+)?(.*)$", line
+            )
+        if not line_num_match:
+            line_num_match = re.match(
+                r"^\s*\|\s?(?:(?:al|el|le|la|il|l|a)\s+)?(.*)$", line
+            )
+
         if line_num_match:
-            cleaned_lines.append(line_num_match.group(1))
+            processed_line = line_num_match.group(1)
         else:
-            cleaned_lines.append(line)
+            processed_line = line
+
+        # 8. Clean stray token noise before HTML tags, CSS rules, or keywords if present
+        token_noise_match = re.match(
+            r"^(\s*)(?:al|el|le|la|il)\s+(<[a-zA-Z/!]|body\b|html\b|head\b|meta\b|title\b|style\b|script\b|canvas\b|div\b|span\b|header\b|footer\b|main\b|section\b|const\b|let\b|var\b|function\b|def\b|import\b|from\b|class\b|pub\b|fn\b|return\b|if\b|else\b|for\b|while\b)(.*)$",
+            processed_line,
+        )
+        if token_noise_match:
+            processed_line = f"{token_noise_match.group(1)}{token_noise_match.group(2)}{token_noise_match.group(3)}"
+
+        cleaned_lines.append(processed_line)
 
     res = "\n".join(cleaned_lines)
     if text.endswith("\n") and not res.endswith("\n"):
@@ -1738,12 +1762,39 @@ def _commit_edit_and_format_result(
     return f"{prefix_msg} (+{added}, -{deleted}){task_suffix}.{stub_note}"
 
 
+def _reindent_block(old_text: str, new_text: str, content: str, start_idx: int) -> str:
+    line_start = content.rfind("\n", 0, start_idx)
+    line_start = 0 if line_start == -1 else line_start + 1
+    leading_space_match = re.match(r"^[ \t]*", content[line_start:start_idx])
+    if not leading_space_match:
+        return new_text
+    leading_space = leading_space_match.group(0)
+    if new_text.startswith(leading_space):
+        return new_text
+    lines = new_text.split("\n")
+    reindented = []
+    for i, line in enumerate(lines):
+        if i == 0:
+            reindented.append(line)
+        else:
+            reindented.append(leading_space + line if line.strip() else line)
+    return "\n".join(reindented)
+
 def tool_edit_file_impl(args: dict, project_root: str) -> str:
     """EDIT_FILE — surgically replace a block of text in a file with multi-tiered resilient matching."""
     try:
         # Multi-chunk batch edit processing
         chunks = args.get("chunks") or args.get("replacements") or args.get("edits")
         if chunks and isinstance(chunks, list) and len(chunks) > 0:
+            path = args.get("path", "")
+            if not path:
+                return "EDIT_FILE requires a file path."
+            p = os.path.join(project_root, path) if not os.path.isabs(path) else path
+            original_content = None
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    original_content = f.read()
+
             results = []
             for idx, chunk in enumerate(chunks):
                 if isinstance(chunk, dict):
@@ -1754,11 +1805,22 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     chunk_args.update(chunk)
                     res = tool_edit_file_impl(chunk_args, project_root)
                     results.append(f"Chunk {idx + 1}: {res}")
+                    if "Error" in res or "Edit failed" in res:
+                        # Transactional Rollback
+                        if original_content is not None:
+                            with open(p, "w", encoding="utf-8") as f:
+                                f.write(original_content)
+                            _sync_ast_graph(project_root, p)
+                        return f"Multi-chunk edit aborted at Chunk {idx + 1} due to error. Rolled back to original state.\n" + "\n".join(results)
             return "\n".join(results)
 
         path = args.get("path", "")
         old_text = args.get("old_text", "")
         new_text = args.get("new_text", "")
+        if not old_text and "content" in args and new_text:
+            old_text = args.get("content", "")
+        elif not new_text and "content" in args and old_text:
+            new_text = args.get("content", "")
         diff_text = (
             args.get("diff") or args.get("block") or args.get("diff_block") or ""
         )
@@ -1823,7 +1885,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         p = os.path.join(project_root, path) if not os.path.isabs(path) else path
 
         # Auto-fallback 1: If content/code/new_text was passed to EDIT_FILE without old_text in args, diff, start_line, or symbol:
-        has_old_text_arg = "old_text" in args or "old" in args or "search" in args
+        has_old_text_arg = bool(old_text) or "old_text" in args or "old" in args or "search" in args
         if not has_old_text_arg and not diff_attempted and not start_line and not symbol_name:
             content_arg = (
                 args.get("content")
@@ -2193,7 +2255,9 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
 
                 return f"Edit failed: 'old_text' matches {count} locations. Provide line numbers (start_line/end_line) or more context to make it unique."
 
-            new_content = content.replace(old_text, new_text)
+            idx = content.find(old_text)
+            reindented_new_text = _reindent_block(old_text, new_text, content, idx)
+            new_content = content[:idx] + reindented_new_text + content[idx + len(old_text):]
             return _commit_edit_and_format_result(
                 p,
                 new_content,
@@ -2201,7 +2265,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 project_root,
                 force,
                 reject_on_stub,
-                f"Surgically edited {path} (replaced {len(old_text)} chars with {len(new_text)} chars)",
+                f"Surgically edited {path} (replaced {len(old_text)} chars with {len(reindented_new_text)} chars)",
             )
 
         # Helper: Normalize lines for line-based matching
@@ -2404,7 +2468,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     best_diff_start = i
                     best_diff_end = i + w_size
 
-        if best_ratio >= 0.50 and best_diff_start != -1:
+        if best_ratio >= 0.85 and best_diff_start != -1:
             new_content = "".join(content_lines[:best_diff_start]) + new_text
             if (
                 new_text
@@ -2438,7 +2502,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         best_subseq_len = bloc.size
                         best_subseq_start = i + bloc.a
 
-        if best_subseq_len >= len(old_stripped) * 0.50 and best_subseq_start != -1:
+        if best_subseq_len >= len(old_stripped) * 0.85 and best_subseq_start != -1:
             match_start = content.rfind("\n", 0, best_subseq_start) + 1
             remaining = content[best_subseq_start:]
             match_end = remaining.find("\n")
@@ -2468,16 +2532,6 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 reject_on_stub,
                 f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})",
             )
-
-        # ── Solution 4: High-Coverage Whole-File Safe Auto-Promotion Fallback ──
-        new_lines_cnt = len(new_text.splitlines())
-        if new_lines_cnt >= max(5, int(len(content_lines) * 0.5)):
-            status, val_payload = _validate_and_repair(new_text, p, project_root, force=force, reject_on_stub=reject_on_stub)
-            if status == "ok":
-                return _commit_edit_and_format_result(
-                    p, val_payload, content, project_root, force, reject_on_stub,
-                    f"Surgically updated {path} (auto-promoted complete implementation, {new_lines_cnt} lines)"
-                )
 
         # ── Solution 3: Symbol-Level Replacement Fallback ──
         new_syms = _extract_symbols(new_text)
@@ -3243,6 +3297,22 @@ def tool_verify_impl(args: dict, project_root: str) -> str:
 
 def tool_ask_user_impl(args: dict, project_root: str) -> str:
     """ASK_USER — ask the user a question with structured options and custom input."""
+    questions_list = args.get("questions")
+    if isinstance(questions_list, list) and questions_list:
+        lines = ["[AWAITING USER INPUT] Multiple questions for review:"]
+        for q_idx, q in enumerate(questions_list, 1):
+            q_text = q.get("question", f"Question {q_idx}")
+            q_opts = q.get("options", [])
+            is_m = bool(q.get("is_multi_select", False))
+            opt_type = "Checkbox (Multi-Select)" if is_m else "Radio (Single Choice)"
+            lines.append(f"\n{q_idx}. {q_text} [{opt_type}]")
+            for idx, opt in enumerate(q_opts, 1):
+                marker = "[ ]" if is_m else "( )"
+                lines.append(f"  {marker} {idx}. {opt}")
+        if args.get("allow_custom_input", True):
+            lines.append("\n  [ ] Custom text input / feedback (reply with your answers)")
+        return "\n".join(lines)
+
     question = args.get("question", "")
     options = args.get("options", [])
     is_multi = bool(args.get("is_multi_select", False))

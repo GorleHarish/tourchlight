@@ -309,6 +309,11 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "type": "object",
         "properties": {
             "question": {"type": "string", "description": "Question to ask the user for review/feedback"},
+            "questions": {
+                "type": "array",
+                "items": {"type": "object"},
+                "description": "List of structured review questions to ask the user",
+            },
             "options": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -326,7 +331,8 @@ TOOL_SCHEMAS: Dict[str, Dict[str, Any]] = {
         "required": ["question"],
         "aliases": {
             "question": ["q", "prompt", "ask"],
-            "options": ["choices", "opts", "items"],
+            "questions": ["items", "review_questions", "question_list"],
+            "options": ["choices", "opts", "items_list"],
             "is_multi_select": ["multi_select", "multiple", "multiselect", "is_multiple"],
             "allow_custom_input": ["custom_input", "allow_custom"],
         },
@@ -675,6 +681,19 @@ def validate_tool_call(tool_name: str, args: dict) -> Tuple[bool, str, dict]:
             if isinstance(v, str) and any(v.lower().endswith(ext) for ext in img_exts):
                 normalized["path"] = v.strip()
                 break
+
+    # Auto-heal EDIT_FILE SLM parameter mismatches (content -> old_text or content -> new_text)
+    if tool_upper == "EDIT_FILE":
+        if "content" in normalized and normalized["content"] is not None:
+            if "new_text" in normalized and normalized["new_text"] and not normalized.get("old_text"):
+                normalized["old_text"] = normalized.pop("content")
+            elif "old_text" in normalized and normalized["old_text"] and not normalized.get("new_text"):
+                normalized["new_text"] = normalized.pop("content")
+
+    # Auto-heal ASK_USER when questions array is passed instead of single question
+    if tool_upper == "ASK_USER":
+        if ("questions" in normalized and normalized["questions"]) and not normalized.get("question"):
+            normalized["question"] = "Plan review / agent questions"
 
     # Coerce parameter types and inject defaults
     properties = schema.get("properties", {})

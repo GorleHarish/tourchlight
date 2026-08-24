@@ -79,3 +79,19 @@ def test_tool_registry_preview_dry_run():
     prev_cmd = reg.preview_dry_run("RUN_COMMAND", {"cmd": "pytest"})
     assert "[DRY-RUN PREVIEW] RUN_COMMAND 'pytest'" in prev_cmd
 
+
+def test_tool_registry_rejection_detected_as_failure():
+    reg = ToolRegistry()
+    tool = ToolDef(
+        name="EDIT_FILE",
+        icon="✏️",
+        description="edit",
+        risk_level="confirm",
+        fn=lambda a, p: "⛔ Edit rejected: You called EDIT_FILE with partial content",
+    )
+    reg.register(tool)
+    result = reg.execute("EDIT_FILE", {"path": "index.html"}, "/tmp")
+    assert result.success is False
+    assert "⛔ Edit rejected" in result.output
+
+

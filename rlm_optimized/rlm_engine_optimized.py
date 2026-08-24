@@ -528,17 +528,21 @@ class RLMEngineOptimized:
                 else:
                     print(chunk, end="", flush=True)
 
-                # Early-stop stream interceptor: as soon as a terminal action tag is closed,
-                # stop consuming further tokens to prevent trailing rambling / hallucinated tags (<tool...).
-                current_accum = "".join(chunks)
-                for open_tag, close_tag in self._STOP_TAG_PAIRS:
-                    if open_tag.lower() in current_accum.lower() and close_tag.lower() in current_accum.lower():
-                        close_pos = current_accum.lower().find(close_tag.lower()) + len(close_tag)
-                        chunks = [current_accum[:close_pos]]
+                # Early-stop stream interceptor: only scan when the latest chunk contains tag closing indicators
+                if ">" in chunk or "}" in chunk or "|" in chunk:
+                    recent_tail = "".join(chunks[-30:])
+                    recent_tail_lower = recent_tail.lower()
+                    stop_matched = False
+                    for open_tag, close_tag in self._STOP_TAG_PAIRS:
+                        if close_tag.lower() in recent_tail_lower:
+                            current_accum = "".join(chunks)
+                            if open_tag.lower() in current_accum.lower():
+                                close_pos = current_accum.lower().find(close_tag.lower()) + len(close_tag)
+                                chunks = [current_accum[:close_pos]]
+                                stop_matched = True
+                                break
+                    if stop_matched:
                         break
-                else:
-                    continue
-                break
 
             if not self.on_token:
                 print()
@@ -1817,67 +1821,69 @@ class RLMEngineOptimized:
                 result.answer = content
                 result.total_llm_calls = self._total_llm_calls
 
-                # ---- Summarize Session ----
-                try:
-                    import datetime
+                # ---- Summarize Session (Skip in chat/debug/troubleshoot modes to keep local inference responsive) ----
+                is_interactive_quick_mode = (
+                    getattr(self, "execution_mode", "unified") == "chat"
+                    or phase in ("chat", "troubleshoot")
+                )
+                if not is_interactive_quick_mode:
+                    try:
+                        import datetime
 
-                    loop = asyncio.get_running_loop()
-                    self._notify_status(
-                        "THINKING", {"depth": depth, "status": "summarizing task"}
-                    )
-                    summary_prompt = "Summarize the key actions taken and findings discovered during this task execution in exactly 3 concise bullet points. Focus on what was modified and what was learned."
+                        loop = asyncio.get_running_loop()
+                        summary_prompt = "Summarize the key actions taken and findings discovered during this task execution in exactly 3 concise bullet points. Focus on what was modified and what was learned."
 
-                    summary_messages = (
-                        memory.get_context_for_llm() if use_memory else messages.copy()
-                    )
-                    if len(summary_messages) > 4:
-                        summary_messages = [summary_messages[0]] + summary_messages[-3:]
-                    summary_messages.append(
-                        {
-                            "role": "assistant",
-                            "content": f"<FINAL_ANSWER>{content}</FINAL_ANSWER>",
-                        }
-                    )
-                    summary_messages.append({"role": "user", "content": summary_prompt})
+                        summary_messages = (
+                            memory.get_context_for_llm() if use_memory else messages.copy()
+                        )
+                        if len(summary_messages) > 4:
+                            summary_messages = [summary_messages[0]] + summary_messages[-3:]
+                        summary_messages.append(
+                            {
+                                "role": "assistant",
+                                "content": f"<FINAL_ANSWER>{content}</FINAL_ANSWER>",
+                            }
+                        )
+                        summary_messages.append({"role": "user", "content": summary_prompt})
 
-                    def _call_summarize():
-                        try:
-                            return self.client.chat_with_history(
-                                summary_messages, use_grammar=False
-                            )
-                        except TypeError:
-                            return self.client.chat_with_history(summary_messages)
-
-                    async def _background_summarize():
-                        try:
-                            summary = await loop.run_in_executor(None, _call_summarize)
-                            if hasattr(self, "_repair_stop_tokens"):
-                                summary = self._repair_stop_tokens(summary)
-
-                            history_file = os.path.join(
-                                self.project_root, ".torchlight_history.log"
-                            )
-                            with open(history_file, "a", encoding="utf-8") as f:
-                                f.write(
-                                    f"\n--- Session Summary ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---\n"
+                        def _call_summarize():
+                            try:
+                                return self.client.chat_with_history(
+                                    summary_messages, use_grammar=False
                                 )
-                                f.write(summary.strip() + "\n")
+                            except TypeError:
+                                return self.client.chat_with_history(summary_messages)
 
-                            from pathlib import Path
-                            from core.memory.persistence import ProjectMemory
+                        async def _background_summarize():
+                            try:
+                                summary = await loop.run_in_executor(None, _call_summarize)
+                                if hasattr(self, "_repair_stop_tokens"):
+                                    summary = self._repair_stop_tokens(summary)
 
-                            pm = ProjectMemory(Path(self.project_root))
-                            pm.update(
-                                f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}"
-                            )
-                            if use_memory and memory:
-                                memory.persist_to_project_memory()
-                        except Exception as e:
-                            print(f"Session summarization skipped or failed: {e}")
+                                history_file = os.path.join(
+                                    self.project_root, ".torchlight_history.log"
+                                )
+                                with open(history_file, "a", encoding="utf-8") as f:
+                                    f.write(
+                                        f"\n--- Session Summary ({datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}) ---\n"
+                                    )
+                                    f.write(summary.strip() + "\n")
 
-                    asyncio.create_task(_background_summarize())
-                except Exception as e:
-                    print(f"Session summarization skipped or failed: {e}")
+                                from pathlib import Path
+                                from core.memory.persistence import ProjectMemory
+
+                                pm = ProjectMemory(Path(self.project_root))
+                                pm.update(
+                                    f"Session on {datetime.datetime.now().strftime('%Y-%m-%d')}: {summary.strip()}"
+                                )
+                                if use_memory and memory:
+                                    memory.persist_to_project_memory()
+                            except Exception as e:
+                                pass
+
+                        asyncio.create_task(_background_summarize())
+                    except Exception as e:
+                        pass
                 # -----------------------------
 
                 self._notify_status("IDLE", {"depth": depth, "status": "complete"})

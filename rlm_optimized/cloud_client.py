@@ -286,8 +286,8 @@ class CloudClient:
                     token = getattr(d, "content", "") or getattr(d, "reasoning", "")
                     if token:
                         # Stream repetition loop breaker (supports real \n, escaped \\n, and token sub-cycles)
-                        raw_segments = re.split(r"\r?\n|\\n", token)
-                        if len(raw_segments) > 1:
+                        if "\n" in token or "\\n" in token:
+                            raw_segments = re.split(r"\r?\n|\\n", token)
                             for seg_idx, seg in enumerate(raw_segments):
                                 current_line_buf.append(seg)
                                 if seg_idx < len(raw_segments) - 1:
@@ -318,12 +318,13 @@ class CloudClient:
                         accumulated_tokens.append(token)
                         if len(accumulated_tokens) > 300:
                             accumulated_tokens.pop(0)
-                        recent_text = "".join(accumulated_tokens[-120:])
-                        if len(recent_text) >= 120:
-                            for wlen in (20, 28, 36):
-                                sample = recent_text[-wlen:]
-                                if len(recent_text) >= wlen * 3 and recent_text.endswith(sample * 3):
-                                    return
+                        if len(accumulated_tokens) >= 120 and len(accumulated_tokens) % 8 == 0:
+                            recent_text = "".join(accumulated_tokens[-120:])
+                            if len(recent_text) >= 120:
+                                for wlen in (20, 28, 36):
+                                    sample = recent_text[-wlen:]
+                                    if len(recent_text) >= wlen * 3 and recent_text.endswith(sample * 3):
+                                        return
 
                         yield token
         except Exception as e:

@@ -283,4 +283,121 @@ def test_parse_plan_review_questions_radio_and_checkbox():
     assert "Sound Effects" in q2["options"][1]
 
 
+def test_parse_plan_review_questions_three_or_n_questions():
+    from core.utils.plan_utils import parse_plan_review_questions
+
+    plan_md = """# Space Invaders Implementation Plan
+
+## Architecture & Design Decisions
+- HTML5 2D Canvas game loop.
+
+## User Review Required / Open Questions
+### 1. Game Controls [Single Choice / Radio]
+- (•) (Recommended) Arrow Keys + Space: Classic layout
+- ( ) WASD + Space: Alternate layout
+
+### 2. Difficulty Modes [Single Choice / Radio]
+- (•) (Recommended) Dynamic Scaling
+- ( ) Fixed Speed
+- ( ) Nightmare
+
+### 3. Audio & Visuals [Multi-Select / Checkbox]
+- [x] (Recommended) Retro Sound Effects
+- [x] (Recommended) CRT Scanline Overlay
+- [ ] Particle Explosions
+
+## Proposed Changes
+### Phase 1: Setup
+#### [NEW] index.html
+- [ ] 1.1 [index.html] [NEW] Canvas container
+"""
+    questions = parse_plan_review_questions(plan_md)
+    assert len(questions) == 3
+
+    assert "Game Controls" in questions[0]["question"]
+    assert questions[0]["is_multi_select"] is False
+    assert len(questions[0]["options"]) == 2
+
+    assert "Difficulty Modes" in questions[1]["question"]
+    assert questions[1]["is_multi_select"] is False
+    assert len(questions[1]["options"]) == 3
+
+    assert "Audio & Visuals" in questions[2]["question"]
+    assert questions[2]["is_multi_select"] is True
+    assert len(questions[2]["options"]) == 3
+
+
+def test_ask_user_modal_multi_questions():
+    from rlm_optimized.tui_app import AskUserModal
+
+    questions = [
+        {
+            "question": "1. Controls Layout",
+            "options": ["(Recommended) Arrow Keys", "WASD"],
+            "is_multi_select": False,
+        },
+        {
+            "question": "2. Difficulty",
+            "options": ["(Recommended) Normal", "Hard"],
+            "is_multi_select": False,
+        },
+        {
+            "question": "3. Optional FX",
+            "options": ["Sound FX", "Particles"],
+            "is_multi_select": True,
+        },
+    ]
+
+    modal = AskUserModal(questions=questions)
+    assert len(modal.questions) == 3
+    assert modal.questions[0]["question"] == "1. Controls Layout"
+    assert modal.questions[1]["question"] == "2. Difficulty"
+    assert modal.questions[2]["question"] == "3. Optional FX"
+
+
+def test_tool_ask_user_impl_multi_questions():
+    from core.tools.implementations import tool_ask_user_impl
+
+    args = {
+        "questions": [
+            {
+                "question": "Controls Layout",
+                "options": ["(Recommended) Arrow Keys", "WASD"],
+                "is_multi_select": False,
+            },
+            {
+                "question": "Difficulty",
+                "options": ["(Recommended) Normal", "Hard"],
+                "is_multi_select": False,
+            },
+            {
+                "question": "Optional FX",
+                "options": ["Sound FX", "Particles"],
+                "is_multi_select": True,
+            },
+        ]
+    }
+    output = tool_ask_user_impl(args, ".")
+    assert "Multiple questions for review" in output
+    assert "1. Controls Layout [Radio (Single Choice)]" in output
+    assert "2. Difficulty [Radio (Single Choice)]" in output
+    assert "3. Optional FX [Checkbox (Multi-Select)]" in output
+
+
+def test_ask_user_schema_validation_with_questions_array():
+    from core.tools.schemas import validate_tool_call
+
+    args = {
+        "questions": [
+            {"question": "Q1", "options": ["A", "B"]},
+            {"question": "Q2", "options": ["C", "D"]},
+        ]
+    }
+    is_valid, msg, normalized = validate_tool_call("ASK_USER", args)
+    assert is_valid is True
+    assert "questions" in normalized
+    assert len(normalized["questions"]) == 2
+
+
+
 

@@ -148,14 +148,16 @@ class ToolRegistry:
         try:
             output = tool.fn(normalized_args, project_root)
             
-            # Determine success based on semantic output prefixes (fatal errors only)
+            # Determine success based on semantic output prefixes (fatal errors and rejections)
+            clean_output = output.lstrip("⛔❌⚠️ \t\n")
             success = True
             error_prefixes = (
                 "Error", "Edit failed", "File not found", "Directory not found", 
                 "Exit ", "Command timed out", "EDIT_FILE requires", "WRITE_FILE requires",
-                "READ_FILE requires", "Access denied", "Syntax error"
+                "READ_FILE requires", "Access denied", "Syntax error", "Edit rejected",
+                "Rejection", "Failed", "Exception", "Invalid", "Aborted", "Multi-chunk edit aborted"
             )
-            if any(output.startswith(prefix) for prefix in error_prefixes):
+            if any(clean_output.startswith(prefix) or output.startswith(prefix) for prefix in error_prefixes) or "⛔ Edit rejected" in output:
                 success = False
 
             return ToolResult(

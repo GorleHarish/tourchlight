@@ -29,7 +29,7 @@ def parse_plan_review_questions(text: str) -> list[dict]:
 
     # Find User Review Required / Open Questions section if present
     section_match = re.search(
-        r"(?:^|\n)#{2,6}\s*(?:User Review Required|Open Questions)[^\n]*\n([\s\S]*?)(?=(?:\n#{1,4}\s+(?:Proposed Changes|Verification|Architecture|Implementation)|\Z))",
+        r"(?:^|\n)#{2,6}\s*(?:User Review(?: Required)?|Open Questions|Questions for User)[^\n]*\n([\s\S]*?)(?=(?:\n#{1,4}\s+(?:Proposed Changes|Verification|Architecture|Implementation)|\Z))",
         text,
         re.IGNORECASE,
     )

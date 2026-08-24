@@ -823,11 +823,159 @@ def test_edit_file_high_coverage_auto_promotion_when_old_text_fails():
             {"path": "game.js", "old_text": "completely_nonexistent_hallucination()", "new_text": full_file},
             project_root=tmpdir,
         )
-        assert "Surgically" in res or "Written" in res
+        assert "Edit failed" in res
         with open(test_file, "r", encoding="utf-8") as f:
             updated = f.read()
-        assert "let y = 0;" in updated
-        assert "function draw() {" in updated
+        assert "let y = 0;" not in updated
+
+
+def test_edit_file_slm_content_and_new_text_disambiguation():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "index.html")
+        original = (
+            "<!DOCTYPE html>\n"
+            "<html>\n"
+            "<body>\n"
+            "<!--Insert score display and game over banner here-->\n"
+            "<canvas id='game'></canvas>\n"
+            "</body>\n"
+            "</html>\n"
+        )
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write(original)
+
+        # 1. Test via validate_tool_call
+        from core.tools.schemas import validate_tool_call
+
+        valid, msg, normalized = validate_tool_call(
+            "EDIT_FILE",
+            {
+                "path": "index.html",
+                "content": "<!--Insert score display and game over banner here-->",
+                "new_text": "<div id='score-board'>0</div>",
+            },
+        )
+        assert valid
+        assert normalized.get("old_text") == "<!--Insert score display and game over banner here-->"
+        assert normalized.get("new_text") == "<div id='score-board'>0</div>"
+
+        # 2. Test direct execution in tool_edit_file_impl
+        res = tool_edit_file_impl(
+            {
+                "path": "index.html",
+                "content": "<!--Insert score display and game over banner here-->",
+                "new_text": "<div id='score-board'>0</div>",
+            },
+            project_root=tmpdir,
+        )
+        assert "Surgically" in res
+        with open(test_file, "r", encoding="utf-8") as f:
+            updated = f.read()
+        assert "<div id='score-board'>0</div>" in updated
+        assert "<!--Insert score display and game over banner here-->" not in updated
+
+
+def test_edit_file_slm_qwen_copied_html_with_al_and_line_numbers():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(tmpdir, "index.html")
+        original_html = (
+            "<!DOCTYPE html>\n"
+            "<html lang=\"en\">\n"
+            "<head>\n"
+            "  <meta charset=\"UTF-8\">\n"
+            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+            "  <title>HTML Snake Game</title>\n"
+            "  <style>\n"
+            "    body {\n"
+            "      margin: 0;\n"
+            "      display: flex;\n"
+            "      justify-content: center;\n"
+            "      align-items: center;\n"
+            "      height: 100vh;\n"
+            "      background-color: #282c34;\n"
+            "    }\n"
+            "    canvas {\n"
+            "      border: 1px solid #fff;\n"
+            "    }\n"
+            "  </style>\n"
+            "</head>\n"
+            "<body>\n"
+            "  <canvas id=\"gameCanvas\" width=\"600\" height=\"400\"></canvas>\n"
+            "  <script src=\"game.js\"></script>\n"
+            "</body>\n"
+            "</html>\n"
+        )
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write(original_html)
+
+        # Exact payload copied from READ_FILE by Qwen 2.5 with line numbers, framing, and stray 'al ' prefixes
+        copied_old_text = (
+            "--- index.html---\n"
+            "index.html (26 lines)\n"
+            "```html\n"
+            " 1 | <!DOCTYPE html>\n"
+            " 2 | <html lang=\"en\">\n"
+            " 3 | <head>\n"
+            " 4 |   <meta charset=\"UTF-8\">\n"
+            " 5 | al   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+            " 6 | al   <title>HTML Snake Game</title>\n"
+            " 7 | al   <style>\n"
+            " 8 |     body {\n"
+            " 9 |       margin: 0;\n"
+            " 10 |       display: flex;\n"
+            " 11 |       justify-content: center;\n"
+            " 12 |       align-items: center;\n"
+            " 13 |       height: 100vh;\n"
+            " 14 |       background-color: #282c34;\n"
+            " 15 |     }\n"
+            " 16 | \n"
+            " 17 | al     canvas {\n"
+            " 18 |       border: 1px solid #fff;\n"
+            " 19 |     }\n"
+            " 20 |   </style>\n"
+            " 21 | </head>\n"
+            " 22 | <body>\n"
+            " 23 | al   <canvas id=\"gameCanvas\" width=\"600\" height=\"400\"></canvas>\n"
+            " 24 | al   <script src=\"game.js\"></script>\n"
+            " 25 | </body>\n"
+            " 26 | </html>\n"
+            "```"
+        )
+
+        copied_new_text = (
+            "--- index.html---\n"
+            "index.html (28 lines)\n"
+            "```html\n"
+            " 1 | <!DOCTYPE html>\n"
+            " 2 | <html lang=\"en\">\n"
+            " 3 | <head>\n"
+            " 4 |   <meta charset=\"UTF-8\">\n"
+            " 5 |   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+            " 6 |   <title>HTML Snake Game</title>\n"
+            " 7 |   <link rel=\"stylesheet\" href=\"style.css\">\n"
+            " 8 | </head>\n"
+            " 9 | <body>\n"
+            " 10 |   <canvas id=\"gameCanvas\" width=\"600\" height=\"400\"></canvas>\n"
+            " 11 |   <script src=\"game.js\"></script>\n"
+            " 12 | </body>\n"
+            " 13 | </html>\n"
+            "```"
+        )
+
+        res = tool_edit_file_impl(
+            {"path": "index.html", "old_text": copied_old_text, "new_text": copied_new_text},
+            project_root=tmpdir,
+        )
+        assert "Surgically edited" in res or "Surgically updated" in res
+        with open(test_file, "r", encoding="utf-8") as f:
+            updated = f.read()
+
+        assert '<link rel="stylesheet" href="style.css">' in updated
+        assert "1 |" not in updated
+        assert "al <" not in updated
+        assert "--- index.html" not in updated
+        assert "```html" not in updated
+
 
 
 
