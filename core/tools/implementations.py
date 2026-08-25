@@ -1522,6 +1522,22 @@ def tool_write_file_impl(args: dict, project_root: str) -> str:
         return f"Error writing {p}: {e}"
 
 
+# A Search/Replace block is only recognized when a 7-character conflict marker
+# opens a line. Substring checks for "SEARCH" or "=======" match ordinary source.
+_CONFLICT_MARKER_RE = re.compile(r"^[ \t]*(?:<{7}|>{7})", re.MULTILINE)
+
+# Both tool_edit_file_impl and tool_write_file_impl append a "(+added, -deleted)"
+# diffstat, and only after the file has actually been written to disk. Testing
+# for it is a structural success signal; matching English prefixes like "Error"
+# or "Edit failed" against the message is not, and missed whole failure classes.
+_DIFFSTAT_RE = re.compile(r"\(\+\d+, -\d+\)")
+
+
+def _edit_succeeded(result: str) -> bool:
+    """True only when an edit/write result reports a committed change."""
+    return bool(result) and _DIFFSTAT_RE.search(result) is not None
+
+
 def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
     """Parse Aider-style <<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE block into (old_text, new_text).
     Supports flexible variations produced by LLMs (e.g., missing 'REPLACE' label, '>>>>>>>' used as divider).
@@ -1600,19 +1616,10 @@ def _parse_diff_block(text: str) -> tuple[Optional[str], Optional[str]]:
         except Exception:
             pass
 
-    # 3. Fallback C: No structural tags — try splitting on double blank-line heuristic
-    parts = re.split(r"\n\s*\n\s*\n", text.strip(), maxsplit=1)
-    if len(parts) == 2 and len(parts[0]) > 10 and len(parts[1]) > 10:
-        return _clean_segment(parts[0]), _clean_segment(parts[1])
-
-    # 4. Fallback D: Line alignment fallback
-    lines = text.strip().splitlines()
-    if len(lines) >= 4:
-        mid = len(lines) // 2
-        return _clean_segment("\n".join(lines[:mid])), _clean_segment(
-            "\n".join(lines[mid:])
-        )
-
+    # No recognizable block structure. Return (None, None) rather than guessing:
+    # splitting arbitrary text on blank lines or at its midpoint fabricates an
+    # (old_text, new_text) pair the model never asked for, which silently
+    # deletes the "old" half and duplicates the "new" half.
     return None, None
 
 
@@ -1795,23 +1802,39 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 with open(p, "r", encoding="utf-8") as f:
                     original_content = f.read()
 
+            def _rollback(reason: str, idx: int, results: list) -> str:
+                if original_content is not None:
+                    with open(p, "w", encoding="utf-8") as f:
+                        f.write(original_content)
+                    _sync_ast_graph(project_root, p)
+                    restored = " Rolled back to original state."
+                else:
+                    restored = ""
+                return (
+                    f"Multi-chunk edit aborted at Chunk {idx + 1} ({reason}).{restored}\n"
+                    + "\n".join(results)
+                )
+
+            # Only these keys carry over to every chunk. Copying the whole args
+            # dict leaked a top-level old_text/new_text/diff into chunks that
+            # never named one, editing locations the chunk did not request.
+            shared_keys = ("path", "force", "reject_on_stub", "protect_tests")
+            base_args = {k: args[k] for k in shared_keys if k in args}
+
             results = []
             for idx, chunk in enumerate(chunks):
-                if isinstance(chunk, dict):
-                    chunk_args = dict(args)
-                    chunk_args.pop("chunks", None)
-                    chunk_args.pop("replacements", None)
-                    chunk_args.pop("edits", None)
-                    chunk_args.update(chunk)
-                    res = tool_edit_file_impl(chunk_args, project_root)
-                    results.append(f"Chunk {idx + 1}: {res}")
-                    if "Error" in res or "Edit failed" in res:
-                        # Transactional Rollback
-                        if original_content is not None:
-                            with open(p, "w", encoding="utf-8") as f:
-                                f.write(original_content)
-                            _sync_ast_graph(project_root, p)
-                        return f"Multi-chunk edit aborted at Chunk {idx + 1} due to error. Rolled back to original state.\n" + "\n".join(results)
+                if not isinstance(chunk, dict):
+                    results.append(f"Chunk {idx + 1}: not an object, skipped")
+                    return _rollback("malformed chunk", idx, results)
+                chunk_args = dict(base_args)
+                chunk_args.update(chunk)
+                res = tool_edit_file_impl(chunk_args, project_root)
+                results.append(f"Chunk {idx + 1}: {res}")
+                if not _edit_succeeded(res):
+                    # Any non-success — failure, rejection, or no-op — aborts the
+                    # batch. Substring checks for "Error"/"Edit failed" missed
+                    # rejections and left the batch half-applied.
+                    return _rollback("chunk did not apply", idx, results)
             return "\n".join(results)
 
         path = args.get("path", "")
@@ -1848,7 +1871,11 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 except ValueError:
                     pass
 
-        # Check for Aider-style Search/Replace blocks in diff, old_text, or raw inputs
+        # Check for Aider-style Search/Replace blocks in diff, old_text, or raw inputs.
+        # Only a real conflict marker at the start of a line counts. Matching the
+        # bare words "SEARCH" or "=======" anywhere in the payload misfires on
+        # ordinary source (SEARCH_PATTERN = ..., "# =======" separators) and routes
+        # a valid edit into the diff parser.
         diff_attempted = False
         for candidate in [
             diff_text,
@@ -1856,9 +1883,7 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
             args.get("content", ""),
             args.get("raw", ""),
         ]:
-            if candidate and any(
-                m in str(candidate) for m in ["<<<<<<<", "SEARCH", "=======", ">>>>>>>"]
-            ):
+            if candidate and _CONFLICT_MARKER_RE.search(str(candidate)):
                 diff_attempted = True
                 s_parsed, r_parsed = _parse_diff_block(str(candidate))
                 if s_parsed is not None and r_parsed is not None:
@@ -1901,7 +1926,11 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                             existing_content = f_curr.read()
                         existing_lines = [l.strip() for l in existing_content.splitlines() if l.strip()]
                         new_lines = [l.strip() for l in str(content_arg).replace("\\n", "\n").splitlines() if l.strip()]
-                        if len(existing_lines) > 2 and len(new_lines) < len(existing_lines) and not force:
+                        # Any non-empty file counts. The old `> 2` threshold let an
+                        # unanchored partial-content edit silently overwrite every
+                        # file of two lines or fewer. Genuinely empty files are
+                        # handled by the empty-file fallback further down.
+                        if existing_lines and len(new_lines) < len(existing_lines) and not force:
                             # Check if content_arg defines a symbol that already exists in the file
                             ext = os.path.splitext(p)[1]
                             new_syms = _extract_symbols(str(content_arg))
@@ -2002,15 +2031,47 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         parsed_e = None
         if start_line is not None or end_line is not None:
             def _parse_l_int(val: Any) -> Optional[int]:
+                """Parse a line number, or return None if it is not one.
+
+                Stripping non-digits turned "10-20" into 1020 and "-2" into 2,
+                silently editing a range nobody asked for. A malformed bound is
+                a hard error, not something to guess at.
+                """
                 if val is None:
                     return None
+                if isinstance(val, bool):
+                    return None
                 if isinstance(val, int):
-                    return max(1, val)
-                s_digits = re.sub(r"[^\d]", "", str(val).strip())
-                return max(1, int(s_digits)) if s_digits else None
+                    return val if val >= 1 else None
+                text = str(val).strip()
+                # Accept the line references models actually emit ("106", "L106",
+                # "line 106") but nothing ambiguous: "10-20" is a range, "-2" is
+                # signed, "1e5" is a float. Those must fail, not be digit-scraped.
+                m = re.fullmatch(r"(?:[Ll](?:ine)?[\s.:#]*)?(\d+)", text)
+                if not m:
+                    return None
+                parsed = int(m.group(1))
+                return parsed if parsed >= 1 else None
 
             parsed_s = _parse_l_int(start_line)
             parsed_e = _parse_l_int(end_line)
+
+            if start_line is not None and parsed_s is None:
+                return (
+                    f"Edit failed: start_line must be a positive integer, got "
+                    f"{start_line!r}. Run READ_FILE('{path}') to get real line numbers."
+                )
+            if end_line is not None and parsed_e is None:
+                return (
+                    f"Edit failed: end_line must be a positive integer, got "
+                    f"{end_line!r}. Run READ_FILE('{path}') to get real line numbers."
+                )
+            if parsed_s is None and parsed_e is not None:
+                return (
+                    f"Edit failed: end_line={parsed_e} was given without start_line, "
+                    f"so the edit range is undefined. Provide both bounds, or provide "
+                    f"'old_text' to anchor the change."
+                )
             if parsed_s is not None and parsed_e is None:
                 parsed_e = parsed_s
 
@@ -2279,11 +2340,15 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
         if not old_norm:
             return "Edit failed: 'old_text' is empty or contains only whitespace."
 
-        best_start = -1
-        best_end = -1
-        matches_found = 0
-
-        for i in range(len(content_lines)):
+        def _fuzzy_match_at(i: int) -> Optional[int]:
+            """If old_norm matches content starting exactly at line i, return the
+            exclusive end index. Interior blank lines are skipped, but line i
+            itself must be the first real line of the block — otherwise every
+            blank line preceding a block counts as a separate match and a unique
+            block is reported as ambiguous (PEP 8 puts blank lines before almost
+            every function, so this rejected most valid edits)."""
+            if not content_lines[i].strip():
+                return None
             match_count = 0
             j = i
             while j < len(content_lines) and match_count < len(old_norm):
@@ -2294,38 +2359,33 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     match_count += 1
                     j += 1
                 else:
-                    break
+                    return None
+            return j if match_count == len(old_norm) else None
 
-            if match_count == len(old_norm):
-                matches_found += 1
-                best_start = i
-                best_end = j
+        fuzzy_matches = []  # [(start_idx, end_idx), ...]
+        for i in range(len(content_lines)):
+            end = _fuzzy_match_at(i)
+            if end is not None:
+                fuzzy_matches.append((i, end))
 
-        if matches_found > 1:
+        matches_found = len(fuzzy_matches)
+        best_start = -1
+        best_end = -1
+        if matches_found == 1:
+            best_start, best_end = fuzzy_matches[0]
+        elif matches_found > 1:
             if parsed_s is not None:
-                # Pick match nearest to parsed_s
-                best_start = -1
-                best_diff = 999999
-                for i in range(len(content_lines)):
-                    match_count = 0
-                    j = i
-                    while j < len(content_lines) and match_count < len(old_norm):
-                        if not content_lines[j].strip():
-                            j += 1
-                            continue
-                        if content_lines[j].strip() == old_norm[match_count]:
-                            match_count += 1
-                            j += 1
-                        else:
-                            break
-                    if match_count == len(old_norm):
-                        diff = abs((i + 1) - parsed_s)
-                        if diff < best_diff:
-                            best_diff = diff
-                            best_start = i
-                            best_end = j
+                # Genuinely ambiguous: pick the occurrence nearest the hinted line.
+                best_start, best_end = min(
+                    fuzzy_matches, key=lambda m: abs((m[0] + 1) - parsed_s)
+                )
             else:
-                return f"Edit failed: 'old_text' fuzzy-matches {matches_found} locations. Provide line numbers (start_line/end_line) or more context."
+                lines_hint = ", ".join(str(m[0] + 1) for m in fuzzy_matches[:5])
+                return (
+                    f"Edit failed: 'old_text' fuzzy-matches {matches_found} locations "
+                    f"in {path} (lines {lines_hint}). Provide start_line/end_line or "
+                    f"more surrounding context to disambiguate."
+                )
 
         if best_start != -1:
             new_content = "".join(content_lines[:best_start]) + new_text
@@ -2453,22 +2513,34 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                     f"Surgically edited {path} (anchor replaced block between lines {f_idx + 1} and {l_idx + 1})",
                 )
 
-        # Tier 5: Difflib similarity ratio matching (>= 50% similarity for small models)
+        # Tier 5: Difflib similarity ratio matching (>= 85% similarity)
+        # real_quick_ratio() and quick_ratio() are cheap upper bounds on ratio(),
+        # so skipping a window whose upper bound is already below the acceptance
+        # threshold cannot change the outcome — it only avoids the O(n*m) compare.
+        # Holding old_text as seq2 also lets SequenceMatcher reuse its b-chain
+        # across windows instead of rebuilding it for every candidate.
+        _SIMILARITY_THRESHOLD = 0.85
         best_ratio = 0.0
         best_diff_start = -1
         best_diff_end = -1
         window_size = len(old_norm)
 
+        _sm = difflib.SequenceMatcher(None, "", old_text)
         for w_size in range(max(1, window_size - 4), window_size + 5):
             for i in range(len(content_lines) - w_size + 1):
                 block = "".join(content_lines[i : i + w_size])
-                ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
+                _sm.set_seq1(block)
+                if _sm.real_quick_ratio() < _SIMILARITY_THRESHOLD:
+                    continue
+                if _sm.quick_ratio() < _SIMILARITY_THRESHOLD:
+                    continue
+                ratio = _sm.ratio()
                 if ratio > best_ratio:
                     best_ratio = ratio
                     best_diff_start = i
                     best_diff_end = i + w_size
 
-        if best_ratio >= 0.85 and best_diff_start != -1:
+        if best_ratio >= _SIMILARITY_THRESHOLD and best_diff_start != -1:
             new_content = "".join(content_lines[:best_diff_start]) + new_text
             if (
                 new_text
@@ -2488,50 +2560,14 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                 f"Surgically edited {path} (similarity replaced block with {int(best_ratio * 100)}% match at lines {best_diff_start + 1}-{best_diff_end})",
             )
 
-        # Tier 6: Character-level subsequence matching for typo-ridden input
-        best_subseq_len = 0
-        best_subseq_start = -1
-        old_stripped = old_text.strip()
-        if len(old_stripped) >= 15:
-            for i in range(len(content) - len(old_stripped) // 3):
-                end = min(i + len(old_stripped) + len(old_stripped) // 3, len(content))
-                candidate = content[i:end]
-                sm = difflib.SequenceMatcher(None, old_stripped, candidate)
-                for bloc in sm.get_matching_blocks():
-                    if bloc.size > best_subseq_len:
-                        best_subseq_len = bloc.size
-                        best_subseq_start = i + bloc.a
-
-        if best_subseq_len >= len(old_stripped) * 0.85 and best_subseq_start != -1:
-            match_start = content.rfind("\n", 0, best_subseq_start) + 1
-            remaining = content[best_subseq_start:]
-            match_end = remaining.find("\n")
-            if match_end == -1:
-                match_end = len(remaining)
-            match_end += best_subseq_start
-
-            line_start = content.rfind("\n", 0, match_start)
-            line_start = 0 if line_start == -1 else line_start + 1
-            line_end = content.find("\n", match_end)
-            if line_end == -1:
-                line_end = len(content)
-            else:
-                line_end += 1
-
-            new_content = content[:line_start] + new_text
-            if new_text and not new_text.endswith("\n") and line_end < len(content):
-                new_content += "\n"
-            new_content += content[line_end:]
-
-            return _commit_edit_and_format_result(
-                p,
-                new_content,
-                content,
-                project_root,
-                force,
-                reject_on_stub,
-                f"Surgically edited {path} (character-level matched {best_subseq_len}/{len(old_stripped)} chars at line ~{content[:match_start].count(chr(10)) + 1})",
-            )
+        # There was a Tier 6 here: character-level subsequence matching over every
+        # window in the file. It was removed rather than optimised. It never fired
+        # across the whole test suite, it accounted for ~38s of a 41s failed edit,
+        # and its acceptance condition (a contiguous common run of >=85% of
+        # old_text) is strictly harder to satisfy than the similarity tier directly
+        # above it (window ratio >= 0.85) — so that tier already subsumes it. The
+        # matching it was there to rescue was really being lost to the blank-line
+        # bug in the fuzzy tier above, which is now fixed.
 
         # ── Solution 3: Symbol-Level Replacement Fallback ──
         new_syms = _extract_symbols(new_text)
@@ -2548,21 +2584,42 @@ def tool_edit_file_impl(args: dict, project_root: str) -> str:
                         f"Surgically replaced {kind} '{sym_name}' in {path} (lines {s_l}-{e_l})"
                     )
 
-        # All tiers failed — provide closest match as diagnostic
-        closest_ratio = 0.0
-        closest_line = 1
-        for i in range(max(1, len(content_lines) - 10)):
-            block = "".join(content_lines[i : min(i + 10, len(content_lines))])
-            ratio = difflib.SequenceMatcher(None, block, old_text).ratio()
-            if ratio > closest_ratio:
-                closest_ratio = ratio
-                closest_line = i + 1
+        # All tiers failed — point the model at where to look next.
+        #
+        # This used to re-scan every 10-line window in the file with difflib to
+        # report a "closest match" percentage: 9.5s of a 10s failed edit, spent
+        # entirely on an error string. It was also poor advice, since a 48% match
+        # is a coincidentally-similar block, not the intended target.
+        #
+        # Two signals that cost nothing are better. The similarity tier above has
+        # already scored correctly-sized windows, so reuse its winner when it found
+        # one. Otherwise locate the first line the caller actually named with a
+        # single C-speed str.find, which answers the more useful question: where
+        # does your anchor appear at all?
+        closest_line = None
+        if best_ratio > 0 and best_diff_start != -1:
+            closest_line = best_diff_start + 1
+            hint = f"closest block ~L{closest_line} ({int(best_ratio * 100)}% match)"
+        else:
+            first_line = next(
+                (ln.strip() for ln in old_text.splitlines() if ln.strip()), ""
+            )
+            found = content.find(first_line) if len(first_line) >= 4 else -1
+            if found != -1:
+                closest_line = content[:found].count("\n") + 1
+                hint = f"first line of old_text found at L{closest_line}"
+            else:
+                hint = "no part of old_text occurs in this file"
 
-        match_pct = int(closest_ratio * 100)
+        nxt = (
+            f"READ_FILE('{path}:{max(1, closest_line - 5)}-{closest_line + 15}')"
+            if closest_line
+            else f"READ_FILE('{path}')"
+        )
         return (
             f"Edit failed: Could not find matching block for 'old_text' in {path}. "
-            f"EDIT_FAIL: '{path}' line ~{closest_line} ({match_pct}% match). "
-            f"NEXT: READ_FILE('{path}:{closest_line}-{closest_line + 15}') or WRITE_FILE."
+            f"EDIT_FAIL: '{path}' — {hint}. "
+            f"NEXT: {nxt} to copy exact text, or WRITE_FILE to replace the file."
         )
     except Exception as e:
         return f"Error editing file: {e}"
