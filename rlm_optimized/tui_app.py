@@ -4317,7 +4317,7 @@ class TorchlightApp(App):
 
         elif cmd in ("/cd", "/workdir", "/open", "/browse"):
             if not arg:
-                await self.action_open_folder_picker()
+                self.action_open_folder_picker()
                 return
             target_path = os.path.abspath(os.path.expanduser(arg))
             if os.path.isdir(target_path):
@@ -5777,7 +5777,9 @@ class TorchlightApp(App):
                 for m_id in ollama_models:
                     if not any(m["id"] == m_id for m in models):
                         models.append({"id": m_id, "name": f"{m_id} (Ollama)", "provider": "ollama"})
-            elif provider in ("llama-cpp", "turbo", "turboquant", "mlx"):
+            elif provider in ("llama-cpp", "turbo", "turboquant"):
+                # Not "mlx": mlx_lm's /v1/models lists every MLX-ish repo in the
+                # HF cache, not the loaded model, so it injects unrelated models.
                 local_8080 = fetch_provider_models("http://localhost:8080/v1")
                 for m_id in local_8080:
                     if not any(m["id"] == m_id for m in models):
@@ -5968,18 +5970,10 @@ class TorchlightApp(App):
         )
 
     def action_open_folder(self) -> None:
-        def _on_folder_picked(path: Optional[str]):
-            if path and os.path.exists(path):
-                self.engine.set_project_root(path)
-                self._refresh_git_tree()
-                self.notify(
-                    f"Workspace set to {path}", severity="information", timeout=2
-                )
-                self.update_sidebar_meta()
-
-        self.push_screen(
-            FolderPickerModal(initial_path=self.engine.project_root), _on_folder_picked
-        )
+        # Same thing as /cd with no argument. This used to be a separate copy that
+        # forgot to os.chdir() and to persist last_workdir, so a workspace picked
+        # with ctrl+o was silently lost on the next launch.
+        self.action_open_folder_picker()
 
     @work(exclusive=True, group="ast_indexer", thread=True)
     def _start_ast_indexing(self) -> None:
@@ -6660,6 +6654,7 @@ class TorchlightApp(App):
                 save_last_state({"last_workdir": chosen_dir})
                 self.update_status_bar()
                 self._refresh_git_tree()
+                self.update_sidebar_meta()
                 self.notify(
                     f"Working directory set to {escape(str(chosen_dir))}",
                     severity="information",

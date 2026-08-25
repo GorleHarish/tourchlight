@@ -182,8 +182,18 @@ class CloudClient:
         except Exception:
             return []
 
+    @property
+    def _wire_model(self) -> str:
+        """Model id to send. mlx_lm.server treats any id other than the sentinel
+        "default_model" as a HF repo to download instead of the one it loaded
+        from --model, so always address the loaded model by the sentinel."""
+        return "default_model" if self._provider == "mlx" else self.model
+
     def _resolve_model_target(self) -> str:
         """Resolve requested self.model against live models to prevent 404 mismatches."""
+        if self._provider == "mlx":
+            # mlx_lm's /v1/models lists HF-cache repos, not the loaded model.
+            return self._wire_model
         if not self.model:
             live = self.list_models()
             if live:
@@ -216,7 +226,7 @@ class CloudClient:
         for attempt in range(max_retries):
             try:
                 kwargs = dict(
-                    model=self.model,
+                    model=self._wire_model,
                     messages=cleaned_messages,
                     temperature=self.temperature,
                     top_p=getattr(self, "top_p", TOP_P),
@@ -233,7 +243,7 @@ class CloudClient:
                 return response.choices[0].message.content or ""
             except Exception as e:
                 error_str = str(e)
-                if "404" in error_str or "NotFoundError" in type(e).__name__ or getattr(e, "status_code", None) == 404:
+                if ("404" in error_str or "NotFoundError" in type(e).__name__ or getattr(e, "status_code", None) == 404) and self._provider != "mlx":
                     live = self.list_models()
                     if live and self.model != live[0]:
                         print(f"[CloudClient] Model '{self.model}' 404, falling back to '{live[0]}'")
@@ -260,7 +270,7 @@ class CloudClient:
 
         try:
             kwargs = dict(
-                model=self.model,
+                model=self._wire_model,
                 messages=cleaned_messages,
                 temperature=self.temperature,
                 top_p=getattr(self, "top_p", TOP_P),
@@ -329,7 +339,7 @@ class CloudClient:
                         yield token
         except Exception as e:
             error_str = str(e)
-            if "404" in error_str or "NotFoundError" in type(e).__name__ or getattr(e, "status_code", None) == 404:
+            if ("404" in error_str or "NotFoundError" in type(e).__name__ or getattr(e, "status_code", None) == 404) and self._provider != "mlx":
                 try:
                     model_list = self.list_models()
                     if model_list:
@@ -385,7 +395,7 @@ class CloudClient:
 
         def _call():
             kwargs = dict(
-                model=self.model,
+                model=self._wire_model,
                 messages=cleaned_messages,
                 temperature=temp,
                 top_p=top_p,
