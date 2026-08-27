@@ -24,6 +24,15 @@ class ExecutionMode(str, Enum):
     PLAN = "plan"
     CODE = "code"
 
+    @property
+    def is_fixed(self) -> bool:
+        """Return True if auto phase detection and mode switching are disabled."""
+        return self in (ExecutionMode.CHAT, ExecutionMode.PLAN, ExecutionMode.CODE)
+
+
+FIXED_EXECUTION_MODES = frozenset({"plan", "code", "chat"})
+
+
 
 
 class MemoryEventType(str, Enum):

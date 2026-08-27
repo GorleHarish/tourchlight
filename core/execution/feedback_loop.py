@@ -1,21 +1,27 @@
-"""
-Execution Feedback Loop for Torchlight.
+"""Execution Feedback Loop for Torchlight.
 
-Closes the loop between code changes and test verification.
+Watches tool execution (WRITE_FILE, EDIT_FILE, RUN_COMMAND), runs tests/linters
+automatically on code changes, captures tracebacks, and feeds structured error
+diagnostics back into the agent context for self-repair.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
-import subprocess
-import re
-import logging
+from __future__ import annotations
+
 import concurrent.futures
+import logging
+import os
+import re
+import subprocess
 import sys
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from core.errors.types import TestFailureError
+from core.execution.test_discovery import TestDiscoveryMixin
+from core.execution.test_models import TestResult, TestResultStatus, TestRunResult
+from core.execution.traceback_extractor import extract_surgical_traceback
 
 logger = logging.getLogger(__name__)
 
@@ -23,132 +29,7 @@ _speculative_executor = concurrent.futures.ThreadPoolExecutor(
     max_workers=2, thread_name_prefix="TorchlightSpeculativeRunner"
 )
 
-
-class TestResultStatus(Enum):
-    __test__ = False
-    PASS = "pass"
-    FAIL = "fail"
-    ERROR = "error"
-    SKIP = "skip"
-    UNKNOWN = "unknown"
-
-
-@dataclass
-class TestResult:
-    __test__ = False
-    name: str
-    status: TestResultStatus
-    duration_ms: float = 0
-    error_message: Optional[str] = None
-    file_path: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.now)
-
-
-@dataclass
-class TestRunResult:
-    __test__ = False
-    command: str
-    return_code: int
-    duration_ms: float
-    results: list[TestResult]
-    stdout: str = ""
-    stderr: str = ""
-    timestamp: datetime = field(default_factory=datetime.now)
-    # True if a test/web command was actually attempted (or a detected command
-    # failed to run). False when there was nothing to verify in the first place.
-    ran: bool = False
-
-    @property
-    def passed(self) -> int:
-        return sum(1 for r in self.results if r.status == TestResultStatus.PASS)
-
-    @property
-    def failed(self) -> int:
-        return sum(
-            1
-            for r in self.results
-            if r.status in (TestResultStatus.FAIL, TestResultStatus.ERROR)
-        )
-
-    @property
-    def all_passed(self) -> bool:
-        """Return True only if a run succeeded. Uses exit code as the authoritative
-        signal so quiet runners (e.g. `pytest -q` with no verbose markers) don't
-        get misreported as failing when no per-test results could be parsed."""
-        return self.return_code == 0 and self.failed == 0
-
-
-def extract_surgical_traceback(
-    output: str, command: str = "", max_lines: int = 20
-) -> str:
-    """Extract strictly surgical failure traceback from test output, removing passing test lists, ANSI codes, and noise."""
-    if not output:
-        return ""
-
-    # Strip ANSI escape codes
-    clean = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", output)
-    lines = clean.splitlines()
-
-    # 1. Pytest explicit FAILURES section
-    pytest_failure_idx = -1
-    for i, line in enumerate(lines):
-        if re.search(r"=+\s+FAILURES\s+=+", line) or line.strip().startswith(
-            "FAILURES"
-        ):
-            pytest_failure_idx = i
-            break
-
-    if pytest_failure_idx != -1:
-        extracted = []
-        for line in lines[pytest_failure_idx:]:
-            if re.search(r"=+\s+short test summary info\s+=+", line):
-                break
-            extracted.append(line)
-        if extracted:
-            result = "\n".join(extracted[:max_lines])
-            return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
-
-    # 2. Python Traceback / SyntaxError search
-    tb_idx = -1
-    for i, line in enumerate(lines):
-        if "Traceback (most recent call last):" in line or any(
-            err in line
-            for err in [
-                "SyntaxError:",
-                "IndentationError:",
-                "TypeError:",
-                "NameError:",
-                "AttributeError:",
-            ]
-        ):
-            tb_idx = i
-            break
-
-    if tb_idx != -1:
-        result = "\n".join(lines[tb_idx : tb_idx + max_lines])
-        return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
-
-    # 3. Cargo / Jest / npm test failure search
-    fail_indices = [
-        i
-        for i, line in enumerate(lines)
-        if any(
-            kw in line
-            for kw in ["FAIL", "FAILED", "failures:", "panicked at", "AssertionError:"]
-        )
-    ]
-    if fail_indices:
-        start = max(0, fail_indices[0] - 2)
-        end = min(len(lines), fail_indices[-1] + max_lines)
-        result = "\n".join(lines[start:end])
-        return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
-
-    # Fallback to last max_lines
-    result = "\n".join(lines[-max_lines:])
-    return result[:1500] + ("\n... [truncated]" if len(result) > 1500 else "")
-
-
-class ExecutionFeedbackLoop:
+class ExecutionFeedbackLoop(TestDiscoveryMixin):
     """Auto-run tests and web outcome inspection after code changes and inject feedback into context."""
 
     def __init__(
@@ -547,133 +428,6 @@ class ExecutionFeedbackLoop:
             )
             return self._record_and_emit_result(result)
 
-    def _detect_test_command(self) -> str:
-        py_bin = sys.executable or "python3"
-        has_pyproject = (self.project_root / "pytest.ini").exists() or (
-            self.project_root / "pyproject.toml"
-        ).exists()
-
-        if has_pyproject:
-            # 1. Direct test files modified in this turn
-            direct_test_files = [
-                f
-                for f in self._files_modified_since_test
-                if ("test_" in Path(f).name or "_test" in Path(f).name)
-                and f.endswith(".py")
-            ]
-            if direct_test_files:
-                target = " ".join(direct_test_files[:3])
-                return f"{py_bin} -m pytest {target} -x --tb=short -q"
-
-            # 2. Associated test file lookup for modified Python source files
-            modified_py = [
-                f for f in self._files_modified_since_test if f.endswith(".py")
-            ]
-            matched_tests = []
-            test_search_dirs = [
-                self.project_root / "core" / "tests",
-                self.project_root / "tests",
-                self.project_root / "src" / "tests",
-            ]
-            for py_f in modified_py:
-                stem = Path(py_f).stem
-                if not stem or stem.startswith("__"):
-                    continue
-                for t_dir in test_search_dirs:
-                    if not t_dir.exists():
-                        continue
-                    for cand_name in (
-                        f"test_{stem}.py",
-                        f"{stem}_test.py",
-                        f"test_{stem}s.py",
-                    ):
-                        cand_p = t_dir / cand_name
-                        if cand_p.exists():
-                            rel = str(cand_p.relative_to(self.project_root))
-                            if rel not in matched_tests:
-                                matched_tests.append(rel)
-                    if not matched_tests:
-                        for cand_p in t_dir.glob(f"test_*{stem}*.py"):
-                            rel = str(cand_p.relative_to(self.project_root))
-                            if rel not in matched_tests:
-                                matched_tests.append(rel)
-
-            if matched_tests:
-                target = " ".join(matched_tests[:3])
-                return f"{py_bin} -m pytest {target} -x --tb=short -q"
-
-            # 3. Scope to standard subproject test directory if modified file belongs to it
-            for py_f in modified_py:
-                p = Path(py_f)
-                if (
-                    "core" in p.parts
-                    and (self.project_root / "core" / "tests").exists()
-                ):
-                    return f"{py_bin} -m pytest core/tests -x --tb=short -q"
-                if (
-                    "src" in p.parts
-                    and (self.project_root / "src" / "tests").exists()
-                ):
-                    return f"{py_bin} -m pytest src/tests -x --tb=short -q"
-
-            # 4. Scope to tests/ or core/tests/ if available
-            if (self.project_root / "tests").exists():
-                return f"{py_bin} -m pytest tests -x --tb=short -q"
-            if (self.project_root / "core" / "tests").exists():
-                return f"{py_bin} -m pytest core/tests -x --tb=short -q"
-
-            return ""
-
-        if (self.project_root / "package.json").exists():
-            return "npm test --silent"
-        if (self.project_root / "Cargo.toml").exists():
-            return "cargo test --quiet"
-        return ""
-
-    def _parse_test_output(self, output: str, command: str) -> list[TestResult]:
-        results = []
-        if "pytest" in command:
-            for m in re.finditer(r"(\S+::\w+)\s+(PASSED|FAILED|ERROR)", output):
-                status = (
-                    TestResultStatus.PASS
-                    if m.group(2) == "PASSED"
-                    else TestResultStatus.FAIL
-                )
-                results.append(TestResult(name=m.group(1), status=status))
-            # If pytest returncode was failure but no PASSED/FAILED regex matched (e.g. syntax error before test collection)
-            if not results and (
-                "FAILED" in output
-                or "ERROR" in output
-                or "SyntaxError" in output
-                or "Traceback" in output
-            ):
-                results.append(
-                    TestResult(
-                        name="pytest_collection",
-                        status=TestResultStatus.FAIL,
-                        error_message="Collection error",
-                    )
-                )
-        elif "npm" in command or "jest" in command:
-            if "FAIL" in output or "ERR!" in output:
-                results.append(
-                    TestResult(name="npm_test", status=TestResultStatus.FAIL)
-                )
-            elif "PASS" in output or "passed" in output:
-                results.append(
-                    TestResult(name="npm_test", status=TestResultStatus.PASS)
-                )
-        elif "cargo" in command:
-            if "FAILED" in output:
-                results.append(
-                    TestResult(name="cargo_test", status=TestResultStatus.FAIL)
-                )
-            elif "ok" in output:
-                results.append(
-                    TestResult(name="cargo_test", status=TestResultStatus.PASS)
-                )
-        return results
-
     def get_test_failure_error(self) -> Optional[TestFailureError]:
         """Convert current failing TestRunResult into a structured TestFailureError for RecoveryEngine."""
         if (
@@ -735,3 +489,13 @@ class ExecutionFeedbackLoop:
             )
 
         return "\n\n".join(feedback_parts)
+
+
+__all__ = [
+    "TestResultStatus",
+    "TestResult",
+    "TestRunResult",
+    "extract_surgical_traceback",
+    "ExecutionFeedbackLoop",
+]
+

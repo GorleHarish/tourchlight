@@ -327,7 +327,8 @@ def test_parse_plan_review_questions_three_or_n_questions():
     assert len(questions[2]["options"]) == 3
 
 
-def test_ask_user_modal_multi_questions():
+@pytest.mark.asyncio
+async def test_ask_user_modal_multi_questions():
     from rlm_optimized.tui_app import AskUserModal
 
     questions = [

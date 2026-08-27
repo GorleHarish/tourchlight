@@ -254,6 +254,53 @@ def test_verification_gate_single_path_tool_template_and_anti_echo(tmp_path):
     assert "without <tool_call>]" in assistant_msg["content"]
 
 
+@pytest.mark.anyio
+async def test_auto_mode_change_disabled_in_plan_code_chat(tmp_path):
+    """Verify that auto mode change and phase transitions are completely disabled in Plan, Code, and Chat modes."""
+    from rlm_optimized.rlm_engine_optimized import RLMEngineOptimized
+
+    engine = RLMEngineOptimized(project_root=str(tmp_path))
+
+    # 1. Plan Mode
+    engine.execution_mode = "plan"
+    assert engine.execution_mode == "plan"
+    assert engine._current_phase == "plan"
+    assert engine._detect_phase("error: crash in main.py") == "plan"
+    assert engine._detect_phase("write_file code for index.html") == "plan"
+    assert engine._detect_phase("hello there") == "plan"
+    engine._update_params("error: crash", "traceback")
+    assert engine._current_phase == "plan"
+
+    # 2. Code Mode
+    engine.execution_mode = "code"
+    assert engine.execution_mode == "code"
+    assert engine._current_phase == "code"
+    assert engine._detect_phase("brainstorm architecture plan") == "code"
+    assert engine._detect_phase("error: fatal exception") == "code"
+    assert engine._detect_phase("tell me a joke") == "code"
+    engine._update_params("brainstorm plan", "")
+    assert engine._current_phase == "code"
+
+    # 3. Chat Mode
+    engine.execution_mode = "chat"
+    assert engine.execution_mode == "chat"
+    assert engine._current_phase == "chat"
+    assert engine._detect_phase("write_file server.py") == "chat"
+    assert engine._detect_phase("error: segmentation fault") == "chat"
+    assert engine._detect_phase("let's plan the migration") == "chat"
+    engine._update_params("write_file server.py", "")
+    assert engine._current_phase == "chat"
+
+    # 4. Unified Mode (dynamic auto phase detection enabled)
+    engine.execution_mode = "unified"
+    assert engine.execution_mode == "unified"
+    assert engine._detect_phase("let's plan the migration") == "plan"
+    assert engine._detect_phase("error: crash in main.py") == "troubleshoot"
+    assert engine._detect_phase("write_file index.html") == "code"
+    assert engine._detect_phase("hello there") == "chat"
+
+
+
 
 
 

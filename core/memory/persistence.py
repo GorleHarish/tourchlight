@@ -64,6 +64,13 @@ class SessionPersistence:
                 "tried_and_failed": s.tried_and_failed,
                 "active_file": s.active_file,
                 "current_blocker": s.current_blocker,
+                "execution_mode": (
+                    s.execution_mode.value
+                    if hasattr(s.execution_mode, "value")
+                    else str(s.execution_mode)
+                )
+                if getattr(s, "execution_mode", None)
+                else "unified",
             },
             "messages": messages_data,
             "total_tokens": memory.total_tokens,

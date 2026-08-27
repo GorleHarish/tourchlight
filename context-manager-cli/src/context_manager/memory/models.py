@@ -11,6 +11,23 @@ class MessageRole(Enum):
     TOOL_RESULT = "tool_result"
 
 
+class ExecutionMode(str, Enum):
+    UNIFIED = "unified"
+    CHAT = "chat"
+    GOAL = "goal"
+    PLAN = "plan"
+    CODE = "code"
+
+    @property
+    def is_fixed(self) -> bool:
+        """Return True if auto phase detection and mode switching are disabled."""
+        return self in (ExecutionMode.CHAT, ExecutionMode.PLAN, ExecutionMode.CODE)
+
+
+FIXED_EXECUTION_MODES = frozenset({"plan", "code", "chat"})
+
+
+
 class ContentType(Enum):
     CODE = "code"
     ERROR = "error"
@@ -103,6 +120,9 @@ class SessionState:
     semantic_context: list[str] = field(default_factory=list)
     needle_ledger: list[MemoryNeedle] = field(default_factory=list)
     memory_objects: list[MemoryObject] = field(default_factory=list)
+
+    # ── Execution Mode (UNIFIED, CHAT, GOAL, PLAN, CODE) ─────────────────────
+    execution_mode: ExecutionMode = ExecutionMode.UNIFIED
 
 
 @dataclass

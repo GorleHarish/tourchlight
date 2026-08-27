@@ -585,6 +585,11 @@ TextArea:disabled {
     background: $background;
 }
 
+TextArea > .text-area--placeholder {
+    color: $foreground-muted;
+    text-style: italic;
+}
+
 /* ── Status Bar ───────────────────────────────────────────────────────── */
 
 #help-btn {
@@ -1121,6 +1126,17 @@ CollapsibleContents {
     padding: 0 1;
     border: none;
     background: $accent;
+    color: $background;
+    text-style: bold;
+    margin-right: 1;
+}
+
+.mode-badge-code {
+    width: auto;
+    height: 1;
+    padding: 0 1;
+    border: none;
+    background: $success;
     color: $background;
     text-style: bold;
     margin-right: 1;

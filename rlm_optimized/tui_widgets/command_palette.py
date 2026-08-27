@@ -160,6 +160,15 @@ def build_palette_items(
     return items
 
 
+MODE_PLACEHOLDERS: dict[str, str] = {
+    "chat": "Ask anything about the codebase... (@file to attach, /help)",
+    "plan": "Describe feature or architecture to plan... (@file to attach, /help)",
+    "code": "Describe code to implement or debug... (@file to attach, /help)",
+    "goal": "Define a high-level goal to execute autonomously... (@file to attach, /help)",
+    "unified": "Ask a question, plan a feature, or describe code changes... (@file, /help)",
+}
+
+
 class PromptTextArea(TextArea):
     """TextArea whose Enter submits instead of inserting a newline.
 
@@ -195,15 +204,34 @@ class PromptTextArea(TextArea):
         file_paths: list[str] | None = None,
         suggestion_callback: Callable[[list[str]], None] | None = None,
         highlight_callback: Callable[[int], None] | None = None,
+        placeholder: str | None = None,
         **kwargs,
     ) -> None:
-        super().__init__(**kwargs)
+        if placeholder is None:
+            placeholder = MODE_PLACEHOLDERS["unified"]
+        super().__init__(placeholder=placeholder, **kwargs)
         self._slash_commands = slash_commands or slash_command_list()
         self._file_paths = file_paths or []
         self._suggestion_callback = suggestion_callback
         self._highlight_callback = highlight_callback
         self._matches: list[str] = []
         self.highlight_index = 0
+        self._history: list[str] = []
+        self._history_index = -1
+        self._temp_draft = ""
+
+    def set_mode_placeholder(self, mode: str) -> None:
+        """Update placeholder text based on the active execution mode."""
+        m = (mode or "unified").lower().strip()
+        self.placeholder = MODE_PLACEHOLDERS.get(m, MODE_PLACEHOLDERS["unified"])
+
+    def record_history(self, text: str) -> None:
+        """Record submitted prompt in session history."""
+        clean = (text or "").strip()
+        if clean and (not self._history or self._history[-1] != clean):
+            self._history.append(clean)
+        self._history_index = -1
+        self._temp_draft = ""
 
     @property
     def suggestions_visible(self) -> bool:
@@ -306,9 +334,23 @@ class PromptTextArea(TextArea):
                 self.post_message(self.ContextFileAttached(self, saved_p))
                 return
 
+        # Shift+Tab or Ctrl+M: Instant in-place mode cycling
+        if key in ("shift+tab", "ctrl+m"):
+            event.stop()
+            event.prevent_default()
+            if self.app and hasattr(self.app, "set_mode") and hasattr(self.app, "_get_current_mode_val"):
+                modes = ["unified", "chat", "plan", "code", "goal"]
+                curr = str(self.app._get_current_mode_val()).lower().strip()
+                idx = (modes.index(curr) + 1) % len(modes) if curr in modes else 0
+                next_mode = modes[idx]
+                self.app.set_mode(next_mode)
+                self.set_mode_placeholder(next_mode)
+            return
+
         if key in ("ctrl+s", "alt+enter"):
             event.stop()
             event.prevent_default()
+            self.record_history(self.text)
             self.post_message(self.SubmitRequested(self))
             return
 
@@ -337,16 +379,42 @@ class PromptTextArea(TextArea):
             else:
                 await super()._on_key(event)
             return
-        if key == "up" and self._matches:
-            event.stop()
-            event.prevent_default()
-            self.set_highlight(self.highlight_index - 1)
-            return
-        if key == "down" and self._matches:
-            event.stop()
-            event.prevent_default()
-            self.set_highlight(self.highlight_index + 1)
-            return
+        if key == "up":
+            if self._matches:
+                event.stop()
+                event.prevent_default()
+                self.set_highlight(self.highlight_index - 1)
+                return
+            if not self.text.strip() or self._history_index != -1:
+                # History recall
+                if self._history:
+                    if self._history_index == -1:
+                        self._temp_draft = self.text
+                        self._history_index = len(self._history) - 1
+                    elif self._history_index > 0:
+                        self._history_index -= 1
+                    event.stop()
+                    event.prevent_default()
+                    self.load_text(self._history[self._history_index])
+                    self.move_cursor(self.document.end)
+                    return
+        if key == "down":
+            if self._matches:
+                event.stop()
+                event.prevent_default()
+                self.set_highlight(self.highlight_index + 1)
+                return
+            if self._history_index != -1:
+                event.stop()
+                event.prevent_default()
+                if self._history_index < len(self._history) - 1:
+                    self._history_index += 1
+                    self.load_text(self._history[self._history_index])
+                else:
+                    self._history_index = -1
+                    self.load_text(self._temp_draft)
+                self.move_cursor(self.document.end)
+                return
         await super()._on_key(event)
 
 

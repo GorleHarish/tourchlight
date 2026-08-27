@@ -195,4 +195,84 @@ async def test_handle_params_command_repetition_penalty_and_rep():
     assert s._params.temperature == 0.25
 
 
+def test_last_response_does_not_hijack_phase():
+    """Verify that error messages or code in last_response do not switch phase if user input is general."""
+    s = _make_session()
+    # In unified mode, if user input is conversational, it should stay 'chat' even if last_response has errors/code
+    last_err = "Traceback (most recent call last):\nError: Null pointer exception in def foo():"
+    assert s._detect_phase("what do you think?", last_response=last_err) == "chat"
+    assert s._detect_phase("thank you!", last_response=last_err) == "chat"
+
+
+def test_detect_phase_goal_mode_via_memory_state():
+    """Verify that ExecutionMode.GOAL in memory.state is respected."""
+    from core.memory.models import ExecutionMode
+    s = _make_session()
+    s.mode = "unified"
+    s.memory.state.execution_mode = ExecutionMode.GOAL
+    assert s._detect_phase("what is this?") == "goal"
+    assert s._detect_phase("error in code") == "goal"
+
+
+def test_session_persistence_preserves_execution_mode(tmp_path):
+    """Verify that SessionPersistence saves and loads execution_mode accurately."""
+    from context_manager.memory.persistence import SessionPersistence
+    from context_manager.memory.models import ExecutionMode
+    s = _make_session()
+    s.memory.state.execution_mode = ExecutionMode.PLAN
+    
+    p = SessionPersistence(session_dir=tmp_path)
+    file_path = p.save_session(s.memory, session_name="test_mode_persist")
+    
+    assert file_path is not None
+    s2 = _make_session()
+    s2.memory.state.execution_mode = ExecutionMode.UNIFIED
+    loaded = p.load_session("test_mode_persist", s2.memory)
+    assert loaded is True
+    assert s2.memory.state.execution_mode == ExecutionMode.PLAN
+
+
+def test_cli_auto_mode_change_disabled_in_plan_code_chat():
+    """Verify that in CLI StreamingChatSession, _update_params does not change phase in plan, code, or chat modes."""
+    # 1. Plan Mode
+    s_plan = _make_session()
+    s_plan.mode = "plan"
+    s_plan._current_phase = "plan"
+    s_plan._update_params("error: fatal exception", "Traceback...")
+    assert s_plan._current_phase == "plan"
+    s_plan._update_params("write_file new.py", "")
+    assert s_plan._current_phase == "plan"
+
+    # 2. Code Mode
+    s_code = _make_session()
+    s_code.mode = "code"
+    s_code._current_phase = "code"
+    s_code._update_params("let's plan the architecture", "")
+    assert s_code._current_phase == "code"
+    s_code._update_params("error: crash", "Traceback...")
+    assert s_code._current_phase == "code"
+
+    # 3. Chat Mode
+    s_chat = _make_session()
+    s_chat.mode = "chat"
+    s_chat._current_phase = "chat"
+    s_chat._update_params("write_file server.py", "")
+    assert s_chat._current_phase == "chat"
+    s_chat._update_params("error: database connection failed", "")
+    assert s_chat._current_phase == "chat"
+
+    # 4. Unified Mode (Auto-detection active)
+    s_unified = _make_session()
+    s_unified.mode = "unified"
+    s_unified._current_phase = "chat"
+    s_unified._update_params("write_file index.html", "")
+    assert s_unified._current_phase == "code"
+    s_unified._update_params("error: null pointer", "")
+    assert s_unified._current_phase == "troubleshoot"
+    s_unified._update_params("plan the user auth", "")
+    assert s_unified._current_phase == "plan"
+
+
+
+
 

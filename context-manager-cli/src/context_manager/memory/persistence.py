@@ -140,6 +140,13 @@ class SessionPersistence:
                 "tried_and_failed": s.tried_and_failed,
                 "active_file": s.active_file,
                 "current_blocker": s.current_blocker,
+                "execution_mode": (
+                    s.execution_mode.value
+                    if hasattr(s.execution_mode, "value")
+                    else str(s.execution_mode)
+                )
+                if getattr(s, "execution_mode", None)
+                else "unified",
                 # Long-term memory
                 "semantic_context": s.semantic_context,
                 "needle_ledger": [
@@ -194,6 +201,13 @@ class SessionPersistence:
             memory.clear()
 
             sd = data.get("state", {})
+            raw_em = sd.get("execution_mode", "unified")
+            try:
+                from core.memory.models import ExecutionMode
+                loaded_em = ExecutionMode(raw_em)
+            except Exception:
+                loaded_em = raw_em
+
             memory.state = SessionState(
                 # Core
                 intent=sd.get("intent", ""),
@@ -213,6 +227,8 @@ class SessionPersistence:
                 tried_and_failed=sd.get("tried_and_failed", []),
                 active_file=sd.get("active_file", ""),
                 current_blocker=sd.get("current_blocker", ""),
+                # Execution mode
+                execution_mode=loaded_em,
                 # Long-term memory
                 semantic_context=sd.get("semantic_context", []),
                 needle_ledger=[
